@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0b0c0e;
+  --bg-elevated: #101216;
+  --surface: #131519;
+  --surface-2: #1a1d22;
+  --border: rgba(237, 236, 230, 0.09);
+  --border-strong: rgba(237, 236, 230, 0.16);
+  --text: #edece6;
+  --text-dim: #9a9c9f;
+  --text-faint: #63666b;
+  --accent: #e3a33e;
+  --accent-soft: rgba(227, 163, 62, 0.14);
+  --accent-strong: #f2b955;
+  --positive: #7cbf8e;
+  --positive-soft: rgba(124, 191, 142, 0.12);
+  --negative: #d97a6c;
+  --font-display: -apple-system, "SF Pro Display", "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: -apple-system, "SF Pro Text", "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "SF Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+* { border-color: var(--border); }
+html { scroll-behavior: smooth; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
+
+.font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+.font-mono-num { font-family: var(--font-mono); font-feature-settings: "tnum" 1; letter-spacing: -0.01em; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.signal-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw 2.4s ease-out forwards;
+}
+
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+::selection { background: var(--accent); color: #0b0c0e; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

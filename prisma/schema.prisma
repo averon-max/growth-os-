@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  memberships  WorkspaceMember[]
+}
+
+model Workspace {
+  id                  String               @id @default(cuid())
+  name                String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  members             WorkspaceMember[]
+  businesses          Business[]
+  keywords            Keyword[]
+  providerConnections ProviderConnection[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  role        String    @default("OWNER")
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Business {
+  id          String    @id @default(cuid())
+  name        String
+  industry    String?
+  location    String?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  websites    Website[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
+
+model Website {
+  id         String     @id @default(cuid())
+  url        String
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  analyses   Analysis[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([businessId])
+}
+
+model Analysis {
+  id                String        @id @default(cuid())
+  status            String        @default("QUEUED")
+  errorMessage      String?
+  websiteId         String
+  website           Website       @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  pages             Page[]
+  issues            SEOIssue[]
+  opportunities     Opportunity[]
+  overallScore      Int?
+  technicalScore    Int?
+  contentScore      Int?
+  structureScore    Int?
+  indexabilityScore Int?
+  pagesCount        Int?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([websiteId])
+}
+
+model Page {
+  id               String   @id @default(cuid())
+  url              String
+  statusCode       Int?
+  title            String?
+  metaDescription  String?
+  h1               String?
+  h2s              String[]
+  canonical        String?
+  robots           String?
+  wordCount        Int?
+  internalLinks    Int?
+  externalLinks    Int?
+  imagesCount      Int?
+  imagesWithoutAlt Int?
+  hasJsonLd        Boolean  @default(false)
+  responseTime     Int?
+  depth            Int?
+  incomingLinks    Int?
+  analysisId       String
+  analysis         Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  @@index([analysisId])
+}
+
+model SEOIssue {
+  id             String   @id @default(cuid())
+  type           String
+  severity       String
+  pageUrl        String?
+  description    String
+  evidence       String?
+  recommendation String
+  analysisId     String
+  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([analysisId])
+  @@index([severity])
+}
+
+model Opportunity {
+  id             String   @id @default(cuid())
+  title          String
+  type           String
+  priority       String
+  score          Int
+  reason         String
+  recommendation String
+  affectedPages  Int      @default(0)
+  analysisId     String
+  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([analysisId])
+  @@index([score])
+}
+
+enum ProviderType {
+  GOOGLE_SEARCH_CONSOLE
+}
+
+enum ProviderStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum KeywordIntent {
+  INFORMATIONAL
+  COMMERCIAL
+  TRANSACTIONAL
+  NAVIGATIONAL
+}
+
+model ProviderConnection {
+  id              String         @id @default(cuid())
+  workspaceId     String
+  provider        ProviderType
+  status          ProviderStatus @default(DISCONNECTED)
+  accessTokenRef  String?
+  refreshTokenRef String?
+  expiresAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+}
+
+model Keyword {
+  id          String            @id @default(cuid())
+  workspaceId String
+  text        String
+  normalized  String
+  intent      KeywordIntent?
+  cluster     String?
+  volume      Int?
+  difficulty  Int?
+  cpc         Decimal?          @db.Decimal(10, 4)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  snapshots   KeywordSnapshot[]
+
+  @@unique([workspaceId, normalized])
+  @@index([workspaceId])
+}
+
+model KeywordSnapshot {
+  id          String   @id @default(cuid())
+  keywordId   String
+  date        DateTime @db.Date
+  position    Decimal? @db.Decimal(6, 2)
+  clicks      Int?
+  impressions Int?
+  ctr         Decimal? @db.Decimal(8, 4)
+  device      String   @default("DESKTOP")
+  country     String   @default("us")
+  source      String   @default("GOOGLE_SEARCH_CONSOLE")
+  retrievedAt DateTime @default(now())
+  keyword     Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([keywordId, date, device, country, source])
+  @@index([keywordId])
+  @@index([date])
+}
