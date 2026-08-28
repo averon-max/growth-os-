@@ -1,0 +1,22 @@
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  border-right: 1px solid var(--border);
+  background: var(--background);
+  padding: 20px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.logo { display: flex; align-items: center; gap: 8px; padding: 6px 10px; margin-bottom: 18px; text-decoration: none; }
+.logoMark { width: 18px; height: 18px; border-radius: 4px; background: var(--primary); flex-shrink: 0; }
+.logoText { font-weight: 600; font-size: 0.85rem; color: var(--primary); letter-spacing: -0.01em; }
+
+.navItem {
+  display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 6px;
+  text-decoration: none; font-size: 0.8rem; font-weight: 400; color: var(--secondary);
+  background: transparent; border-left: 2px solid transparent;
+}
+.navItem:hover { background: var(--elevated); color: var(--primary); }
+.navItemActive { font-weight: 500; color: var(--primary); background: var(--elevated); border-left: 2px solid var(--accent); }

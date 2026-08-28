@@ -1,13 +1,8 @@
 export default function ReportsPage() {
   return (
-    <div style={{ background: "#f2f1ed", minHeight: "100vh", fontFamily: "-apple-system, sans-serif" }}>
-      <div style={{ borderBottom: "1px solid rgba(0,0,0,0.08)", padding: "20px 32px", background: "#fff" }}>
-        <p style={{ fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>Reports</p>
-        <p style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.35)", margin: "2px 0 0" }}>Coming soon</p>
-      </div>
-      <div style={{ padding: "60px 32px", textAlign: "center" }}>
-        <p style={{ color: "rgba(0,0,0,0.35)", fontSize: "0.88rem" }}>Reports will be generated after analysis completes.</p>
-      </div>
+    <div style={{ padding: "28px 32px" }}>
+      <h1 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#F5F7FA", letterSpacing: "-0.02em", margin: "0 0 8px" }}>Reports</h1>
+      <p style={{ fontSize: "0.82rem", color: "#626873", margin: 0 }}>Coming soon.</p>
     </div>
   );
 }

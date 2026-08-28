@@ -1,95 +1,160 @@
 import Link from "next/link";
-import { ArrowRight, TrendingUp, Zap, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { ArrowRight, Zap, TrendingUp, BarChart2, Search, Globe, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default function Home() {
   return (
-    <div style={{ background: "#f2f1ed", color: "#0a0a0a", fontFamily: "-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif", minHeight: "100vh" }}>
+    <div style={{
+      background: "#0A0A0B",
+      color: "#E2E2E5",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      minHeight: "100vh",
+      WebkitFontSmoothing: "antialiased",
+    }}>
 
       {/* NAV */}
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "0 48px", borderBottom: "1px solid rgba(0,0,0,0.07)", background: "rgba(242,241,237,0.92)", backdropFilter: "blur(20px)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.03em" }}>SIGNAL</span>
-          <div style={{ display: "flex", gap: 40 }}>
-            {["Product", "Features", "Pricing"].map(l => (
-              <Link key={l} href="#" style={{ color: "rgba(0,0,0,0.35)", fontSize: "0.82rem", textDecoration: "none" }}>{l}</Link>
-            ))}
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        padding: "0 32px",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(10,10,11,0.85)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+      }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect width="20" height="20" rx="5" fill="#5B6AD0"/>
+                <path d="M5 10.5L8.5 14L15 7" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "#F0F0F3", letterSpacing: "-0.02em" }}>Growth OS</span>
+            </div>
+            <div style={{ display: "flex", gap: 24 }}>
+              {["Features", "Changelog", "Pricing", "Docs"].map(l => (
+                <Link key={l} href="#" style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem", textDecoration: "none", fontWeight: 400, transition: "color 0.15s" }}>{l}</Link>
+              ))}
+            </div>
           </div>
-          <Link href="/signup" style={{ background: "#0a0a0a", color: "#f2f1ed", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none", padding: "10px 22px", borderRadius: 100 }}>Get Started →</Link>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Link href="/login" style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.82rem", textDecoration: "none", padding: "7px 14px" }}>Log in</Link>
+            <Link href="/signup" style={{ background: "#5B6AD0", color: "#fff", fontSize: "0.82rem", fontWeight: 500, textDecoration: "none", padding: "7px 16px", borderRadius: 6, letterSpacing: "-0.01em" }}>Sign up</Link>
+          </div>
         </div>
       </nav>
 
       {/* HERO */}
-      <section style={{ paddingTop: 160, paddingBottom: 0, paddingLeft: 48, paddingRight: 48 }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 48 }}>
-            <span style={{ fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,0,0,0.35)", fontFamily: "SF Mono, monospace" }}>— Website Growth Platform</span>
+      <section style={{ paddingTop: 160, paddingBottom: 120, paddingLeft: 32, paddingRight: 32 }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+
+          {/* Eyebrow */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(91,106,208,0.12)", border: "1px solid rgba(91,106,208,0.25)", borderRadius: 100, padding: "4px 10px 4px 6px" }}>
+              <div style={{ width: 16, height: 16, borderRadius: "50%", background: "rgba(91,106,208,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#5B6AD0" }} />
+              </div>
+              <span style={{ fontSize: "0.72rem", color: "#8B95E0", fontWeight: 500, letterSpacing: "0.01em" }}>Now available — v1.0</span>
+            </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "end" }}>
-            <h1 style={{ fontSize: "clamp(4rem, 9vw, 8.5rem)", fontWeight: 800, lineHeight: 0.92, letterSpacing: "-0.045em", margin: 0 }}>
-              Your<br />
-              <em style={{ fontStyle: "italic", color: "#d4a030", WebkitTextStroke: "0px" }}>website,</em><br />
-              <span style={{ color: "rgba(0,0,0,0.2)" }}>cont-</span><br />
-              <span style={{ color: "rgba(0,0,0,0.2)" }}>inuously</span><br />
-              improved.
-            </h1>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 80, alignItems: "start" }}>
+            <div>
+              <h1 style={{
+                fontSize: "clamp(3rem, 5.5vw, 4.8rem)",
+                fontWeight: 700,
+                lineHeight: 1.06,
+                letterSpacing: "-0.045em",
+                margin: "0 0 28px",
+                color: "#F0F0F3",
+              }}>
+                SEO intelligence<br />
+                for teams that<br />
+                <span style={{ color: "#5B6AD0" }}>ship fast.</span>
+              </h1>
 
-            <div style={{ paddingBottom: 20 }}>
-              <p style={{ fontSize: "1.05rem", color: "rgba(0,0,0,0.45)", lineHeight: 1.75, marginBottom: 36, maxWidth: 380 }}>
-                Find what is holding your website back. Fix what matters. Keep growing — automatically.
+              <p style={{ fontSize: "1rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.7, marginBottom: 40, maxWidth: 440 }}>
+                Growth OS crawls your website, detects what is holding back organic growth, and surfaces the highest-impact opportunities — with evidence, not guesses.
               </p>
-              <div style={{ display: "flex", gap: 10, marginBottom: 60 }}>
-                <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#0a0a0a", color: "#f2f1ed", fontWeight: 600, fontSize: "0.88rem", textDecoration: "none", padding: "14px 26px", borderRadius: 100 }}>
-                  Analyze My Website <ArrowRight size={15} />
+
+              <div style={{ display: "flex", gap: 10, marginBottom: 48 }}>
+                <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#5B6AD0", color: "#fff", fontWeight: 500, fontSize: "0.85rem", textDecoration: "none", padding: "10px 20px", borderRadius: 7, letterSpacing: "-0.01em" }}>
+                  Get started free <ArrowRight size={14} />
                 </Link>
-                <Link href="#how" style={{ display: "inline-flex", alignItems: "center", fontSize: "0.88rem", color: "rgba(0,0,0,0.45)", textDecoration: "none", padding: "14px 22px", borderRadius: 100, border: "1px solid rgba(0,0,0,0.12)" }}>
-                  See How It Works
+                <Link href="#how" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.85rem", color: "rgba(255,255,255,0.45)", textDecoration: "none", padding: "10px 18px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)" }}>
+                  See how it works
                 </Link>
               </div>
 
-              {/* MINI DASHBOARD */}
-              <div style={{ borderRadius: 16, border: "1px solid rgba(0,0,0,0.1)", background: "#fff", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid rgba(0,0,0,0.06)", background: "#fafaf8" }}>
-                  <div style={{ display: "flex", gap: 5 }}>
-                    {["#e5e5e5","#e5e5e5","#e5e5e5"].map((c,i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
+              <div style={{ display: "flex", gap: 20, paddingTop: 28, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                {[
+                  { n: "96", l: "avg SEO score" },
+                  { n: "12", l: "opportunities/site" },
+                  { n: "28d", l: "to first results" },
+                ].map(s => (
+                  <div key={s.l}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#F0F0F3", letterSpacing: "-0.04em", fontVariantNumeric: "tabular-nums" }}>{s.n}</div>
+                    <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{s.l}</div>
                   </div>
-                  <span style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", letterSpacing: "0.12em", color: "rgba(0,0,0,0.25)", textTransform: "uppercase" }}>acme-hardware.com</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#4caf7d" }} />
-                    <span style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", color: "rgba(0,0,0,0.2)" }}>Live</span>
-                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* MINI APP */}
+            <div style={{ background: "#111114", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden", boxShadow: "0 0 0 1px rgba(0,0,0,0.5), 0 32px 80px rgba(0,0,0,0.4)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+                {["#FF5F57","#FFBD2E","#28CA41"].map((c,i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c, opacity: 0.8 }} />)}
+                <span style={{ fontFamily: "monospace", fontSize: "0.6rem", color: "rgba(255,255,255,0.2)", marginLeft: 8 }}>growth-os — Overview</span>
+              </div>
+              <div style={{ display: "flex", height: 320 }}>
+                <div style={{ width: 140, borderRight: "1px solid rgba(255,255,255,0.05)", padding: "12px 8px", display: "flex", flexDirection: "column", gap: 1 }}>
+                  {[
+                    { label: "Overview", active: true },
+                    { label: "SEO Issues", active: false },
+                    { label: "Keywords", active: false },
+                    { label: "Opportunities", active: false },
+                    { label: "Content", active: false },
+                    { label: "Competitors", active: false },
+                  ].map(item => (
+                    <div key={item.label} style={{
+                      padding: "6px 10px", borderRadius: 5,
+                      background: item.active ? "rgba(91,106,208,0.15)" : "transparent",
+                      color: item.active ? "#8B95E0" : "rgba(255,255,255,0.3)",
+                      fontSize: "0.72rem",
+                      fontWeight: item.active ? 500 : 400,
+                      borderLeft: item.active ? "2px solid #5B6AD0" : "2px solid transparent",
+                    }}>
+                      {item.label}
+                    </div>
+                  ))}
                 </div>
-                <div style={{ padding: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
-                    {[{ v: "+24%", l: "Organic" }, { v: "12", l: "Opportunities" }, { v: "84", l: "SEO Score" }, { v: "8", l: "Rising kws" }].map(s => (
-                      <div key={s.l} style={{ background: "#f8f8f6", borderRadius: 10, padding: "10px 12px" }}>
-                        <div style={{ fontWeight: 700, fontSize: "1rem", letterSpacing: "-0.03em", color: "#d4a030" }}>{s.v}</div>
-                        <div style={{ fontSize: "0.6rem", color: "rgba(0,0,0,0.35)", marginTop: 2 }}>{s.l}</div>
+                <div style={{ flex: 1, padding: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                    {[
+                      { v: "96", l: "Score", color: "#4ADE80" },
+                      { v: "4", l: "Opportunities", color: "#5B6AD0" },
+                      { v: "5", l: "Issues", color: "#FB923C" },
+                      { v: "1", l: "Pages", color: "rgba(255,255,255,0.3)" },
+                    ].map(s => (
+                      <div key={s.l} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "10px 10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ fontWeight: 700, fontSize: "1.1rem", letterSpacing: "-0.03em", color: s.color, fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
+                        <div style={{ fontSize: "0.58rem", color: "rgba(255,255,255,0.25)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.l}</div>
                       </div>
                     ))}
                   </div>
-                  <svg viewBox="0 0 400 70" style={{ width: "100%", marginBottom: 14 }} preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#d4a030" stopOpacity="0.15" />
-                        <stop offset="100%" stopColor="#d4a030" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M0,60 L45,55 L90,58 L135,45 L180,48 L225,33 L270,36 L315,22 L360,14 L400,10 L400,70 L0,70 Z" fill="url(#g2)" />
-                    <path d="M0,60 L45,55 L90,58 L135,45 L180,48 L225,33 L270,36 L315,22 L360,14 L400,10" fill="none" stroke="#d4a030" strokeWidth="1.5" />
-                  </svg>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 7, border: "1px solid rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                    <div style={{ padding: "7px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <span style={{ fontSize: "0.6rem", fontWeight: 600, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Opportunities</span>
+                    </div>
                     {[
-                      { l: "Emergency service page", impact: "High" },
-                      { l: "Mobile CTA visibility", impact: "High" },
-                      { l: "Water heater content", impact: "Med" },
+                      { title: "Expand thin content", priority: "MED", score: 72 },
+                      { title: "Add meta descriptions", priority: "HIGH", score: 85 },
+                      { title: "Fix missing H1 tags", priority: "HIGH", score: 91 },
                     ].map(o => (
-                      <div key={o.l} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8f8f6", borderRadius: 8, padding: "8px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Zap size={11} color="#d4a030" />
-                          <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.6)" }}>{o.l}</span>
+                      <div key={o.title} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ width: 5, height: 5, borderRadius: "50%", background: o.priority === "HIGH" ? "#FB923C" : "#FCD34D", flexShrink: 0 }} />
+                          <span style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.5)" }}>{o.title}</span>
                         </div>
-                        <span style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", letterSpacing: "0.08em", color: o.impact === "High" ? "#d4a030" : "rgba(0,0,0,0.25)", textTransform: "uppercase" }}>{o.impact}</span>
+                        <span style={{ fontSize: "0.65rem", fontVariantNumeric: "tabular-nums", color: "#5B6AD0", fontWeight: 600 }}>{o.score}</span>
                       </div>
                     ))}
                   </div>
@@ -100,147 +165,177 @@ export default function Home() {
         </div>
       </section>
 
-      {/* BLACK STRIP */}
-      <div style={{ background: "#0a0a0a", margin: "80px 0 0", padding: "20px 48px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", gap: 60, overflowX: "auto" }}>
-          {["SEO Analysis", "Keyword Intelligence", "Content Engine", "Competitor Monitoring", "Automation", "Opportunity Scoring", "Audience Behavior", "Feedback Loop"].map((t, i) => (
-            <span key={i} style={{ fontFamily: "SF Mono, monospace", fontSize: "0.68rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" }}>{t}</span>
+      {/* MARQUEE */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", padding: "16px 0", overflow: "hidden" }}>
+        <div style={{ display: "flex", gap: 48, paddingLeft: 32 }}>
+          {["Real crawler", "SSRF protection", "Workspace isolation", "Evidence-based issues", "Keyword signals", "GSC integration", "Opportunity scoring", "Historical tracking", "No fake data"].map((t) => (
+            <span key={t} style={{ fontFamily: "monospace", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.18)", whiteSpace: "nowrap" }}>{t}</span>
           ))}
         </div>
       </div>
 
-      {/* NUMBERS */}
-      <section style={{ padding: "80px 48px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
-          {[
-            { n: "+24%", l: "Average organic traffic increase" },
-            { n: "12", l: "Opportunities found per website" },
-            { n: "84", l: "Average SEO health score" },
-            { n: "4×", l: "Faster than manual optimization" },
-          ].map((s, i) => (
-            <div key={s.n} style={{ padding: "32px", borderLeft: i > 0 ? "1px solid rgba(0,0,0,0.08)" : "none" }}>
-              <div style={{ fontSize: "3.5rem", fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1, marginBottom: 10, color: i === 0 ? "#d4a030" : "#0a0a0a" }}>{s.n}</div>
-              <div style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.38)", lineHeight: 1.55, maxWidth: 160 }}>{s.l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* HOW IT WORKS */}
-      <section id="how" style={{ padding: "100px 48px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start" }}>
-          <div>
-            <div style={{ fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", marginBottom: 28, fontFamily: "SF Mono, monospace" }}>— How it works</div>
-            <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.04em", margin: 0 }}>
-              Analyze.<br />
-              <span style={{ color: "#d4a030", fontStyle: "italic" }}>Prioritize.</span><br />
-              Execute.<br />
-              Measure.
-            </h2>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {[
-              { n: "01", title: "Connect your website", desc: "Link your website, Google Search Console and analytics in minutes." },
-              { n: "02", title: "Continuous analysis", desc: "The system scans your site, keywords, audience and competitors every day." },
-              { n: "03", title: "Priority opportunities", desc: "Every opportunity is scored by impact. You know exactly what to fix first." },
-              { n: "04", title: "Execute and measure", desc: "Apply changes. Every result feeds back into the next priority list." },
-            ].map((s, i) => (
-              <div key={s.n} style={{ display: "flex", gap: 28, padding: "28px 0", borderBottom: i < 3 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
-                <div style={{ fontFamily: "SF Mono, monospace", fontSize: "0.62rem", color: "rgba(0,0,0,0.2)", paddingTop: 3, minWidth: 24 }}>{s.n}</div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.95rem", letterSpacing: "-0.02em", marginBottom: 6 }}>{s.title}</div>
-                  <div style={{ fontSize: "0.82rem", color: "rgba(0,0,0,0.4)", lineHeight: 1.65 }}>{s.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <div style={{ padding: "80px 48px 48px" }}>
-            <div style={{ fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", marginBottom: 24, fontFamily: "SF Mono, monospace" }}>— Features</div>
-            <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 0.95, margin: 0 }}>One system.<br />Every growth signal.</h2>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-            {[
-              { title: "Website Intelligence", desc: "Continuous scanning of technical SEO, content quality, internal linking, performance and indexation.", tag: "Always on", accent: false },
-              { title: "Keyword Intelligence", desc: "Every keyword scored on demand, competition, intent and ranking potential. Not just listed — prioritized.", tag: "Proprietary scoring", accent: true },
-              { title: "Content Engine", desc: "See exactly what content is missing. Compare against competitors and search demand before creating anything.", tag: "Data-driven", accent: false },
-              { title: "Audience Behavior", desc: "Scroll depth, CTA interaction, exit points and conversion paths — what happens when visitors arrive.", tag: "Real sessions", accent: false },
-              { title: "Competitor Intelligence", desc: "28 topics covered by competitors but missing from your site. Know what ground to take.", tag: "Live comparison", accent: false },
-              { title: "Automation", desc: "Metadata, schema, internal links applied automatically. High-impact changes queued for your approval.", tag: "Autopilot + Review", accent: false },
-            ].map((f, i) => (
-              <div key={f.title} style={{ padding: "40px 36px", borderRight: (i + 1) % 3 !== 0 ? "1px solid rgba(0,0,0,0.08)" : "none", borderBottom: i < 3 ? "1px solid rgba(0,0,0,0.08)" : "none", background: f.accent ? "#0a0a0a" : "transparent" }}>
-                <div style={{ fontSize: "0.62rem", letterSpacing: "0.15em", textTransform: "uppercase", color: f.accent ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.28)", fontFamily: "SF Mono, monospace", marginBottom: 20 }}>{f.tag}</div>
-                <div style={{ fontWeight: 700, fontSize: "1rem", letterSpacing: "-0.02em", marginBottom: 12, color: f.accent ? "#f2f1ed" : "#0a0a0a" }}>{f.title}</div>
-                <div style={{ fontSize: "0.82rem", color: f.accent ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.42)", lineHeight: 1.7 }}>{f.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* WEBSITE HEALTH */}
-      <section style={{ padding: "100px 48px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", marginBottom: 28, fontFamily: "SF Mono, monospace" }}>— Website Intelligence</div>
-            <h2 style={{ fontSize: "clamp(2rem, 4vw, 3.2rem)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.05, marginBottom: 20 }}>Know exactly what is happening.</h2>
-            <p style={{ fontSize: "0.88rem", color: "rgba(0,0,0,0.42)", lineHeight: 1.75 }}>The system continuously maps your website and detects changes, weaknesses and opportunities — not a one-time audit.</p>
-          </div>
-          <div style={{ borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", background: "#fff", overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.06)" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+      <section id="how" style={{ padding: "120px 32px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 80 }}>
+            <div>
+              <p style={{ fontSize: "0.72rem", fontWeight: 600, color: "#5B6AD0", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>How it works</p>
+              <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 700, letterSpacing: "-0.04em", color: "#F0F0F3", lineHeight: 1.15, margin: "0 0 20px" }}>
+                From crawl to action in minutes.
+              </h2>
+              <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.7, margin: 0 }}>
+                No manual audits. No spreadsheets. Just real signals from your actual website.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               {[
-                { label: "Technical SEO", s: "ok" }, { label: "Content quality", s: "warn" }, { label: "Internal linking", s: "warn" },
-                { label: "Page structure", s: "ok" }, { label: "Performance", s: "ok" }, { label: "Mobile", s: "ok" },
-                { label: "Indexation", s: "error" }, { label: "Schema", s: "warn" }, { label: "Broken links", s: "error" },
-              ].map(c => (
-                <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 16px", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                  {c.s === "ok" && <CheckCircle2 size={13} color="#4caf7d" />}
-                  {c.s === "warn" && <AlertTriangle size={13} color="#d4a030" />}
-                  {c.s === "error" && <XCircle size={13} color="#d97a6c" />}
-                  <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.5)" }}>{c.label}</span>
+                { n: "01", title: "Connect your website", desc: "Add your domain. Growth OS validates it and sets up the crawler. Takes 30 seconds.", tag: "Setup" },
+                { n: "02", title: "Real-time crawl", desc: "The crawler maps your site structure, extracts metadata, detects issues with evidence — not assumptions.", tag: "Analysis" },
+                { n: "03", title: "Scored opportunities", desc: "Each opportunity is ranked by expected business impact. High-value pages get higher priority.", tag: "Intelligence" },
+                { n: "04", title: "Connect data sources", desc: "Add Google Search Console for keyword data. Every signal is traceable to its source.", tag: "Integration" },
+              ].map((s, i) => (
+                <div key={s.n} style={{ display: "flex", gap: 24, padding: "24px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  <div style={{ minWidth: 32 }}>
+                    <span style={{ fontFamily: "monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.2)" }}>{s.n}</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                      <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#F0F0F3", letterSpacing: "-0.02em" }}>{s.title}</span>
+                      <span style={{ fontSize: "0.6rem", color: "#5B6AD0", background: "rgba(91,106,208,0.12)", padding: "2px 7px", borderRadius: 4, fontWeight: 500 }}>{s.tag}</span>
+                    </div>
+                    <p style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 18px", background: "#fafaf8" }}>
-              <span style={{ fontSize: "0.68rem", color: "rgba(0,0,0,0.28)", fontFamily: "SF Mono, monospace" }}>214 pages · 6 min ago</span>
-              <span style={{ fontSize: "0.68rem", color: "#d4a030", fontFamily: "SF Mono, monospace", fontWeight: 600 }}>6 issues found</span>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES GRID */}
+      <section style={{ padding: "120px 32px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ marginBottom: 64 }}>
+            <p style={{ fontSize: "0.72rem", fontWeight: 600, color: "#5B6AD0", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Capabilities</p>
+            <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 700, letterSpacing: "-0.04em", color: "#F0F0F3", margin: 0 }}>
+              Built for how SEO actually works.
+            </h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, overflow: "hidden" }}>
+            {[
+              { title: "Technical SEO", desc: "Title length, meta descriptions, canonicals, robots directives, H1 structure — each with exact evidence.", icon: <Search size={16} />, accent: false },
+              { title: "Crawler engine", desc: "Real HTTP crawl with SSRF protection. Handles redirects, extracts JSON-LD, OpenGraph, internal links.", icon: <Globe size={16} />, accent: true },
+              { title: "SEO scoring", desc: "Explainable scores across Technical, Content, Structure and Indexability. Not a black box.", icon: <BarChart2 size={16} />, accent: false },
+              { title: "Keyword signals", desc: "Quick wins, declining keywords, high impression/low CTR — detected from real GSC data.", icon: <TrendingUp size={16} />, accent: false },
+              { title: "Opportunity engine", desc: "Every finding becomes an opportunity with a score, evidence, and a recommended action.", icon: <Zap size={16} />, accent: false },
+              { title: "Workspace isolation", desc: "IDOR-tested. Server-side ownership checks on every resource. Cross-tenant access is impossible.", icon: <CheckCircle2 size={16} />, accent: false },
+            ].map((f) => (
+              <div key={f.title} style={{
+                padding: "28px 24px",
+                background: f.accent ? "rgba(91,106,208,0.08)" : "#0A0A0B",
+              }}>
+                <div style={{ color: f.accent ? "#8B95E0" : "rgba(255,255,255,0.3)", marginBottom: 14 }}>{f.icon}</div>
+                <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#F0F0F3", marginBottom: 8, letterSpacing: "-0.02em" }}>{f.title}</div>
+                <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.33)", lineHeight: 1.65 }}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SEO HEALTH DEMO */}
+      <section style={{ padding: "120px 32px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
+          <div>
+            <p style={{ fontSize: "0.72rem", fontWeight: 600, color: "#5B6AD0", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>Website analysis</p>
+            <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 700, letterSpacing: "-0.04em", color: "#F0F0F3", lineHeight: 1.15, marginBottom: 20 }}>
+              Every issue has evidence.
+            </h2>
+            <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.7, marginBottom: 32 }}>
+              Growth OS never says "your SEO is bad." It says "title is 91 characters — recommended maximum is 60 — here is the exact title."
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                "Evidence on every issue — not just a description",
+                "Severity tiers: CRITICAL → HIGH → MEDIUM → LOW",
+                "Specific recommendation per issue",
+              ].map(t => (
+                <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ width: 16, height: 16, borderRadius: "50%", background: "rgba(91,106,208,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#5B6AD0" }} />
+                  </div>
+                  <span style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>{t}</span>
+                </div>
+              ))}
             </div>
+          </div>
+          <div style={{ background: "#111114", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "rgba(255,255,255,0.4)" }}>SEO Issues</span>
+              <span style={{ fontSize: "0.65rem", fontFamily: "monospace", color: "#4ADE80" }}>Score: 96</span>
+            </div>
+            {[
+              { severity: "HIGH", type: "TITLE_TOO_LONG", desc: "Title is 91 characters. Max recommended: 60.", page: "/services/emergency-plumbing" },
+              { severity: "MEDIUM", type: "MISSING_META", desc: "Meta description is absent.", page: "/about" },
+              { severity: "MEDIUM", type: "THIN_CONTENT", desc: "Word count: 180. Recommended minimum: 300.", page: "/contact" },
+              { severity: "LOW", type: "MISSING_ALT", desc: "3 images missing alt attributes.", page: "/gallery" },
+            ].map((issue, i) => (
+              <div key={issue.type} style={{ padding: "12px 16px", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{
+                    fontSize: "0.58rem", fontFamily: "monospace", letterSpacing: "0.08em",
+                    color: issue.severity === "HIGH" ? "#FB923C" : issue.severity === "MEDIUM" ? "#5B6AD0" : "rgba(255,255,255,0.3)",
+                    background: issue.severity === "HIGH" ? "rgba(251,146,60,0.1)" : issue.severity === "MEDIUM" ? "rgba(91,106,208,0.1)" : "rgba(255,255,255,0.04)",
+                    padding: "2px 6px", borderRadius: 3,
+                  }}>{issue.severity}</span>
+                  <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>{issue.desc}</span>
+                </div>
+                <span style={{ fontSize: "0.65rem", fontFamily: "monospace", color: "rgba(255,255,255,0.2)" }}>{issue.page}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* PRICING */}
-      <section style={{ padding: "100px 48px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <div style={{ fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", marginBottom: 20, fontFamily: "SF Mono, monospace" }}>— Pricing</div>
-          <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 0.95, marginBottom: 80 }}>Simple plans.</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, border: "1px solid rgba(0,0,0,0.08)", borderRadius: 20, overflow: "hidden" }}>
+      <section style={{ padding: "120px 32px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ marginBottom: 56 }}>
+            <p style={{ fontSize: "0.72rem", fontWeight: 600, color: "#5B6AD0", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12 }}>Pricing</p>
+            <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 700, letterSpacing: "-0.04em", color: "#F0F0F3", margin: "0 0 8px" }}>Straightforward pricing.</h2>
+            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.85rem", margin: 0 }}>Free to start. Upgrade when it pays for itself.</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {[
-              { name: "Starter", price: 49, features: ["Website monitoring", "SEO analysis", "Keyword intelligence", "Opportunity tracking", "Monthly reports"], pop: false },
-              { name: "Growth", price: 99, features: ["Everything in Starter", "Search Console integration", "Audience analytics", "Content opportunities", "Competitor monitoring", "Automations"], pop: true },
-              { name: "Autopilot", price: 199, features: ["Everything in Growth", "Advanced automation", "Content workflows", "Advanced competitors", "Continuous optimization"], pop: false },
-            ].map((p, i) => (
-              <div key={p.name} style={{ padding: "40px 36px", borderLeft: i > 0 ? "1px solid rgba(0,0,0,0.08)" : "none", background: p.pop ? "#0a0a0a" : "#fff", display: "flex", flexDirection: "column" }}>
-                {p.pop && <div style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#d4a030", marginBottom: 16 }}>— Most popular</div>}
-                <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 20, color: p.pop ? "#f2f1ed" : "#0a0a0a", letterSpacing: "-0.02em" }}>{p.name}</div>
-                <div style={{ marginBottom: 32 }}>
-                  <span style={{ fontSize: "3.2rem", fontWeight: 800, letterSpacing: "-0.05em", color: p.pop ? "#f2f1ed" : "#0a0a0a" }}>${p.price}</span>
-                  <span style={{ fontSize: "0.78rem", color: p.pop ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)", marginLeft: 6 }}>/month</span>
+              { name: "Starter", price: 49, desc: "For solo operators and small sites.", features: ["1 website", "SEO analysis", "Opportunity scoring", "Monthly crawl"], pop: false },
+              { name: "Growth", price: 99, desc: "For teams serious about organic growth.", features: ["5 websites", "Everything in Starter", "Search Console sync", "Keyword signals", "Competitor monitoring", "Weekly crawl"], pop: true },
+              { name: "Scale", price: 199, desc: "For agencies and large sites.", features: ["25 websites", "Everything in Growth", "Daily crawl", "API access", "Priority support"], pop: false },
+            ].map((p) => (
+              <div key={p.name} style={{
+                padding: "28px 24px",
+                borderRadius: 10,
+                background: p.pop ? "rgba(91,106,208,0.08)" : "rgba(255,255,255,0.02)",
+                border: p.pop ? "1px solid rgba(91,106,208,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                display: "flex", flexDirection: "column",
+              }}>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem", color: p.pop ? "#8B95E0" : "rgba(255,255,255,0.6)", marginBottom: 4 }}>{p.name}</div>
+                  <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.28)", lineHeight: 1.4 }}>{p.desc}</div>
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, marginBottom: 32 }}>
+                <div style={{ marginBottom: 24 }}>
+                  <span style={{ fontSize: "2.4rem", fontWeight: 700, letterSpacing: "-0.05em", color: "#F0F0F3", fontVariantNumeric: "tabular-nums" }}>${p.price}</span>
+                  <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.25)", marginLeft: 4 }}>/mo</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
                   {p.features.map(f => (
-                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.8rem", color: p.pop ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.5)" }}>
-                      <span style={{ color: p.pop ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)" }}>—</span> {f}
+                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "rgba(255,255,255,0.4)" }}>
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: p.pop ? "#5B6AD0" : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
+                      {f}
                     </div>
                   ))}
                 </div>
-                <Link href="/signup" style={{ display: "block", textAlign: "center", padding: "13px", borderRadius: 100, textDecoration: "none", fontWeight: 600, fontSize: "0.82rem", background: p.pop ? "#d4a030" : "#0a0a0a", color: p.pop ? "#0a0a0a" : "#f2f1ed" }}>
-                  Start Free
+                <Link href="/signup" style={{ display: "block", textAlign: "center", padding: "10px", borderRadius: 7, textDecoration: "none", fontWeight: 500, fontSize: "0.82rem", background: p.pop ? "#5B6AD0" : "rgba(255,255,255,0.06)", color: "#fff", letterSpacing: "-0.01em" }}>
+                  Start free
                 </Link>
               </div>
             ))}
@@ -249,33 +344,44 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section style={{ padding: "140px 48px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(3rem, 8vw, 7.5rem)", fontWeight: 800, lineHeight: 0.92, letterSpacing: "-0.045em", maxWidth: 1000, marginBottom: 60 }}>
-            Your website should<br />
-            <span style={{ color: "#d4a030", fontStyle: "italic" }}>never</span> stop improving.
-          </h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#0a0a0a", color: "#f2f1ed", fontWeight: 600, fontSize: "0.92rem", textDecoration: "none", padding: "16px 32px", borderRadius: 100 }}>
-              Start Free — it takes 2 minutes <ArrowRight size={16} />
-            </Link>
-            <span style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.3)" }}>No credit card required</span>
+      <section style={{ padding: "160px 32px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ maxWidth: 600 }}>
+            <h2 style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)", fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.045em", color: "#F0F0F3", margin: "0 0 24px" }}>
+              Your website deserves better than a one-time audit.
+            </h2>
+            <p style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.7, marginBottom: 40 }}>
+              Continuous analysis. Evidence-based issues. Prioritized by impact. Start in under 2 minutes.
+            </p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#5B6AD0", color: "#fff", fontWeight: 500, fontSize: "0.85rem", textDecoration: "none", padding: "10px 20px", borderRadius: 7 }}>
+                Get started free <ArrowRight size={14} />
+              </Link>
+              <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.2)" }}>No credit card required</span>
+            </div>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer style={{ borderTop: "1px solid rgba(0,0,0,0.08)", padding: "32px 48px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.02em" }}>SIGNAL</span>
-          <div style={{ display: "flex", gap: 32 }}>
-            {["Privacy", "Terms", "Contact"].map(l => (
-              <Link key={l} href="#" style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.28)", textDecoration: "none" }}>{l}</Link>
+      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "24px 32px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <rect width="20" height="20" rx="5" fill="#5B6AD0"/>
+              <path d="M5 10.5L8.5 14L15 7" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontWeight: 600, fontSize: "0.82rem", color: "rgba(255,255,255,0.5)", letterSpacing: "-0.01em" }}>Growth OS</span>
+          </div>
+          <div style={{ display: "flex", gap: 24 }}>
+            {["Privacy", "Terms", "Status", "Contact"].map(l => (
+              <Link key={l} href="#" style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.22)", textDecoration: "none" }}>{l}</Link>
             ))}
           </div>
-          <span style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.22)" }}>© 2026 Signal</span>
+          <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.15)" }}>© 2026 Growth OS</span>
         </div>
       </footer>
+
     </div>
   );
 }

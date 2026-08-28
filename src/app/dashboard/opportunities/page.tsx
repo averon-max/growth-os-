@@ -1,68 +1,104 @@
-"use client";
+import { Target } from "lucide-react";
+import { requireUser } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
+import { Topbar } from "@/components/dashboard/topbar";
+import { EmptyState } from "@/components/dashboard/ui";
+import styles from "@/components/dashboard/ui.module.css";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+const PRIORITY_ORDER = ["HIGH", "MEDIUM", "LOW"] as const;
+const PRIORITY_TONE: Record<string, string> = { HIGH: "warning", MEDIUM: "accent", LOW: "muted" };
+const OPPORTUNITIES_FETCH_CAP = 500;
 
-interface Opportunity {
-  id: string;
-  title: string;
-  type: string;
-  priority: string;
-  score: number;
-  reason: string;
-  recommendation: string;
-  affectedPages: number;
+function titleCase(s: string) {
+  return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
-export default function OpportunitiesPage() {
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function OpportunitiesPage() {
+  const user = await requireUser();
 
-  useEffect(() => {
-    fetch("/api/websites")
-      .then(r => r.json())
-      .then(async data => {
-        const latest = data.websites?.[0]?.analyses?.[0];
-        if (latest?.id) {
-          const res = await fetch(`/api/analyses/${latest.id}/opportunities`);
-          const d = await res.json();
-          setOpportunities(d.opportunities || []);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+  const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
+  const website = membership
+    ? await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
+    : null;
+  const analysis = website
+    ? await prisma.analysis.findFirst({ where: { websiteId: website.id }, orderBy: { createdAt: "desc" } })
+    : null;
+
+  const opportunities = analysis
+    ? await prisma.opportunity.findMany({ where: { analysisId: analysis.id }, orderBy: { score: "desc" }, take: OPPORTUNITIES_FETCH_CAP })
+    : [];
+
+  const knownPriorities = new Set<string>(PRIORITY_ORDER);
+  const grouped = PRIORITY_ORDER.map((priority) => ({ priority, items: opportunities.filter((o) => o.priority === priority) })).filter(
+    (g) => g.items.length > 0
+  );
+  const otherItems = opportunities.filter((o) => !knownPriorities.has(o.priority));
 
   return (
-    <div style={{ background: "#f2f1ed", minHeight: "100vh", fontFamily: "-apple-system, sans-serif" }}>
-      <div style={{ borderBottom: "1px solid rgba(0,0,0,0.08)", padding: "20px 32px", background: "#fff" }}>
-        <p style={{ fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>Opportunities</p>
-        <p style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.35)", margin: "2px 0 0" }}>{opportunities.length} opportunities found</p>
-      </div>
-      <div style={{ padding: "24px 32px" }}>
-        {loading && <p style={{ color: "rgba(0,0,0,0.35)", fontSize: "0.85rem" }}>Loading...</p>}
-        {!loading && opportunities.length === 0 && (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <p style={{ color: "rgba(0,0,0,0.35)" }}>No opportunities yet. <Link href="/dashboard/add-website" style={{ color: "#d4a030" }}>Add a website →</Link></p>
-          </div>
-        )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {opportunities.map(o => (
-            <div key={o.id} style={{ background: "#fff", borderRadius: 14, border: "1px solid rgba(0,0,0,0.08)", padding: "20px 24px", display: "flex", alignItems: "flex-start", gap: 20 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{o.title}</span>
-                  <span style={{ fontSize: "0.62rem", fontFamily: "SF Mono, monospace", letterSpacing: "0.1em", textTransform: "uppercase", color: o.priority === "HIGH" ? "#d4a030" : "rgba(0,0,0,0.3)" }}>{o.priority}</span>
+    <>
+      <Topbar title="Opportunities" subtitle={`${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"}`} />
+      <div className={styles.pageBody}>
+        {opportunities.length === 0 ? (
+          <EmptyState
+            icon={Target}
+            title="No opportunities yet"
+            description={analysis ? "This analysis didn't surface any opportunities." : "Run an analysis to surface growth opportunities."}
+            actionLabel={website ? undefined : "Add Website"}
+            actionHref={website ? undefined : "/dashboard/add-website"}
+          />
+        ) : (
+          <>
+            {grouped.map((group) => (
+              <div key={group.priority} className={styles.group}>
+                <div className={styles.groupHeader}>
+                  <span className={styles.groupLabel}>{titleCase(group.priority)}</span>
+                  <span className={styles.groupCount}>{group.items.length}</span>
                 </div>
-                <p style={{ fontSize: "0.8rem", color: "rgba(0,0,0,0.45)", margin: "0 0 6px", lineHeight: 1.6 }}>{o.reason}</p>
-                <p style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.35)", margin: 0 }}>→ {o.recommendation}</p>
-                <p style={{ fontSize: "0.7rem", color: "rgba(0,0,0,0.3)", margin: "6px 0 0" }}>{o.affectedPages} page(s) affected</p>
+                {group.items.map((o) => (
+                  <div key={o.id} className={styles.issueRow}>
+                    <div className={styles.issueMain}>
+                      <span className={styles.issueDot} data-tone={PRIORITY_TONE[o.priority] ?? "muted"} />
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.issueTitle}>{o.title}</div>
+                        <div className={styles.issueDesc}>{o.reason}</div>
+                        <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {o.recommendation}</div>
+                      </div>
+                    </div>
+                    <div className={styles.issueMeta}>
+                      <span className={styles.mono} style={{ fontWeight: 600, color: "var(--primary)" }}>{o.score}</span>
+                      <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: 2 }}>
+                        {o.affectedPages} page{o.affectedPages === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ fontFamily: "SF Mono, monospace", fontSize: "1.4rem", fontWeight: 800, color: "#d4a030", flexShrink: 0 }}>{o.score}</div>
-            </div>
-          ))}
-        </div>
+            ))}
+            {otherItems.length > 0 && (
+              <div className={styles.group}>
+                <div className={styles.groupHeader}>
+                  <span className={styles.groupLabel}>Other</span>
+                  <span className={styles.groupCount}>{otherItems.length}</span>
+                </div>
+                {otherItems.map((o) => (
+                  <div key={o.id} className={styles.issueRow}>
+                    <div className={styles.issueMain}>
+                      <span className={styles.issueDot} data-tone="muted" />
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.issueTitle}>{o.title}</div>
+                        <div className={styles.issueDesc}>{o.reason}</div>
+                      </div>
+                    </div>
+                    <div className={styles.issueMeta}>
+                      <span className={styles.mono} style={{ fontWeight: 600, color: "var(--primary)" }}>{o.score}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </>
   );
 }

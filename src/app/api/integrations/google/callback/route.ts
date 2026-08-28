@@ -33,14 +33,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "State does not match authenticated user." }, { status: 403 });
     }
 
-    // Re-verify workspace membership server-side — never trust the state alone.
     await requireWorkspaceAccess(user.id, statePayload.workspaceId);
 
     const tokens = await exchangeCodeForTokens(code);
     await upsertGoogleSearchConsoleConnection(statePayload.workspaceId, tokens);
 
-    return NextResponse.redirect(new URL("/settings/integrations?connected=google", req.url));
+    return NextResponse.redirect(new URL("/dashboard?connected=google", req.url));
   } catch (err) {
+    console.error("[GSC callback error]", err);
     const { status, body } = authErrorResponse(err);
     return NextResponse.json(body, { status });
   }

@@ -1,84 +1,118 @@
-"use client";
+import { Search } from "lucide-react";
+import { requireUser } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
+import { Topbar } from "@/components/dashboard/topbar";
+import { EmptyState } from "@/components/dashboard/ui";
+import styles from "@/components/dashboard/ui.module.css";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+const SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
+const SEVERITY_TONE: Record<string, string> = { CRITICAL: "danger", HIGH: "warning", MEDIUM: "accent", LOW: "muted" };
+const ISSUES_FETCH_CAP = 500;
 
-interface Issue {
-  id: string;
-  type: string;
-  severity: string;
-  pageUrl: string | null;
-  description: string;
-  evidence: string | null;
-  recommendation: string;
+function titleCase(s: string) {
+  return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
-export default function SeoPage() {
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [filter, setFilter] = useState("ALL");
-  const [loading, setLoading] = useState(true);
-  const [analysisId, setAnalysisId] = useState<string | null>(null);
+export default async function SeoPage() {
+  const user = await requireUser();
 
-  useEffect(() => {
-    fetch("/api/websites")
-      .then(r => r.json())
-      .then(async data => {
-        const latest = data.websites?.[0]?.analyses?.[0];
-        if (latest?.id) {
-          setAnalysisId(latest.id);
-          const res = await fetch(`/api/analyses/${latest.id}/issues`);
-          const d = await res.json();
-          setIssues(d.issues || []);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+  const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
+  const website = membership
+    ? await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
+    : null;
+  const analysis = website
+    ? await prisma.analysis.findFirst({ where: { websiteId: website.id }, orderBy: { createdAt: "desc" } })
+    : null;
 
-  const severityColor: Record<string, string> = {
-    CRITICAL: "#d97a6c",
-    HIGH: "#e8a435",
-    MEDIUM: "#d4a030",
-    LOW: "rgba(0,0,0,0.4)",
-  };
+  if (!analysis) {
+    return (
+      <>
+        <Topbar title="SEO Issues" />
+        <div className={styles.pageBody}>
+          <EmptyState
+            icon={Search}
+            title="Run an analysis to see SEO issues"
+            description={website ? "This website hasn't been analyzed yet." : "Add a website to get started."}
+            actionLabel={website ? undefined : "Add Website"}
+            actionHref={website ? undefined : "/dashboard/add-website"}
+          />
+        </div>
+      </>
+    );
+  }
 
-  const filtered = filter === "ALL" ? issues : issues.filter(i => i.severity === filter);
+  const issues = await prisma.sEOIssue.findMany({
+    where: { analysisId: analysis.id },
+    orderBy: { createdAt: "desc" },
+    take: ISSUES_FETCH_CAP,
+  });
+
+  const knownSeverities = new Set<string>(SEVERITY_ORDER);
+  const grouped = SEVERITY_ORDER.map((severity) => ({ severity, items: issues.filter((i) => i.severity === severity) })).filter(
+    (g) => g.items.length > 0
+  );
+  const otherItems = issues.filter((i) => !knownSeverities.has(i.severity));
 
   return (
-    <div style={{ background: "#f2f1ed", minHeight: "100vh", fontFamily: "-apple-system, sans-serif" }}>
-      <div style={{ borderBottom: "1px solid rgba(0,0,0,0.08)", padding: "20px 32px", background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <p style={{ fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>SEO Issues</p>
-          <p style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.35)", margin: "2px 0 0" }}>{issues.length} issues found</p>
-        </div>
-        {analysisId && <Link href={`/dashboard/analysis/${analysisId}`} style={{ fontSize: "0.78rem", color: "#d4a030", textDecoration: "none" }}>View full report →</Link>}
-      </div>
-      <div style={{ padding: "24px 32px" }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 100, border: "1px solid rgba(0,0,0,0.12)", background: filter === f ? "#0a0a0a" : "#fff", color: filter === f ? "#f2f1ed" : "rgba(0,0,0,0.5)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>{f}</button>
-          ))}
-        </div>
-        {loading && <p style={{ color: "rgba(0,0,0,0.35)", fontSize: "0.85rem" }}>Loading...</p>}
-        {!loading && issues.length === 0 && (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <p style={{ color: "rgba(0,0,0,0.35)" }}>No issues found. <Link href="/dashboard/add-website" style={{ color: "#d4a030" }}>Add a website →</Link></p>
-          </div>
-        )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtered.map(issue => (
-            <div key={issue.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", padding: "16px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{issue.description}</span>
-                <span style={{ fontSize: "0.62rem", fontFamily: "SF Mono, monospace", letterSpacing: "0.1em", textTransform: "uppercase", color: severityColor[issue.severity] }}>{issue.severity}</span>
+    <>
+      <Topbar title="SEO Issues" subtitle={`${issues.length} issue${issues.length === 1 ? "" : "s"}`} />
+      <div className={styles.pageBody}>
+        {issues.length === 0 ? (
+          <EmptyState icon={Search} title="No issues found" description="This analysis didn't surface any SEO issues." />
+        ) : (
+          <>
+            {grouped.map((group) => (
+              <div key={group.severity} className={styles.group}>
+                <div className={styles.groupHeader}>
+                  <span className={styles.groupLabel}>{titleCase(group.severity)}</span>
+                  <span className={styles.groupCount}>{group.items.length}</span>
+                </div>
+                {group.items.map((issue) => (
+                  <div key={issue.id} className={styles.issueRow}>
+                    <div className={styles.issueMain}>
+                      <span className={styles.issueDot} data-tone={SEVERITY_TONE[issue.severity] ?? "muted"} />
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.issueTitle}>{issue.type}</div>
+                        <div className={styles.issueDesc}>{issue.description}</div>
+                        <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {issue.recommendation}</div>
+                      </div>
+                    </div>
+                    <div className={styles.issueMeta}>
+                      {issue.pageUrl && (
+                        <span className={`${styles.mono} ${styles.truncate}`} title={issue.pageUrl}>{issue.pageUrl}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              {issue.pageUrl && <p style={{ fontSize: "0.72rem", fontFamily: "SF Mono, monospace", color: "rgba(0,0,0,0.35)", margin: "0 0 6px" }}>{issue.pageUrl}</p>}
-              {issue.evidence && <p style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", margin: "0 0 6px" }}>Evidence: {issue.evidence}</p>}
-              <p style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.5)", margin: 0 }}>→ {issue.recommendation}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+            {otherItems.length > 0 && (
+              <div className={styles.group}>
+                <div className={styles.groupHeader}>
+                  <span className={styles.groupLabel}>Other</span>
+                  <span className={styles.groupCount}>{otherItems.length}</span>
+                </div>
+                {otherItems.map((issue) => (
+                  <div key={issue.id} className={styles.issueRow}>
+                    <div className={styles.issueMain}>
+                      <span className={styles.issueDot} data-tone="muted" />
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.issueTitle}>{issue.type}</div>
+                        <div className={styles.issueDesc}>{issue.description}</div>
+                      </div>
+                    </div>
+                    <div className={styles.issueMeta}>
+                      {issue.pageUrl && (
+                        <span className={`${styles.mono} ${styles.truncate}`} title={issue.pageUrl}>{issue.pageUrl}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </>
   );
 }

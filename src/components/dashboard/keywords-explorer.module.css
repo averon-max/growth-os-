@@ -1,0 +1,30 @@
+.loading { color: var(--secondary); font-size: 0.85rem; padding: 24px 0; }
+
+.filters { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.select {
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+.pagination { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+
+.pageButton {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.pageButton:hover { background: var(--elevated); }
+.pageButton:disabled { color: var(--muted); cursor: not-allowed; background: transparent; }
+
+.pageLabel { font-family: var(--font-mono); font-size: 0.72rem; color: var(--secondary); }
+
+.emptyRow { text-align: center; color: var(--secondary); padding: 32px 0; }

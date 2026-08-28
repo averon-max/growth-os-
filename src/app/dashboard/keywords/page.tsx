@@ -1,13 +1,57 @@
-export default function KeywordsPage() {
+import { requireUser } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
+import { getProviderConnection } from "@/lib/keywords/repository";
+import { Topbar } from "@/components/dashboard/topbar";
+import { EmptyState } from "@/components/dashboard/ui";
+import { KeywordsExplorer } from "@/components/dashboard/keywords-explorer";
+import { Search, Globe } from "lucide-react";
+import styles from "@/components/dashboard/ui.module.css";
+
+export default async function KeywordsPage() {
+  const user = await requireUser();
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id },
+    select: { workspaceId: true },
+  });
+
+  if (!membership) {
+    return (
+      <>
+        <Topbar title="Keywords" />
+        <div className={styles.pageBody}>
+          <EmptyState icon={Globe} title="No workspace found" description="Your account isn't linked to a workspace yet." />
+        </div>
+      </>
+    );
+  }
+
+  const workspaceId = membership.workspaceId;
+  const connection = await getProviderConnection(workspaceId, "GOOGLE_SEARCH_CONSOLE");
+
+  if (!connection || connection.status !== "CONNECTED") {
+    return (
+      <>
+        <Topbar title="Keywords" />
+        <div className={styles.pageBody}>
+          <EmptyState
+            icon={Search}
+            title="Google Search Console not connected"
+            description="Connect Search Console to import keyword rankings, clicks, impressions and CTR."
+            actionLabel="Connect Search Console"
+            actionHref={`/api/integrations/google/connect?workspaceId=${workspaceId}`}
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
-    <div style={{ background: "#f2f1ed", minHeight: "100vh", fontFamily: "-apple-system, sans-serif" }}>
-      <div style={{ borderBottom: "1px solid rgba(0,0,0,0.08)", padding: "20px 32px", background: "#fff" }}>
-        <p style={{ fontWeight: 700, fontSize: "1.1rem", margin: 0 }}>Keywords</p>
-        <p style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.35)", margin: "2px 0 0" }}>Coming soon</p>
+    <>
+      <Topbar title="Keywords" subtitle="Search Console" />
+      <div className={styles.pageBody}>
+        <KeywordsExplorer workspaceId={workspaceId} />
       </div>
-      <div style={{ padding: "60px 32px", textAlign: "center" }}>
-        <p style={{ color: "rgba(0,0,0,0.35)", fontSize: "0.88rem" }}>Keyword intelligence requires integration with a search data provider.</p>
-      </div>
-    </div>
+    </>
   );
 }
