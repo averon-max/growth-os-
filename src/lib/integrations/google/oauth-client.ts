@@ -15,11 +15,11 @@ export function createGoogleOAuthClient() {
   );
 }
 
-export function buildGoogleAuthUrl(state: string): string {
+export function buildGoogleAuthUrl(state: string, scopes: string[] = GSC_OAUTH_SCOPES): string {
   return createGoogleOAuthClient().generateAuthUrl({
     access_type: GOOGLE_OAUTH_ACCESS_TYPE,
     prompt: GOOGLE_OAUTH_PROMPT,
-    scope: GSC_OAUTH_SCOPES,
+    scope: scopes,
     state,
   });
 }
@@ -30,7 +30,6 @@ export interface ExchangedTokens {
   expiresAt: Date | null;
 }
 
-/** Exchanges an OAuth code for tokens. Throws if no access token comes back. */
 export async function exchangeCodeForTokens(code: string): Promise<ExchangedTokens> {
   const client = createGoogleOAuthClient();
   const { tokens } = await client.getToken(code);

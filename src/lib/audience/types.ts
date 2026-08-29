@@ -16,13 +16,14 @@ export interface NormalizedAudienceSegment {
 }
 
 export interface AudienceConnectionStatus {
-  connected: boolean;
+  provider: "GOOGLE_ANALYTICS_4";
   status: "CONNECTED" | "DISCONNECTED" | "ERROR";
-  lastSyncedAt: Date | null;
+  expiresAt?: Date;
 }
 
 export interface FetchAudienceParams {
   workspaceId: string;
-  websiteId: string;
-  dateRange: { start: Date; end: Date };
+  propertyId: string;
+  startDate: Date;
+  endDate: Date;
 }

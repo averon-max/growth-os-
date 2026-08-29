@@ -4,6 +4,7 @@ import type { FetchAudienceParams } from "./types";
 
 export async function fetchAndUpsertAudience(
   provider: AudienceProvider,
+  websiteId: string,
   params: FetchAudienceParams
 ) {
   const rawRows = await provider.fetchAudienceData(params);
@@ -13,8 +14,8 @@ export async function fetchAndUpsertAudience(
 
   for (const seg of normalized) {
     const segment = await prisma.audienceSegment.upsert({
-      where: { websiteId_name: { websiteId: params.websiteId, name: seg.name } },
-      create: { websiteId: params.websiteId, name: seg.name, criteria: seg.criteria },
+      where: { websiteId_name: { websiteId, name: seg.name } },
+      create: { websiteId, name: seg.name, criteria: seg.criteria },
       update: { criteria: seg.criteria },
     });
     result.segmentsUpserted++;

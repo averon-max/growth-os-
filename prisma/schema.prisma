@@ -57,6 +57,7 @@ model Business {
 model Website {
   id               String            @id @default(cuid())
   url              String
+  ga4PropertyId    String?
   businessId       String
   business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   analyses         Analysis[]
