@@ -55,13 +55,14 @@ model Business {
 }
 
 model Website {
-  id         String     @id @default(cuid())
-  url        String
-  businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  analyses   Analysis[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id               String            @id @default(cuid())
+  url              String
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  analyses         Analysis[]
+  audienceSegments AudienceSegment[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([businessId])
 }
@@ -150,6 +151,7 @@ model Opportunity {
 
 enum ProviderType {
   GOOGLE_SEARCH_CONSOLE
+  GOOGLE_ANALYTICS_4
 }
 
 enum ProviderStatus {
@@ -216,5 +218,34 @@ model KeywordSnapshot {
 
   @@unique([keywordId, date, device, country, source])
   @@index([keywordId])
+  @@index([date])
+}
+
+model AudienceSegment {
+  id        String   @id @default(cuid())
+  websiteId String
+  website   Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  name      String
+  criteria  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  snapshots AudienceSnapshot[]
+
+  @@unique([websiteId, name])
+  @@index([websiteId])
+}
+
+model AudienceSnapshot {
+  id          String          @id @default(cuid())
+  segmentId   String
+  segment     AudienceSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  date        DateTime        @db.Date
+  userCount   Int
+  source      String          @default("GOOGLE_ANALYTICS_4")
+  retrievedAt DateTime        @default(now())
+
+  @@unique([segmentId, date, source])
+  @@index([segmentId])
   @@index([date])
 }
