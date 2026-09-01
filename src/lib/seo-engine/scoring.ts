@@ -8,28 +8,43 @@ export interface SEOScore {
   indexabilityScore: number;
 }
 
+type Category = "technical" | "content" | "structure" | "indexability";
+
 interface PenaltyConfig {
-  category: "technical" | "content" | "structure" | "indexability";
-  points: number;
-  maxPenalty?: number;
+  category: Category;
+  maxPenalty: number;
 }
 
-const PENALTIES: Record<string, PenaltyConfig> = {
-  MISSING_TITLE:              { category: "technical",     points: 15, maxPenalty: 30 },
-  TITLE_TOO_LONG:             { category: "technical",     points: 2,  maxPenalty: 10 },
-  TITLE_TOO_SHORT:            { category: "technical",     points: 1,  maxPenalty: 5  },
-  DUPLICATE_TITLE:            { category: "technical",     points: 5,  maxPenalty: 20 },
-  MISSING_META_DESCRIPTION:   { category: "content",       points: 4,  maxPenalty: 20 },
-  META_DESCRIPTION_TOO_LONG:  { category: "content",       points: 1,  maxPenalty: 5  },
-  DUPLICATE_META_DESCRIPTION: { category: "content",       points: 3,  maxPenalty: 15 },
-  MISSING_H1:                 { category: "structure",     points: 8,  maxPenalty: 20 },
-  MULTIPLE_H1:                { category: "structure",     points: 3,  maxPenalty: 10 },
-  MISSING_CANONICAL:          { category: "indexability",  points: 4,  maxPenalty: 20 },
-  IMAGE_MISSING_ALT:          { category: "content",       points: 2,  maxPenalty: 10 },
-  THIN_CONTENT:               { category: "content",       points: 5,  maxPenalty: 20 },
-  MISSING_SCHEMA:             { category: "technical",     points: 1,  maxPenalty: 10 },
-  ORPHAN_PAGE:                { category: "structure",     points: 4,  maxPenalty: 15 },
-  BROKEN_INTERNAL_LINK:       { category: "technical",     points: 8,  maxPenalty: 25 },
+// Base points are driven by severity — the same severity level always costs
+// the same amount, regardless of issue type. This is what makes scores
+// explainable: a HIGH issue costs exactly SEVERITY_POINTS.HIGH, full stop.
+const SEVERITY_POINTS: Record<Severity, number> = {
+  CRITICAL: 25,
+  HIGH: 12,
+  MEDIUM: 5,
+  LOW: 2,
+};
+
+// maxPenalty still varies per type: it caps how much *repetition* of the
+// same issue across many pages can cost within its category, independent
+// of severity. A site with THIN_CONTENT on 40 pages shouldn't zero out
+// content score from one issue type alone.
+const CATEGORY_AND_CAP: Record<string, PenaltyConfig> = {
+  MISSING_TITLE:              { category: "technical",    maxPenalty: 50 },
+  TITLE_TOO_LONG:             { category: "technical",    maxPenalty: 20 },
+  TITLE_TOO_SHORT:            { category: "technical",    maxPenalty: 15 },
+  DUPLICATE_TITLE:            { category: "technical",    maxPenalty: 30 },
+  MISSING_META_DESCRIPTION:   { category: "content",      maxPenalty: 30 },
+  META_DESCRIPTION_TOO_LONG:  { category: "content",      maxPenalty: 15 },
+  DUPLICATE_META_DESCRIPTION: { category: "content",      maxPenalty: 25 },
+  MISSING_H1:                 { category: "structure",    maxPenalty: 30 },
+  MULTIPLE_H1:                { category: "structure",    maxPenalty: 20 },
+  MISSING_CANONICAL:          { category: "indexability", maxPenalty: 30 },
+  IMAGE_MISSING_ALT:          { category: "content",      maxPenalty: 20 },
+  THIN_CONTENT:               { category: "content",      maxPenalty: 30 },
+  MISSING_SCHEMA:             { category: "technical",    maxPenalty: 15 },
+  ORPHAN_PAGE:                { category: "structure",    maxPenalty: 25 },
+  BROKEN_INTERNAL_LINK:       { category: "technical",    maxPenalty: 35 },
 };
 
 const WEIGHTS = {
@@ -44,12 +59,12 @@ export function calculateScore(issues: SEOIssueResult[]): SEOScore {
   const penaltyByType = new Map<string, number>();
 
   for (const issue of issues) {
-    const config = PENALTIES[issue.type];
+    const config = CATEGORY_AND_CAP[issue.type];
     if (!config) continue;
 
+    const points = SEVERITY_POINTS[issue.severity];
     const current = penaltyByType.get(issue.type) || 0;
-    const max = config.maxPenalty ?? 100;
-    const newTotal = Math.min(current + config.points, max);
+    const newTotal = Math.min(current + points, config.maxPenalty);
     penaltyByType.set(issue.type, newTotal);
   }
 
@@ -60,7 +75,7 @@ export function calculateScore(issues: SEOIssueResult[]): SEOScore {
   let indexabilityPenalty = 0;
 
   for (const [type, penalty] of penaltyByType) {
-    const config = PENALTIES[type];
+    const config = CATEGORY_AND_CAP[type];
     if (!config) continue;
     switch (config.category) {
       case "technical":    technicalPenalty    += penalty; break;

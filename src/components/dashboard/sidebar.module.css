@@ -20,3 +20,9 @@
 }
 .navItem:hover { background: var(--elevated); color: var(--primary); }
 .navItemActive { font-weight: 500; color: var(--primary); background: var(--elevated); border-left: 2px solid var(--accent); }
+
+.navGroup { margin-bottom: 4px; }
+.navGroupLabel {
+  font-size: 0.62rem; font-weight: 600; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.07em; padding: 12px 10px 4px;
+}

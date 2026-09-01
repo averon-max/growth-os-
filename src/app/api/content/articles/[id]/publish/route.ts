@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
+import { getContentArticleById } from "@/lib/content/repository";
+import { publishArticle } from "@/lib/content/service";
+import { getCMSConnection } from "@/lib/cms/repository";
+import { getProviderForType } from "@/lib/cms/registry";
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const user = await requireUser();
+
+    const article = await getContentArticleById(id);
+    if (!article) {
+      return NextResponse.json({ error: "Article not found." }, { status: 404 });
+    }
+
+    await requireWebsiteAccess(user.id, article.brief.websiteId);
+
+    const connection = await getCMSConnection(article.brief.websiteId);
+    if (!connection) {
+      return NextResponse.json({ error: "CMS is not connected for this website." }, { status: 409 });
+    }
+
+    const provider = getProviderForType(connection.cmsType);
+    const updated = await publishArticle(provider, id);
+
+    return NextResponse.json({ article: updated });
+  } catch (err) {
+    console.error("content/articles/[id]/publish POST error", err);
+    const { status, body: errBody } = authErrorResponse(err);
+    return NextResponse.json(errBody, { status });
+  }
+}

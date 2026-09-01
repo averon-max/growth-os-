@@ -1,8 +1,19 @@
+import { Sparkles } from "lucide-react";
+import { Topbar } from "@/components/dashboard/topbar";
+import { EmptyState } from "@/components/dashboard/ui";
+import styles from "@/components/dashboard/ui.module.css";
+
 export default function CompetitorsPage() {
   return (
-    <div style={{ padding: "28px 32px" }}>
-      <h1 style={{ fontSize: "1.2rem", fontWeight: 600, color: "#F5F7FA", letterSpacing: "-0.02em", margin: "0 0 8px" }}>Competitors</h1>
-      <p style={{ fontSize: "0.82rem", color: "#626873", margin: 0 }}>Coming soon.</p>
-    </div>
+    <>
+      <Topbar title="Competitors" />
+      <div className={styles.pageBody}>
+        <EmptyState
+          icon={Sparkles}
+          title="Competitors is not built yet"
+          description="This part of Growth OS doesn't have a backend or data source connected yet. It will appear here once it's implemented."
+        />
+      </div>
+    </>
   );
 }

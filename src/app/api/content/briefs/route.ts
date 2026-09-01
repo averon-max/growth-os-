@@ -1,0 +1,89 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
+import { createContentBrief } from "@/lib/content/service";
+import { geminiGenerator } from "@/lib/content/gemini-generator";
+import { getContentBriefs } from "@/lib/content/repository";
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await requireUser();
+    const body = await req.json();
+    const { websiteId, opportunityId } = body as { websiteId?: string; opportunityId?: string };
+
+    if (!websiteId) {
+      return NextResponse.json({ error: "websiteId is required." }, { status: 400 });
+    }
+
+    const website = await requireWebsiteAccess(user.id, websiteId);
+
+    let topic: string;
+    let reason: string;
+    let recommendation: string;
+
+    if (opportunityId) {
+      const opportunity = await prisma.opportunity.findUnique({ where: { id: opportunityId } });
+      if (!opportunity) {
+        return NextResponse.json({ error: "Opportunity not found." }, { status: 404 });
+      }
+      topic = opportunity.title;
+      reason = opportunity.reason;
+      recommendation = opportunity.recommendation;
+    } else {
+      const { topic: bodyTopic, reason: bodyReason, recommendation: bodyRecommendation } = body as {
+        topic?: string;
+        reason?: string;
+        recommendation?: string;
+      };
+      if (!bodyTopic || !bodyReason || !bodyRecommendation) {
+        return NextResponse.json({ error: "topic, reason and recommendation are required when no opportunityId is given." }, { status: 400 });
+      }
+      topic = bodyTopic;
+      reason = bodyReason;
+      recommendation = bodyRecommendation;
+    }
+
+    const business = await prisma.business.findUnique({ where: { id: website.businessId } });
+    if (!business) {
+      return NextResponse.json({ error: "Business not found for this website." }, { status: 500 });
+    }
+
+    const brief = await createContentBrief(geminiGenerator, {
+      websiteId,
+      opportunityId,
+      topic,
+      reason,
+      recommendation,
+      businessName: business.name,
+      websiteUrl: website.url,
+    });
+
+    return NextResponse.json({ brief }, { status: 201 });
+  } catch (err) {
+    console.error("content/briefs POST error", err);
+    const { status, body: errBody } = authErrorResponse(err);
+    return NextResponse.json(errBody, { status });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await requireUser();
+    const websiteId = req.nextUrl.searchParams.get("websiteId");
+    if (!websiteId) {
+      return NextResponse.json({ error: "websiteId query parameter is required." }, { status: 400 });
+    }
+
+    await requireWebsiteAccess(user.id, websiteId);
+
+    const page = Number(req.nextUrl.searchParams.get("page") ?? "1");
+    const limit = Number(req.nextUrl.searchParams.get("limit") ?? "25");
+
+    const result = await getContentBriefs(websiteId, page, limit);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("content/briefs GET error", err);
+    const { status, body: errBody } = authErrorResponse(err);
+    return NextResponse.json(errBody, { status });
+  }
+}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import styles from "@/components/dashboard/ui.module.css";
 
 interface Analysis {
   id: string;
@@ -39,19 +40,26 @@ interface Opportunity {
   affectedPages: number;
 }
 
-const SEVERITY_COLOR: Record<string, string> = {
-  CRITICAL: "var(--dash-danger)",
-  HIGH: "var(--dash-warning)",
-  MEDIUM: "var(--dash-accent)",
-  LOW: "var(--dash-muted)",
+const SEVERITY_TONE: Record<string, "danger" | "warning" | "accent" | "muted"> = {
+  CRITICAL: "danger",
+  HIGH: "warning",
+  MEDIUM: "accent",
+  LOW: "muted",
 };
 
-const SEVERITY_BG: Record<string, string> = {
-  CRITICAL: "rgba(239,68,68,0.08)",
-  HIGH: "rgba(245,158,11,0.08)",
-  MEDIUM: "rgba(59,123,246,0.08)",
-  LOW: "rgba(98,104,115,0.08)",
+const PRIORITY_TONE: Record<string, "danger" | "warning" | "accent" | "muted"> = {
+  HIGH: "warning",
+  MEDIUM: "accent",
+  LOW: "muted",
 };
+
+const POLL_INTERVAL_MS = 3000;
+
+const PROGRESS_STEPS = [
+  { key: "QUEUED", label: "Starting analysis" },
+  { key: "RUNNING", label: "Crawling website and analyzing pages" },
+  { key: "COMPLETED", label: "Completed" },
+] as const;
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
@@ -99,23 +107,19 @@ export default function AnalysisPage() {
     };
 
     fetchData();
-    interval = setInterval(fetchData, 3000);
+    interval = setInterval(fetchData, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [id]);
 
   if (loading) {
-    return (
-      <div style={{ padding: 48, color: "var(--dash-muted)", fontSize: "0.85rem" }}>
-        Loading...
-      </div>
-    );
+    return <div className={styles.pageBody}><p className={styles.awaitingLabel}>Loading...</p></div>;
   }
 
   if (error || !analysis) {
     return (
-      <div style={{ padding: 48 }}>
-        <p style={{ color: "var(--dash-danger)", marginBottom: 16, fontSize: "0.85rem" }}>{error || "Analysis not found."}</p>
-        <Link href="/dashboard" style={{ color: "var(--dash-accent)", fontSize: "0.82rem", textDecoration: "none" }}>← Back to dashboard</Link>
+      <div className={styles.pageBody}>
+        <p style={{ color: "var(--danger)", marginBottom: 16, fontSize: "0.85rem" }}>{error || "Analysis not found."}</p>
+        <Link href="/dashboard" className={styles.link}>← Back to dashboard</Link>
       </div>
     );
   }
@@ -125,125 +129,122 @@ export default function AnalysisPage() {
   const isFailed = analysis.status === "FAILED";
 
   return (
-    <div style={{ padding: "32px 32px", maxWidth: 1100 }}>
-
-      <div style={{ marginBottom: 28 }}>
-        <Link href="/dashboard" style={{ fontSize: "0.75rem", color: "var(--dash-muted)", textDecoration: "none" }}>← Dashboard</Link>
-        <h1 style={{ fontSize: "1.4rem", fontWeight: 600, letterSpacing: "-0.02em", marginTop: 10, marginBottom: 4, color: "var(--dash-primary)" }}>
-          {analysis.website.business.name}
-        </h1>
-        <p style={{ fontSize: "0.75rem", color: "var(--dash-muted)", fontFamily: "var(--font-mono)", margin: 0 }}>{analysis.website.url}</p>
-      </div>
+    <div className={styles.pageBody} style={{ maxWidth: 1000 }}>
+      <Link href="/dashboard/websites" className={styles.backLink}>← Websites</Link>
+      <h1 className={styles.pageTitle} style={{ marginTop: 10 }}>{analysis.website.business.name}</h1>
+      <p className={`${styles.mono} ${styles.pageSubtitle}`}>{analysis.website.url}</p>
 
       {isRunning && (
-        <div style={{ background: "var(--dash-surface)", borderRadius: 10, border: "1px solid var(--dash-border)", padding: 28, marginBottom: 24 }}>
-          <p style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 20, color: "var(--dash-primary)" }}>Analysis in progress</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {[
-              { key: "QUEUED", label: "Starting analysis" },
-              { key: "RUNNING", label: "Crawling website and analyzing pages" },
-              { key: "COMPLETED", label: "Completed" },
-            ].map((step) => {
+        <div className={styles.progressCard}>
+          <p className={styles.progressTitle}>Analysis in progress</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {PROGRESS_STEPS.map((step) => {
               const isActive = step.key === analysis.status;
               return (
-                <div key={step.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: isActive ? "var(--dash-warning)" : "var(--dash-border)" }} />
-                  <span style={{ fontSize: "0.82rem", color: isActive ? "var(--dash-primary)" : "var(--dash-muted)" }}>
+                <div key={step.key} className={styles.progressStep}>
+                  <span className={styles.progressDot} data-active={isActive} />
+                  <span className={styles.progressStepLabel} data-active={isActive}>
                     {step.label}{isActive ? "..." : ""}
                   </span>
                 </div>
               );
             })}
           </div>
-          <p style={{ fontSize: "0.72rem", color: "var(--dash-muted)", marginTop: 18, marginBottom: 0 }}>This may take 30–90 seconds.</p>
+          <p className={styles.progressHint}>This may take 30–90 seconds.</p>
         </div>
       )}
 
       {isFailed && (
-        <div style={{ background: "rgba(239,68,68,0.06)", borderRadius: 10, border: "1px solid rgba(239,68,68,0.2)", padding: 24, marginBottom: 24 }}>
-          <p style={{ fontWeight: 600, color: "var(--dash-danger)", marginBottom: 6, fontSize: "0.88rem" }}>Analysis failed</p>
-          <p style={{ fontSize: "0.82rem", color: "var(--dash-secondary)", margin: 0 }}>{analysis.errorMessage || "Unknown error."}</p>
-          <Link href="/dashboard/add-website" style={{ display: "inline-block", marginTop: 14, fontSize: "0.8rem", color: "var(--dash-accent)", textDecoration: "none" }}>Try again →</Link>
+        <div className={styles.errorCard}>
+          <p className={styles.errorTitle}>Analysis failed</p>
+          <p className={styles.errorDesc}>{analysis.errorMessage || "Unknown error."}</p>
+          <Link href="/dashboard/add-website" className={styles.link} style={{ display: "inline-block", marginTop: 14 }}>Try again →</Link>
         </div>
       )}
 
       {isCompleted && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 8 }}>
+          <div className={styles.scoreGrid}>
             {[
               { label: "Overall", value: analysis.overallScore },
               { label: "Technical", value: analysis.technicalScore },
               { label: "Content", value: analysis.contentScore },
               { label: "Structure", value: analysis.structureScore },
               { label: "Indexability", value: analysis.indexabilityScore },
-            ].map(s => (
-              <div key={s.label} style={{ background: "var(--dash-surface)", borderRadius: 8, border: "1px solid var(--dash-border)", padding: "16px 14px" }}>
-                <p style={{ fontSize: "1.8rem", fontWeight: 700, letterSpacing: "-0.03em", margin: 0, fontFamily: "var(--font-mono)", color: (s.value ?? 0) >= 70 ? "var(--dash-success)" : (s.value ?? 0) >= 50 ? "var(--dash-warning)" : "var(--dash-danger)" }}>
+            ].map((s) => (
+              <div key={s.label} className={styles.scoreCard}>
+                <p
+                  className={`${styles.scoreValue} ${styles.mono}`}
+                  style={{ color: (s.value ?? 0) >= 70 ? "var(--success)" : (s.value ?? 0) >= 50 ? "var(--warning)" : "var(--danger)" }}
+                >
                   {s.value ?? "—"}
                 </p>
-                <p style={{ fontSize: "0.65rem", color: "var(--dash-muted)", margin: "4px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</p>
+                <p className={styles.scoreLabel}>{s.label}</p>
               </div>
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 24 }}>
-            {[
-              { label: "Pages crawled", value: analysis.pagesCount ?? 0 },
-              { label: "SEO issues", value: analysis._count.issues },
-              { label: "Opportunities", value: analysis._count.opportunities },
-            ].map(s => (
-              <div key={s.label} style={{ background: "var(--dash-surface)", borderRadius: 8, border: "1px solid var(--dash-border)", padding: "16px 18px" }}>
-                <p style={{ fontSize: "1.6rem", fontWeight: 700, letterSpacing: "-0.03em", margin: 0, fontFamily: "var(--font-mono)", color: "var(--dash-primary)" }}>{s.value}</p>
-                <p style={{ fontSize: "0.65rem", color: "var(--dash-muted)", margin: "4px 0 0", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</p>
-              </div>
-            ))}
+          <div className={styles.statGrid}>
+            <div className={styles.statCard}>
+              <p className={`${styles.statValue} ${styles.mono}`}>{analysis.pagesCount ?? 0}</p>
+              <p className={styles.statLabel}>Pages crawled</p>
+            </div>
+            <div className={styles.statCard}>
+              <p className={`${styles.statValue} ${styles.mono}`}>{analysis._count.issues}</p>
+              <p className={styles.statLabel}>SEO issues</p>
+            </div>
+            <div className={styles.statCard}>
+              <p className={`${styles.statValue} ${styles.mono}`}>{analysis._count.opportunities}</p>
+              <p className={styles.statLabel}>Opportunities</p>
+            </div>
           </div>
 
           {opportunities.length > 0 && (
-            <div style={{ background: "var(--dash-surface)", borderRadius: 10, border: "1px solid var(--dash-border)", padding: 24, marginBottom: 12 }}>
-              <p style={{ fontWeight: 600, fontSize: "0.82rem", marginBottom: 16, color: "var(--dash-primary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Opportunities</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {opportunities.map((o) => (
-                  <div key={o.id} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid var(--dash-border)", gap: 16 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontWeight: 500, fontSize: "0.85rem", color: "var(--dash-primary)" }}>{o.title}</span>
-                        <span style={{ fontSize: "0.6rem", fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: o.priority === "HIGH" ? "var(--dash-warning)" : "var(--dash-muted)", background: o.priority === "HIGH" ? "rgba(245,158,11,0.1)" : "var(--dash-elevated)", padding: "2px 6px", borderRadius: 4 }}>
-                          {o.priority}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: "0.78rem", color: "var(--dash-secondary)", margin: "0 0 3px", lineHeight: 1.5 }}>{o.reason}</p>
-                      <p style={{ fontSize: "0.72rem", color: "var(--dash-muted)", margin: 0 }}>{o.affectedPages} page(s) affected</p>
-                    </div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "1.1rem", fontWeight: 700, color: "var(--dash-accent)", flexShrink: 0 }}>{o.score}</div>
-                  </div>
-                ))}
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <span className={styles.groupLabel}>Opportunities</span>
+                <span className={styles.groupCount}>{opportunities.length}</span>
               </div>
+              {opportunities.map((o) => (
+                <div key={o.id} className={styles.issueRow}>
+                  <div className={styles.issueMain}>
+                    <span className={styles.issueDot} data-tone={PRIORITY_TONE[o.priority] ?? "muted"} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className={styles.issueTitle}>{o.title}</div>
+                      <div className={styles.issueDesc}>{o.reason}</div>
+                      <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {o.recommendation}</div>
+                    </div>
+                  </div>
+                  <div className={styles.issueMeta}>
+                    <span className={styles.mono} style={{ fontWeight: 600, color: "var(--primary)" }}>{o.score}</span>
+                    <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: 2 }}>{o.affectedPages} page{o.affectedPages === 1 ? "" : "s"}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
           {issues.length > 0 && (
-            <div style={{ background: "var(--dash-surface)", borderRadius: 10, border: "1px solid var(--dash-border)", padding: 24 }}>
-              <p style={{ fontWeight: 600, fontSize: "0.82rem", marginBottom: 16, color: "var(--dash-primary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>SEO Issues ({issues.length})</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {issues.map((issue) => (
-                  <div key={issue.id} style={{ padding: "14px 0", borderBottom: "1px solid var(--dash-border)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                      <span style={{ fontSize: "0.6rem", fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: SEVERITY_COLOR[issue.severity], background: SEVERITY_BG[issue.severity], padding: "2px 6px", borderRadius: 4 }}>
-                        {issue.severity}
-                      </span>
-                      <span style={{ fontWeight: 500, fontSize: "0.85rem", color: "var(--dash-primary)" }}>{issue.description}</span>
-                    </div>
-                    {issue.pageUrl && (
-                      <p style={{ fontSize: "0.7rem", fontFamily: "var(--font-mono)", color: "var(--dash-muted)", margin: "0 0 4px", wordBreak: "break-all" }}>{issue.pageUrl}</p>
-                    )}
-                    {issue.evidence && (
-                      <p style={{ fontSize: "0.75rem", color: "var(--dash-secondary)", margin: "0 0 4px" }}>Evidence: {issue.evidence}</p>
-                    )}
-                    <p style={{ fontSize: "0.78rem", color: "var(--dash-muted)", margin: 0 }}>→ {issue.recommendation}</p>
-                  </div>
-                ))}
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <span className={styles.groupLabel}>SEO Issues</span>
+                <span className={styles.groupCount}>{issues.length}</span>
               </div>
+              {issues.map((issue) => (
+                <div key={issue.id} className={styles.issueRow}>
+                  <div className={styles.issueMain}>
+                    <span className={styles.issueDot} data-tone={SEVERITY_TONE[issue.severity] ?? "muted"} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className={styles.issueTitle}>{issue.description}</div>
+                      {issue.evidence && <div className={styles.issueDesc}>Evidence: {issue.evidence}</div>}
+                      <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {issue.recommendation}</div>
+                    </div>
+                  </div>
+                  <div className={styles.issueMeta}>
+                    {issue.pageUrl && <span className={`${styles.mono} ${styles.truncate}`} title={issue.pageUrl}>{issue.pageUrl}</span>}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </>

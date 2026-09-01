@@ -62,6 +62,8 @@ model Website {
   business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   analyses         Analysis[]
   audienceSegments AudienceSegment[]
+  cmsConnection    CMSConnection?
+  contentBriefs    ContentBrief[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -128,6 +130,7 @@ model SEOIssue {
   analysisId     String
   analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
+  appliedFixes   AppliedFix[]
 
   @@index([analysisId])
   @@index([severity])
@@ -142,6 +145,8 @@ model Opportunity {
   reason         String
   recommendation String
   affectedPages  Int      @default(0)
+  appliedFixes   AppliedFix[]
+  contentBriefs  ContentBrief[]
   analysisId     String
   analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
@@ -249,4 +254,140 @@ model AudienceSnapshot {
   @@unique([segmentId, date, source])
   @@index([segmentId])
   @@index([date])
+}
+
+enum CMSType {
+  CUSTOM_API
+  WORDPRESS
+}
+
+enum CMSConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+model CMSConnection {
+  id              String              @id @default(cuid())
+  websiteId       String              @unique
+  website         Website             @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  cmsType         CMSType
+  status          CMSConnectionStatus @default(DISCONNECTED)
+  siteUrl         String
+  usernameRef     String?
+  credentialRef   String
+  lastConnectedAt DateTime?
+  lastError       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  appliedFixes    AppliedFix[]
+
+  @@index([status])
+}
+
+enum AppliedFixStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  ROLLED_BACK
+}
+
+enum FixType {
+  META_TITLE
+  META_DESCRIPTION
+  H1
+  ALT_TEXT
+  CANONICAL
+  INTERNAL_LINK
+  CONTENT
+}
+
+enum FixRiskLevel {
+  SAFE
+  REVIEW
+  DANGEROUS
+}
+
+model AppliedFix {
+  id              String            @id @default(cuid())
+  opportunityId   String?
+  opportunity     Opportunity?      @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  issueId         String?
+  issue           SEOIssue?         @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  cmsConnectionId String
+  cmsConnection   CMSConnection     @relation(fields: [cmsConnectionId], references: [id], onDelete: Cascade)
+  pageUrl         String
+  fixType         FixType
+  riskLevel       FixRiskLevel
+  previousValue   String?
+  newValue        String
+  status          AppliedFixStatus  @default(PENDING)
+  errorMessage    String?
+  appliedAt       DateTime?
+  verifiedAt      DateTime?
+  rolledBackAt    DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([cmsConnectionId])
+  @@index([opportunityId])
+  @@index([issueId])
+  @@index([status])
+  @@index([appliedAt])
+}
+
+enum ContentBriefStatus {
+  DRAFT
+  READY
+}
+
+model ContentBrief {
+  id               String             @id @default(cuid())
+  websiteId        String
+  website          Website            @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  opportunityId    String?
+  opportunity      Opportunity?       @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  topic            String
+  searchIntent     String
+  primaryKeyword   String
+  secondaryKeywords String[]
+  outline          Json
+  status           ContentBriefStatus @default(DRAFT)
+  generatedBy      String
+  articles         ContentArticle[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([websiteId])
+  @@index([opportunityId])
+}
+
+enum ContentArticleStatus {
+  GENERATING
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  PUBLISH_FAILED
+  REJECTED
+}
+
+model ContentArticle {
+  id              String                @id @default(cuid())
+  briefId         String
+  brief           ContentBrief          @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  title           String
+  metaDescription String
+  h1              String
+  bodyMarkdown    String
+  status          ContentArticleStatus  @default(GENERATING)
+  generatedBy     String
+  publishedUrl    String?
+  publishedAt     DateTime?
+  publishError    String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([briefId])
+  @@index([status])
 }

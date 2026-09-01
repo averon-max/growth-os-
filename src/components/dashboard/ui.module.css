@@ -71,3 +71,47 @@
 .issueTitle { font-size: 0.85rem; font-weight: 500; color: var(--primary); }
 .issueDesc { font-size: 0.78rem; color: var(--secondary); margin-top: 2px; line-height: 1.5; }
 .issueMeta { flex-shrink: 0; text-align: right; }
+
+/* Forms — used by Add Website, CMS connection, Settings */
+.formCard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 480px; }
+.formGroup { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.formGroup:last-child { margin-bottom: 0; }
+.formLabel { font-size: 0.68rem; font-weight: 500; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.formInput {
+  width: 100%; padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--elevated); font-size: 0.82rem; color: var(--primary); outline: none;
+  box-sizing: border-box; font-family: inherit;
+}
+.formInput:focus { border-color: var(--accent); }
+.formError {
+  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px;
+  padding: 9px 12px; font-size: 0.78rem; color: var(--danger); margin-bottom: 16px;
+}
+.primaryButton {
+  width: 100%; padding: 10px; border-radius: 6px; border: none; background: var(--accent);
+  color: #fff; font-weight: 600; font-size: 0.82rem; cursor: pointer; font-family: inherit;
+}
+.primaryButton:disabled { background: var(--elevated); color: var(--muted); cursor: not-allowed; }
+.pageTitle { font-size: 1.1rem; font-weight: 600; color: var(--primary); letter-spacing: -0.02em; margin: 0 0 4px; }
+.pageSubtitle { font-size: 0.8rem; color: var(--secondary); margin: 0 0 24px; }
+.backLink { font-size: 0.75rem; color: var(--muted); text-decoration: none; }
+.backLink:hover { color: var(--primary); }
+
+/* Progress steps — used by Analysis detail while a crawl is running */
+.progressCard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 20px; }
+.progressTitle { font-weight: 600; font-size: 0.85rem; color: var(--primary); margin: 0 0 16px; }
+.progressStep { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.progressDot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.progressDot[data-active="true"] { background: var(--warning); }
+.progressStepLabel { font-size: 0.8rem; color: var(--muted); }
+.progressStepLabel[data-active="true"] { color: var(--primary); }
+.progressHint { font-size: 0.7rem; color: var(--muted); margin: 14px 0 0; }
+
+.errorCard { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.errorTitle { font-weight: 600; color: var(--danger); margin: 0 0 6px; font-size: 0.85rem; }
+.errorDesc { font-size: 0.8rem; color: var(--secondary); margin: 0; }
+
+.scoreGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+.scoreCard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.scoreValue { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; font-family: var(--font-mono); }
+.scoreLabel { font-size: 0.62rem; color: var(--muted); margin: 4px 0 0; text-transform: uppercase; letter-spacing: 0.05em; }
