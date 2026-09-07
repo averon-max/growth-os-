@@ -45,6 +45,12 @@ export async function getKeywords(workspaceId: string, options: GetKeywordsOptio
       orderBy: { text: "asc" },
       skip: (page - 1) * limit,
       take: limit,
+      include: {
+        snapshots: {
+          orderBy: { date: "desc" },
+          take: 1,
+        },
+      },
     }),
     prisma.keyword.count({ where }),
   ]);

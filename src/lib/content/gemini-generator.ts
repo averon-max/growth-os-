@@ -20,36 +20,57 @@ interface GeminiResponse {
   candidates?: GeminiCandidate[];
 }
 
+const MAX_RETRIES = 3;
+const BASE_BACKOFF_MS = 2000;
+const RETRYABLE_STATUS_CODES = new Set([429, 503]);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function callGemini(prompt: string): Promise<string> {
   const apiKey = requireEnv("GEMINI_API_KEY");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
-  try {
-    const res = await fetch(`${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json" },
-      }),
-    });
+  let lastError: ContentGenerationError | null = null;
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new ContentGenerationError(`Gemini API error ${res.status}: ${body.slice(0, 300)}`);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(`${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" },
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        lastError = new ContentGenerationError(`Gemini API error ${res.status}: ${body.slice(0, 300)}`);
+
+        if (RETRYABLE_STATUS_CODES.has(res.status) && attempt < MAX_RETRIES) {
+          await sleep(BASE_BACKOFF_MS * 2 ** attempt);
+          continue;
+        }
+        throw lastError;
+      }
+
+      const data = (await res.json()) as GeminiResponse;
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        throw new ContentGenerationError("Gemini returned no content");
+      }
+      return text;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const data = (await res.json()) as GeminiResponse;
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new ContentGenerationError("Gemini returned no content");
-    }
-    return text;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  throw lastError ?? new ContentGenerationError("Gemini request failed after retries");
 }
 
 function parseJson<T>(text: string): T {
@@ -64,12 +85,27 @@ export const geminiGenerator: ContentGenerator = {
   modelName: GEMINI_MODEL,
 
   async generateBrief(input: ContentBriefInput): Promise<GeneratedBrief> {
+    const topKeywordsBlock = input.topKeywords && input.topKeywords.length > 0
+      ? `\n\nReal keyword performance already observed on this website (from Search Console):\n${input.topKeywords
+          .map((k) => `- "${k.keyword}" -- position ${k.position ?? "unranked"}, ${k.clicks} clicks, ${k.impressions} impressions/mo, volume ${k.volume ?? "unknown"}`)
+          .join("\n")}`
+      : "";
+
+    const relatedKeywordsBlock = input.relatedKeywords && input.relatedKeywords.length > 0
+      ? `\n\nReal related keywords (from DataForSEO):\n${input.relatedKeywords
+          .map((k) => `- "${k.keyword}" -- volume ${k.searchVolume ?? "unknown"}, difficulty ${k.keywordDifficulty ?? "unknown"}, CPC ${k.cpc ?? "unknown"}`)
+          .join("\n")}`
+      : "";
+
     const prompt = `You are an SEO content strategist for the business "${input.businessName}" (website: ${input.websiteUrl}).
 
 An SEO opportunity was detected:
 Topic: ${input.topic}
 Reason: ${input.reason}
 Recommended action: ${input.recommendation}
+${topKeywordsBlock}${relatedKeywordsBlock}
+
+Ground your primaryKeyword and secondaryKeywords choices in the real data above when it is present -- prefer keywords with actual observed clicks/impressions or real search volume over invented ones. If no real data is provided above, reason from the topic as before.
 
 Produce a content brief as JSON with this exact shape:
 {
@@ -81,6 +117,7 @@ Produce a content brief as JSON with this exact shape:
 
 The outline must have exactly one H1-equivalent implied by the article title (not included here), 4-8 H2/H3 sections, each with a one-sentence summary of what it covers. Respond with JSON only.`;
 
+    console.log("[gemini] FULL PROMPT >>>\n" + prompt + "\n<<< END PROMPT");
     const text = await callGemini(prompt);
     const parsed = parseJson<GeneratedBrief>(text);
 

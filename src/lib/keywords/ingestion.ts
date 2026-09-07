@@ -75,12 +75,13 @@ export async function fetchAndUpsertKeywords(
 
     await prisma.keywordSnapshot.upsert({
       where: {
-        keywordId_date_device_country_source: {
+        keywordId_date_device_country_source_pageUrl: {
           keywordId: keywordRecord.id,
           date: snapshot.date,
           device: snapshot.device,
           country: snapshot.country,
           source: snapshot.source,
+          pageUrl: snapshot.pageUrl ?? "",
         },
       },
       create: {
@@ -93,6 +94,7 @@ export async function fetchAndUpsertKeywords(
         device: snapshot.device,
         country: snapshot.country,
         source: snapshot.source,
+        pageUrl: snapshot.pageUrl,
         retrievedAt: snapshot.retrievedAt,
       },
       // Historical snapshots are append-only — never overwrite an

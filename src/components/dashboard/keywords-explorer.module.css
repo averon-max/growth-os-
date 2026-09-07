@@ -28,3 +28,29 @@
 .pageLabel { font-family: var(--font-mono); font-size: 0.72rem; color: var(--secondary); }
 
 .emptyRow { text-align: center; color: var(--secondary); padding: 32px 0; }
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 10px;
+}
+
+.searchIcon { color: var(--secondary); flex-shrink: 0; }
+
+.searchInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--primary);
+  font-size: 0.78rem;
+  padding: 6px 0;
+  width: 200px;
+}
+.searchInput::placeholder { color: var(--muted); }
+
+.clickableRow { cursor: pointer; }
+.clickableRow:hover { background: var(--elevated); }

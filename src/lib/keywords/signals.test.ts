@@ -126,3 +126,33 @@ describe("detectSignals", () => {
     }
   });
 });
+
+describe("detectSignals - CANNIBALIZATION", () => {
+  it("detects CANNIBALIZATION when two pages rank for the same keyword on the same day", () => {
+    const kw = keyword("k14", [
+      snapshot({ date: NOW, position: 8, pageUrl: "https://example.com/a" }),
+      snapshot({ date: NOW, position: 12, pageUrl: "https://example.com/b" }),
+    ]);
+    const signals = detectSignals([kw], NOW);
+    const hits = signals.filter((s) => s.type === "CANNIBALIZATION");
+    expect(hits).toHaveLength(1);
+    expect(hits[0].evidence.pageCount).toBe(2);
+  });
+
+  it("does not detect CANNIBALIZATION when only one page ranks for the keyword", () => {
+    const kw = keyword("k15", [
+      snapshot({ date: NOW, position: 8, pageUrl: "https://example.com/a" }),
+    ]);
+    const signals = detectSignals([kw], NOW);
+    expect(signals.filter((s) => s.type === "CANNIBALIZATION")).toHaveLength(0);
+  });
+
+  it("does not detect CANNIBALIZATION when snapshots have no pageUrl", () => {
+    const kw = keyword("k16", [
+      snapshot({ date: NOW, position: 8 }),
+      snapshot({ date: daysBefore(NOW, 1), position: 9 }),
+    ]);
+    const signals = detectSignals([kw], NOW);
+    expect(signals.filter((s) => s.type === "CANNIBALIZATION")).toHaveLength(0);
+  });
+});

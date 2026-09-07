@@ -6,12 +6,15 @@ import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState, Stat, Badge } from "@/components/dashboard/ui";
 import styles from "@/components/dashboard/ui.module.css";
 
-export default async function AudiencePage() {
+export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
   const user = await requireUser();
+  const { websiteId } = await searchParams;
 
   const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
   const website = membership
-    ? await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
+    ? websiteId
+      ? await prisma.website.findFirst({ where: { id: websiteId, business: { workspaceId: membership.workspaceId } } })
+      : await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
     : null;
 
   if (!website) {
@@ -36,7 +39,11 @@ export default async function AudiencePage() {
   if (segments.length === 0) {
     return (
       <>
-        <Topbar title="Audience" subtitle={website.url} />
+        <Topbar
+          title="Audience"
+          subtitle={website.url}
+          websiteSwitcher={membership ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined}
+        />
         <div className={styles.pageBody}>
           <EmptyState
             icon={Users}
@@ -52,7 +59,11 @@ export default async function AudiencePage() {
 
   return (
     <>
-      <Topbar title="Audience" subtitle={website.url} />
+      <Topbar
+        title="Audience"
+        subtitle={website.url}
+        websiteSwitcher={membership ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined}
+      />
       <div className={styles.pageBody}>
         <div className={styles.statGrid}>
           <Stat label="Segments" value={String(pagination.total)} />

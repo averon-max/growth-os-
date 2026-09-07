@@ -70,7 +70,7 @@
 .issueDot[data-tone="success"] { background: var(--success); }
 .issueTitle { font-size: 0.85rem; font-weight: 500; color: var(--primary); }
 .issueDesc { font-size: 0.78rem; color: var(--secondary); margin-top: 2px; line-height: 1.5; }
-.issueMeta { flex-shrink: 0; text-align: right; }
+.issueMeta { flex-shrink: 1; min-width: 0; max-width: 42%; text-align: right; }
 
 /* Forms — used by Add Website, CMS connection, Settings */
 .formCard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 480px; }

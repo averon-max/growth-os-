@@ -5,6 +5,7 @@ import { getCMSConnection } from "@/lib/cms/repository";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Badge } from "@/components/dashboard/ui";
 import { CMSConnectForm } from "@/components/dashboard/cms-connect-form";
+import { ApplyTestFixButton } from "@/components/dashboard/apply-test-fix-button";
 import styles from "@/components/dashboard/ui.module.css";
 
 const STATUS_TONE: Record<string, "success" | "danger" | "muted"> = {
@@ -48,13 +49,14 @@ export default async function CMSWebsiteDetailPage({ params }: { params: Promise
         )}
 
         <h1 className={styles.pageTitle} style={{ marginTop: connection ? 0 : 16 }}>
-          {connection ? "Update connection" : "Connect WordPress"}
+            {connection ? "Update connection" : "Connect your CMS"}
         </h1>
         <p className={styles.pageSubtitle}>
-          Growth OS applies SEO fixes to this site using a WordPress Application Password.
+            Growth OS applies SEO fixes to this site through WordPress or a custom Integration API.
         </p>
 
         <CMSConnectForm websiteId={websiteId} currentSiteUrl={connection?.siteUrl ?? website.url} />
+        {connection?.status === "CONNECTED" && <ApplyTestFixButton websiteId={websiteId} />}
       </div>
     </>
   );

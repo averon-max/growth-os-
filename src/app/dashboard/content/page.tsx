@@ -6,12 +6,15 @@ import { EmptyState } from "@/components/dashboard/ui";
 import { ContentExplorer } from "@/components/dashboard/content-explorer";
 import styles from "@/components/dashboard/ui.module.css";
 
-export default async function ContentPage() {
+export default async function ContentPage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
   const user = await requireUser();
+  const { websiteId } = await searchParams;
 
   const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
   const website = membership
-    ? await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
+    ? websiteId
+      ? await prisma.website.findFirst({ where: { id: websiteId, business: { workspaceId: membership.workspaceId } } })
+      : await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
     : null;
 
   if (!website) {
@@ -32,7 +35,11 @@ export default async function ContentPage() {
 
   return (
     <>
-      <Topbar title="Content" subtitle={website.url} />
+      <Topbar
+        title="Content"
+        subtitle={website.url}
+        websiteSwitcher={membership ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined}
+      />
       <div className={styles.pageBody}>
         <ContentExplorer websiteId={website.id} opportunities={opportunities} />
       </div>

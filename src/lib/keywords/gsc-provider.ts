@@ -83,6 +83,48 @@ function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+export class SitePermissionError extends Error {
+  constructor(requestedUrl: string, availableSites: string[]) {
+    const available = availableSites.length > 0 ? availableSites.join(", ") : "none";
+    super(`No Search Console access to "${requestedUrl}" with the connected Google account. Verified sites available: ${available}`);
+    this.name = "SitePermissionError";
+  }
+}
+
+function normalizeSiteUrl(url: string): string {
+  return url
+    .replace(/^sc-domain:/, "")
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "")
+    .toLowerCase();
+}
+
+async function resolveVerifiedSiteUrl(auth: ReturnType<typeof createGoogleOAuthClient>, requestedUrl: string): Promise<string> {
+  const searchconsole = google.searchconsole({ version: "v1", auth });
+  const sitesResponse = await searchconsole.sites.list();
+  const entries = sitesResponse.data.siteEntry ?? [];
+  const verifiedUrls = entries.map((e) => e.siteUrl).filter((u): u is string => Boolean(u));
+
+  const target = normalizeSiteUrl(requestedUrl);
+  const candidates = verifiedUrls.filter((u) => normalizeSiteUrl(u) === target);
+
+  if (candidates.length === 0) {
+    throw new SitePermissionError(requestedUrl, verifiedUrls);
+  }
+
+  console.log("[gsc] verified sites:", verifiedUrls);
+  console.log("[gsc] matching candidates:", candidates);
+
+  // Prefer the Domain property (sc-domain:) -- it aggregates data across
+  // protocols, www/non-www variants, and subdomains, so it is a superset
+  // of any matching URL-prefix property and won't silently miss data that
+  // Google attributes to the domain-level property instead.
+  const domainProperty = candidates.find((u) => u.startsWith("sc-domain:"));
+  const resolved = domainProperty ?? candidates[0];
+  console.log("[gsc] resolved site:", resolved);
+  return resolved;
+}
+
 export const gscProvider: KeywordProvider = {
   providerType: "GOOGLE_SEARCH_CONSOLE",
 
@@ -101,8 +143,9 @@ export const gscProvider: KeywordProvider = {
   },
 
   async fetchSearchPerformance(options): Promise<SearchConsoleRow[]> {
-    const { workspaceId, siteUrl, startDate, endDate, device, country } = options;
+    const { workspaceId, siteUrl: requestedSiteUrl, startDate, endDate, device, country } = options;
     const auth = await getAuthorizedClient(workspaceId);
+    const siteUrl = await resolveVerifiedSiteUrl(auth, requestedSiteUrl);
     const searchconsole = google.searchconsole({ version: "v1", auth });
 
     const rows: SearchConsoleRow[] = [];
@@ -126,6 +169,7 @@ export const gscProvider: KeywordProvider = {
       });
 
       const batch = response.data.rows ?? [];
+      console.log("[gsc] batch length:", batch.length, "for siteUrl:", siteUrl, "startRow:", startRow);
       for (const row of batch) {
         const [query, page, date, rowDevice, rowCountry] = row.keys ?? [];
         if (!query || !page || !date) continue;
@@ -167,6 +211,7 @@ export const gscProvider: KeywordProvider = {
         device: row.device,
         country: row.country,
         source: provenance.provider,
+        pageUrl: row.page,
         retrievedAt: provenance.retrievedAt,
       },
     }));

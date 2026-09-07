@@ -1,0 +1,55 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 100vw;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.18s ease-out;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.title { font-weight: 600; font-size: 0.92rem; color: var(--primary); margin: 0; }
+
+.closeButton {
+  background: none;
+  border: none;
+  color: var(--secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 6px;
+}
+.closeButton:hover { background: var(--elevated); color: var(--primary); }
+
+.body { flex: 1; overflow-y: auto; padding: 20px; }
+.footer { border-top: 1px solid var(--border); padding: 16px 20px; flex-shrink: 0; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay, .panel { animation: none; }
+}

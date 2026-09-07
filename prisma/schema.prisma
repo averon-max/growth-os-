@@ -208,6 +208,27 @@ model Keyword {
   @@index([workspaceId])
 }
 
+model KeywordSuggestionCache {
+  id         String   @id @default(cuid())
+  normalized String
+  source     String
+  payload    Json
+  fetchedAt  DateTime @default(now())
+
+  @@unique([normalized, source])
+}
+
+model ApiUsageCounter {
+  id          String   @id @default(cuid())
+  workspaceId String
+  counterType String
+  date        DateTime @db.Date
+  count       Int      @default(0)
+
+  @@unique([workspaceId, counterType, date])
+  @@index([workspaceId])
+}
+
 model KeywordSnapshot {
   id          String   @id @default(cuid())
   keywordId   String
@@ -219,10 +240,11 @@ model KeywordSnapshot {
   device      String   @default("DESKTOP")
   country     String   @default("us")
   source      String   @default("GOOGLE_SEARCH_CONSOLE")
+  pageUrl     String?
   retrievedAt DateTime @default(now())
   keyword     Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
 
-  @@unique([keywordId, date, device, country, source])
+  @@unique([keywordId, date, device, country, source, pageUrl])
   @@index([keywordId])
   @@index([date])
 }

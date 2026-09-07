@@ -24,9 +24,14 @@ export async function POST(req: NextRequest) {
       endDate,
     });
 
-    return NextResponse.json({ success: true, imported: count });
+    return NextResponse.json({ success: true, imported: count.keywordsUpserted, snapshotsImported: count.snapshotsUpserted });
   } catch (err) {
-    console.error("[keywords/sync error]", err);
+    const detail = err && typeof err === "object" && "errors" in err
+      ? JSON.stringify((err as { errors?: unknown }).errors)
+      : err instanceof Error
+        ? err.message
+        : String(err);
+    console.error("[keywords/sync error]", detail);
     const { status, body } = authErrorResponse(err);
     return NextResponse.json(body, { status });
   }

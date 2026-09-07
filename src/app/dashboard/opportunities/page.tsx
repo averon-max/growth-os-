@@ -13,12 +13,15 @@ function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
-export default async function OpportunitiesPage() {
+export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
   const user = await requireUser();
+  const { websiteId } = await searchParams;
 
   const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
   const website = membership
-    ? await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
+    ? websiteId
+      ? await prisma.website.findFirst({ where: { id: websiteId, business: { workspaceId: membership.workspaceId } } })
+      : await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } })
     : null;
   const analysis = website
     ? await prisma.analysis.findFirst({ where: { websiteId: website.id }, orderBy: { createdAt: "desc" } })
@@ -36,7 +39,11 @@ export default async function OpportunitiesPage() {
 
   return (
     <>
-      <Topbar title="Opportunities" subtitle={`${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"}`} />
+      <Topbar
+        title="Opportunities"
+        subtitle={`${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"}`}
+        websiteSwitcher={membership && website ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined}
+      />
       <div className={styles.pageBody}>
         {opportunities.length === 0 ? (
           <EmptyState

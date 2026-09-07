@@ -4,6 +4,8 @@ import type { ContentGenerator } from "./generator";
 import type { CMSProvider } from "@/lib/cms/provider";
 import { ContentGenerationError } from "./generator";
 import type { ContentBriefInput } from "./types";
+import { getWebsiteKeywordContext } from "./keyword-context";
+import { fetchRelatedKeywords } from "@/lib/keywords/dataforseo-provider";
 
 export interface CreateBriefInput {
   websiteId: string;
@@ -16,12 +18,32 @@ export interface CreateBriefInput {
 }
 
 export async function createContentBrief(generator: ContentGenerator, input: CreateBriefInput) {
+  const context = await getWebsiteKeywordContext(input.websiteId).catch((err) => {
+    console.error("[content] keyword context lookup failed, continuing without it:", err);
+    return null;
+  });
+
+  let relatedKeywords: ContentBriefInput["relatedKeywords"] = [];
+  try {
+    const related = await fetchRelatedKeywords(input.topic);
+    relatedKeywords = related.slice(0, 10).map((r) => ({
+      keyword: r.keyword,
+      searchVolume: r.searchVolume,
+      cpc: r.cpc,
+      keywordDifficulty: r.keywordDifficulty,
+    }));
+  } catch (err) {
+    console.error("[content] related keywords fetch failed, continuing without grounding:", err);
+  }
+
   const briefInput: ContentBriefInput = {
     topic: input.topic,
     reason: input.reason,
     recommendation: input.recommendation,
     businessName: input.businessName,
     websiteUrl: input.websiteUrl,
+    topKeywords: context?.topKeywords,
+    relatedKeywords,
   };
 
   const generated = await generator.generateBrief(briefInput);

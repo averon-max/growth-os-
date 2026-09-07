@@ -81,6 +81,7 @@ export default async function DashboardOverview() {
           <div className={styles.groupHeader}>
             <span className={styles.groupLabel}>Websites</span>
             <span className={styles.groupCount}>{websites.length}</span>
+            <Link href="/dashboard/add-website" className={styles.groupHeaderAction}>+ Add website</Link>
           </div>
           {websites.map((w) => {
             const latest = w.analyses[0];

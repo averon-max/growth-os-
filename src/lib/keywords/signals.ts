@@ -122,6 +122,43 @@ function detectLost(keyword: KeywordWithSnapshots, snapshots: SnapshotData[], la
  * no DB access, no AI. `now` defaults to the real clock but is
  * injectable for deterministic unit tests of the LOST signal.
  */
+function detectCannibalization(keyword: KeywordWithSnapshots, snapshots: SnapshotData[]): KeywordSignal[] {
+  const byDate = new Map<string, Set<string>>();
+
+  for (const s of snapshots) {
+    if (!s.pageUrl) continue;
+    const dateKey = s.date.toISOString().slice(0, 10);
+    const pages = byDate.get(dateKey) ?? new Set<string>();
+    pages.add(s.pageUrl);
+    byDate.set(dateKey, pages);
+  }
+
+  let maxPages = 0;
+  let maxDate = "";
+  let competingPages: string[] = [];
+
+  for (const [dateKey, pages] of byDate) {
+    if (pages.size > maxPages) {
+      maxPages = pages.size;
+      maxDate = dateKey;
+      competingPages = Array.from(pages);
+    }
+  }
+
+  if (maxPages < 2) return [];
+
+  return [{
+    type: "CANNIBALIZATION",
+    keywordId: keyword.id,
+    keyword: keyword.text,
+    evidence: {
+      competingPages: competingPages.join(", "),
+      pageCount: maxPages,
+      date: maxDate,
+    },
+  }];
+}
+
 export function detectSignals(keywords: KeywordWithSnapshots[], now: Date = new Date()): KeywordSignal[] {
   const signals: KeywordSignal[] = [];
 
@@ -134,6 +171,7 @@ export function detectSignals(keywords: KeywordWithSnapshots[], now: Date = new 
     signals.push(...detectHighImpressionLowCtr(keyword, latest));
     signals.push(...detectTrend(keyword, snapshots, latest));
     signals.push(...detectLost(keyword, snapshots, latest, now));
+    signals.push(...detectCannibalization(keyword, snapshots));
   }
 
   return signals;

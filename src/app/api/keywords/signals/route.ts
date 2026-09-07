@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
           device: s.device,
           country: s.country,
           source: s.source as ProviderType,
+          pageUrl: s.pageUrl ?? undefined,
           retrievedAt: s.retrievedAt,
         })),
       }))

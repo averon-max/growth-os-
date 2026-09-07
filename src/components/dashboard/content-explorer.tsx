@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, Sparkles, Eye, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { EmptyState, Badge } from "./ui";
 import uiStyles from "./ui.module.css";
 
@@ -18,6 +19,9 @@ interface ArticleRow {
   title: string;
   status: string;
   publishError: string | null;
+  metaDescription: string;
+  h1: string;
+  bodyMarkdown: string;
 }
 
 interface BriefRow {
@@ -39,12 +43,80 @@ const ARTICLE_STATUS_TONE: Record<string, "success" | "danger" | "warning" | "mu
   REJECTED: "danger",
 };
 
+function ArticlePreviewModal({ article, onClose }: { article: ArticleRow; onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        padding: "40px 20px",
+        overflowY: "auto",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface, #fff)",
+          borderRadius: 12,
+          maxWidth: 760,
+          width: "100%",
+          padding: 32,
+          position: "relative",
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 4,
+          }}
+          aria-label="Close preview"
+        >
+          <X size={20} />
+        </button>
+
+        <div style={{ marginBottom: 4 }}>
+          <Badge tone={ARTICLE_STATUS_TONE[article.status] ?? "muted"}>{article.status}</Badge>
+        </div>
+        <h1 style={{ fontSize: "1.5rem", marginTop: 12, marginBottom: 8 }}>{article.h1 || article.title}</h1>
+        <p style={{ color: "var(--text-muted, #666)", fontSize: "0.85rem", marginBottom: 20 }}>
+          {article.metaDescription}
+        </p>
+        {article.publishError && (
+          <div className={uiStyles.formError} style={{ marginBottom: 16 }}>
+            {article.publishError}
+          </div>
+        )}
+        <div style={{ lineHeight: 1.6 }}>
+          {article.bodyMarkdown ? (
+            <ReactMarkdown>{article.bodyMarkdown}</ReactMarkdown>
+          ) : (
+            <p style={{ color: "var(--text-muted, #666)" }}>No content generated yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ContentExplorer({ websiteId, opportunities }: { websiteId: string; opportunities: OpportunityRow[] }) {
   const [briefs, setBriefs] = useState<BriefRow[] | null>(null);
   const [generatingOppId, setGeneratingOppId] = useState<string | null>(null);
   const [generatingArticleBriefId, setGeneratingArticleBriefId] = useState<string | null>(null);
   const [busyArticleId, setBusyArticleId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewArticle, setPreviewArticle] = useState<ArticleRow | null>(null);
 
   const loadBriefs = useCallback(async () => {
     const res = await fetch(`/api/content/briefs?websiteId=${websiteId}`);
@@ -140,6 +212,10 @@ export function ContentExplorer({ websiteId, opportunities }: { websiteId: strin
     <div>
       {error && <div className={uiStyles.formError} style={{ marginBottom: 16 }}>{error}</div>}
 
+      {previewArticle && (
+        <ArticlePreviewModal article={previewArticle} onClose={() => setPreviewArticle(null)} />
+      )}
+
       <div className={uiStyles.group} style={{ marginBottom: 16 }}>
         <div className={uiStyles.groupHeader}>
           <span className={uiStyles.groupLabel}>Content opportunities</span>
@@ -201,6 +277,24 @@ export function ContentExplorer({ websiteId, opportunities }: { websiteId: strin
                       <Badge tone={ARTICLE_STATUS_TONE[article.status] ?? "muted"}>{article.status}</Badge>
                       {article.title && <span className={uiStyles.issueDesc}>{article.title}</span>}
                       {article.publishError && <span style={{ color: "var(--danger)", fontSize: "0.72rem" }}>{article.publishError}</span>}
+                      {article.bodyMarkdown && (
+                        <button
+                          onClick={() => setPreviewArticle(article)}
+                          className={uiStyles.link}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                            font: "inherit",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Eye size={13} /> Preview
+                        </button>
+                      )}
                       {article.status === "DRAFT" && (
                         <button
                           onClick={() => approveArticle(article.id)}
@@ -226,16 +320,26 @@ export function ContentExplorer({ websiteId, opportunities }: { websiteId: strin
                 </div>
               </div>
               <div className={uiStyles.issueMeta}>
-                {brief.articles.length === 0 && (
-                  <button
-                    onClick={() => generateArticle(brief.id)}
-                    disabled={generatingArticleBriefId === brief.id}
-                    className={uiStyles.link}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
-                  >
-                    {generatingArticleBriefId === brief.id ? "Generating article..." : "Generate article →"}
-                  </button>
-                )}
+                {(() => {
+                  const latestArticle = brief.articles[brief.articles.length - 1];
+                  const canGenerate = !latestArticle || latestArticle.status === "REJECTED";
+                  if (!canGenerate) return null;
+                  const isRetry = Boolean(latestArticle);
+                  return (
+                    <button
+                      onClick={() => generateArticle(brief.id)}
+                      disabled={generatingArticleBriefId === brief.id}
+                      className={uiStyles.link}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
+                    >
+                      {generatingArticleBriefId === brief.id
+                        ? "Generating article..."
+                        : isRetry
+                          ? "Regenerate article →"
+                          : "Generate article →"}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           ))

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { History } from "lucide-react";
+import { History, AlertTriangle } from "lucide-react";
 import { EmptyState, Badge } from "./ui";
 import uiStyles from "./ui.module.css";
 
@@ -44,16 +44,26 @@ const PAGE_SIZE = 25;
 export function FixHistoryTable({ workspaceId }: { workspaceId: string }) {
   const [data, setData] = useState<FixesResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ workspaceId, page: String(page), limit: String(PAGE_SIZE) });
-    const res = await fetch(`/api/cms/fixes?${params.toString()}`);
-    if (res.ok) {
+    setError(null);
+    try {
+      const params = new URLSearchParams({ workspaceId, page: String(page), limit: String(PAGE_SIZE) });
+      const res = await fetch(`/api/cms/fixes?${params.toString()}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || `Failed to load fix history (${res.status}).`);
+        return;
+      }
       setData(await res.json());
+    } catch {
+      setError("Network error while loading fix history.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [workspaceId, page]);
 
   useEffect(() => {
@@ -62,6 +72,24 @@ export function FixHistoryTable({ workspaceId }: { workspaceId: string }) {
 
   if (loading && !data) {
     return <p className={uiStyles.awaitingLabel}>Loading...</p>;
+  }
+
+  if (error) {
+    return (
+      <div className={uiStyles.errorCard}>
+        <p className={uiStyles.errorTitle} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <AlertTriangle size={15} /> Couldn&apos;t load fix history
+        </p>
+        <p className={uiStyles.errorDesc}>{error}</p>
+        <button
+          onClick={load}
+          className={uiStyles.link}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", marginTop: 10, display: "inline-block" }}
+        >
+          Retry →
+        </button>
+      </div>
+    );
   }
 
   if (data && data.total === 0) {

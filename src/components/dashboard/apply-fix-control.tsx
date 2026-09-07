@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Drawer } from "./drawer";
 import styles from "./ui.module.css";
 
 const SUPPORTED_ISSUE_TYPES: Record<string, "META_TITLE"> = {
@@ -32,6 +33,8 @@ export function ApplyFixControl({ issueId, issueType, pageUrl, websiteId, cmsCon
   if (!cmsConnected) {
     return <span className={styles.awaitingLabel}>Connect a CMS to apply fixes</span>;
   }
+
+  const drawerOpen = phase === "reviewing" || phase === "applying" || phase === "failed";
 
   const loadSuggestion = async () => {
     setPhase("loading-suggestion");
@@ -79,8 +82,18 @@ export function ApplyFixControl({ issueId, issueType, pageUrl, websiteId, cmsCon
     }
   };
 
-  if (phase === "idle" || phase === "loading-suggestion") {
-    return (
+  const closeDrawer = () => {
+    if (phase === "applying") return;
+    setPhase("idle");
+    setError(null);
+  };
+
+  if (phase === "success") {
+    return <span style={{ color: "var(--success)", fontSize: "0.78rem", fontWeight: 500 }}>Applied</span>;
+  }
+
+  return (
+    <>
       <button
         onClick={loadSuggestion}
         disabled={phase === "loading-suggestion"}
@@ -89,34 +102,41 @@ export function ApplyFixControl({ issueId, issueType, pageUrl, websiteId, cmsCon
       >
         {phase === "loading-suggestion" ? "Loading..." : "Suggest fix →"}
       </button>
-    );
-  }
 
-  if (phase === "success") {
-    return <span style={{ color: "var(--success)", fontSize: "0.78rem", fontWeight: 500 }}>Applied</span>;
-  }
-
-  return (
-    <div style={{ minWidth: 260 }}>
-      <p style={{ fontSize: "0.68rem", color: "var(--warning)", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Draft — review before applying
-      </p>
-      <textarea
-        className={styles.formInput}
-        value={draftValue}
-        onChange={(e) => setDraftValue(e.target.value)}
-        rows={2}
-        style={{ resize: "vertical", marginBottom: 8 }}
-      />
-      {error && <div className={styles.formError}>{error}</div>}
-      <button
-        onClick={apply}
-        disabled={phase === "applying" || !draftValue.trim()}
-        className={styles.primaryButton}
-        style={{ width: "auto", padding: "6px 14px", fontSize: "0.76rem" }}
+      <Drawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        title="Review suggested fix"
+        footer={
+          <button
+            onClick={apply}
+            disabled={phase === "applying" || !draftValue.trim()}
+            className={styles.primaryButton}
+          >
+            {phase === "applying" ? "Applying..." : "Apply fix"}
+          </button>
+        }
       >
-        {phase === "applying" ? "Applying..." : "Apply fix"}
-      </button>
-    </div>
+        <div className={styles.formGroup}>
+          <span className={styles.formLabel}>Page</span>
+          <p className={styles.mono} style={{ wordBreak: "break-all", color: "var(--secondary)", fontSize: "0.78rem", margin: 0 }}>{pageUrl}</p>
+        </div>
+        <div className={styles.formGroup}>
+          <span className={styles.formLabel}>Fix type</span>
+          <p style={{ fontSize: "0.82rem", color: "var(--primary)", margin: 0 }}>{fixType.replace("_", " ")}</p>
+        </div>
+        <div className={styles.formGroup}>
+          <span className={styles.formLabel} style={{ color: "var(--warning)" }}>Draft — review before applying</span>
+          <textarea
+            className={styles.formInput}
+            value={draftValue}
+            onChange={(e) => setDraftValue(e.target.value)}
+            rows={4}
+            style={{ resize: "vertical" }}
+          />
+        </div>
+        {error && <div className={styles.formError}>{error}</div>}
+      </Drawer>
+    </>
   );
 }

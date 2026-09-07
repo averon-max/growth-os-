@@ -27,6 +27,7 @@ export interface SnapshotData {
   device: string;
   country: string;
   source: ProviderType;
+  pageUrl?: string;
   retrievedAt: Date;
 }
 
@@ -51,7 +52,8 @@ export interface KeywordSignal {
     | "HIGH_IMPRESSION_LOW_CTR"
     | "DECLINING"
     | "GROWING"
-    | "LOST";
+    | "LOST"
+    | "CANNIBALIZATION";
   keywordId: string;
   keyword: string;
   evidence: Record<string, number | string>;

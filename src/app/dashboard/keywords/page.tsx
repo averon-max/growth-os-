@@ -4,11 +4,20 @@ import { getProviderConnection } from "@/lib/keywords/repository";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState } from "@/components/dashboard/ui";
 import { KeywordsExplorer } from "@/components/dashboard/keywords-explorer";
+import { KeywordSignals } from "@/components/dashboard/keyword-signals";
+import { SyncKeywordsButton } from "@/components/dashboard/sync-keywords-button";
+import { EnrichVolumeButton } from "@/components/dashboard/enrich-volume-button";
+import { KeywordSuggestions } from "@/components/dashboard/keyword-suggestions";
+import { IndustryTopKeywords } from "@/components/dashboard/industry-top-keywords";
+import { deriveSearchSeed } from "@/lib/keywords/seed-utils";
+import { GlobalTrending } from "@/components/dashboard/global-trending";
+import { deriveSeedKeyword } from "@/lib/keywords/seed";
 import { Search, Globe } from "lucide-react";
 import styles from "@/components/dashboard/ui.module.css";
 
-export default async function KeywordsPage() {
+export default async function KeywordsPage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
   const user = await requireUser();
+  const { websiteId } = await searchParams;
 
   const membership = await prisma.workspaceMember.findFirst({
     where: { userId: user.id },
@@ -46,10 +55,25 @@ export default async function KeywordsPage() {
     );
   }
 
+  const website = websiteId
+    ? await prisma.website.findFirst({ where: { id: websiteId, business: { workspaceId } }, include: { business: true } })
+    : await prisma.website.findFirst({ where: { business: { workspaceId } }, orderBy: { createdAt: "asc" }, include: { business: true } });
+
   return (
     <>
-      <Topbar title="Keywords" subtitle="Search Console" />
+      <Topbar
+        title="Keywords"
+        subtitle="Search Console"
+        websiteSwitcher={website ? { workspaceId, currentWebsiteId: website.id } : undefined}
+      />
       <div className={styles.pageBody}>
+        {website && <SyncKeywordsButton workspaceId={workspaceId} siteUrl={website.url} />}
+        <EnrichVolumeButton workspaceId={workspaceId} />
+        {website?.business.industry && !website.business.industry.startsWith("http") && (
+          <IndustryTopKeywords workspaceId={workspaceId} seed={deriveSearchSeed(website.business.industry)} />
+        )}
+        <KeywordSuggestions workspaceId={workspaceId} />
+        <KeywordSignals workspaceId={workspaceId} />
         <KeywordsExplorer workspaceId={workspaceId} />
       </div>
     </>

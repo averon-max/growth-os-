@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Tags } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Tags, Search as SearchIcon } from "lucide-react";
 import { EmptyState, Badge } from "./ui";
 import uiStyles from "./ui.module.css";
 import styles from "./keywords-explorer.module.css";
+import { KeywordTrendDrawer } from "./keyword-trend-drawer";
 
 interface KeywordSnapshotRow {
   position: string | null;
@@ -17,6 +18,7 @@ interface KeywordRow {
   id: string;
   text: string;
   intent: string | null;
+  volume: number | null;
   snapshots: KeywordSnapshotRow[];
 }
 
@@ -43,6 +45,10 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [intent, setIntent] = useState<(typeof INTENT_OPTIONS)[number]>("ALL");
+  const [searchInputValue, setSearchInputValue] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +58,7 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
       limit: String(PAGE_SIZE),
     });
     if (intent !== "ALL") params.set("intent", intent);
+    if (search.trim()) params.set("filter", search.trim());
 
     const res = await fetch(`/api/keywords?${params.toString()}`);
     if (res.ok) {
@@ -59,17 +66,35 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
       setData(json);
     }
     setLoading(false);
-  }, [workspaceId, page, intent]);
+  }, [workspaceId, page, intent, search]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  // Sync/Enrich buttons are separate client components that update the DB
+  // out of band -- they broadcast this event instead of relying on
+  // router.refresh(), which does not re-run this component's own fetch.
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener("growth-os:keywords-updated", handler);
+    return () => window.removeEventListener("growth-os:keywords-updated", handler);
+  }, [load]);
+
+  const handleSearchInput = (value: string) => {
+    setSearchInputValue(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearch(value);
+      setPage(1);
+    }, 300);
+  };
+
   if (loading && !data) {
     return <p className={styles.loading}>Loading...</p>;
   }
 
-  if (data && data.total === 0 && intent === "ALL") {
+  if (data && data.total === 0 && intent === "ALL" && !search.trim()) {
     return (
       <EmptyState
         icon={Tags}
@@ -82,6 +107,16 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
   return (
     <div>
       <div className={styles.filters}>
+        <div className={styles.searchBox}>
+          <SearchIcon size={14} className={styles.searchIcon} />
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Search keywords..."
+            value={searchInputValue}
+            onChange={(e) => handleSearchInput(e.target.value)}
+          />
+        </div>
         <select
           className={styles.select}
           value={intent}
@@ -107,12 +142,13 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
             <th>Clicks</th>
             <th>CTR</th>
             <th>Intent</th>
+            <th>Volume</th>
           </tr>
         </thead>
         <tbody>
           {data && data.items.length === 0 ? (
             <tr>
-              <td colSpan={6} className={styles.emptyRow}>No keywords match this filter.</td>
+              <td colSpan={7} className={styles.emptyRow}>No keywords match this filter.</td>
             </tr>
           ) : (
             data?.items.map((kw) => {
@@ -120,7 +156,7 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
               const position = snap?.position != null ? Number(snap.position) : null;
               const ctr = snap?.ctr != null ? Number(snap.ctr) : null;
               return (
-                <tr key={kw.id}>
+                <tr key={kw.id} onClick={() => setSelectedKeywordId(kw.id)} className={styles.clickableRow}>
                   <td>{kw.text}</td>
                   <td className={uiStyles.mono}>
                     {position !== null ? (
@@ -133,6 +169,7 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
                   <td className={uiStyles.mono}>{snap?.clicks ?? "—"}</td>
                   <td className={uiStyles.mono}>{ctr !== null ? `${(ctr * 100).toFixed(1)}%` : "—"}</td>
                   <td>{kw.intent ? <Badge tone="muted">{kw.intent}</Badge> : "—"}</td>
+                  <td className={uiStyles.mono}>{kw.volume != null ? kw.volume.toLocaleString() : "—"}</td>
                 </tr>
               );
             })
@@ -160,6 +197,14 @@ export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
             Next
           </button>
         </div>
+      )}
+
+      {selectedKeywordId && (
+        <KeywordTrendDrawer
+          keywordId={selectedKeywordId}
+          workspaceId={workspaceId}
+          onClose={() => setSelectedKeywordId(null)}
+        />
       )}
     </div>
   );

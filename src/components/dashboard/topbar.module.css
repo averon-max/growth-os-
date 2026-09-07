@@ -15,3 +15,13 @@
 .right { display: flex; align-items: center; gap: 10px; }
 .userEmail { font-size: 0.72rem; color: var(--secondary); font-family: var(--font-mono); }
 .avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--elevated); border: 1px solid var(--border); }
+
+.websiteSwitcher {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--primary);
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  max-width: 260px;
+}
