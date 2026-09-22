@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = req.nextUrl.searchParams.get("workspaceId");
     const seed = req.nextUrl.searchParams.get("seed");
     const limitParam = req.nextUrl.searchParams.get("limit");
-    const limit = limitParam ? Math.min(50, Math.max(1, Number.parseInt(limitParam, 10) || 30)) : 30;
+    const limit = limitParam ? Math.min(50, Math.max(1, Number.parseInt(limitParam, 10) || 50)) : 50;
 
     if (!workspaceId) {
       return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });

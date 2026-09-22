@@ -55,12 +55,15 @@ export interface CachedSuggestionsResult {
 export async function getCachedRelatedKeywords(
   workspaceId: string,
   seed: string,
-  limit = 30
+  limit = 30,
+  market = "US",
+  language = "English",
 ): Promise<CachedSuggestionsResult> {
   const normalized = normalizeKeyword(seed);
+  const cacheKey = `${normalized}:${market}:${language}`;
 
   const cached = await prisma.keywordSuggestionCache.findUnique({
-    where: { normalized_source: { normalized, source: SOURCE } },
+    where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
   });
 
   if (cached && isFresh(cached.fetchedAt, CACHE_TTL_DAYS)) {
@@ -69,11 +72,17 @@ export async function getCachedRelatedKeywords(
 
   await checkAndIncrementDailyLimit(workspaceId);
 
-  const suggestions = await fetchRelatedKeywords(seed, "United States", "English", 1, limit);
+  const locationName =
+    market === "CA" ? "Canada" :
+    market === "GB" ? "United Kingdom" :
+    market === "AU" ? "Australia" :
+    "United States";
+
+  const suggestions = await fetchRelatedKeywords(seed, locationName, language, 1, limit);
 
   await prisma.keywordSuggestionCache.upsert({
-    where: { normalized_source: { normalized, source: SOURCE } },
-    create: { normalized, source: SOURCE, payload: suggestions as unknown as Prisma.InputJsonValue },
+    where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
+    create: { normalized: cacheKey, source: SOURCE, payload: suggestions as unknown as Prisma.InputJsonValue },
     update: { payload: suggestions as unknown as Prisma.InputJsonValue, fetchedAt: new Date() },
   });
 

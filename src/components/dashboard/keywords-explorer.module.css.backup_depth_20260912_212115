@@ -1,0 +1,163 @@
+.workspace {
+  position: relative;
+
+  margin-top: 18px;
+
+  overflow: hidden;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background:
+    radial-gradient(
+      580px 200px at 15% -140px,
+      rgba(150,154,171,.042),
+      transparent 70%
+    ),
+    var(--surface);
+}
+
+.workspace > :not(table):not(:last-child) {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.workspace :global(table) {
+  width: 100%;
+
+  margin: 0;
+
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+
+  background: transparent;
+}
+
+.loading {
+  padding: 28px 14px;
+
+  color: var(--secondary);
+
+  font-size: 11px;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+
+  margin-top: 13px;
+  margin-bottom: 13px;
+}
+
+.select {
+  min-height: 30px;
+
+  padding: 0 9px;
+
+  outline: 0;
+
+  border: 1px solid var(--border);
+  border-radius: 5px;
+
+  background: rgba(255,255,255,.016);
+  color: #989ba2;
+
+  font-size: 10px;
+}
+
+.select:hover {
+  border-color: var(--border-hover);
+
+  background: rgba(255,255,255,.028);
+}
+
+.searchBox {
+  min-height: 30px;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 0 9px;
+
+  border: 1px solid var(--border);
+  border-radius: 5px;
+
+  background: #0e1011;
+}
+
+.searchIcon {
+  color: #686b72;
+}
+
+.searchInput {
+  width: 100%;
+
+  padding: 6px 0;
+
+  outline: 0;
+  border: 0;
+
+  background: transparent;
+  color: var(--primary);
+
+  font-size: 10px;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.pagination {
+  min-height: 43px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  border-top: 1px solid var(--border);
+}
+
+.pageButton {
+  padding: 4px 9px;
+
+  border: 0;
+
+  background: transparent;
+  color: #7d8087;
+
+  font-size: 10px;
+
+  cursor: pointer;
+}
+
+.pageButton:hover {
+  color: #d8d9db;
+}
+
+.pageButton:disabled {
+  color: #4d5056;
+}
+
+.pageLabel {
+  color: #5f6269;
+
+  font-family: var(--font-mono);
+
+  font-size: 9px;
+}
+
+.emptyRow {
+  padding: 34px 0 !important;
+
+  color: var(--secondary) !important;
+
+  text-align: center;
+}

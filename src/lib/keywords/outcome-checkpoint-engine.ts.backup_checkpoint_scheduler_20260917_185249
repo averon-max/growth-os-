@@ -1,0 +1,951 @@
+import {
+  Prisma,
+} from "@prisma/client";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+const DAY_MS =
+  24 * 60 * 60 * 1000;
+
+const LIVE_CACHE_TTL_MS =
+  DAY_MS;
+
+const LIVE_TARGET_MAX_SKEW_MS =
+  36 * 60 * 60 * 1000;
+
+const GSC_TARGET_WINDOW_DAYS =
+  2;
+
+const LIVE_CACHE_SOURCE =
+  "DATAFORSEO_LIVE_RANK_V1";
+
+export type ScheduledOutcomeCheckpoint =
+  | "DAY_7"
+  | "DAY_14"
+  | "DAY_28";
+
+export type CheckpointLiveRankState =
+  | "FOUND"
+  | "NOT_TOP_100"
+  | "UNAVAILABLE";
+
+const CHECKPOINTS:
+  ReadonlyArray<{
+    checkpoint:
+      ScheduledOutcomeCheckpoint;
+
+    days:
+      number;
+  }> = [
+    {
+      checkpoint:
+        "DAY_7",
+
+      days:
+        7,
+    },
+    {
+      checkpoint:
+        "DAY_14",
+
+      days:
+        14,
+    },
+    {
+      checkpoint:
+        "DAY_28",
+
+      days:
+        28,
+    },
+  ];
+
+type CachedLiveRankReport = {
+  checkedAt?: string;
+
+  keywords?: Array<{
+    keyword?: string;
+    rank?: number | null;
+    rankingUrl?: string | null;
+    status?: string;
+  }>;
+};
+
+export type CachedCheckpointRank = {
+  rank:
+    number | null;
+
+  state:
+    CheckpointLiveRankState;
+
+  pageUrl:
+    string | null;
+};
+
+function normalizeKeyword(
+  value:
+    string
+) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(
+      /\s+/g,
+      " "
+    );
+}
+
+function normalizeUrl(
+  value:
+    string | null | undefined
+) {
+  if (
+    !value
+  ) {
+    return null;
+  }
+
+  try {
+    const url =
+      new URL(
+        value
+      );
+
+    url.hash =
+      "";
+
+    const path =
+      url.pathname ===
+      "/"
+        ? "/"
+        : url.pathname.replace(
+            /\/+$/,
+            ""
+          );
+
+    return `${url.protocol}//${url.host.toLowerCase()}${path}${url.search}`;
+  } catch {
+    return value
+      .trim()
+      .replace(
+        /\/+$/,
+        ""
+      )
+      .toLowerCase();
+  }
+}
+
+function siteDomain(
+  siteUrl:
+    string
+) {
+  try {
+    return new URL(
+      siteUrl
+    )
+      .hostname
+      .toLowerCase()
+      .replace(
+        /^www\./,
+        ""
+      );
+  } catch {
+    return siteUrl
+      .trim()
+      .toLowerCase()
+      .replace(
+        /^https?:\/\//,
+        ""
+      )
+      .replace(
+        /^www\./,
+        ""
+      )
+      .split(
+        "/"
+      )[0] ?? "";
+  }
+}
+
+export function liveRankCacheKey({
+  siteUrl,
+  keyword,
+  market,
+}: {
+  siteUrl:
+    string;
+
+  keyword:
+    string;
+
+  market:
+    string;
+}) {
+  return [
+    siteDomain(
+      siteUrl
+    ),
+    market
+      .trim()
+      .toUpperCase(),
+    normalizeKeyword(
+      keyword
+    ),
+  ].join(
+    ":"
+  );
+}
+
+export function checkpointTargetAt(
+  executedAt:
+    Date,
+  checkpoint:
+    ScheduledOutcomeCheckpoint
+) {
+  const config =
+    CHECKPOINTS.find(
+      (
+        item
+      ) =>
+        item.checkpoint ===
+        checkpoint
+    );
+
+  if (
+    !config
+  ) {
+    throw new Error(
+      "Unknown outcome checkpoint."
+    );
+  }
+
+  return new Date(
+    executedAt.getTime() +
+      config.days *
+        DAY_MS
+  );
+}
+
+export function getDueOutcomeCheckpoints({
+  executedAt,
+  now,
+  existing,
+}: {
+  executedAt:
+    Date;
+
+  now:
+    Date;
+
+  existing:
+    Iterable<string>;
+}): ScheduledOutcomeCheckpoint[] {
+  const completed =
+    new Set(
+      existing
+    );
+
+  return CHECKPOINTS
+    .filter(
+      (
+        item
+      ) =>
+        !completed.has(
+          item.checkpoint
+        ) &&
+        now.getTime() >=
+          executedAt.getTime() +
+            item.days *
+              DAY_MS
+    )
+    .map(
+      (
+        item
+      ) =>
+        item.checkpoint
+    );
+}
+
+export function cachedRankForCheckpoint({
+  report,
+  keyword,
+  targetAt,
+}: {
+  report:
+    CachedLiveRankReport | null;
+
+  keyword:
+    string;
+
+  targetAt:
+    Date;
+}): CachedCheckpointRank {
+  if (
+    !report?.checkedAt
+  ) {
+    return {
+      rank:
+        null,
+
+      state:
+        "UNAVAILABLE",
+
+      pageUrl:
+        null,
+    };
+  }
+
+  const checkedAt =
+    new Date(
+      report.checkedAt
+    );
+
+  if (
+    !Number.isFinite(
+      checkedAt.getTime()
+    ) ||
+    Math.abs(
+      checkedAt.getTime() -
+        targetAt.getTime()
+    ) >
+      LIVE_TARGET_MAX_SKEW_MS
+  ) {
+    return {
+      rank:
+        null,
+
+      state:
+        "UNAVAILABLE",
+
+      pageUrl:
+        null,
+    };
+  }
+
+  const normalized =
+    normalizeKeyword(
+      keyword
+    );
+
+  const row =
+    report.keywords?.find(
+      (
+        item
+      ) =>
+        normalizeKeyword(
+          item.keyword ??
+            ""
+        ) ===
+        normalized
+    );
+
+  if (
+    !row ||
+    row.status ===
+      "CHECK_FAILED"
+  ) {
+    return {
+      rank:
+        null,
+
+      state:
+        "UNAVAILABLE",
+
+      pageUrl:
+        null,
+    };
+  }
+
+  if (
+    typeof row.rank ===
+      "number" &&
+    Number.isInteger(
+      row.rank
+    ) &&
+    row.rank >=
+      1 &&
+    row.rank <=
+      100
+  ) {
+    return {
+      rank:
+        row.rank,
+
+      state:
+        "FOUND",
+
+      pageUrl:
+        row.rankingUrl ??
+        null,
+    };
+  }
+
+  return {
+    rank:
+      null,
+
+    state:
+      "NOT_TOP_100",
+
+    pageUrl:
+      null,
+  };
+}
+
+async function loadCachedLiveRank({
+  siteUrl,
+  keyword,
+  market,
+  targetAt,
+  now,
+}: {
+  siteUrl:
+    string;
+
+  keyword:
+    string;
+
+  market:
+    string;
+
+  targetAt:
+    Date;
+
+  now:
+    Date;
+}) {
+  const cached =
+    await prisma.keywordSuggestionCache.findUnique({
+      where: {
+        normalized_source: {
+          normalized:
+            liveRankCacheKey({
+              siteUrl,
+              keyword,
+              market,
+            }),
+
+          source:
+            LIVE_CACHE_SOURCE,
+        },
+      },
+    });
+
+  if (
+    !cached ||
+    now.getTime() -
+      cached.fetchedAt.getTime() >
+      LIVE_CACHE_TTL_MS
+  ) {
+    return {
+      rank:
+        null,
+
+      state:
+        "UNAVAILABLE" as const,
+
+      pageUrl:
+        null,
+    };
+  }
+
+  return cachedRankForCheckpoint({
+    report:
+      cached.payload as unknown as
+        CachedLiveRankReport,
+
+    keyword,
+
+    targetAt,
+  });
+}
+
+function utcDay(
+  value:
+    Date
+) {
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate()
+    )
+  );
+}
+
+async function loadGscSnapshot({
+  keywordId,
+  market,
+  device,
+  targetAt,
+  preferredPageUrl,
+}: {
+  keywordId:
+    string | null;
+
+  market:
+    string;
+
+  device:
+    string;
+
+  targetAt:
+    Date;
+
+  preferredPageUrl:
+    string | null;
+}) {
+  if (
+    !keywordId
+  ) {
+    return null;
+  }
+
+  const targetDay =
+    utcDay(
+      targetAt
+    );
+
+  const start =
+    new Date(
+      targetDay.getTime() -
+        GSC_TARGET_WINDOW_DAYS *
+          DAY_MS
+    );
+
+  const end =
+    new Date(
+      targetDay.getTime() +
+        GSC_TARGET_WINDOW_DAYS *
+          DAY_MS
+    );
+
+  const candidates =
+    await prisma.keywordSnapshot.findMany({
+      where: {
+        keywordId,
+
+        country:
+          market.toLowerCase(),
+
+        device:
+          device.toUpperCase(),
+
+        source:
+          "GOOGLE_SEARCH_CONSOLE",
+
+        date: {
+          gte:
+            start,
+
+          lte:
+            end,
+        },
+      },
+
+      orderBy: [
+        {
+          date:
+            "asc",
+        },
+        {
+          retrievedAt:
+            "desc",
+        },
+      ],
+
+      take:
+        50,
+    });
+
+  if (
+    candidates.length ===
+    0
+  ) {
+    return null;
+  }
+
+  const preferred =
+    normalizeUrl(
+      preferredPageUrl
+    );
+
+  const scoped =
+    preferred
+      ? candidates.filter(
+          (
+            snapshot
+          ) =>
+            normalizeUrl(
+              snapshot.pageUrl
+            ) ===
+            preferred
+        )
+      : [];
+
+  const pool =
+    scoped.length >
+      0
+      ? scoped
+      : candidates;
+
+  return [...pool].sort(
+    (
+      a,
+      b
+    ) => {
+      const aDistance =
+        Math.abs(
+          utcDay(
+            a.date
+          ).getTime() -
+            targetDay.getTime()
+        );
+
+      const bDistance =
+        Math.abs(
+          utcDay(
+            b.date
+          ).getTime() -
+            targetDay.getTime()
+        );
+
+      if (
+        aDistance !==
+        bDistance
+      ) {
+        return (
+          aDistance -
+          bDistance
+        );
+      }
+
+      return (
+        b.retrievedAt.getTime() -
+        a.retrievedAt.getTime()
+      );
+    }
+  )[0] ?? null;
+}
+
+async function executionPageUrl({
+  contentArticleId,
+  targetPageUrl,
+}: {
+  contentArticleId:
+    string | null;
+
+  targetPageUrl:
+    string | null;
+}) {
+  if (
+    contentArticleId
+  ) {
+    const article =
+      await prisma.contentArticle.findUnique({
+        where: {
+          id:
+            contentArticleId,
+        },
+
+        select: {
+          publishedUrl:
+            true,
+        },
+      });
+
+    if (
+      article?.publishedUrl
+    ) {
+      return article.publishedUrl;
+    }
+  }
+
+  return targetPageUrl;
+}
+
+function isDuplicateError(
+  error:
+    unknown
+) {
+  return (
+    error instanceof
+      Prisma.PrismaClientKnownRequestError &&
+    error.code ===
+      "P2002"
+  );
+}
+
+export async function runOutcomeCheckpointEngine({
+  now = new Date(),
+  limit = 50,
+}: {
+  now?:
+    Date;
+
+  limit?:
+    number;
+} = {}) {
+  const sevenDaysAgo =
+    new Date(
+      now.getTime() -
+        7 *
+          DAY_MS
+    );
+
+  const actions =
+    await prisma.keywordOutcomeAction.findMany({
+      where: {
+        status:
+          "EXECUTED",
+
+        executedAt: {
+          not:
+            null,
+
+          lte:
+            sevenDaysAgo,
+        },
+      },
+
+      include: {
+        website: {
+          select: {
+            url:
+              true,
+          },
+        },
+
+        observations: {
+          select: {
+            checkpoint:
+              true,
+          },
+        },
+      },
+
+      orderBy: {
+        executedAt:
+          "asc",
+      },
+
+      take:
+        Math.max(
+          1,
+          Math.min(
+            200,
+            limit
+          )
+        ),
+    });
+
+  const result = {
+    scannedActions:
+      actions.length,
+
+    due:
+      0,
+
+    created:
+      0,
+
+    duplicates:
+      0,
+
+    failures:
+      0,
+  };
+
+  for (
+    const action of
+    actions
+  ) {
+    if (
+      !action.executedAt
+    ) {
+      continue;
+    }
+
+    const due =
+      getDueOutcomeCheckpoints({
+        executedAt:
+          action.executedAt,
+
+        now,
+
+        existing:
+          action.observations.map(
+            (
+              observation
+            ) =>
+              observation.checkpoint
+          ),
+      });
+
+    result.due +=
+      due.length;
+
+    if (
+      due.length ===
+      0
+    ) {
+      continue;
+    }
+
+    const preferredPageUrl =
+      await executionPageUrl({
+        contentArticleId:
+          action.contentArticleId,
+
+        targetPageUrl:
+          action.targetPageUrl,
+      });
+
+    for (
+      const checkpoint of
+      due
+    ) {
+      try {
+        const targetAt =
+          checkpointTargetAt(
+            action.executedAt,
+            checkpoint
+          );
+
+        const [
+          live,
+          gsc,
+        ] =
+          await Promise.all([
+            loadCachedLiveRank({
+              siteUrl:
+                action.website.url,
+
+              keyword:
+                action.keywordText,
+
+              market:
+                action.market,
+
+              targetAt,
+
+              now,
+            }),
+
+            loadGscSnapshot({
+              keywordId:
+                action.keywordId,
+
+              market:
+                action.market,
+
+              device:
+                action.device,
+
+              targetAt,
+
+              preferredPageUrl,
+            }),
+          ]);
+
+        const liveAvailable =
+          live.state !==
+          "UNAVAILABLE";
+
+        const gscAvailable =
+          Boolean(
+            gsc
+          );
+
+        const source =
+          liveAvailable &&
+          gscAvailable
+            ? "COMBINED"
+            : gscAvailable
+              ? "GOOGLE_SEARCH_CONSOLE"
+              : "LIVE_SERP";
+
+        await prisma.keywordOutcomeObservation.create({
+          data: {
+            actionId:
+              action.id,
+
+            checkpoint,
+
+            source,
+
+            liveRank:
+              live.rank,
+
+            liveRankState:
+              live.state,
+
+            impressions:
+              gsc?.impressions ??
+              null,
+
+            clicks:
+              gsc?.clicks ??
+              null,
+
+            ctr:
+              gsc?.ctr ??
+              null,
+
+            averagePosition:
+              gsc?.position ??
+              null,
+
+            gscSnapshotDate:
+              gsc?.date ??
+              null,
+
+            pageUrl:
+              live.pageUrl ??
+              gsc?.pageUrl ??
+              preferredPageUrl ??
+              null,
+
+            observedAt:
+              now,
+          },
+        });
+
+        result.created +=
+          1;
+      } catch (
+        error
+      ) {
+        if (
+          isDuplicateError(
+            error
+          )
+        ) {
+          result.duplicates +=
+            1;
+
+          continue;
+        }
+
+        result.failures +=
+          1;
+
+        console.error(
+          "Outcome checkpoint failed",
+          {
+            actionId:
+              action.id,
+
+            checkpoint,
+
+            error,
+          }
+        );
+      }
+    }
+  }
+
+  return result;
+}

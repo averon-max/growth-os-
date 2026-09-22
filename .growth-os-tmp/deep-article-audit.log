@@ -1,0 +1,425 @@
+TOTAL_ARTICLES=3
+
+============================================================
+ARTICLE_1
+============================================================
+{
+  "identity": {
+    "id": "cmu27mr610041amql1mm74eah",
+    "briefId": "cmu27mi4o0040amql3zzsvfpu",
+    "status": "REJECTED",
+    "topic": "how to check if my email was compromised",
+    "primaryKeyword": "how to check if my email was compromised",
+    "searchIntent": "INFORMATIONAL",
+    "generatedBy": "gemini-3.6-flash"
+  },
+  "provenance": {
+    "plannerVersion": null,
+    "gateVersion": null,
+    "generatorModel": null,
+    "hasSearchBlueprint": false,
+    "blueprintReadiness": null,
+    "blueprintBlockers": [],
+    "blueprintReviews": [],
+    "pageAction": null
+  },
+  "metadata": {
+    "title": "How to Check If Your Email Was Compromised",
+    "titleChars": 42,
+    "h1": "How to Check If Your Email Was Compromised (And What to Do Next)",
+    "h1Chars": 64,
+    "metaDescription": "Discover how to check if your email was compromised in a breach, spot hidden monitoring, and take immediate steps to secure your credentials.",
+    "metaChars": 141
+  },
+  "structure": {
+    "words": 959,
+    "headings": [
+      "## How to Instantly Check If Your Email Was Compromised in a Breach",
+      "## Signs That Your Email Account Has Been Hacked or Monitored",
+      "### Suspicious Login Activity and Unrecognized Sent Messages",
+      "### Hidden Forwarding Rules and Security Setting Changes",
+      "## What to Do Immediately If Your Email Is Compromised",
+      "### Reset Credentials and Enable Multi-Factor Authentication",
+      "### Revoke Session Tokens, Connected Apps, and Inbox Rules",
+      "## Frequently Asked Questions",
+      "### Does appearing in a data breach mean my email account is currently hacked?",
+      "### Can someone monitor my email without knowing my password?",
+      "### How often should I check if my email was compromised?"
+    ],
+    "bodyContainsH1": false,
+    "structuralFlags": [
+      "PRIMARY_NOT_EXACT_IN_TITLE",
+      "PRIMARY_NOT_EXACT_IN_H1"
+    ]
+  },
+  "keywordUse": {
+    "primary": "how to check if my email was compromised",
+    "occurrencesAcrossTitleH1Body": 1,
+    "exactInTitle": false,
+    "exactInH1": false,
+    "exactInBody": true
+  },
+  "directAnswer": {
+    "firstParagraphWords": 54,
+    "firstParagraph": "Data breaches happen every single day, exposing millions of usernames, passwords, and personal details across public paste sites and dark web marketplaces. If you are wondering how to check if my email was compromised, taking immediate and proactive steps can help protect your online identity before threat actors take advantage of your exposed credentials."
+  },
+  "deterministicQuality": {
+    "score": 82,
+    "wordCount": 958,
+    "h2Count": 4,
+    "h3Count": 7,
+    "primaryKeywordDensityPct": 0.84,
+    "issues": [
+      "PRIMARY_NOT_IN_TITLE",
+      "PRIMARY_NOT_IN_H1"
+    ]
+  },
+  "contentGate": {
+    "pass": false,
+    "blockingIssues": [
+      "UNVERIFIED_PRODUCT_METRIC",
+      "UNVERIFIED_PRODUCT_DATA_SOURCE",
+      "UNVERIFIED_PRODUCT_CAPABILITY",
+      "UNVERIFIED_PRODUCT_SUPERLATIVE"
+    ],
+    "warnings": [
+      "PRIMARY_NOT_IN_TITLE",
+      "PRIMARY_NOT_IN_H1"
+    ],
+    "topicAlignment": {
+      "titleCoverage": 1,
+      "h1Coverage": 1,
+      "bestCoverage": 1
+    },
+    "claimFindings": [
+      {
+        "code": "UNVERIFIED_PRODUCT_METRIC",
+        "sentence": "When you query your email address on a breach lookup tool like ScanMyCreds, the scanner cross-references your email against billions of compromised records.",
+        "reason": "The article makes a quantitative product claim that is not present in the verified fact registry."
+      },
+      {
+        "code": "UNVERIFIED_PRODUCT_DATA_SOURCE",
+        "sentence": "When you query your email address on a breach lookup tool like ScanMyCreds, the scanner cross-references your email against billions of compromised records.",
+        "reason": "The article attributes a breach-data or monitoring source to the product without verified evidence."
+      },
+      {
+        "code": "UNVERIFIED_PRODUCT_CAPABILITY",
+        "sentence": "When you query your email address on a breach lookup tool like ScanMyCreds, the scanner cross-references your email against billions of compromised records.",
+        "reason": "The article describes a product capability that is not present in the verified fact registry."
+      },
+      {
+        "code": "UNVERIFIED_PRODUCT_DATA_SOURCE",
+        "sentence": "It is best practice to perform a breach search using services like ScanMyCreds whenever you hear of a major security incident, or on a routine monthly basis to ensure new paste site leaks have not exposed your private information.",
+        "reason": "The article attributes a breach-data or monitoring source to the product without verified evidence."
+      },
+      {
+        "code": "UNVERIFIED_PRODUCT_SUPERLATIVE",
+        "sentence": "It is best practice to perform a breach search using services like ScanMyCreds whenever you hear of a major security incident, or on a routine monthly basis to ensure new paste site leaks have not exposed your private information.",
+        "reason": "The article makes an award, leadership, trust, or superlative claim without verified evidence."
+      }
+    ]
+  },
+  "blueprintCoverage": {
+    "requiredTopics": [],
+    "questions": [],
+    "informationGainCandidates": []
+  },
+  "intelligence": null,
+  "intelligenceError": null
+}
+
+============================================================
+ARTICLE_2
+============================================================
+{
+  "identity": {
+    "id": "cmu8zd1it0007mpql4hxse56z",
+    "briefId": "cmu8zd1g60005mpqlrex5zszv",
+    "status": "REJECTED",
+    "topic": "what is credit monitoring",
+    "primaryKeyword": "experian credit monitoring",
+    "searchIntent": "INFORMATIONAL",
+    "generatedBy": "gemini-3.6-flash"
+  },
+  "provenance": {
+    "plannerVersion": "CONTENT_PLAN_V2",
+    "gateVersion": "CONTENT_GATE_V1",
+    "generatorModel": "gemini-3.6-flash",
+    "hasSearchBlueprint": false,
+    "blueprintReadiness": null,
+    "blueprintBlockers": [],
+    "blueprintReviews": [],
+    "pageAction": null
+  },
+  "metadata": {
+    "title": "Experian Credit Monitoring: Features, Cost & Review",
+    "titleChars": 51,
+    "h1": "Experian Credit Monitoring: How It Works, Pricing, and Features",
+    "h1Chars": 63,
+    "metaDescription": "Learn how Experian credit monitoring works, compare free and paid tiers, and discover how to combine monitoring with data broker removal.",
+    "metaChars": 137
+  },
+  "structure": {
+    "words": 826,
+    "headings": [
+      "## How Experian Credit Monitoring Works",
+      "## Experian Credit Monitoring Tiers and Costs",
+      "### Free Experian Membership",
+      "### Paid Experian Plans",
+      "## Experian vs. LifeLock: Key Differences",
+      "## Is Experian Credit Monitoring Worth It?",
+      "### Benefits of Free Monitoring",
+      "### When Paid Monitoring Makes Sense",
+      "## Regulatory Inquiries and Security Considerations",
+      "## Combining Credit Monitoring with Data Broker Removal"
+    ],
+    "bodyContainsH1": false,
+    "structuralFlags": []
+  },
+  "keywordUse": {
+    "primary": "experian credit monitoring",
+    "occurrencesAcrossTitleH1Body": 8,
+    "exactInTitle": true,
+    "exactInH1": true,
+    "exactInBody": true
+  },
+  "directAnswer": {
+    "firstParagraphWords": 42,
+    "firstParagraph": "Experian credit monitoring is a service designed to track updates on your credit profile and notify you whenever significant changes occur. By receiving timely alerts about new accounts, credit inquiries, or balance shifts, consumers can spot potential fraud and address errors early."
+  },
+  "deterministicQuality": {
+    "score": 100,
+    "wordCount": 806,
+    "h2Count": 6,
+    "h3Count": 4,
+    "primaryKeywordDensityPct": 2.98,
+    "issues": []
+  },
+  "contentGate": {
+    "pass": true,
+    "blockingIssues": [],
+    "warnings": [],
+    "topicAlignment": {
+      "titleCoverage": 1,
+      "h1Coverage": 1,
+      "bestCoverage": 1
+    },
+    "claimFindings": []
+  },
+  "blueprintCoverage": {
+    "requiredTopics": [],
+    "questions": [],
+    "informationGainCandidates": []
+  },
+  "intelligence": null,
+  "intelligenceError": "analyzeStoredContentPlan is not a function"
+}
+
+============================================================
+ARTICLE_3
+============================================================
+{
+  "identity": {
+    "id": "cmuaanrih0000i2qllph4qxr9",
+    "briefId": "cmuaajq730000qgqlg42je4jr",
+    "status": "DRAFT",
+    "topic": "what is credit monitoring",
+    "primaryKeyword": "what is credit monitoring",
+    "searchIntent": "INFORMATIONAL",
+    "generatedBy": "gemini-3.6-flash"
+  },
+  "provenance": {
+    "plannerVersion": "CONTENT_PLAN_V2",
+    "gateVersion": "CONTENT_GATE_V1",
+    "generatorModel": "gemini-3.6-flash",
+    "hasSearchBlueprint": true,
+    "blueprintReadiness": "REVIEW",
+    "blueprintBlockers": [],
+    "blueprintReviews": [
+      "LOW_KEYWORD_DECISION_CONFIDENCE",
+      "SERP_STRUCTURALLY_CHALLENGING"
+    ],
+    "pageAction": "MERGE_OR_UPDATE"
+  },
+  "metadata": {
+    "title": "What Is Credit Monitoring? How It Works & Costs",
+    "titleChars": 47,
+    "h1": "What Is Credit Monitoring? A Complete Guide",
+    "h1Chars": 43,
+    "metaDescription": "Learn what credit monitoring is, how it tracks changes on your credit reports, typical costs, and ways to reduce your personal data exposure.",
+    "metaChars": 141
+  },
+  "structure": {
+    "words": 978,
+    "headings": [
+      "## How Credit Monitoring Works",
+      "## What Credit Monitoring Tracks and Its Limitations",
+      "### Key Trigger Events Tracked",
+      "### Limitations of Credit Monitoring",
+      "## Free vs. Paid Credit Monitoring: Costs and Value",
+      "### How Much Does It Cost for Credit Monitoring?",
+      "### Is It Worth Paying for Credit Monitoring?",
+      "### What Are the Top 3 Credit Monitoring Services?",
+      "## Can Someone Check Your Credit Without You Knowing?",
+      "## Reducing Exposure by Removing Personal Data"
+    ],
+    "bodyContainsH1": false,
+    "structuralFlags": [
+      "PRIMARY_NOT_EXACT_IN_BODY"
+    ]
+  },
+  "keywordUse": {
+    "primary": "what is credit monitoring",
+    "occurrencesAcrossTitleH1Body": 2,
+    "exactInTitle": true,
+    "exactInH1": true,
+    "exactInBody": false
+  },
+  "directAnswer": {
+    "firstParagraphWords": 57,
+    "firstParagraph": "Credit monitoring is a service that continuously tracks changes made to your credit files across major credit bureaus (Equifax, Experian, and TransUnion) and alerts you whenever new activity is detected. By notifying you of new credit inquiries, newly opened accounts, or address updates, credit monitoring acts as an early warning system for identity theft and financial errors."
+  },
+  "deterministicQuality": {
+    "score": 100,
+    "wordCount": 960,
+    "h2Count": 5,
+    "h3Count": 5,
+    "primaryKeywordDensityPct": 0.83,
+    "issues": []
+  },
+  "contentGate": {
+    "pass": true,
+    "blockingIssues": [],
+    "warnings": [],
+    "topicAlignment": {
+      "titleCoverage": 1,
+      "h1Coverage": 1,
+      "bestCoverage": 1
+    },
+    "claimFindings": []
+  },
+  "blueprintCoverage": {
+    "requiredTopics": [
+      {
+        "topic": "Understanding credit monitoring",
+        "exactLexicalMatch": false
+      }
+    ],
+    "questions": [
+      {
+        "question": "What are the top 3 credit monitoring services?",
+        "exactLexicalMatch": true
+      },
+      {
+        "question": "Is it worth paying for credit monitoring?",
+        "exactLexicalMatch": true
+      },
+      {
+        "question": "How much does it cost for credit monitoring?",
+        "exactLexicalMatch": true
+      },
+      {
+        "question": "Can someone check my credit without me knowing?",
+        "exactLexicalMatch": false
+      }
+    ],
+    "informationGainCandidates": [
+      "SERP_GAP:Can someone check my credit without me knowing?",
+      "FIRST_PARTY_FACT:ScanMyCreds removes personal data from people search sites, data broker databases, and background check services.",
+      "FIRST_PARTY_FACT:The ScanMyCreds free scan does not require an account."
+    ]
+  },
+  "intelligence": null,
+  "intelligenceError": "analyzeStoredContentPlan is not a function"
+}
+
+---------------- FULL ARTICLE ----------------
+
+TITLE: What Is Credit Monitoring? How It Works & Costs
+
+META: Learn what credit monitoring is, how it tracks changes on your credit reports, typical costs, and ways to reduce your personal data exposure.
+
+H1: What Is Credit Monitoring? A Complete Guide
+
+Credit monitoring is a service that continuously tracks changes made to your credit files across major credit bureaus (Equifax, Experian, and TransUnion) and alerts you whenever new activity is detected. By notifying you of new credit inquiries, newly opened accounts, or address updates, credit monitoring acts as an early warning system for identity theft and financial errors.
+
+While credit monitoring flags suspicious activity quickly, it does not prevent fraud from happening. Understanding how it works, what it tracks, and how to complement it with privacy management helps you better protect your identity.
+
+## How Credit Monitoring Works
+
+Credit monitoring operates through automated systems connected to credit bureau databases. Whenever a lender, credit card issuer, or collector reports new information to a bureau, the monitoring system compares the update against your existing profile.
+
+When a changes occurs, the service sends you a notification via email, text message, or a mobile app push notification. This process allows you to review the activity immediately and confirm whether you authorized it.
+
+Monitored updates generally fall into two categories:
+* **Single-bureau monitoring:** Tracks updates from only one credit bureau. Many free services provide single-bureau tracking.
+* **Tri-bureau monitoring:** Tracks updates across Equifax, Experian, and TransUnion simultaneously, giving a complete view of your credit status.
+
+## What Credit Monitoring Tracks and Its Limitations
+
+Credit monitoring services watch for specific trigger events on your credit files that could indicate routine financial updates or unauthorized activity.
+
+### Key Trigger Events Tracked
+* **Hard Credit Inquiries:** Occur when a business reviews your credit file to evaluate a loan or credit application.
+* **New Accounts Opened:** Alerts you if a credit card, loan, or line of credit is established in your name.
+* **Address or Name Changes:** Flags changes to your contact information on official credit reports.
+* **Delinquencies and Late Payments:** Notifies you if a creditor reports a missed payment or transfers an account to collections.
+* **Significant Changes to Credit Limits:** Tracks major increases or decreases in your available credit.
+
+### Limitations of Credit Monitoring
+While credit monitoring is an essential tracking tool, it has notable limitations:
+* **Post-Event Alerts:** Monitoring alerts you *after* an action takes place; it cannot stop an unauthorized inquiry or fraudulent loan application in real time.
+* **No Automatic Credit Freeze:** It does not automatically block creditors from accessing your credit file.
+* **Non-Credit Fraud Missed:** Credit monitoring does not track bank account withdrawals, unauthorized utility setups, or unauthorized use of existing credit cards unless the event impacts your credit report.
+
+## Free vs. Paid Credit Monitoring: Costs and Value
+
+Choosing between free and paid credit monitoring options depends on how frequently your credit reports change and the depth of coverage you prefer.
+
+### How Much Does It Cost for Credit Monitoring?
+* **Free Options:** Many financial institutions, credit card issuers, and personal finance apps offer free credit monitoring. These typically monitor one credit bureau and provide basic alerts alongside updated credit scores.
+* **Paid Options:** Premium credit monitoring services typically cost between $10 and $30 per month. Paid tiers often feature tri-bureau monitoring, daily credit score refreshes, and additional identity recovery support.
+
+### Is It Worth Paying for Credit Monitoring?
+For many consumers, free credit monitoring paired with periodic manual reviews of their official credit reports is sufficient. However, paying for monitoring may be worth it if you are actively recovering from identity theft, managing complex financial portfolios, or need daily alerts across all three credit bureaus.
+
+### What Are the Top 3 Credit Monitoring Services?
+While consumer preferences vary based on features and pricing, three widely recognized platforms providing credit monitoring include:
+1. **Experian:** Offers direct monitoring of Experian credit reports with both free and paid multi-bureau options.
+2. **Equifax / TransUnion Direct Services:** Proprietary tools from the individual bureaus that provide direct report access and alerts.
+3. **Credit Karma:** A popular free monitoring platform that tracks updates across both Equifax and TransUnion.
+
+## Can Someone Check Your Credit Without You Knowing?
+
+Yes, someone can check your credit without your knowledge, though federal law restricts who is legally allowed to do so.
+
+Under the Fair Credit Reporting Act (FCRA), a person or business must have a "permissible purpose"—such as evaluating a loan application, employment background check, or lease agreement—to perform a hard credit pull. Soft credit pulls, such as promotional credit card offers or pre-approved insurance checks, also happen without explicit notification.
+
+However, unauthorized credit checks occur when:
+* **Identity Thieves Apply for Credit:** Fraudulent actors using your stolen Social Security number submit credit applications, triggering a hard inquiry.
+* **Unscrupulous Lenders Run Unauthorized Inquiries:** Businesses pull your credit report without obtaining proper consent or meeting legal requirements.
+
+Credit monitoring helps you catch these situations by sending an immediate alert when an unexpected hard pull appears on your report, allowing you to dispute unauthorized inquiries swiftly.
+
+## Reducing Exposure by Removing Personal Data
+
+Credit monitoring alerts you after personal information has already been used. To reduce the likelihood of identity fraud before it happens, proactively managing your exposed personal data is crucial.
+
+Identity thieves often gather baseline personal details—such as full names, current and past addresses, phone numbers, and family associations—from publicly accessible online sources like data broker databases and people search sites. Fraudsters combine this information with leaked credentials to attempt fraudulent credit applications.
+
+Taking steps to minimize your publicly accessible information reduces your overall risk profile:
+* **Remove Public Records:** ScanMyCreds removes personal data from people search sites, data broker databases, and background check services. Removing these listing limits the personal context available to bad actors.
+* **Check Your Exposure:** To evaluate where your data may be listed online, the ScanMyCreds free scan does not require an account.
+* **Freeze Your Credit:** Placing a freeze on your credit reports with Equifax, Experian, and TransUnion prevents new creditors from accessing your file unless you temporarily lift the freeze.
+
+-------------- END FULL ARTICLE --------------
+
+============================================================
+ DEEP AUDIT SUMMARY
+============================================================
+TOTAL=3
+BLUEPRINT_ARTICLES=1
+BLUEPRINT_DRAFTS=1
+LEGACY_ARTICLES=2
+PUBLISHED=0
+DATABASE_MUTATED=NO

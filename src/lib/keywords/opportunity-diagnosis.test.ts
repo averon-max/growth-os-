@@ -1,0 +1,504 @@
+import {
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+vi.mock(
+  "server-only",
+  () => ({})
+);
+
+import {
+  findConsensusTopicGaps,
+  scorePageRelevance,
+} from "./opportunity-diagnosis";
+
+describe(
+  "opportunity diagnosis",
+  () => {
+    it(
+      "prefers a page that clearly matches the search",
+      () => {
+        const strong =
+          scorePageRelevance(
+            "credit monitoring",
+            {
+              title:
+                "Credit Monitoring Service",
+              h1:
+                "Credit Monitoring",
+              h2s: [
+                "How credit monitoring works",
+              ],
+              h3s:
+                [],
+              bodyText:
+                "Credit monitoring alerts help you watch important changes.",
+            }
+          );
+
+        const weak =
+          scorePageRelevance(
+            "credit monitoring",
+            {
+              title:
+                "About our company",
+              h1:
+                "About us",
+              h2s: [
+                "Our story",
+              ],
+              h3s:
+                [],
+              bodyText:
+                "Learn about our company and team.",
+            }
+          );
+
+        expect(
+          strong
+        ).toBeGreaterThan(
+          weak
+        );
+
+        expect(
+          strong
+        ).toBeGreaterThanOrEqual(
+          0.7
+        );
+      }
+    );
+
+    it(
+      "finds subtopics covered by multiple competitors but missing from our page",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            {
+              title:
+                "Credit Monitoring",
+              h1:
+                "Monitor your credit",
+              h2s: [
+                "Credit alerts",
+              ],
+              h3s:
+                [],
+              bodyText:
+                "Monitor changes to your credit.",
+            },
+            [
+              {
+                title:
+                  "Credit Monitoring Service",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "How credit monitoring works",
+                  "What credit monitoring can detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Credit monitoring can detect important report changes.",
+              },
+              {
+                title:
+                  "Credit Monitoring Guide",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "How does credit monitoring work",
+                  "What can credit monitoring detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Learn what credit monitoring can detect.",
+              },
+            ]
+          );
+
+        expect(
+          gaps.length
+        ).toBeGreaterThan(
+          0
+        );
+
+        expect(
+          gaps.some(
+            (
+              gap
+            ) =>
+              gap.competitorCoverage >=
+              2
+          )
+        ).toBe(
+          true
+        );
+      }
+    );
+
+    it(
+      "does not invent a consensus from one competitor",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            null,
+            [
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "Unique topic",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Unique topic",
+              },
+            ]
+          );
+
+        expect(
+          gaps
+        ).toEqual(
+          []
+        );
+      }
+    );
+  }
+);
+
+
+describe(
+  "opportunity diagnosis topic-gap regression",
+  () => {
+    it(
+      "does not report a gap when our page explicitly covers the same subtopic",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            {
+              title:
+                "Credit Monitoring",
+              h1:
+                "Credit Monitoring",
+              h2s: [
+                "What credit monitoring can detect",
+              ],
+              h3s:
+                [],
+              bodyText:
+                "Learn what credit monitoring can detect and how alerts work.",
+            },
+            [
+              {
+                title:
+                  "Credit Monitoring Service",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What credit monitoring can detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Credit monitoring can detect important report changes.",
+              },
+              {
+                title:
+                  "Credit Monitoring Guide",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What can credit monitoring detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Learn what credit monitoring can detect.",
+              },
+            ]
+          );
+
+        expect(
+          gaps
+        ).toEqual(
+          []
+        );
+      }
+    );
+  }
+);
+
+
+describe(
+  "keyword-aware topic consensus",
+  () => {
+    it(
+      "does not confuse a definition with a worth-it question",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            null,
+            [
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What is credit monitoring?",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "What is credit monitoring?",
+              },
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "Is Credit Monitoring Really Worth It?",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Is credit monitoring really worth it?",
+              },
+            ],
+            "credit monitoring"
+          );
+
+        expect(
+          gaps
+        ).toEqual(
+          []
+        );
+      }
+    );
+
+    it(
+      "still finds a real shared subtopic after removing the target keyword",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            null,
+            [
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What credit monitoring can detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Learn what credit monitoring can detect.",
+              },
+              {
+                title:
+                  "Credit Monitoring Guide",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What can credit monitoring detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "See what credit monitoring can detect.",
+              },
+            ],
+            "credit monitoring"
+          );
+
+        expect(
+          gaps.length
+        ).toBe(
+          1
+        );
+
+        expect(
+          gaps[0]?.competitorCoverage
+        ).toBe(
+          2
+        );
+      }
+    );
+
+    it(
+      "recognizes two genuine definition headings as consensus",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            null,
+            [
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What is credit monitoring?",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Definition of credit monitoring.",
+              },
+              {
+                title:
+                  "Credit Monitoring Guide",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What is credit monitoring and how does it work?",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Learn how credit monitoring works.",
+              },
+            ],
+            "credit monitoring"
+          );
+
+        expect(
+          gaps.length
+        ).toBeGreaterThan(
+          0
+        );
+      }
+    );
+  }
+);
+
+
+describe(
+  "subtopic coverage regression",
+  () => {
+    it(
+      "does not treat the base keyword alone as subtopic coverage",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            {
+              title:
+                "Credit Monitoring",
+              h1:
+                "Credit Monitoring",
+              h2s: [
+                "Credit alerts",
+              ],
+              h3s:
+                [],
+              bodyText:
+                "Our credit monitoring service sends alerts about changes.",
+            },
+            [
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What credit monitoring can detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Learn what credit monitoring can detect.",
+              },
+              {
+                title:
+                  "Credit Monitoring Guide",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What can credit monitoring detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "See what credit monitoring can detect.",
+              },
+            ],
+            "credit monitoring"
+          );
+
+        expect(
+          gaps.length
+        ).toBeGreaterThan(
+          0
+        );
+      }
+    );
+
+    it(
+      "does not report a gap when the specific subtopic exists in body content",
+      () => {
+        const gaps =
+          findConsensusTopicGaps(
+            {
+              title:
+                "Credit Monitoring",
+              h1:
+                "Credit Monitoring",
+              h2s: [
+                "Credit alerts",
+              ],
+              h3s:
+                [],
+              bodyText:
+                "Our service can detect important changes to your credit reports.",
+            },
+            [
+              {
+                title:
+                  "Credit Monitoring",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What credit monitoring can detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "Learn what credit monitoring can detect.",
+              },
+              {
+                title:
+                  "Credit Monitoring Guide",
+                h1:
+                  "Credit Monitoring",
+                h2s: [
+                  "What can credit monitoring detect",
+                ],
+                h3s:
+                  [],
+                bodyText:
+                  "See what credit monitoring can detect.",
+              },
+            ],
+            "credit monitoring"
+          );
+
+        expect(
+          gaps
+        ).toEqual(
+          []
+        );
+      }
+    );
+  }
+);

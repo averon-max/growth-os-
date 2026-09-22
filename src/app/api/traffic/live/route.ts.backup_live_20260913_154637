@@ -1,0 +1,1006 @@
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
+
+import {
+  requireUser,
+  requireWebsiteAccess,
+  authErrorResponse,
+} from "@/lib/auth-helpers";
+
+import {
+  getCloudflareConnectionWithToken,
+} from "@/lib/integrations/cloudflare/connection-service";
+
+const ENDPOINT =
+  "https://api.cloudflare.com/client/v4/graphql";
+
+const CORE_QUERY = `
+  query LiveTraffic(
+    $zoneTag: string
+    $start: Time
+    $end: Time
+  ) {
+    viewer {
+      zones(filter: { zoneTag: $zoneTag }) {
+        timeline: httpRequestsAdaptiveGroups(
+          limit: 10000
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [datetimeMinute_ASC]
+        ) {
+          count
+          dimensions {
+            datetimeMinute
+          }
+          sum {
+            visits
+            edgeResponseBytes
+          }
+        }
+
+        countries: httpRequestsAdaptiveGroups(
+          limit: 100
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [count_DESC]
+        ) {
+          count
+          dimensions {
+            clientCountryName
+          }
+          sum {
+            visits
+            edgeResponseBytes
+          }
+        }
+
+        devices: httpRequestsAdaptiveGroups(
+          limit: 30
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [count_DESC]
+        ) {
+          count
+          dimensions {
+            clientDeviceType
+          }
+        }
+
+        bots: httpRequestsAdaptiveGroups(
+          limit: 100
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [count_DESC]
+        ) {
+          count
+          dimensions {
+            verifiedBotCategory
+          }
+        }
+
+        statuses: httpRequestsAdaptiveGroups(
+          limit: 100
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [count_DESC]
+        ) {
+          count
+          dimensions {
+            edgeResponseStatus
+          }
+        }
+      }
+    }
+  }
+`;
+
+const PATH_QUERY = `
+  query LivePaths(
+    $zoneTag: string
+    $start: Time
+    $end: Time
+  ) {
+    viewer {
+      zones(filter: { zoneTag: $zoneTag }) {
+        paths: httpRequestsAdaptiveGroups(
+          limit: 20
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [count_DESC]
+        ) {
+          count
+          dimensions {
+            clientRequestPath
+          }
+        }
+      }
+    }
+  }
+`;
+
+const REFERRER_QUERY = `
+  query LiveReferrers(
+    $zoneTag: string
+    $start: Time
+    $end: Time
+  ) {
+    viewer {
+      zones(filter: { zoneTag: $zoneTag }) {
+        referrers: httpRequestsAdaptiveGroups(
+          limit: 20
+          filter: {
+            datetime_geq: $start
+            datetime_lt: $end
+            requestSource: "eyeball"
+          }
+          orderBy: [count_DESC]
+        ) {
+          count
+          dimensions {
+            clientRefererHost
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface TimelineRow {
+  count: number;
+
+  dimensions: {
+    datetimeMinute: string;
+  };
+
+  sum: {
+    visits: number;
+    edgeResponseBytes: number;
+  };
+}
+
+interface CountryRow {
+  count: number;
+
+  dimensions: {
+    clientCountryName: string;
+  };
+
+  sum: {
+    visits: number;
+    edgeResponseBytes: number;
+  };
+}
+
+interface DeviceRow {
+  count: number;
+
+  dimensions: {
+    clientDeviceType: string;
+  };
+}
+
+interface BotRow {
+  count: number;
+
+  dimensions: {
+    verifiedBotCategory: string;
+  };
+}
+
+interface StatusRow {
+  count: number;
+
+  dimensions: {
+    edgeResponseStatus: number;
+  };
+}
+
+interface PathRow {
+  count: number;
+
+  dimensions: {
+    clientRequestPath: string;
+  };
+}
+
+interface ReferrerRow {
+  count: number;
+
+  dimensions: {
+    clientRefererHost: string;
+  };
+}
+
+interface CoreZone {
+  timeline?: TimelineRow[];
+  countries?: CountryRow[];
+  devices?: DeviceRow[];
+  bots?: BotRow[];
+  statuses?: StatusRow[];
+}
+
+interface CoreData {
+  viewer?: {
+    zones?: CoreZone[];
+  };
+}
+
+interface PathData {
+  viewer?: {
+    zones?: Array<{
+      paths?: PathRow[];
+    }>;
+  };
+}
+
+interface ReferrerData {
+  viewer?: {
+    zones?: Array<{
+      referrers?: ReferrerRow[];
+    }>;
+  };
+}
+
+interface GraphQLResult<T> {
+  data?: T;
+
+  errors?: Array<{
+    message: string;
+  }>;
+}
+
+function number(
+  value: unknown
+): number {
+  const parsed =
+    Number(value);
+
+  return Number.isFinite(
+    parsed
+  )
+    ? parsed
+    : 0;
+}
+
+async function graphql<T>({
+  apiToken,
+  query,
+  variables,
+}: {
+  apiToken: string;
+  query: string;
+  variables: {
+    zoneTag: string;
+    start: string;
+    end: string;
+  };
+}): Promise<T> {
+  const response =
+    await fetch(
+      ENDPOINT,
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${apiToken}`,
+
+          "Content-Type":
+            "application/json",
+
+          Accept:
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            query,
+            variables,
+          }),
+
+        cache:
+          "no-store",
+      }
+    );
+
+  const json =
+    (await response.json()) as GraphQLResult<T>;
+
+  if (!response.ok) {
+    throw new Error(
+      `Cloudflare GraphQL HTTP ${response.status}`
+    );
+  }
+
+  if (
+    json.errors?.length
+  ) {
+    throw new Error(
+      json.errors
+        .map(
+          (error) =>
+            error.message
+        )
+        .join("; ")
+    );
+  }
+
+  if (!json.data) {
+    throw new Error(
+      "Cloudflare returned no GraphQL data."
+    );
+  }
+
+  return json.data;
+}
+
+async function optionalGraphql<T>(
+  params: {
+    apiToken: string;
+    query: string;
+    variables: {
+      zoneTag: string;
+      start: string;
+      end: string;
+    };
+  },
+  label: string
+): Promise<T | null> {
+  try {
+    return await graphql<T>(
+      params
+    );
+  } catch (error) {
+    console.warn(
+      `[traffic live ${label}]`,
+      error instanceof Error
+        ? error.message
+        : "Unknown Cloudflare error"
+    );
+
+    return null;
+  }
+}
+
+function safeError(
+  error: unknown
+): string {
+  const value =
+    error instanceof Error
+      ? error.message
+      : "Unknown Cloudflare error";
+
+  return value
+    .replace(
+      /Bearer\s+[^\s]+/gi,
+      "Bearer [redacted]"
+    )
+    .slice(
+      0,
+      600
+    );
+}
+
+export async function GET(
+  req: NextRequest
+) {
+  try {
+    const user =
+      await requireUser();
+
+    const websiteId =
+      req.nextUrl
+        .searchParams
+        .get("websiteId")
+        ?.trim();
+
+    if (!websiteId) {
+      return NextResponse.json(
+        {
+          error:
+            "websiteId query parameter is required.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    await requireWebsiteAccess(
+      user.id,
+      websiteId
+    );
+
+    const connection =
+      await getCloudflareConnectionWithToken(
+        websiteId
+      );
+
+    if (!connection) {
+      return NextResponse.json(
+        {
+          error:
+            "Cloudflare is not connected for this website.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    const end =
+      new Date();
+
+    const start =
+      new Date(
+        end.getTime() -
+          24 *
+            60 *
+            60 *
+            1000
+      );
+
+    const variables = {
+      zoneTag:
+        connection.zoneId,
+
+      start:
+        start.toISOString(),
+
+      end:
+        end.toISOString(),
+    };
+
+    const core =
+      await graphql<CoreData>({
+        apiToken:
+          connection.apiToken,
+
+        query:
+          CORE_QUERY,
+
+        variables,
+      });
+
+    const [
+      pathsResult,
+      referrersResult,
+    ] =
+      await Promise.all([
+        optionalGraphql<PathData>(
+          {
+            apiToken:
+              connection.apiToken,
+
+            query:
+              PATH_QUERY,
+
+            variables,
+          },
+          "paths"
+        ),
+
+        optionalGraphql<ReferrerData>(
+          {
+            apiToken:
+              connection.apiToken,
+
+            query:
+              REFERRER_QUERY,
+
+            variables,
+          },
+          "referrers"
+        ),
+      ]);
+
+    const zone =
+      core.viewer
+        ?.zones?.[0];
+
+    if (!zone) {
+      throw new Error(
+        "Cloudflare returned no zone traffic data."
+      );
+    }
+
+    const timeline =
+      (
+        zone.timeline ??
+        []
+      ).map(
+        (row) => ({
+          time:
+            row.dimensions
+              .datetimeMinute,
+
+          requests:
+            number(
+              row.count
+            ),
+
+          visits:
+            number(
+              row.sum?.visits
+            ),
+
+          bandwidthBytes:
+            number(
+              row.sum
+                ?.edgeResponseBytes
+            ),
+        })
+      );
+
+    const countries =
+      (
+        zone.countries ??
+        []
+      )
+        .filter(
+          (row) =>
+            Boolean(
+              row.dimensions
+                .clientCountryName
+            )
+        )
+        .map(
+          (row) => ({
+            country:
+              row.dimensions
+                .clientCountryName,
+
+            requests:
+              number(
+                row.count
+              ),
+
+            visits:
+              number(
+                row.sum?.visits
+              ),
+
+            bandwidthBytes:
+              number(
+                row.sum
+                  ?.edgeResponseBytes
+              ),
+          })
+        );
+
+    const devices =
+      (
+        zone.devices ??
+        []
+      )
+        .filter(
+          (row) =>
+            Boolean(
+              row.dimensions
+                .clientDeviceType
+            )
+        )
+        .map(
+          (row) => ({
+            device:
+              row.dimensions
+                .clientDeviceType,
+
+            requests:
+              number(
+                row.count
+              ),
+          })
+        );
+
+    const verifiedBots =
+      (
+        zone.bots ??
+        []
+      )
+        .filter(
+          (row) =>
+            Boolean(
+              row.dimensions
+                .verifiedBotCategory
+            )
+        )
+        .map(
+          (row) => ({
+            category:
+              row.dimensions
+                .verifiedBotCategory,
+
+            requests:
+              number(
+                row.count
+              ),
+          })
+        );
+
+    const statuses =
+      (
+        zone.statuses ??
+        []
+      )
+        .map(
+          (row) => ({
+            status:
+              number(
+                row.dimensions
+                  .edgeResponseStatus
+              ),
+
+            requests:
+              number(
+                row.count
+              ),
+          })
+        )
+        .filter(
+          (row) =>
+            row.status >
+            0
+        );
+
+    const paths =
+      (
+        pathsResult
+          ?.viewer
+          ?.zones?.[0]
+          ?.paths ??
+        []
+      )
+        .filter(
+          (row) =>
+            Boolean(
+              row.dimensions
+                .clientRequestPath
+            )
+        )
+        .map(
+          (row) => ({
+            path:
+              row.dimensions
+                .clientRequestPath,
+
+            requests:
+              number(
+                row.count
+              ),
+          })
+        );
+
+    const referrers =
+      (
+        referrersResult
+          ?.viewer
+          ?.zones?.[0]
+          ?.referrers ??
+        []
+      )
+        .filter(
+          (row) =>
+            Boolean(
+              row.dimensions
+                .clientRefererHost
+            )
+        )
+        .map(
+          (row) => ({
+            referrer:
+              row.dimensions
+                .clientRefererHost,
+
+            requests:
+              number(
+                row.count
+              ),
+          })
+        );
+
+    const requests24h =
+      timeline.reduce(
+        (
+          total,
+          row
+        ) =>
+          total +
+          row.requests,
+        0
+      );
+
+    const visits24h =
+      timeline.reduce(
+        (
+          total,
+          row
+        ) =>
+          total +
+          row.visits,
+        0
+      );
+
+    const bandwidth24h =
+      timeline.reduce(
+        (
+          total,
+          row
+        ) =>
+          total +
+          row.bandwidthBytes,
+        0
+      );
+
+    const verifiedBotRequests =
+      verifiedBots.reduce(
+        (
+          total,
+          row
+        ) =>
+          total +
+          row.requests,
+        0
+      );
+
+    const now =
+      end.getTime();
+
+    const requests15m =
+      timeline
+        .filter(
+          (row) => {
+            const time =
+              new Date(
+                row.time
+              ).getTime();
+
+            return (
+              Number.isFinite(
+                time
+              ) &&
+              time >=
+                now -
+                  15 *
+                    60 *
+                    1000
+            );
+          }
+        )
+        .reduce(
+          (
+            total,
+            row
+          ) =>
+            total +
+            row.requests,
+          0
+        );
+
+    const requests60m =
+      timeline
+        .filter(
+          (row) => {
+            const time =
+              new Date(
+                row.time
+              ).getTime();
+
+            return (
+              Number.isFinite(
+                time
+              ) &&
+              time >=
+                now -
+                  60 *
+                    60 *
+                    1000
+            );
+          }
+        )
+        .reduce(
+          (
+            total,
+            row
+          ) =>
+            total +
+            row.requests,
+          0
+        );
+
+    const hourlyMap =
+      new Map<
+        string,
+        {
+          time: string;
+          requests: number;
+          visits: number;
+          bandwidthBytes: number;
+        }
+      >();
+
+    for (
+      const row of
+      timeline
+    ) {
+      const date =
+        new Date(
+          row.time
+        );
+
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+        continue;
+      }
+
+      date.setUTCMinutes(
+        0,
+        0,
+        0
+      );
+
+      const key =
+        date.toISOString();
+
+      const current =
+        hourlyMap.get(
+          key
+        ) ?? {
+          time: key,
+          requests: 0,
+          visits: 0,
+          bandwidthBytes: 0,
+        };
+
+      current.requests +=
+        row.requests;
+
+      current.visits +=
+        row.visits;
+
+      current.bandwidthBytes +=
+        row.bandwidthBytes;
+
+      hourlyMap.set(
+        key,
+        current
+      );
+    }
+
+    const hourly =
+      Array.from(
+        hourlyMap.values()
+      ).sort(
+        (a, b) =>
+          a.time.localeCompare(
+            b.time
+          )
+      );
+
+    return NextResponse.json(
+      {
+        connected: true,
+
+        source:
+          "CLOUDFLARE",
+
+        mode:
+          "NEAR_REAL_TIME",
+
+        resolution:
+          "1_MINUTE",
+
+        refreshedAt:
+          end.toISOString(),
+
+        range: {
+          start:
+            start.toISOString(),
+
+          end:
+            end.toISOString(),
+        },
+
+        summary: {
+          requests24h,
+          requests60m,
+          requests15m,
+          visits24h,
+          bandwidth24h,
+          verifiedBotRequests,
+        },
+
+        timeline:
+          timeline.map(
+            (row) => ({
+              time:
+                row.time,
+
+              requests:
+                row.requests,
+
+              bandwidthBytes:
+                row.bandwidthBytes,
+            })
+          ),
+
+        hourly,
+
+        countries,
+        devices,
+        verifiedBots,
+        paths,
+        referrers,
+        statuses,
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "no-store, max-age=0",
+        },
+      }
+    );
+  } catch (error) {
+    const {
+      status,
+      body,
+    } =
+      authErrorResponse(
+        error
+      );
+
+    if (
+      status !== 500
+    ) {
+      return NextResponse.json(
+        body,
+        {
+          status,
+        }
+      );
+    }
+
+    const message =
+      safeError(
+        error
+      );
+
+    console.error(
+      "[traffic live]",
+      message
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          `Live Cloudflare query failed: ${message}`,
+      },
+      {
+        status: 502,
+      }
+    );
+  }
+}

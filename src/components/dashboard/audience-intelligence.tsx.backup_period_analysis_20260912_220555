@@ -1,0 +1,83 @@
+"use client";
+
+import { useState } from "react";
+import { Cloud, Search, Database } from "lucide-react";
+import { TrafficOverview } from "./traffic-overview";
+import { AudienceSearchQueries } from "./audience-search-queries";
+import styles from "./audience-intelligence.module.css";
+
+export type AudienceDays = 7 | 14 | 30;
+
+const OPTIONS: AudienceDays[] = [7, 14, 30];
+
+export function AudienceIntelligence({
+  websiteId,
+}: {
+  websiteId: string;
+}) {
+  const [days, setDays] = useState<AudienceDays>(7);
+
+  return (
+    <div className={styles.root}>
+      <div className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <div className={styles.eyebrow}>Audience intelligence</div>
+
+          <h1 className={styles.title}>
+            Traffic &amp; search discovery
+          </h1>
+
+          <p className={styles.description}>
+            Real request data from Cloudflare and real organic search data
+            from Google Search Console.
+          </p>
+
+          <div className={styles.sources}>
+            <div className={styles.source}>
+              <Cloud size={12} />
+              <span>Cloudflare</span>
+              <span className={styles.liveDot} />
+            </div>
+
+            <div className={styles.source}>
+              <Search size={12} />
+              <span>Search Console</span>
+            </div>
+
+            <div className={styles.source}>
+              <Database size={12} />
+              <span>No synthetic data</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.range}>
+          {OPTIONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={
+                days === option
+                  ? `${styles.rangeButton} ${styles.rangeButtonActive}`
+                  : styles.rangeButton
+              }
+              onClick={() => setDays(option)}
+            >
+              {option} days
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <TrafficOverview
+        websiteId={websiteId}
+        days={days}
+      />
+
+      <AudienceSearchQueries
+        websiteId={websiteId}
+        days={days}
+      />
+    </div>
+  );
+}

@@ -7,25 +7,44 @@ import styles from "./topbar.module.css";
 interface Props {
   title: string;
   subtitle?: string;
-  websiteSwitcher?: { workspaceId: string; currentWebsiteId: string };
+  websiteSwitcher?: {
+    workspaceId: string;
+    currentWebsiteId: string;
+  };
 }
 
 export function Topbar({ title, subtitle, websiteSwitcher }: Props) {
   const { data: session } = useSession();
   const email = session?.user?.email ?? null;
+  const initial = email?.charAt(0).toUpperCase() ?? "G";
 
   return (
     <div className={styles.topbar}>
       <div className={styles.titleBlock}>
-        <p className={styles.title}>{title}</p>
-        {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+        <span className={styles.contextDot} />
+        <span className={styles.title}>{title}</span>
+
+        {subtitle && (
+          <>
+            <span className={styles.separator}>/</span>
+            <span className={styles.subtitle}>{subtitle}</span>
+          </>
+        )}
       </div>
+
       <div className={styles.right}>
         {websiteSwitcher && (
-          <WebsiteSwitcher workspaceId={websiteSwitcher.workspaceId} currentWebsiteId={websiteSwitcher.currentWebsiteId} />
+          <div className={styles.websiteControl}>
+            <WebsiteSwitcher
+              workspaceId={websiteSwitcher.workspaceId}
+              currentWebsiteId={websiteSwitcher.currentWebsiteId}
+            />
+          </div>
         )}
-        {email && <span className={styles.userEmail}>{email}</span>}
-        <div className={styles.avatar} />
+
+        <div className={styles.avatar} aria-label={email ?? "Account"}>
+          {initial}
+        </div>
       </div>
     </div>
   );

@@ -7,7 +7,12 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const body = await req.json();
-    const { workspaceId, forceRefresh } = body as { workspaceId?: string; forceRefresh?: boolean };
+    const { workspaceId, forceRefresh, market, language } = body as {
+      workspaceId?: string;
+      forceRefresh?: boolean;
+      market?: string;
+      language?: string;
+    };
 
     if (!workspaceId) {
       return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
@@ -15,7 +20,12 @@ export async function POST(req: NextRequest) {
 
     await requireWorkspaceAccess(user.id, workspaceId);
 
-    const result = await updateKeywordVolumes(workspaceId, forceRefresh ?? false);
+    const result = await updateKeywordVolumes(
+      workspaceId,
+      forceRefresh ?? false,
+      market ?? "US",
+      language ?? "English",
+    );
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof DataForSEOError) {

@@ -1,0 +1,460 @@
+"use client";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  Search,
+  ExternalLink,
+  MousePointerClick,
+  Eye,
+  Hash,
+  Activity,
+} from "lucide-react";
+import styles from "./audience-search-queries.module.css";
+
+type Days = 7 | 14 | 30;
+
+interface SearchQueryRow {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  avgPosition: number | null;
+  topPage: string | null;
+}
+
+interface SearchQueryResponse {
+  connected: boolean;
+  days: number;
+  range: {
+    start: string;
+    end: string;
+  } | null;
+  summary: {
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    avgPosition: number | null;
+    uniqueQueries: number;
+  } | null;
+  queries: SearchQueryRow[];
+}
+
+const DAY_OPTIONS: Days[] = [7, 14, 30];
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation:
+      value >= 10000 ? "compact" : "standard",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function compactPage(page: string | null) {
+  if (!page) return "—";
+
+  try {
+    const url = new URL(page);
+    return url.pathname === "/"
+      ? url.hostname
+      : url.pathname;
+  } catch {
+    return page;
+  }
+}
+
+export function AudienceSearchQueries({
+  websiteId,
+}: {
+  websiteId: string;
+}) {
+  const [days, setDays] = useState<Days>(7);
+  const [data, setData] =
+    useState<SearchQueryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] =
+    useState<string | null>(null);
+  const [expanded, setExpanded] =
+    useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams({
+          websiteId,
+          days: String(days),
+        });
+
+        const response = await fetch(
+          `/api/audience/search-queries?${params.toString()}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        const json =
+          (await response.json()) as
+            | SearchQueryResponse
+            | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in json && json.error
+              ? json.error
+              : "Could not load search queries."
+          );
+        }
+
+        setData(json as SearchQueryResponse);
+        setExpanded(false);
+      } catch (err) {
+        if (
+          err instanceof DOMException &&
+          err.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not load search queries."
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => controller.abort();
+  }, [websiteId, days]);
+
+  const visibleQueries = useMemo(() => {
+    if (!data) return [];
+
+    return expanded
+      ? data.queries
+      : data.queries.slice(0, 12);
+  }, [data, expanded]);
+
+  return (
+    <section className={styles.surface}>
+      <header className={styles.header}>
+        <div className={styles.titleBlock}>
+          <div className={styles.iconWrap}>
+            <Search size={15} />
+          </div>
+
+          <div>
+            <div className={styles.titleLine}>
+              <h2 className={styles.title}>
+                Search discovery
+              </h2>
+
+              <span className={styles.source}>
+                Google Search Console
+              </span>
+            </div>
+
+            <p className={styles.subtitle}>
+              Real Google queries that surfaced this
+              website in search.
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={styles.range}
+          aria-label="Search query date range"
+        >
+          {DAY_OPTIONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={
+                days === option
+                  ? `${styles.rangeButton} ${styles.rangeButtonActive}`
+                  : styles.rangeButton
+              }
+              aria-pressed={days === option}
+              onClick={() => setDays(option)}
+            >
+              {option}d
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {loading && !data ? (
+        <div className={styles.status}>
+          Loading real Search Console data…
+        </div>
+      ) : error ? (
+        <div className={styles.statusError}>
+          {error}
+        </div>
+      ) : data && !data.connected ? (
+        <div className={styles.empty}>
+          <Search size={17} />
+          <div>
+            <strong>
+              Search Console is not connected
+            </strong>
+            <span>
+              Connect Google Search Console in
+              Settings to see the real queries that
+              bring people to this site.
+            </span>
+          </div>
+        </div>
+      ) : data &&
+        data.connected &&
+        data.summary &&
+        data.queries.length === 0 ? (
+        <div className={styles.empty}>
+          <Search size={17} />
+          <div>
+            <strong>
+              No Google search query data for the
+              last {days} days
+            </strong>
+            <span>
+              Nothing is invented here. Queries will
+              appear as soon as Search Console reports
+              real impressions or clicks.
+            </span>
+          </div>
+        </div>
+      ) : data && data.summary ? (
+        <>
+          <div className={styles.metrics}>
+            <Metric
+              icon={MousePointerClick}
+              label="Search clicks"
+              value={formatNumber(
+                data.summary.clicks
+              )}
+              tone="green"
+            />
+
+            <Metric
+              icon={Eye}
+              label="Impressions"
+              value={formatNumber(
+                data.summary.impressions
+              )}
+              tone="cyan"
+            />
+
+            <Metric
+              icon={Activity}
+              label="CTR"
+              value={`${data.summary.ctr.toFixed(1)}%`}
+              tone="violet"
+            />
+
+            <Metric
+              icon={Hash}
+              label="Avg. position"
+              value={
+                data.summary.avgPosition === null
+                  ? "—"
+                  : data.summary.avgPosition.toFixed(
+                      1
+                    )
+              }
+              tone="amber"
+            />
+          </div>
+
+          <div className={styles.tableHeader}>
+            <div>
+              <span className={styles.tableTitle}>
+                Queries people used
+              </span>
+
+              <span className={styles.queryCount}>
+                {data.summary.uniqueQueries} unique
+              </span>
+            </div>
+
+            {data.range && (
+              <span className={styles.dateRange}>
+                {data.range.start} →{" "}
+                {data.range.end}
+              </span>
+            )}
+          </div>
+
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Query</th>
+                  <th>Clicks</th>
+                  <th>Impressions</th>
+                  <th>CTR</th>
+                  <th>Position</th>
+                  <th>Landing page</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {visibleQueries.map(
+                  (query, index) => (
+                    <tr key={query.query}>
+                      <td>
+                        <div
+                          className={
+                            styles.queryCell
+                          }
+                        >
+                          <span
+                            className={
+                              styles.rank
+                            }
+                          >
+                            {String(
+                              index + 1
+                            ).padStart(2, "0")}
+                          </span>
+
+                          <span
+                            className={
+                              styles.queryText
+                            }
+                          >
+                            {query.query}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td
+                        className={
+                          styles.monoStrong
+                        }
+                      >
+                        {formatNumber(
+                          query.clicks
+                        )}
+                      </td>
+
+                      <td className={styles.mono}>
+                        {formatNumber(
+                          query.impressions
+                        )}
+                      </td>
+
+                      <td className={styles.mono}>
+                        {query.ctr.toFixed(1)}%
+                      </td>
+
+                      <td className={styles.mono}>
+                        {query.avgPosition === null
+                          ? "—"
+                          : query.avgPosition.toFixed(
+                              1
+                            )}
+                      </td>
+
+                      <td>
+                        {query.topPage ? (
+                          <a
+                            href={query.topPage}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={
+                              styles.pageLink
+                            }
+                            title={query.topPage}
+                          >
+                            <span>
+                              {compactPage(
+                                query.topPage
+                              )}
+                            </span>
+                            <ExternalLink
+                              size={11}
+                            />
+                          </a>
+                        ) : (
+                          <span
+                            className={
+                              styles.muted
+                            }
+                          >
+                            —
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {data.queries.length > 12 && (
+            <button
+              type="button"
+              className={styles.expandButton}
+              onClick={() =>
+                setExpanded((value) => !value)
+              }
+            >
+              {expanded
+                ? "Show top 12"
+                : `Show all ${data.queries.length} queries`}
+            </button>
+          )}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ComponentType<{
+    size?: number;
+  }>;
+  label: string;
+  value: string;
+  tone:
+    | "green"
+    | "cyan"
+    | "violet"
+    | "amber";
+}) {
+  return (
+    <div
+      className={styles.metric}
+      data-tone={tone}
+    >
+      <div className={styles.metricTop}>
+        <Icon size={13} />
+        <span>{label}</span>
+      </div>
+
+      <div className={styles.metricValue}>
+        {value}
+      </div>
+    </div>
+  );
+}

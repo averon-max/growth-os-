@@ -1,0 +1,2333 @@
+diff --git a/src/lib/content/gemini-generator.ts b/src/lib/content/gemini-generator.ts
+index 952ed80..106c70f 100644
+--- a/src/lib/content/gemini-generator.ts
++++ b/src/lib/content/gemini-generator.ts
+@@ -1,4 +1,11 @@
+-import type { ContentGenerator } from "./generator";
++import type {
++  ArticleCritiqueInput,
++  ArticleCritiqueResult,
++  ArticleCriticFinding,
++  ArticleRewriteInput,
++  ArticleReviewGenerator,
++} from "./generator";
++
+ import { ContentGenerationError } from "./generator";
+ import type { ContentBriefInput, GeneratedBrief, GeneratedArticle, ContentOutlineSection } from "./types";
+ 
+@@ -22,7 +29,7 @@ interface GeminiResponse {
+ 
+ const MAX_RETRIES = 3;
+ const BASE_BACKOFF_MS = 2000;
+-const RETRYABLE_STATUS_CODES = new Set([429, 503]);
++const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+ 
+ function sleep(ms: number): Promise<void> {
+   return new Promise((resolve) => setTimeout(resolve, ms));
+@@ -53,7 +60,27 @@ async function callGemini(prompt: string): Promise<string> {
+         lastError = new ContentGenerationError(`Gemini API error ${res.status}: ${body.slice(0, 300)}`);
+ 
+         if (RETRYABLE_STATUS_CODES.has(res.status) && attempt < MAX_RETRIES) {
+-          await sleep(BASE_BACKOFF_MS * 2 ** attempt);
++          const retryAfterHeader = res.headers.get("Retry-After");
++
++          const retryAfterSeconds =
++            retryAfterHeader
++              ? Number(retryAfterHeader)
++              : Number.NaN;
++
++          const retryAfterMs =
++            Number.isFinite(retryAfterSeconds) &&
++            retryAfterSeconds > 0
++              ? Math.min(retryAfterSeconds * 1000, 30000)
++              : BASE_BACKOFF_MS * 2 ** attempt;
++
++          console.warn("[gemini] temporary provider failure", {
++            status: res.status,
++            attempt: attempt + 1,
++            nextAttempt: attempt + 2,
++            retryAfterMs,
++          });
++
++          await sleep(retryAfterMs);
+           continue;
+         }
+         throw lastError;
+@@ -81,7 +108,202 @@ function parseJson<T>(text: string): T {
+   }
+ }
+ 
+-export const geminiGenerator: ContentGenerator = {
++function criticRecord(
++  value: unknown
++): Record<string, unknown> | null {
++  if (
++    !value ||
++    typeof value !==
++      "object" ||
++    Array.isArray(
++      value
++    )
++  ) {
++    return null;
++  }
++
++  return value as
++    Record<string, unknown>;
++}
++
++function sanitizeCritiqueResult(
++  role:
++    ArticleCritiqueInput["role"],
++  raw:
++    unknown
++): ArticleCritiqueResult {
++  const root =
++    criticRecord(
++      raw
++    );
++
++  const rawFindings =
++    Array.isArray(
++      root?.findings
++    )
++      ? root.findings
++      : [];
++
++  const findings:
++    ArticleCriticFinding[] =
++      [];
++
++  for (
++    const item
++    of rawFindings
++  ) {
++    const finding =
++      criticRecord(
++        item
++      );
++
++    if (!finding) {
++      continue;
++    }
++
++    const severity =
++      finding.severity;
++
++    if (
++      severity !==
++        "BLOCKER" &&
++      severity !==
++        "MAJOR" &&
++      severity !==
++        "MINOR"
++    ) {
++      continue;
++    }
++
++    const code =
++      typeof finding.code ===
++        "string"
++        ? finding.code.trim()
++        : "";
++
++    const message =
++      typeof finding.message ===
++        "string"
++        ? finding.message.trim()
++        : "";
++
++    const evidence =
++      typeof finding.evidence ===
++        "string"
++        ? finding.evidence.trim()
++        : "";
++
++    const instruction =
++      typeof finding.instruction ===
++        "string"
++        ? finding.instruction.trim()
++        : "";
++
++    if (
++      !code ||
++      !message ||
++      !instruction
++    ) {
++      continue;
++    }
++
++    findings.push({
++      code:
++        code
++          .toUpperCase()
++          .replace(
++            /[^A-Z0-9_]+/g,
++            "_"
++          )
++          .slice(
++            0,
++            80
++          ),
++
++      severity,
++
++      message:
++        message.slice(
++          0,
++          500
++        ),
++
++      evidence:
++        evidence.slice(
++          0,
++          600
++        ),
++
++      instruction:
++        instruction.slice(
++          0,
++          600
++        ),
++    });
++
++    if (
++      findings.length >=
++      12
++    ) {
++      break;
++    }
++  }
++
++  return {
++    role,
++
++    pass:
++      !findings.some(
++        (finding) =>
++          finding.severity ===
++            "BLOCKER" ||
++          finding.severity ===
++            "MAJOR"
++      ),
++
++    findings,
++  };
++}
++
++function criticInstruction(
++  role:
++    ArticleCritiqueInput["role"]
++): string {
++  switch (role) {
++    case "SEARCH_INTENT":
++      return [
++        "Audit whether the article genuinely satisfies the exact search intent and user job.",
++        "Check whether the main answer appears early.",
++        "Check whether page format matches the research context.",
++        "Check required topics, same-intent questions, and evidence-backed SERP gaps.",
++        "Flag shallow coverage, intent drift, irrelevant sections, missing key answers, or a page that solves the wrong problem.",
++        "Do not demand arbitrary word counts, heading counts, keyword density, or exact-match repetition.",
++      ].join("\n");
++
++    case "FACT_CLAIM":
++      return [
++        "Audit every material factual and product claim with adversarial skepticism.",
++        "Product capabilities, metrics, guarantees, data sources, awards, superlatives, customers, datasets, monitoring coverage, and security claims require verified support in the research context.",
++        "Flag invented or overconfident statistics, citations, studies, sources, and capabilities.",
++        "Never fabricate evidence in order to repair a claim.",
++        "If support is absent, instruct the writer to remove, qualify, or narrow the statement.",
++      ].join("\n");
++
++    case "EDITORIAL":
++      return [
++        "Audit the article as a demanding senior human editor.",
++        "Flag generic AI introductions, filler, repetition, vague claims, empty transitions, robotic conclusions, redundant headings, shallow explanation, and unnecessary verbosity.",
++        "Prefer direct answers, specificity, useful reasoning, and clear information architecture.",
++        "Do not force keywords unnaturally.",
++        "Do not invent facts or examples that require unavailable evidence.",
++      ].join("\n");
++
++    default:
++      return "";
++  }
++}
++
++export const geminiGenerator: ArticleReviewGenerator = {
+   modelName: GEMINI_MODEL,
+ 
+   async generateBrief(input: ContentBriefInput): Promise<GeneratedBrief> {
+@@ -115,9 +337,20 @@ Produce a content brief as JSON with this exact shape:
+   "outline": [{ "heading": "string", "level": 2, "summary": "string" }]
+ }
+ 
+-The outline must have exactly one H1-equivalent implied by the article title (not included here), 4-8 H2/H3 sections, each with a one-sentence summary of what it covers. Respond with JSON only.`;
++The outline must assume exactly one page-level H1 represented by the article title and not included in the outline.
++
++There is no required or ideal number of H2 or H3 headings.
++
++Create an H2 only when there is a genuinely distinct major sub-intent, user question, process stage, comparison, concept, or topic required to satisfy the search intent.
++
++Create an H3 only when a specific H2 genuinely requires meaningful subdivision.
++
++Do not add headings to hit a numerical target, increase article length, repeat keywords, or imitate competitor heading counts.
++
++Every heading must earn its place by improving the information architecture.
++
++Respond with JSON only.`;
+ 
+-    console.log("[gemini] FULL PROMPT >>>\n" + prompt + "\n<<< END PROMPT");
+     const text = await callGemini(prompt);
+     const parsed = parseJson<GeneratedBrief>(text);
+ 
+@@ -138,6 +371,20 @@ Primary keyword: ${input.primaryKeyword}
+ Secondary keywords: ${input.secondaryKeywords.join(", ")}
+ Search intent: ${input.searchIntent}
+ 
++Reason:
++${input.reason}
++
++Editorial constraints and verified evidence:
++${input.recommendation}
++
++FACTUAL REQUIREMENTS:
++- Never invent facts about the business or product.
++- Never infer product capabilities from competitors, SERP results, the topic, the industry, or the company name.
++- Never invent dataset sizes, breach-record counts, customer counts, dark-web coverage, stealer-log coverage, monitoring capabilities, guarantees, awards, or superlatives.
++- If a product-specific claim is not explicitly verified in the evidence above, omit it.
++- Generic educational cybersecurity statements must be written cautiously and without fabricated sources.
++- Make the title and H1 clearly aligned with the primary search intent. Exact-match wording is preferred only when it reads naturally.
++
+ Outline:
+ ${outlineText}
+ 
+@@ -160,4 +407,161 @@ Respond with JSON only.`;
+ 
+     return parsed;
+   },
++  async critiqueArticle(
++    input:
++      ArticleCritiqueInput
++  ): Promise<ArticleCritiqueResult> {
++    const prompt = [
++      "You are an independent adversarial article critic.",
++      "",
++      `ROLE: ${input.role}`,
++      "",
++      criticInstruction(
++        input.role
++      ),
++      "",
++      "AUTHORITATIVE RESEARCH CONTEXT:",
++      input.researchContext,
++      "",
++      `PRIMARY QUERY: ${input.primaryKeyword}`,
++      `SEARCH INTENT: ${input.searchIntent}`,
++      `SECONDARY QUERY CLUSTER: ${input.secondaryKeywords.join(", ") || "none"}`,
++      "",
++      "PLANNED OUTLINE:",
++      input.outline
++        .map(
++          (section) =>
++            `H${section.level}: ${section.heading} — ${section.summary}`
++        )
++        .join("\n"),
++      "",
++      "ARTICLE TO AUDIT:",
++      JSON.stringify(
++        input.article,
++        null,
++        2
++      ),
++      "",
++      "Return JSON only:",
++      "{",
++      `  \"role\": \"${input.role}\",`,
++      '  "pass": true,',
++      '  "findings": [',
++      "    {",
++      '      "code": "UPPER_SNAKE_CASE",',
++      '      "severity": "BLOCKER" | "MAJOR" | "MINOR",',
++      '      "message": "specific problem",',
++      '      "evidence": "specific excerpt or observation",',
++      '      "instruction": "specific repair instruction"',
++      "    }",
++      "  ]",
++      "}",
++      "",
++      "BLOCKER means the article cannot safely proceed without correction.",
++      "MAJOR means a substantial problem requiring rewrite.",
++      "MINOR means optional polish and cannot independently block publication.",
++      "Do not invent findings merely to return criticism.",
++      "If no meaningful issue exists, return an empty findings array.",
++      "Do not rewrite the article during this step.",
++    ].join("\n");
++
++    const text =
++      await callGemini(
++        prompt
++      );
++
++    const parsed =
++      parseJson<unknown>(
++        text
++      );
++
++    return sanitizeCritiqueResult(
++      input.role,
++      parsed
++    );
++  },
++
++  async rewriteArticle(
++    input:
++      ArticleRewriteInput
++  ): Promise<GeneratedArticle> {
++    const prompt = [
++      "You are the senior revision editor in a high-stakes publishing workflow.",
++      "",
++      "Revise only what is necessary to resolve the supplied BLOCKER and MAJOR findings while preserving useful accurate material.",
++      "",
++      "AUTHORITATIVE RESEARCH CONTEXT:",
++      input.researchContext,
++      "",
++      `PRIMARY QUERY: ${input.primaryKeyword}`,
++      `SEARCH INTENT: ${input.searchIntent}`,
++      `SECONDARY QUERY CLUSTER: ${input.secondaryKeywords.join(", ") || "none"}`,
++      "",
++      "PLANNED OUTLINE:",
++      input.outline
++        .map(
++          (section) =>
++            `H${section.level}: ${section.heading} — ${section.summary}`
++        )
++        .join("\n"),
++      "",
++      "CURRENT ARTICLE:",
++      JSON.stringify(
++        input.article,
++        null,
++        2
++      ),
++      "",
++      "CRITIC FINDINGS:",
++      JSON.stringify(
++        input.findings,
++        null,
++        2
++      ),
++      "",
++      "REVISION RULES:",
++      "- Resolve every BLOCKER and MAJOR finding.",
++      "- Never invent facts, statistics, citations, studies, sources, capabilities, guarantees, awards, customers, datasets, or monitoring coverage.",
++      "- Unsupported claims must be removed, qualified, or narrowed instead of being given fabricated evidence.",
++      "- Preserve passages that are already accurate and useful.",
++      "- Answer the primary user job early.",
++      "- Avoid keyword stuffing and unnatural exact-match repetition.",
++      "- Do not pad word count.",
++      "- Do not manufacture headings to hit a count.",
++      "- Exactly one canonical H1 belongs in the h1 field.",
++      "- bodyMarkdown must not contain an H1.",
++      "",
++      "Return JSON only:",
++      "{",
++      '  "title": "string",',
++      '  "metaDescription": "string",',
++      '  "h1": "string",',
++      '  "bodyMarkdown": "full markdown article body using ## and ### headings"',
++      "}",
++    ].join("\n");
++
++    const text =
++      await callGemini(
++        prompt
++      );
++
++    const parsed =
++      parseJson<GeneratedArticle>(
++        text
++      );
++
++    if (
++      !parsed.title ||
++      !parsed.h1 ||
++      !parsed.bodyMarkdown
++    ) {
++      throw new ContentGenerationError(
++        "Gemini returned an incomplete rewritten article"
++      );
++    }
++
++    return parsed;
++  },
++
++
+ };
+diff --git a/src/lib/content/generator.ts b/src/lib/content/generator.ts
+index d98593b..d53ba75 100644
+--- a/src/lib/content/generator.ts
++++ b/src/lib/content/generator.ts
+@@ -1,17 +1,164 @@
+-import type { ContentBriefInput, GeneratedBrief, GeneratedArticle } from "./types";
+-import type { ContentOutlineSection } from "./types";
++import type {
++  ContentBriefInput,
++  ContentOutlineSection,
++  GeneratedArticle,
++  GeneratedBrief,
++} from "./types";
+ 
+-export class ContentGenerationError extends Error {
+-  constructor(message: string) {
++export class ContentGenerationError
++  extends Error {
++  constructor(
++    message: string
++  ) {
+     super(message);
+-    this.name = "ContentGenerationError";
++
++    this.name =
++      "ContentGenerationError";
+   }
+ }
+ 
++export type ArticleCriticRole =
++  | "SEARCH_INTENT"
++  | "FACT_CLAIM"
++  | "EDITORIAL";
++
++export type ArticleCriticSeverity =
++  | "BLOCKER"
++  | "MAJOR"
++  | "MINOR";
++
++export interface ArticleCriticFinding {
++  code:
++    string;
++
++  severity:
++    ArticleCriticSeverity;
++
++  message:
++    string;
++
++  evidence:
++    string;
++
++  instruction:
++    string;
++}
++
++export interface ArticleCritiqueInput {
++  role:
++    ArticleCriticRole;
++
++  article:
++    GeneratedArticle;
++
++  researchContext:
++    string;
++
++  primaryKeyword:
++    string;
++
++  searchIntent:
++    string;
++
++  secondaryKeywords:
++    string[];
++
++  outline:
++    ContentOutlineSection[];
++}
++
++export interface ArticleCritiqueResult {
++  role:
++    ArticleCriticRole;
++
++  pass:
++    boolean;
++
++  findings:
++    ArticleCriticFinding[];
++}
++
++export interface ArticleRewriteInput {
++  article:
++    GeneratedArticle;
++
++  findings:
++    ArticleCriticFinding[];
++
++  researchContext:
++    string;
++
++  primaryKeyword:
++    string;
++
++  searchIntent:
++    string;
++
++  secondaryKeywords:
++    string[];
++
++  outline:
++    ContentOutlineSection[];
++}
++
+ export interface ContentGenerator {
+-  readonly modelName: string;
++  readonly modelName:
++    string;
++
++  generateBrief(
++    input:
++      ContentBriefInput
++  ):
++    Promise<GeneratedBrief>;
++
++  generateArticle(
++    input:
++      ContentBriefInput & {
++        searchIntent:
++          string;
++
++        primaryKeyword:
++          string;
++
++        secondaryKeywords:
++          string[];
++
++        outline:
++          ContentOutlineSection[];
++      }
++  ):
++    Promise<GeneratedArticle>;
++}
++
++export interface ArticleReviewGenerator
++  extends ContentGenerator {
++  critiqueArticle(
++    input:
++      ArticleCritiqueInput
++  ):
++    Promise<ArticleCritiqueResult>;
++
++  rewriteArticle(
++    input:
++      ArticleRewriteInput
++  ):
++    Promise<GeneratedArticle>;
++}
+ 
+-  generateBrief(input: ContentBriefInput): Promise<GeneratedBrief>;
++export function supportsArticleReviewGenerator(
++  generator:
++    ContentGenerator
++): generator is ArticleReviewGenerator {
++  const candidate =
++    generator as
++      Partial<ArticleReviewGenerator>;
+ 
+-  generateArticle(input: ContentBriefInput & { searchIntent: string; primaryKeyword: string; secondaryKeywords: string[]; outline: ContentOutlineSection[] }): Promise<GeneratedArticle>;
++  return (
++    typeof candidate
++      .critiqueArticle ===
++      "function" &&
++    typeof candidate
++      .rewriteArticle ===
++      "function"
++  );
+ }
+diff --git a/src/lib/content/service.ts b/src/lib/content/service.ts
+index 317318c..845f168 100644
+--- a/src/lib/content/service.ts
++++ b/src/lib/content/service.ts
+@@ -1,13 +1,235 @@
+-import { prisma } from "@/lib/prisma";
+-import type { Prisma } from "@prisma/client";
+-import type { ContentGenerator } from "./generator";
+-import type { CMSProvider } from "@/lib/cms/provider";
+-import { ContentGenerationError } from "./generator";
+-import type { ContentBriefInput } from "./types";
+-import { getWebsiteKeywordContext } from "./keyword-context";
+-import { fetchRelatedKeywords } from "@/lib/keywords/dataforseo-provider";
++import {
++  assertArticleCriticsPassed,
++  shouldRewriteArticle,
++  summarizeArticleCritiques,
++} from "./article-review";
++
++import {
++  buildResearchPack,
++  researchPackPrompt,
++} from "./research-pack";
++
++import {
++  buildSearchBlueprint,
++} from "./search-blueprint";
++
++import {
++  businessFactPrompt,
++} from "./business-facts";
++
++import {
++  getBusinessFactRegistryForWebsite,
++} from "./business-fact-repository";
++
++import {
++  createContentEvidenceSnapshot,
++  getBusinessFactRegistryForBrief,
++} from "./evidence-snapshot";
++
++import {
++  assertContentGatePassed,
++  evaluateContentGate,
++  formatContentGateFailure,
++} from "./content-gate";
++
++import {
++  prisma,
++} from "@/lib/prisma";
++
++import type {
++  Prisma,
++} from "@prisma/client";
++
++import type {
++  ContentGenerator,
++} from "./generator";
++
++import type {
++  CMSProvider,
++} from "@/lib/cms/provider";
++
++import {
++  ContentGenerationError,
++  supportsArticleReviewGenerator,
++} from "./generator";
++
++import type {
++  ContentBriefInput,
++  ContentStrategy,
++} from "./types";
++
++import {
++  getWebsiteKeywordContext,
++} from "./keyword-context";
++
++import {
++  normalizeOutline,
++} from "./seo-strategy";
++
++import {
++  buildFinalContentPlan,
++  finalPlanPrompt,
++} from "./final-content-plan";
++
++import {
++  auditArticle,
++  repairGeneratedArticle,
++} from "./content-quality";
++
++import {
++  analyzeArticleAgainstPlan,
++} from "./content-plan-analysis";
++
++
++async function analyzeStoredContentPlan({
++  briefId,
++  title,
++  metaDescription,
++  h1,
++  bodyMarkdown,
++  primaryKeyword,
++  secondaryKeywords,
++}: {
++  briefId: string;
++  title: string;
++  metaDescription?: string | null;
++  h1: string;
++  bodyMarkdown: string;
++  primaryKeyword: string;
++  secondaryKeywords?: string[];
++}) {
++  const evidence =
++    await prisma.contentEvidenceSnapshot.findUnique({
++      where: {
++        briefId,
++      },
++
++      select: {
++        plan:
++          true,
++      },
++    });
++
++  return analyzeArticleAgainstPlan({
++    title,
++    metaDescription,
++    h1,
++    bodyMarkdown,
++    primaryKeyword,
++    secondaryKeywords,
++
++    plan:
++      evidence?.plan ??
++      null,
++  });
++}
++
++
++function logContentIntelligence(
++  briefId: string,
++  intelligence: Awaited<
++    ReturnType<
++      typeof analyzeStoredContentPlan
++    >
++  >
++): void {
++  console.info(
++    "[content intelligence]",
++    {
++      briefId,
++
++      planAvailable:
++        intelligence
++          .planAvailable,
++
++      confidence:
++        intelligence
++          .confidence,
++
++      structure: {
++        h1:
++          intelligence
++            .article
++            .structure
++            .totalH1,
++
++        h2:
++          intelligence
++            .article
++            .structure
++            .h2,
++
++        h3:
++          intelligence
++            .article
++            .structure
++            .h3,
++
++        words:
++          intelligence
++            .article
++            .wordCount,
++      },
++
++      plannedKeywords:
++        intelligence
++          .article
++          .keywordCoverage
++          .planned,
++
++      usedPlannedKeywords:
++        intelligence
++          .article
++          .keywordCoverage
++          .used,
++
++      missingPlannedKeywords:
++        intelligence
++          .article
++          .keywordCoverage
++          .missing,
++
++      topicCoverage: {
++        covered:
++          intelligence
++            .topics
++            .covered,
++
++        total:
++          intelligence
++            .topics
++            .total,
++      },
++
++      questionCoverage: {
++        covered:
++          intelligence
++            .questions
++            .covered,
++
++        total:
++          intelligence
++            .questions
++            .total,
++      },
++
++      structurallyValid:
++        intelligence
++          .article
++          .structurallyValid,
++
++      warnings:
++        intelligence
++          .warnings,
++    }
++  );
++}
++
++
+ 
+ export interface CreateBriefInput {
++  outcomeActionId?: string;
++  requiredPrimaryKeyword?: string;
+   websiteId: string;
+   opportunityId?: string;
+   topic: string;
+@@ -17,132 +239,1349 @@ export interface CreateBriefInput {
+   websiteUrl: string;
+ }
+ 
+-export async function createContentBrief(generator: ContentGenerator, input: CreateBriefInput) {
+-  const context = await getWebsiteKeywordContext(input.websiteId).catch((err) => {
+-    console.error("[content] keyword context lookup failed, continuing without it:", err);
+-    return null;
+-  });
+ 
+-  let relatedKeywords: ContentBriefInput["relatedKeywords"] = [];
+-  try {
+-    const related = await fetchRelatedKeywords(input.topic);
+-    relatedKeywords = related.slice(0, 10).map((r) => ({
+-      keyword: r.keyword,
+-      searchVolume: r.searchVolume,
+-      cpc: r.cpc,
+-      keywordDifficulty: r.keywordDifficulty,
+-    }));
+-  } catch (err) {
+-    console.error("[content] related keywords fetch failed, continuing without grounding:", err);
++function strategyPrompt(
++  strategy:
++    ContentStrategy
++): string {
++  const secondary =
++    strategy.secondary
++      .map(
++        (item) =>
++          item.keyword
++      )
++      .join(", ");
++
++  const supporting =
++    strategy.supporting
++      .map(
++        (item) =>
++          item.keyword
++      )
++      .join(", ");
++
++  return [
++    "CONTENT STRATEGY:",
++    `Intent: ${strategy.searchIntent}`,
++    `Primary keyword: ${strategy.primary.keyword}`,
++    secondary
++      ? `Secondary keywords: ${secondary}`
++      : "",
++    supporting
++      ? `Supporting concepts: ${supporting}`
++      : "",
++    `Page decision: ${strategy.action.type}`,
++    "Use exactly one page-level H1.",
++    "There is NO target number of H2 or H3 headings.",
++    "Create an H2 only for a genuinely distinct major sub-intent, question, process stage, comparison, or concept required to satisfy the query.",
++    "Create an H3 only when one specific H2 genuinely needs subdivision. Never add H3 headings merely to increase structure.",
++    "Do not create headings solely to repeat keywords.",
++    "Answer the main query directly near the beginning.",
++    "Avoid keyword stuffing.",
++    "Keep synonymous queries with the same intent on one page.",
++    "Do not invent facts, statistics, sources, security claims, or studies.",
++    "Prefer concise definitions, direct answers, lists, steps, comparisons, and extractable factual statements where appropriate.",
++  ]
++    .filter(Boolean)
++    .join("\n");
++}
++
++
++export async function createContentBrief(
++  generator:
++    ContentGenerator,
++  input:
++    CreateBriefInput
++) {
++  const [
++    finalPlan,
++    context,
++  ] =
++    await Promise.all([
++      buildFinalContentPlan({
++        websiteId:
++          input.websiteId,
++
++        topic:
++          input.topic,
++
++        businessName:
++          input.businessName,
++      }),
++
++      getWebsiteKeywordContext(
++        input.websiteId
++      ).catch(
++        () => null
++      ),
++    ]);
++
++  const strategy =
++    finalPlan.strategy;
++
++  if (
++    input.requiredPrimaryKeyword
++  ) {
++    const requiredPrimaryKeyword =
++      input.requiredPrimaryKeyword
++        .trim()
++        .toLowerCase()
++        .replace(
++          /\s+/g,
++          " "
++        );
++
++    const plannedPrimaryKeyword =
++      strategy.primary.keyword
++        .trim()
++        .toLowerCase()
++        .replace(
++          /\s+/g,
++          " "
++        );
++
++    if (
++      requiredPrimaryKeyword !==
++      plannedPrimaryKeyword
++    ) {
++      throw new Error(
++        `Content plan primary keyword "${strategy.primary.keyword}" does not match required Outcome Action keyword "${input.requiredPrimaryKeyword}".`
++      );
++    }
+   }
+ 
+-  const briefInput: ContentBriefInput = {
+-    topic: input.topic,
+-    reason: input.reason,
+-    recommendation: input.recommendation,
+-    businessName: input.businessName,
+-    websiteUrl: input.websiteUrl,
+-    topKeywords: context?.topKeywords,
+-    relatedKeywords,
+-  };
++  const factRegistry =
++    await getBusinessFactRegistryForWebsite(
++      input.websiteId
++    );
+ 
+-  const generated = await generator.generateBrief(briefInput);
++  const relatedKeywords:
++    ContentBriefInput["relatedKeywords"] =
++      [
++        strategy.primary,
++        ...strategy.secondary,
++        ...strategy.supporting,
++      ]
++        .slice(0, 15)
++        .map(
++          (keyword) => ({
++            keyword:
++              keyword.keyword,
+ 
+-  return prisma.contentBrief.create({
+-    data: {
+-      websiteId: input.websiteId,
+-      opportunityId: input.opportunityId,
+-      topic: input.topic,
+-      searchIntent: generated.searchIntent,
+-      primaryKeyword: generated.primaryKeyword,
+-      secondaryKeywords: generated.secondaryKeywords,
+-      outline: generated.outline as unknown as Prisma.InputJsonValue,
+-      status: "READY",
+-      generatedBy: generator.modelName,
+-    },
+-  });
++            searchVolume:
++              keyword.searchVolume,
++
++            cpc:
++              keyword.cpc,
++
++            keywordDifficulty:
++              keyword.difficulty,
++          })
++        );
++
++  const searchBlueprintShadow =
++    buildSearchBlueprint({
++      plan:
++        finalPlan,
++
++      businessFacts:
++        factRegistry,
++    });
++
++  console.info(
++    "[content shadow] search blueprint",
++    {
++      version:
++        searchBlueprintShadow.version,
++
++      readiness:
++        searchBlueprintShadow.readiness,
++
++      productionPrimary:
++        searchBlueprintShadow
++          .decision
++          .productionPrimaryKeyword,
++
++      recommendedPrimary:
++        searchBlueprintShadow
++          .decision
++          .recommendedPrimaryKeyword,
++
++      primaryChanged:
++        searchBlueprintShadow
++          .decision
++          .primaryChanged,
++
++      action:
++        searchBlueprintShadow
++          .decision
++          .action,
++
++      keywordDecision:
++        searchBlueprintShadow
++          .decision
++          .keywordDecisionStatus,
++
++      keywordDecisionConfidence:
++        searchBlueprintShadow
++          .decision
++          .keywordDecisionConfidence,
++
++      serpFeasibility:
++        searchBlueprintShadow
++          .decision
++          .serpFeasibility,
++
++      serpConfidence:
++        searchBlueprintShadow
++          .decision
++          .serpConfidence,
++
++      blockers:
++        searchBlueprintShadow
++          .governance
++          .blockers,
++
++      reviews:
++        searchBlueprintShadow
++          .governance
++          .reviews,
++    }
++  );
++
++  const briefInput:
++    ContentBriefInput = {
++      topic:
++        input.topic,
++
++      reason:
++        input.reason,
++
++      recommendation:
++        [
++          input.recommendation,
++          strategyPrompt(
++            strategy
++          ),
++
++          finalPlanPrompt(
++            finalPlan
++          ),
++
++          businessFactPrompt(
++            factRegistry
++          ),
++        ].join(
++          "\n\n"
++        ),
++
++      businessName:
++        input.businessName,
++
++      websiteUrl:
++        input.websiteUrl,
++
++      topKeywords:
++        context?.topKeywords,
++
++      relatedKeywords,
++
++      strategy,
++    };
++
++  const generated =
++    await generator.generateBrief(
++      briefInput
++    );
++
++  const outline =
++    normalizeOutline(
++      generated.outline,
++      strategy
++    );
++
++  const createdBrief =
++    await prisma.contentBrief.create({
++      data: {
++        websiteId:
++          input.websiteId,
++
++        opportunityId:
++          input.opportunityId,
++
++        outcomeActionId:
++          input.outcomeActionId,
++
++        topic:
++          input.topic,
++
++        searchIntent:
++          strategy.searchIntent,
++
++        primaryKeyword:
++          strategy.primary
++            .keyword,
++
++        secondaryKeywords:
++          strategy.secondary.map(
++            (item) =>
++              item.keyword
++          ),
++
++        outline:
++          outline as unknown as
++            Prisma.InputJsonValue,
++
++        status:
++          "READY",
++
++        generatedBy:
++          generator.modelName,
++      },
++    });
++
++  try {
++    await createContentEvidenceSnapshot({
++      briefId:
++        createdBrief.id,
++
++      websiteId:
++        input.websiteId,
++
++      topic:
++        input.topic,
++
++      primaryKeyword:
++        strategy.primary.keyword,
++
++      searchIntent:
++        strategy.searchIntent,
++
++      plan:
++        {
++          ...finalPlan,
++
++          searchBlueprintShadow,
++        },
++
++      businessFacts:
++        factRegistry,
++
++      keywordContext:
++        context,
++
++      generatorModel:
++        generator.modelName,
++    });
++  } catch (error) {
++    await prisma.contentBrief.delete({
++      where: {
++        id:
++          createdBrief.id,
++      },
++    }).catch(
++      () => undefined
++    );
++
++    throw error;
++  }
++
++  return createdBrief;
+ }
+ 
+-export async function generateArticleFromBrief(generator: ContentGenerator, briefId: string) {
+-  const brief = await prisma.contentBrief.findUnique({ where: { id: briefId }, include: { website: { include: { business: true } } } });
++
++export async function generateArticleFromBrief(
++  generator:
++    ContentGenerator,
++  briefId:
++    string
++) {
++  const brief =
++    await prisma.contentBrief.findUnique({
++      where: {
++        id:
++          briefId,
++      },
++
++      include: {
++        website: {
++          include: {
++            business:
++              true,
++          },
++        },
++      },
++    });
++
+   if (!brief) {
+-    throw new Error("Content brief not found");
++    throw new Error(
++      "Content brief not found"
++    );
+   }
+ 
+-  const pendingArticle = await prisma.contentArticle.create({
+-    data: {
+-      briefId: brief.id,
+-      title: "",
+-      metaDescription: "",
+-      h1: "",
+-      bodyMarkdown: "",
+-      status: "GENERATING",
+-      generatedBy: generator.modelName,
+-    },
+-  });
++  const factRegistry =
++    await getBusinessFactRegistryForBrief({
++      briefId:
++        brief.id,
+ 
+-  try {
+-    const generated = await generator.generateArticle({
+-      topic: brief.topic,
+-      reason: "",
+-      recommendation: "",
+-      businessName: brief.website.business.name,
+-      websiteUrl: brief.website.url,
+-      searchIntent: brief.searchIntent,
+-      primaryKeyword: brief.primaryKeyword,
+-      secondaryKeywords: brief.secondaryKeywords,
+-      outline: brief.outline as { heading: string; level: 2 | 3; summary: string }[],
++      websiteId:
++        brief.websiteId,
++    });
++
++  const generationSnapshot =
++    await prisma
++      .contentEvidenceSnapshot
++      .findUnique({
++        where: {
++          briefId:
++            brief.id,
++        },
++
++        select: {
++          plan:
++            true,
++        },
++      });
++
++  const researchPack =
++    buildResearchPack({
++      brief: {
++        topic:
++          brief.topic,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        searchIntent:
++          brief.searchIntent,
++
++        secondaryKeywords:
++          brief.secondaryKeywords,
++      },
++
++      planSnapshot:
++        generationSnapshot
++          ?.plan ??
++        null,
++
++      businessFacts:
++        factRegistry,
++    });
++
++  console.info(
++    "[content research pack]",
++    {
++      briefId:
++        brief.id,
++
++      version:
++        researchPack.version,
++
++      source:
++        researchPack.source,
++
++      readiness:
++        researchPack.readiness,
++
++      primaryKeyword:
++        researchPack.primaryKeyword,
++
++      pageAction:
++        researchPack.pageAction,
++
++      targetFormat:
++        researchPack.targetFormat,
++
++      searchVolume:
++        researchPack
++          .searchEvidence
++          .searchVolume,
++
++      difficulty:
++        researchPack
++          .searchEvidence
++          .difficulty,
++
++      impressions:
++        researchPack
++          .searchEvidence
++          .impressions,
++
++      clicks:
++        researchPack
++          .searchEvidence
++          .clicks,
++
++      position:
++        researchPack
++          .searchEvidence
++          .existingPosition,
++
++      topicalAuthority:
++        researchPack
++          .searchEvidence
++          .topicalAuthorityStrength,
++
++      serpFeasibility:
++        researchPack
++          .searchEvidence
++          .serpFeasibility,
++
++      informationGain:
++        researchPack
++          .informationGain
++          .status,
++
++      blockers:
++        researchPack.blockers,
++
++      reviews:
++        researchPack.reviews,
++    }
++  );
++
++  if (
++    researchPack.readiness ===
++    "BLOCKED"
++  ) {
++    throw new ContentGenerationError(
++      `RESEARCH_PACK_BLOCKED: ${researchPack.blockers.join(", ")}`
++    );
++  }
++
++
++  const pendingArticle =
++    await prisma.contentArticle.create({
++      data: {
++        briefId:
++          brief.id,
++
++        title:
++          "",
++
++        metaDescription:
++          "",
++
++        h1:
++          "",
++
++        bodyMarkdown:
++          "",
++
++        status:
++          "GENERATING",
++
++        generatedBy:
++          generator.modelName,
++      },
+     });
+ 
++  try {
++    const generated =
++      await generator.generateArticle({
++        topic:
++          brief.topic,
++
++        reason:
++          "Create the strongest single page for this exact search intent without cannibalizing closely related content.",
++
++        recommendation: [
++          `Primary keyword: ${brief.primaryKeyword}.`,
++          `Search intent: ${brief.searchIntent}.`,
++          "Exactly one H1 exists outside bodyMarkdown.",
++          "Do not place an H1 inside bodyMarkdown.",
++          "Use H2 for major intent sections.",
++          "Use H3 only underneath a relevant H2.",
++          "Answer the core question early.",
++          "Use keywords naturally.",
++          "Do not invent statistics, citations, claims, or sources.",
++          businessFactPrompt(
++            factRegistry
++          ),
++
++          researchPackPrompt(
++            researchPack
++          ),
++          "Write for humans first while making facts and answers easy for search engines and retrieval systems to extract.",
++        ].join(
++          "\n"
++        ),
++
++        businessName:
++          brief.website
++            .business
++            .name,
++
++        websiteUrl:
++          brief.website.url,
++
++        searchIntent:
++          brief.searchIntent,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        secondaryKeywords:
++          brief.secondaryKeywords,
++
++        outline:
++          brief.outline as {
++            heading: string;
++            level: 2 | 3;
++            summary: string;
++          }[],
++      });
++
++    let reviewedArticle =
++      generated;
++
++    if (
++      supportsArticleReviewGenerator(
++        generator
++      )
++    ) {
++      const reviewGenerator =
++        generator;
++
++      const criticRoles = [
++        "SEARCH_INTENT",
++        "FACT_CLAIM",
++        "EDITORIAL",
++      ] as const;
++
++      const researchContext =
++        researchPackPrompt(
++          researchPack
++        );
++
++      const reviewOutline =
++        brief.outline as {
++          heading:
++            string;
++
++          level:
++            2 | 3;
++
++          summary:
++            string;
++        }[];
++
++      const runCritics =
++        async (
++          article:
++            typeof generated
++        ) =>
++          Promise.all(
++            criticRoles.map(
++              (role) =>
++                reviewGenerator
++                  .critiqueArticle({
++                    role,
++
++                    article,
++
++                    researchContext,
++
++                    primaryKeyword:
++                      brief.primaryKeyword,
++
++                    searchIntent:
++                      brief.searchIntent,
++
++                    secondaryKeywords:
++                      brief.secondaryKeywords,
++
++                    outline:
++                      reviewOutline,
++                  })
++            )
++          );
++
++      const initialCritiques =
++        await runCritics(
++          reviewedArticle
++        );
++
++      const initialSummary =
++        summarizeArticleCritiques(
++          initialCritiques
++        );
++
++      console.info(
++        "[content critics] initial",
++        {
++          briefId:
++            brief.id,
++
++          pass:
++            initialSummary.pass,
++
++          counts:
++            initialSummary.counts,
++
++          findings:
++            initialSummary
++              .findings
++              .map(
++                (finding) => ({
++                  code:
++                    finding.code,
++
++                  severity:
++                    finding.severity,
++
++                  message:
++                    finding.message,
++                })
++              ),
++        }
++      );
++
++      if (
++        shouldRewriteArticle(
++          initialSummary
++        )
++      ) {
++        reviewedArticle =
++          await reviewGenerator
++            .rewriteArticle({
++              article:
++                reviewedArticle,
++
++              findings:
++                initialSummary.findings,
++
++              researchContext,
++
++              primaryKeyword:
++                brief.primaryKeyword,
++
++              searchIntent:
++                brief.searchIntent,
++
++              secondaryKeywords:
++                brief.secondaryKeywords,
++
++              outline:
++                reviewOutline,
++            });
++
++        const finalCritiques =
++          await runCritics(
++            reviewedArticle
++          );
++
++        const finalSummary =
++          summarizeArticleCritiques(
++            finalCritiques
++          );
++
++        console.info(
++          "[content critics] final",
++          {
++            briefId:
++              brief.id,
++
++            pass:
++              finalSummary.pass,
++
++            counts:
++              finalSummary.counts,
++
++            findings:
++              finalSummary
++                .findings
++                .map(
++                  (finding) => ({
++                    code:
++                      finding.code,
++
++                    severity:
++                      finding.severity,
++
++                    message:
++                      finding.message,
++                  })
++                ),
++          }
++        );
++
++        assertArticleCriticsPassed(
++          finalSummary
++        );
++      }
++    } else {
++      console.warn(
++        "[content critics] provider does not support multi-pass article review",
++        {
++          briefId:
++            brief.id,
++
++          generator:
++            generator.modelName,
++        }
++      );
++    }
++
++    const repaired =
++      repairGeneratedArticle(
++        reviewedArticle
++      );
++
++    const intelligence =
++      await analyzeStoredContentPlan({
++        briefId:
++          brief.id,
++
++        title:
++          repaired.title,
++
++        metaDescription:
++          repaired.metaDescription,
++
++        h1:
++          repaired.h1,
++
++        bodyMarkdown:
++          repaired.bodyMarkdown,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        secondaryKeywords:
++          brief.secondaryKeywords,
++      });
++
++    logContentIntelligence(
++      brief.id,
++      intelligence
++    );
++
++    const audit =
++      auditArticle({
++        article:
++          repaired,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++      });
++
++    console.info(
++      "[content quality]",
++      {
++        briefId:
++          brief.id,
++
++        score:
++          audit.score,
++
++        words:
++          audit.wordCount,
++
++        h2:
++          audit.h2Count,
++
++        h3:
++          audit.h3Count,
++
++        primaryKeywordDensityPct:
++          audit.primaryKeywordDensityPct,
++
++        issues:
++          audit.issues,
++      }
++    );
++
++    const gate =
++      evaluateContentGate({
++        article:
++          repaired,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        audit,
++
++        registry:
++          factRegistry,
++      });
++
++    console.info(
++      "[content gate]",
++      {
++        briefId:
++          brief.id,
++
++        pass:
++          gate.pass,
++
++        blockingIssues:
++          gate.blockingIssues,
++
++        warnings:
++          gate.warnings,
++
++        topicAlignment:
++          gate.topicAlignment,
++
++        claims:
++          gate.claimFindings.map(
++            (finding) => ({
++              code:
++                finding.code,
++
++              sentence:
++                finding.sentence,
++            })
++          ),
++      }
++    );
++
++    if (
++      !gate.pass
++    ) {
++      return prisma.contentArticle.update({
++        where: {
++          id:
++            pendingArticle.id,
++        },
++
++        data: {
++          title:
++            repaired.title,
++
++          metaDescription:
++            repaired.metaDescription,
++
++          h1:
++            repaired.h1,
++
++          bodyMarkdown:
++            repaired.bodyMarkdown,
++
++          status:
++            "REJECTED",
++
++          publishError:
++            formatContentGateFailure(
++              gate
++            ),
++        },
++      });
++    }
++
++
+     return prisma.contentArticle.update({
+-      where: { id: pendingArticle.id },
++      where: {
++        id:
++          pendingArticle.id,
++      },
++
+       data: {
+-        title: generated.title,
+-        metaDescription: generated.metaDescription,
+-        h1: generated.h1,
+-        bodyMarkdown: generated.bodyMarkdown,
+-        status: "DRAFT",
++        title:
++          repaired.title,
++
++        metaDescription:
++          repaired.metaDescription,
++
++        h1:
++          repaired.h1,
++
++        bodyMarkdown:
++          repaired.bodyMarkdown,
++
++        status:
++          "DRAFT",
++
++        publishError:
++          null,
+       },
+     });
+-  } catch (err) {
+-    const message = err instanceof ContentGenerationError ? err.message : "Article generation failed";
++  } catch (error) {
++    const rawMessage =
++      error instanceof Error
++        ? error.message
++        : "";
++
++    const transientProviderFailure =
++      /Gemini API error (429|500|502|503|504)\b/.test(
++        rawMessage
++      ) ||
++      /AbortError|aborted|timeout/i.test(
++        rawMessage
++      );
++
++    if (transientProviderFailure) {
++      console.warn(
++        "[content generation] temporary provider failure",
++        {
++          briefId:
++            brief.id,
++
++          articleId:
++            pendingArticle.id,
++
++          message:
++            rawMessage.slice(
++              0,
++              240
++            ),
++        }
++      );
++
++      await prisma.contentArticle.delete({
++        where: {
++          id:
++            pendingArticle.id,
++        },
++      }).catch(
++        () => undefined
++      );
++
++      throw error;
++    }
++
++    const message =
++      error instanceof
++      ContentGenerationError
++        ? error.message
++        : "Article generation failed";
++
+     return prisma.contentArticle.update({
+-      where: { id: pendingArticle.id },
+-      data: { status: "REJECTED", publishError: message },
++      where: {
++        id:
++          pendingArticle.id,
++      },
++
++      data: {
++        status:
++          "REJECTED",
++
++        publishError:
++          message,
++      },
+     });
+   }
+ }
+ 
+-export async function approveArticle(articleId: string) {
++
++export async function approveArticle(
++  articleId:
++    string
++) {
++  const article =
++    await prisma.contentArticle.findUnique({
++      where: {
++        id:
++          articleId,
++      },
++
++      include: {
++        brief: {
++          include: {
++            website: {
++              include: {
++                business:
++                  true,
++              },
++            },
++          },
++        },
++      },
++    });
++
++  if (!article) {
++    throw new Error(
++      "Article not found"
++    );
++  }
++
++  if (
++    article.status !==
++      "DRAFT" &&
++    article.status !==
++      "IN_REVIEW"
++  ) {
++    throw new Error(
++      `Cannot approve article with status ${article.status}`
++    );
++  }
++
++  const intelligence =
++    await analyzeStoredContentPlan({
++      briefId:
++        article.briefId,
++
++      title:
++        article.title,
++
++      metaDescription:
++        article.metaDescription,
++
++      h1:
++        article.h1,
++
++      bodyMarkdown:
++        article.bodyMarkdown,
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      secondaryKeywords:
++        article.brief
++          .secondaryKeywords,
++    });
++
++  logContentIntelligence(
++    article.briefId,
++    intelligence
++  );
++
++  const audit =
++    auditArticle({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++    });
++
++  const registry =
++    await getBusinessFactRegistryForWebsite(
++      article.brief.websiteId
++    );
++
++  const gate =
++    evaluateContentGate({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      audit,
++
++      registry,
++    });
++
++  assertContentGatePassed(
++    gate
++  );
++
+   return prisma.contentArticle.update({
+-    where: { id: articleId },
+-    data: { status: "APPROVED" },
++    where: {
++      id:
++        articleId,
++    },
++
++    data: {
++      status:
++        "APPROVED",
++
++      publishError:
++        null,
++    },
+   });
+ }
+ 
+-export async function publishArticle(provider: CMSProvider, articleId: string) {
+-  const article = await prisma.contentArticle.findUnique({ where: { id: articleId }, include: { brief: true } });
++
++export async function publishArticle(
++  provider:
++    CMSProvider,
++  articleId:
++    string
++) {
++  const article =
++    await prisma.contentArticle.findUnique({
++      where: {
++        id:
++          articleId,
++      },
++
++      include: {
++        brief: {
++          include: {
++            website: {
++              include: {
++                business:
++                  true,
++              },
++            },
++          },
++        },
++      },
++    });
++
+   if (!article) {
+-    throw new Error("Article not found");
++    throw new Error(
++      "Article not found"
++    );
+   }
+-  if (article.status !== "APPROVED") {
+-    throw new Error("Only approved articles can be published");
++
++  if (
++    article.status !==
++    "APPROVED"
++  ) {
++    throw new Error(
++      "Only approved articles can be published"
++    );
+   }
+ 
+-  const result = await provider.publishContent(article.brief.websiteId, {
+-    title: article.title,
+-    metaDescription: article.metaDescription,
+-    h1: article.h1,
+-    bodyMarkdown: article.bodyMarkdown,
+-  });
++  const intelligence =
++    await analyzeStoredContentPlan({
++      briefId:
++        article.briefId,
++
++      title:
++        article.title,
++
++      metaDescription:
++        article.metaDescription,
++
++      h1:
++        article.h1,
++
++      bodyMarkdown:
++        article.bodyMarkdown,
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      secondaryKeywords:
++        article.brief
++          .secondaryKeywords,
++    });
++
++  logContentIntelligence(
++    article.briefId,
++    intelligence
++  );
++
++  const audit =
++    auditArticle({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++    });
++
++  const registry =
++    await getBusinessFactRegistryForWebsite(
++      article.brief.websiteId
++    );
++
++  const gate =
++    evaluateContentGate({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      audit,
++
++      registry,
++    });
++
++  assertContentGatePassed(
++    gate
++  );
++
++
++  const result =
++    await provider.publishContent(
++      article.brief
++        .websiteId,
++      {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      }
++    );
+ 
+   return prisma.contentArticle.update({
+-    where: { id: articleId },
++    where: {
++      id:
++        articleId,
++    },
++
+     data: {
+-      status: result.status === "SUCCESS" ? "PUBLISHED" : "PUBLISH_FAILED",
+-      publishedUrl: result.publishedUrl,
+-      publishedAt: result.status === "SUCCESS" ? new Date() : null,
+-      publishError: result.errorMessage,
++      status:
++        result.status ===
++        "SUCCESS"
++          ? "PUBLISHED"
++          : "PUBLISH_FAILED",
++
++      publishedUrl:
++        result.publishedUrl,
++
++      publishedAt:
++        result.status ===
++        "SUCCESS"
++          ? new Date()
++          : null,
++
++      publishError:
++        result.errorMessage,
+     },
+   });
+ }

@@ -1,0 +1,318 @@
+.status {
+  color: var(--secondary);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.statusError {
+  color: var(--danger);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filterGroupLabel {
+  font-size: 12px;
+  color: var(--secondary);
+  padding: 6px 4px 6px 0;
+}
+
+.filterButton {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--secondary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filterButton:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+.filterButtonActive {
+  background: var(--accent);
+  color: var(--primary);
+  border-color: var(--accent);
+}
+
+.filterNote {
+  font-size: 12px;
+  color: var(--secondary);
+  margin: 4px 0 16px 0;
+  font-style: italic;
+}
+
+.explainBox {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--elevated);
+}
+
+.explainTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0 0 8px 0;
+}
+
+.explainText {
+  font-size: 13px;
+  color: var(--secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.botList {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+}
+
+.botListItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.botCount {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.chartBlock {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.chartLabel {
+  font-size: 12px;
+  color: var(--secondary);
+  margin-bottom: 8px;
+}
+
+.dayDetail {
+  display: flex;
+  gap: 24px;
+  padding: 8px 16px 16px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dayDetailCol {
+  flex: 1;
+}
+
+.dayDetailLabel {
+  font-size: 11px;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.dayDetailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--primary);
+  padding: 3px 0;
+}
+
+
+/* Unified dashboard visual pass */
+.chartBlock { box-shadow: none !important; border-color: var(--border) !important; border-radius: 8px !important; background-color: var(--surface) !important; }
+.chartLabel { box-shadow: none !important; }
+.explainBox { box-shadow: none !important; border-color: var(--border) !important; border-radius: 8px !important; background-color: var(--surface) !important; }
+.filterButton { box-shadow: none !important; border-radius: 5px !important; }
+.filterButtonActive { box-shadow: none !important; border-radius: 5px !important; }
+
+/* LINEAR_SCENE_V2 */
+
+.botListItem { border-color: rgba(255,255,255,.04) !important; }
+.chartBlock { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; }
+.chartLabel { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; }
+.dayDetail { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; }
+.dayDetailCol { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; }
+.dayDetailLabel { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; }
+.dayDetailRow { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; border-color: rgba(255,255,255,.04) !important; }
+.explainBox { border-color: var(--border) !important; border-radius: 11px !important; background: linear-gradient(180deg, rgba(255,255,255,.016), rgba(255,255,255,.003)), var(--surface) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.016), 0 18px 48px rgba(0,0,0,.08) !important; }
+.explainTitle { letter-spacing: -.01em !important; }
+.filterButton { border-radius: 7px !important; box-shadow: none !important; }
+.filterButtonActive { border-radius: 7px !important; box-shadow: none !important; }
+.filterRow { border-color: rgba(255,255,255,.04) !important; }
+
+/* LINEAR_ANALYTICS_PASS */
+
+:global(.recharts-cartesian-grid line) {
+  stroke: rgba(255,255,255,.055) !important;
+}
+
+:global(.recharts-cartesian-axis-line) {
+  stroke: rgba(255,255,255,.075) !important;
+}
+
+:global(.recharts-cartesian-axis-tick-line) {
+  stroke: rgba(255,255,255,.06) !important;
+}
+
+:global(.recharts-cartesian-axis-tick-value) {
+  fill: #656970 !important;
+  font-size: 10px !important;
+}
+
+:global(.recharts-bar-rectangle path),
+:global(.recharts-bar-rectangle rect) {
+  fill: #178b9b !important;
+  fill-opacity: .62 !important;
+}
+
+:global(.recharts-tooltip-wrapper) {
+  outline: none !important;
+}
+
+:global(.recharts-default-tooltip) {
+  border: 1px solid rgba(255,255,255,.075) !important;
+  border-radius: 7px !important;
+  background: #17191c !important;
+  box-shadow: 0 18px 50px rgba(0,0,0,.32) !important;
+}
+
+:global(.recharts-tooltip-label) {
+  color: #a7aab0 !important;
+}
+
+:global(.recharts-tooltip-item) {
+  color: #d3d4d7 !important;
+}
+
+/* PREMIUM_ANALYTICS_V4 */
+
+:global(.recharts-cartesian-grid line) { stroke: rgba(255,255,255,.045) !important; }
+:global(.recharts-cartesian-axis-line) { stroke: rgba(255,255,255,.06) !important; }
+:global(.recharts-cartesian-axis-tick-line) { stroke: transparent !important; }
+:global(.recharts-cartesian-axis-tick-value) { fill: #676a71 !important; font-size: 10px !important; }
+:global(.recharts-bar-rectangle path), :global(.recharts-bar-rectangle rect) { fill: #2695a5 !important; fill-opacity: .60 !important; }
+:global(.recharts-default-tooltip) { background: #191b1e !important; border: 1px solid rgba(255,255,255,.075) !important; border-radius: 7px !important; box-shadow: 0 18px 55px rgba(0,0,0,.32) !important; }
+
+.botListItem { border-color: rgba(255,255,255,.035) !important; }
+.chartBlock { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.chartLabel { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.dayDetailRow { border-color: rgba(255,255,255,.035) !important; }
+.filterButton { border-radius: 5px !important; box-shadow: none !important; }
+.filterButtonActive { border-radius: 5px !important; box-shadow: none !important; }
+.filterGroupLabel { border-radius: 5px !important; box-shadow: none !important; }
+.filterNote { border-radius: 5px !important; box-shadow: none !important; }
+.filterRow { border-color: rgba(255,255,255,.035) !important; border-radius: 5px !important; box-shadow: none !important; }
+.recharts-bar-rectangle { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-axis-line { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-axis-tick-line { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-axis-tick-value { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-grid { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-default-tooltip { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-tooltip-item { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; border-color: rgba(255,255,255,.035) !important; }
+.recharts-tooltip-label { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+.recharts-tooltip-wrapper { border-color: var(--border) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 22px 65px rgba(0,0,0,.08) !important; }
+
+/* ANALYTICS_SCENE_V5 */
+
+
+:global(.recharts-cartesian-grid line) {
+  stroke: rgba(255,255,255,.038) !important;
+}
+
+
+:global(.recharts-cartesian-axis-line) {
+  stroke: rgba(255,255,255,.052) !important;
+}
+
+
+:global(.recharts-cartesian-axis-tick-line) {
+  stroke: transparent !important;
+}
+
+
+:global(.recharts-cartesian-axis-tick-value) {
+  fill: #62666d !important;
+  font-size: 10px !important;
+}
+
+
+:global(.recharts-bar-rectangle path),
+:global(.recharts-bar-rectangle rect) {
+  fill: #2b8c9a !important;
+  fill-opacity: .57 !important;
+}
+
+
+:global(.recharts-bar-rectangle:hover path),
+:global(.recharts-bar-rectangle:hover rect) {
+  fill-opacity: .80 !important;
+}
+
+
+:global(.recharts-default-tooltip) {
+  padding: 11px 12px !important;
+
+  border: 1px solid rgba(255,255,255,.075) !important;
+  border-radius: 8px !important;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.025),
+      transparent
+    ),
+    #181a1d !important;
+
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.36) !important;
+}
+
+
+:global(.recharts-tooltip-label) {
+  margin-bottom: 6px !important;
+
+  color: #a4a7ad !important;
+
+  font-size: 11px !important;
+}
+
+
+:global(.recharts-tooltip-item) {
+  color: #d2d3d6 !important;
+
+  font-size: 11px !important;
+}
+
+.botListItem { transition: background .12s ease !important; }
+.chartBlock { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.chartLabel { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.dayDetailRow { transition: background .12s ease !important; }
+.filterRow { transition: background .12s ease !important; }
+.recharts-bar-rectangle { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-axis-line { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-axis-tick-line { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-axis-tick-value { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-cartesian-grid { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-default-tooltip { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-tooltip-item { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; transition: background .12s ease !important; }
+.recharts-tooltip-label { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }
+.recharts-tooltip-wrapper { position: relative !important; overflow: hidden !important; border-color: rgba(255,255,255,.065) !important; background: radial-gradient(620px 220px at 68% -80px, rgba(43,126,139,.065), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)), var(--surface) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; }

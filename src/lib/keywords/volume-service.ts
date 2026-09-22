@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { fetchSearchVolume } from "./dataforseo-provider";
+import {
+  fetchSearchVolume,
+  fetchKeywordDifficulty,
+} from "./dataforseo-provider";
 
 const BATCH_SIZE = 1000;
 
@@ -17,11 +20,26 @@ function chunk<T>(items: T[], size: number): T[][] {
   return result;
 }
 
-export async function updateKeywordVolumes(workspaceId: string, forceRefresh = false): Promise<UpdateKeywordVolumesResult> {
+export async function updateKeywordVolumes(
+  workspaceId: string,
+  forceRefresh = false,
+  market = "US",
+  language = "English",
+): Promise<UpdateKeywordVolumesResult> {
+  const locationName =
+    market === "CA" ? "Canada" :
+    market === "GB" ? "United Kingdom" :
+    market === "AU" ? "Australia" :
+    "United States";
+
   const keywords = await prisma.keyword.findMany({
     where: {
       workspaceId,
-      ...(forceRefresh ? {} : { volume: null }),
+      ...(forceRefresh ? {} : {
+        marketMetrics: {
+          none: { market, language },
+        },
+      }),
     },
     select: { id: true, text: true },
   });
@@ -34,24 +52,54 @@ export async function updateKeywordVolumes(workspaceId: string, forceRefresh = f
   let updated = 0;
 
   for (const batch of batches) {
-    const results = await fetchSearchVolume(batch.map((k) => k.text));
-    const byKeyword = new Map(results.map((r) => [r.keyword, r]));
+    const texts = batch.map((k) => k.text);
+
+    const [volumeResults, difficultyResults] = await Promise.all([
+      fetchSearchVolume(texts, locationName, language),
+      fetchKeywordDifficulty(texts, locationName, language),
+    ]);
+
+    const volumes = new Map(volumeResults.map((r) => [r.keyword, r]));
+    const difficulties = new Map(difficultyResults.map((r) => [r.keyword, r]));
 
     for (const kw of batch) {
-      const result = byKeyword.get(kw.text);
-      if (!result) continue;
+      const volume = volumes.get(kw.text);
+      const difficulty = difficulties.get(kw.text);
 
-      await prisma.keyword.update({
-        where: { id: kw.id },
-        data: {
-          volume: result.searchVolume,
-          difficulty: result.competitionIndex,
-          cpc: result.cpc,
+      if (!volume && !difficulty) continue;
+
+      await prisma.keywordMarketMetric.upsert({
+        where: {
+          keywordId_market_language: {
+            keywordId: kw.id,
+            market,
+            language,
+          },
+        },
+        create: {
+          keywordId: kw.id,
+          market,
+          language,
+          volume: volume?.searchVolume ?? null,
+          difficulty: difficulty?.keywordDifficulty ?? null,
+          cpc: volume?.cpc ?? null,
+          competitionIndex: volume?.competitionIndex ?? null,
+        },
+        update: {
+          volume: volume?.searchVolume ?? null,
+          difficulty: difficulty?.keywordDifficulty ?? null,
+          cpc: volume?.cpc ?? null,
+          competitionIndex: volume?.competitionIndex ?? null,
         },
       });
+
       updated++;
     }
   }
 
-  return { updated, skipped: keywords.length - updated, requested: keywords.length };
+  return {
+    updated,
+    skipped: keywords.length - updated,
+    requested: keywords.length,
+  };
 }

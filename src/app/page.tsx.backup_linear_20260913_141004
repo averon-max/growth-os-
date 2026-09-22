@@ -1,0 +1,754 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  CircleDot,
+  FileText,
+  Gauge,
+  Globe2,
+  Search,
+  Settings,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import styles from "./landing.module.css";
+
+const presets = [
+  ["Quick Wins", Zap],
+  ["High Volume", BarChart3],
+  ["Low Difficulty", Target],
+  ["Commercial", CircleDot],
+  ["Top 10", TrendingUp],
+  ["Near Page 1", TrendingUp],
+] as const;
+
+export default function HomePage() {
+  return (
+    <main className={styles.page} data-landing="growth-premium-v4">
+      <div className={styles.globalGrid} />
+      <div className={styles.topGlow} />
+
+      <header className={styles.header}>
+        <div className={styles.navbar}>
+          <Link href="/" className={styles.brand}>
+            <Logo />
+            <span>Growth OS</span>
+          </Link>
+
+          <nav className={styles.nav}>
+            <a href="#keywords">Keywords</a>
+            <a href="#audience">Audience</a>
+            <a href="#execution">Execution</a>
+            <Link href="/pricing">Pricing</Link>
+          </nav>
+
+          <div className={styles.account}>
+            <Link href="/login">Log in</Link>
+            <Link href="/signup" className={styles.signup}>
+              Sign up
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className={styles.hero}>
+        <div className={styles.heroMeta}>
+          <div>
+            <span className={styles.liveDot} />
+            Growth intelligence
+          </div>
+
+          <span>
+            Website · Search · Audience · Execution
+          </span>
+        </div>
+
+        <div className={styles.productStage}>
+          <div className={styles.stageRail}>
+            <span>01</span>
+
+            <div>
+              <strong>Product</strong>
+              <small>Search intelligence</small>
+            </div>
+          </div>
+
+          <div className={styles.app}>
+            <div className={styles.appTopbar}>
+              <div className={styles.appBrand}>
+                <Logo />
+                <span>Growth OS</span>
+
+                <i />
+
+                <span className={styles.siteSelector}>
+                  Website
+                  <ChevronDown size={9} />
+                </span>
+              </div>
+
+              <span className={styles.workspaceName}>
+                Workspace
+              </span>
+
+              <div className={styles.appTools}>
+                <Search size={11} />
+                <span>⌘ K</span>
+                <b>G</b>
+              </div>
+            </div>
+
+            <div className={styles.appBody}>
+              <aside className={styles.sidebar}>
+                <Sidebar icon={<Gauge size={12} />} label="Overview" />
+                <Sidebar icon={<CircleDot size={12} />} label="SEO" />
+                <Sidebar icon={<Search size={12} />} label="Keywords" active />
+                <Sidebar icon={<Users size={12} />} label="Audience" />
+                <Sidebar icon={<FileText size={12} />} label="Content" />
+                <Sidebar icon={<Sparkles size={12} />} label="Opportunities" />
+                <Sidebar icon={<Zap size={12} />} label="Automations" />
+                <Sidebar icon={<BarChart3 size={12} />} label="Reports" />
+
+                <div className={styles.sidebarFooter}>
+                  <Sidebar
+                    icon={<Settings size={12} />}
+                    label="Settings"
+                  />
+                </div>
+              </aside>
+
+              <div className={styles.workspace}>
+                <div className={styles.workspaceTop}>
+                  <div>
+                    <span>Search intelligence</span>
+                    <strong>Keywords</strong>
+                  </div>
+
+                  <div className={styles.workspaceActions}>
+                    <button>
+                      🇺🇸 United States
+                      <ChevronDown size={9} />
+                    </button>
+
+                    <button className={styles.primaryControl}>
+                      Sync now
+                      <ArrowRight size={10} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.presets}>
+                  {presets.map(([label, Icon]) => (
+                    <button key={label}>
+                      <Icon size={10} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className={styles.productContent}>
+                  <div className={styles.signalPane}>
+                    <PanelHeader
+                      eyebrow="Ranking history"
+                      title="Signals"
+                      source="Search Console"
+                    />
+
+                    <Signal
+                      tone="success"
+                      title="Quick wins"
+                      text="Ranking 11–20 with meaningful impressions."
+                    />
+
+                    <Signal
+                      tone="warning"
+                      title="High impressions, low CTR"
+                      text="Visible often but rarely clicked."
+                    />
+
+                    <Signal
+                      tone="danger"
+                      title="Declining"
+                      text="Average position moving in the wrong direction."
+                    />
+
+                    <Signal
+                      tone="accent"
+                      title="Growing"
+                      text="Average position improving from ranking history."
+                    />
+                  </div>
+
+                  <div className={styles.explorerPane}>
+                    <PanelHeader
+                      eyebrow="Keyword explorer"
+                      title="Market + ranking metrics"
+                      source="GSC · DataForSEO"
+                    />
+
+                    <div className={styles.explorerToolbar}>
+                      <div>
+                        <Search size={10} />
+                        Search keywords
+                      </div>
+
+                      <button>Filters</button>
+                    </div>
+
+                    <div className={styles.tableHeader}>
+                      <span>Keyword</span>
+                      <span>Position</span>
+                      <span>Volume</span>
+                      <span>Difficulty</span>
+                    </div>
+
+                    <div className={styles.connectedState}>
+                      <div className={styles.connectedIcon}>
+                        <Search size={17} />
+                      </div>
+
+                      <strong>
+                        Connected keyword intelligence
+                      </strong>
+
+                      <p>
+                        Rankings come from Search Console.
+                        Market metrics are enriched separately.
+                      </p>
+
+                      <div className={styles.sourceRow}>
+                        <span>Search Console</span>
+                        <span>DataForSEO</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.heroIndex}>
+          <IndexItem n="01" text="Deterministic SEO" />
+          <IndexItem n="02" text="Search intelligence" />
+          <IndexItem n="03" text="Audience context" />
+          <IndexItem n="04" text="Verified execution" />
+        </div>
+      </section>
+
+      <section className={styles.manifesto}>
+        <div className={styles.manifestoRail}>
+          <span>02</span>
+          <strong>System</strong>
+        </div>
+
+        <div className={styles.manifestoBody}>
+          <span className={styles.eyebrow}>
+            ONE OPERATING LAYER
+          </span>
+
+          <h2>
+            Your growth data should
+            feel like one product.
+          </h2>
+
+          <p>
+            Website analysis, search demand, audience context
+            and execution stay connected instead of becoming
+            another stack of dashboards.
+          </p>
+        </div>
+      </section>
+
+      <section className={styles.featureSection} id="keywords">
+        <div className={styles.sectionRail}>
+          <span>03</span>
+
+          <div>
+            <strong>Keywords</strong>
+            <small>Ranking history</small>
+          </div>
+        </div>
+
+        <div className={styles.featureContent}>
+          <div className={styles.sectionHeading}>
+            <span>KEYWORD INTELLIGENCE</span>
+
+            <h2>
+              Signals with evidence,
+              not decoration.
+            </h2>
+
+            <p>
+              Growth OS detects real ranking patterns and keeps
+              each signal tied to the data that produced it.
+            </p>
+          </div>
+
+          <div className={styles.signalGrid}>
+            <SignalCard
+              n="01"
+              tone="success"
+              title="Quick wins"
+              text="Ranking 11–20 with meaningful impressions."
+            />
+
+            <SignalCard
+              n="02"
+              tone="warning"
+              title="High impressions, low CTR"
+              text="Seen frequently but clicked less than expected."
+            />
+
+            <SignalCard
+              n="03"
+              tone="danger"
+              title="Declining"
+              text="Average position getting worse over time."
+            />
+
+            <SignalCard
+              n="04"
+              tone="accent"
+              title="Growing"
+              text="Average position improving over time."
+            />
+
+            <SignalCard
+              n="05"
+              tone="muted"
+              title="Lost"
+              text="No fresh ranking data in the recent period."
+            />
+
+            <SignalCard
+              n="06"
+              tone="danger"
+              title="Cannibalization"
+              text="Multiple pages compete for the same keyword."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.featureSection} id="audience">
+        <div className={styles.sectionRail}>
+          <span>04</span>
+
+          <div>
+            <strong>Audience</strong>
+            <small>Cloudflare snapshots</small>
+          </div>
+        </div>
+
+        <div className={styles.featureContent}>
+          <div className={styles.sectionHeading}>
+            <span>AUDIENCE INTELLIGENCE</span>
+
+            <h2>
+              Traffic context that stays
+              attached to the source.
+            </h2>
+
+            <p>
+              Periods, countries, devices and bot categories
+              come from connected traffic snapshots instead
+              of invented marketing numbers.
+            </p>
+          </div>
+
+          <div className={styles.audiencePanel}>
+            <div className={styles.panelTop}>
+              <div>
+                <Activity size={11} />
+                <span>Traffic overview</span>
+              </div>
+
+              <div className={styles.periods}>
+                <span className={styles.periodActive}>7</span>
+                <span>15</span>
+                <span>30</span>
+              </div>
+            </div>
+
+            <div className={styles.audienceStats}>
+              <AudienceMetric
+                icon={<Activity size={11} />}
+                title="Requests"
+              />
+
+              <AudienceMetric
+                icon={<Users size={11} />}
+                title="Visitor days"
+              />
+
+              <AudienceMetric
+                icon={<Bot size={11} />}
+                title="Verified bots"
+              />
+
+              <AudienceMetric
+                icon={<Globe2 size={11} />}
+                title="Bandwidth"
+              />
+            </div>
+
+            <div className={styles.audienceBody}>
+              <div className={styles.trafficPanel}>
+                <div className={styles.trafficHeader}>
+                  <div>
+                    <span>Traffic activity</span>
+                    <strong>Requests over time</strong>
+                  </div>
+
+                  <span>Cloudflare</span>
+                </div>
+
+                <div className={styles.trafficCanvas}>
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+
+                  <div className={styles.dataSource}>
+                    <span className={styles.liveDot} />
+                    Synced daily snapshots
+                  </div>
+                </div>
+              </div>
+
+              <aside className={styles.breakdownPane}>
+                <Breakdown
+                  icon={<Globe2 size={11} />}
+                  title="Countries"
+                />
+
+                <Breakdown
+                  icon={<Users size={11} />}
+                  title="Devices"
+                />
+
+                <Breakdown
+                  icon={<Bot size={11} />}
+                  title="Bot activity"
+                />
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.featureSection} id="execution">
+        <div className={styles.sectionRail}>
+          <span>05</span>
+
+          <div>
+            <strong>Execution</strong>
+            <small>Closed loop</small>
+          </div>
+        </div>
+
+        <div className={styles.featureContent}>
+          <div className={styles.sectionHeading}>
+            <span>EXECUTION PIPELINE</span>
+
+            <h2>
+              From detected signal
+              to verified result.
+            </h2>
+
+            <p>
+              Every stage stays visible: connect, analyze,
+              prioritize, apply and verify.
+            </p>
+          </div>
+
+          <div className={styles.execution}>
+            <ExecutionStep
+              n="01"
+              icon={<Globe2 size={13} />}
+              title="Connect"
+              text="Website and external data."
+              tone="accent"
+            />
+
+            <ExecutionStep
+              n="02"
+              icon={<Search size={13} />}
+              title="Analyze"
+              text="Rules and search signals."
+              tone="accent"
+            />
+
+            <ExecutionStep
+              n="03"
+              icon={<Sparkles size={13} />}
+              title="Prioritize"
+              text="Opportunity with context."
+              tone="warning"
+            />
+
+            <ExecutionStep
+              n="04"
+              icon={<Zap size={13} />}
+              title="Apply"
+              text="Approved provider action."
+              tone="accent"
+            />
+
+            <ExecutionStep
+              n="05"
+              icon={<CheckCircle2 size={13} />}
+              title="Verify"
+              text="Real page re-fetch."
+              tone="success"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.closing}>
+        <div className={styles.closingRail}>
+          <span>06</span>
+          <strong>Growth OS</strong>
+        </div>
+
+        <div className={styles.closingBody}>
+          <div>
+            <span>ONE PRODUCT</span>
+
+            <h2>
+              Understand.
+              Prioritize.
+              Execute.
+            </h2>
+          </div>
+
+          <div className={styles.closingSide}>
+            <p>
+              One visual language from the marketing
+              page to the working application.
+            </p>
+
+            <div>
+              <Link href="/signup" className={styles.signup}>
+                Start growing
+              </Link>
+
+              <Link href="/pricing" className={styles.secondaryButton}>
+                Pricing
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className={styles.footer}>
+        <Link href="/" className={styles.brand}>
+          <Logo />
+          Growth OS
+        </Link>
+
+        <span>
+          SEO intelligence + growth operations
+        </span>
+
+        <div>
+          <Link href="/pricing">Pricing</Link>
+          <Link href="/login">Log in</Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function Logo() {
+  return (
+    <span className={styles.logo}>
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
+function Sidebar({
+  icon,
+  label,
+  active = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <div className={`${styles.sidebarItem} ${active ? styles.sidebarActive : ""}`}>
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function PanelHeader({
+  eyebrow,
+  title,
+  source,
+}: {
+  eyebrow: string;
+  title: string;
+  source: string;
+}) {
+  return (
+    <div className={styles.panelHeader}>
+      <div>
+        <span>{eyebrow}</span>
+        <strong>{title}</strong>
+      </div>
+
+      <span>{source}</span>
+    </div>
+  );
+}
+
+function Signal({
+  tone,
+  title,
+  text,
+}: {
+  tone: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className={styles.signalRow}>
+      <span className={styles.signalDot} data-tone={tone} />
+
+      <div>
+        <strong>{title}</strong>
+        <span>{text}</span>
+      </div>
+
+      <ArrowRight size={10} />
+    </div>
+  );
+}
+
+function IndexItem({
+  n,
+  text,
+}: {
+  n: string;
+  text: string;
+}) {
+  return (
+    <div>
+      <span>{n}</span>
+      <strong>{text}</strong>
+    </div>
+  );
+}
+
+function SignalCard({
+  n,
+  tone,
+  title,
+  text,
+}: {
+  n: string;
+  tone: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <article className={styles.signalCard}>
+      <div>
+        <span>{n}</span>
+        <i className={styles.signalDot} data-tone={tone} />
+      </div>
+
+      <strong>{title}</strong>
+      <p>{text}</p>
+    </article>
+  );
+}
+
+function AudienceMetric({
+  icon,
+  title,
+}: {
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <div className={styles.audienceMetric}>
+      <div>
+        {icon}
+        <span>{title}</span>
+      </div>
+
+      <strong>Connected</strong>
+    </div>
+  );
+}
+
+function Breakdown({
+  icon,
+  title,
+}: {
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <div className={styles.breakdown}>
+      <div>
+        {icon}
+        <strong>{title}</strong>
+      </div>
+
+      <i />
+      <i />
+      <i />
+    </div>
+  );
+}
+
+function ExecutionStep({
+  n,
+  icon,
+  title,
+  text,
+  tone,
+}: {
+  n: string;
+  icon: ReactNode;
+  title: string;
+  text: string;
+  tone: string;
+}) {
+  return (
+    <article className={styles.executionStep}>
+      <div>
+        <span>{n}</span>
+
+        <i data-tone={tone}>
+          {icon}
+        </i>
+      </div>
+
+      <strong>{title}</strong>
+      <p>{text}</p>
+
+      {n !== "05" && (
+        <ArrowRight size={12} className={styles.executionArrow} />
+      )}
+    </article>
+  );
+}

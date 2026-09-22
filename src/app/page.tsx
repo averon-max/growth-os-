@@ -1,433 +1,780 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  CircleDot,
+  FileText,
+  Gauge,
+  Globe2,
+  Search,
+  Settings,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
 
-function LogoMark({ size = 18 }: { size?: number }) {
-  return <div style={{ width: size, height: size, borderRadius: 5, background: "var(--primary)", flexShrink: 0 }} />;
-}
+import { LandingReveal } from "@/components/marketing/landing-reveal";
+import styles from "./landing.module.css";
 
-const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "How it works", href: "#how" },
-  { label: "Pricing", href: "/pricing" },
-];
+const presets = [
+  ["Quick Wins", Zap],
+  ["High Volume", BarChart3],
+  ["Low Difficulty", Target],
+  ["Commercial", CircleDot],
+  ["Top 10", TrendingUp],
+  ["Near Page 1", TrendingUp],
+] as const;
 
-const FEATURE_BLOCKS = [
+const signals = [
   {
-    kicker: "Fix pipeline",
-    title: "Fixes ship themselves",
-    desc: "Connect WordPress or your CMS and Growth OS applies approved fixes directly — canonical tags, meta descriptions, structured data — then re-crawls to confirm the issue is actually gone.",
-    mock: "issues",
+    tone: "success",
+    name: "Quick wins",
+    description: "Ranking 11–20 with meaningful impressions.",
   },
   {
-    kicker: "Content",
-    title: "Briefs grounded in real demand",
-    desc: "Content briefs pull from your actual keyword data — volume, competition, and what's already ranking nearby — not generic topic guesses.",
-    mock: "keywords",
+    tone: "warning",
+    name: "High impressions, low CTR",
+    description: "Visible often in search but clicked less than expected.",
   },
   {
-    kicker: "Research",
-    title: "Find demand before you write a word",
-    desc: "Real search volume, CPC, and difficulty from DataForSEO, aggressively cached so repeat lookups cost nothing — plus completely free daily trending signals from Google Trends layered on top.",
-    mock: "trends",
+    tone: "danger",
+    name: "Declining",
+    description: "Average position is getting worse over time.",
+  },
+  {
+    tone: "accent",
+    name: "Growing",
+    description: "Average position is improving from ranking history.",
   },
 ] as const;
 
-const SMALL_CARDS = [
-  { title: "Always watching", desc: "Daily crawls catch regressions before they cost you a ranking." },
-  { title: "Keyword signals", desc: "Quick wins, decline alerts, and cannibalization — surfaced automatically." },
-  { title: "One workspace, every site", desc: "Switch between properties without losing your place." },
-];
-
-const WORKFLOW_STEPS = [
-  { n: "01", title: "Connect", desc: "Link Search Console and your CMS. Growth OS starts crawling and pulling ranking data immediately." },
-  { n: "02", title: "Review", desc: "Every proposed fix and generated brief waits for your approval before it touches your live site." },
-  { n: "03", title: "Verify", desc: "After a fix ships, Growth OS re-checks the page and logs the result — no fix is marked done on faith." },
-];
-
-const STATS = [
-  { v: "6", l: "keyword signal types tracked automatically" },
-  { v: "28d", l: "rolling window on every ranking check" },
-  { v: "<1min", l: "to connect Search Console and start crawling" },
-  { v: "100%", l: "of applied fixes re-verified against the live page" },
-];
-
-function GlowOrb() {
+export default function HomePage() {
   return (
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        top: -120,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: 640,
-        height: 420,
-        background: "radial-gradient(closest-side, rgba(94,106,210,0.16), transparent 72%)",
-        filter: "blur(10px)",
-        pointerEvents: "none",
-      }}
-    />
-  );
-}
+    <main className={styles.page} data-landing="linear-growth-v6">
+      <LandingReveal />
 
-function ScreenChrome({ label, dot, children, featured = false }: { label: string; dot?: string; children: React.ReactNode; featured?: boolean }) {
-  return (
-    <div
-      style={{
-        borderRadius: 12,
-        border: `1px solid ${featured ? "var(--border-strong)" : "var(--border)"}`,
-        borderTop: featured ? "2px solid var(--accent)" : `1px solid ${featured ? "var(--border-strong)" : "var(--border)"}`,
-        background: featured ? "var(--surface)" : "var(--elevated)",
-        overflow: "hidden",
-        height: "100%",
-        boxShadow: featured ? "0 40px 90px -30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.02)" : "none",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "13px 16px 11px", borderBottom: "1px solid var(--border)" }}>
-        {dot && <span style={{ width: 5, height: 5, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
-        <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--secondary)" }}>{label}</span>
-      </div>
-      <div style={{ padding: 16 }}>{children}</div>
-    </div>
-  );
-}
+      <div className={styles.gridBackground} />
+      <div className={styles.ambientTop} />
 
-function KeywordStatsCard() {
-  const chips = ["identity verification api", "kyc software", "aml screening tool", "biometric verification"];
-  const rows = [
-    { kw: "identity verification api", vol: "2,900", trend: "+142%", diff: 38, cpc: "$6.40" },
-    { kw: "kyc automation software", vol: "1,600", trend: "+64%", diff: 44, cpc: "$5.10" },
-    { kw: "aml screening tool", vol: "720", trend: "+21%", diff: 31, cpc: "$8.90" },
-    { kw: "biometric verification", vol: "590", trend: "-8%", diff: 27, cpc: "$3.75" },
-  ];
-  return (
-    <ScreenChrome label="Keyword ideas" dot="var(--accent)" featured>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-        {chips.map((c, idx) => (
-          <span key={c} style={{ fontSize: "0.68rem", padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", color: "var(--secondary)" }}>
-            {idx + 1}. {c}
-          </span>
-        ))}
-      </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.76rem" }}>
-        <thead>
-          <tr>
-            {["Keyword", "Volume", "Trend", "Difficulty", "CPC"].map((h) => (
-              <th key={h} style={{ textAlign: "left", color: "var(--muted)", fontWeight: 500, fontSize: "0.64rem", textTransform: "uppercase", letterSpacing: "0.05em", paddingBottom: 9 }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.kw} style={{ borderTop: "1px solid var(--border)" }}>
-              <td style={{ padding: "9px 0", color: "var(--primary)" }}>{r.kw}</td>
-              <td style={{ padding: "9px 0", color: "var(--secondary)", fontFamily: "var(--font-mono)" }}>{r.vol}</td>
-              <td style={{ padding: "9px 0", color: r.trend.startsWith("-") ? "var(--danger)" : "var(--success)" }}>{r.trend}</td>
-              <td style={{ padding: "9px 0", color: "var(--secondary)", fontFamily: "var(--font-mono)" }}>{r.diff}</td>
-              <td style={{ padding: "9px 0", color: "var(--secondary)", fontFamily: "var(--font-mono)" }}>{r.cpc}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </ScreenChrome>
-  );
-}
-
-function OverviewStatsCard() {
-  const tiles = [
-    { v: "1,284", l: "keywords tracked" },
-    { v: "37", l: "quick wins found" },
-    { v: "6", l: "signal types" },
-    { v: "$4.82", l: "avg. CPC" },
-  ];
-  return (
-    <ScreenChrome label="Overview" dot="var(--primary)">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {tiles.map((t) => (
-          <div key={t.l}>
-            <div style={{ fontSize: "1.4rem", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--primary)" }}>{t.v}</div>
-            <div style={{ fontSize: "0.66rem", color: "var(--secondary)", marginTop: 3 }}>{t.l}</div>
-          </div>
-        ))}
-      </div>
-    </ScreenChrome>
-  );
-}
-
-function SignalsCard() {
-  const signals = [
-    { label: "Quick win", count: 12, tone: "var(--success)" },
-    { label: "Growing", count: 9, tone: "var(--success)" },
-    { label: "Declining", count: 4, tone: "var(--warning)" },
-    { label: "High impressions, low CTR", count: 6, tone: "var(--warning)" },
-    { label: "Cannibalization", count: 3, tone: "var(--danger)" },
-    { label: "Lost", count: 2, tone: "var(--danger)" },
-  ];
-  return (
-    <ScreenChrome label="Keyword signals" dot="var(--success)">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
-        {signals.map((s) => (
-          <div key={s.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "6px 0" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.74rem", color: "var(--secondary)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.tone, flexShrink: 0 }} />
-              {s.label}
-            </div>
-            <span style={{ fontSize: "0.74rem", fontFamily: "var(--font-mono)", color: "var(--primary)" }}>{s.count}</span>
-          </div>
-        ))}
-      </div>
-    </ScreenChrome>
-  );
-}
-
-function IssuesCard() {
-  const issues = [
-    { code: "MISSING_META_DESCRIPTION", tone: "var(--danger)" },
-    { code: "THIN_CONTENT", tone: "var(--warning)" },
-  ];
-  return (
-    <ScreenChrome label="Issues" dot="var(--warning)">
-      {issues.map((row, i, arr) => (
-        <div key={row.code} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: row.tone, flexShrink: 0 }} />
-          <span style={{ fontSize: "0.7rem", fontFamily: "var(--font-mono)", color: "var(--secondary)" }}>{row.code}</span>
-        </div>
-      ))}
-    </ScreenChrome>
-  );
-}
-
-function CmsCard() {
-  return (
-    <ScreenChrome label="CMS" dot="var(--muted)">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.76rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--muted)" }} />
-          <span style={{ fontWeight: 500, color: "var(--primary)" }}>scanmycreds.com</span>
-        </div>
-        <span style={{ color: "var(--primary)", fontWeight: 500, borderBottom: "1px solid var(--border-strong)" }}>Connect →</span>
-      </div>
-    </ScreenChrome>
-  );
-}
-
-function MiniMock({ variant }: { variant: "issues" | "keywords" | "trends" }) {
-  if (variant === "issues") {
-    return (
-      <div style={{ border: "1px solid var(--border-strong)", borderRadius: 10, background: "var(--elevated)", padding: 16 }}>
-        {[
-          { code: "MISSING_META_DESCRIPTION", tone: "var(--primary)" },
-          { code: "THIN_CONTENT", tone: "var(--muted)" },
-          { code: "MISSING_CANONICAL", tone: "var(--muted)" },
-        ].map((row, i, arr) => (
-          <div key={row.code} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: row.tone, flexShrink: 0 }} />
-            <span style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--secondary)" }}>{row.code}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  if (variant === "trends") {
-    const chips = ["identity verification api", "kyc software", "biometric verification"];
-    return (
-      <div style={{ border: "1px solid var(--border-strong)", borderRadius: 10, background: "var(--elevated)", padding: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, fontSize: "0.66rem", fontWeight: 600, color: "var(--success)" }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)" }} />
-          free — Google Trends
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {chips.map((c, idx) => (
-            <span key={c} style={{ fontSize: "0.7rem", padding: "5px 10px", borderRadius: 6, border: "1px solid var(--border)", color: "var(--secondary)" }}>
-              {idx + 1}. {c}
-            </span>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div style={{ border: "1px solid var(--border-strong)", borderRadius: 10, background: "var(--elevated)", padding: 16 }}>
-      {[
-        { kw: "background check api", vol: "1,400" },
-        { kw: "identity verification saas", vol: "880" },
-        { kw: "kyc automation tools", vol: "590" },
-      ].map((row, i, arr) => (
-        <div key={row.kw} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-          <span style={{ fontSize: "0.74rem", color: "var(--primary)" }}>{row.kw}</span>
-          <span style={{ fontSize: "0.68rem", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>{row.vol}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function Home() {
-  return (
-    <div style={{ background: "var(--background)", color: "var(--primary)", fontFamily: "var(--font-body, var(--font-inter)), -apple-system, sans-serif", minHeight: "100vh", overflowX: "hidden" }}>
-
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(19,19,22,0.78)", backdropFilter: "blur(10px)", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <LogoMark />
-            <span style={{ fontWeight: 700, fontSize: "0.9rem", letterSpacing: "-0.01em", color: "var(--primary)" }}>Growth OS</span>
+      <header className={styles.header}>
+        <div className={styles.navbar}>
+          <Link href="/" className={styles.brand}>
+            <Logo />
+            <span>Growth OS</span>
           </Link>
-          <div style={{ display: "flex", gap: 30 }}>
-            {NAV_LINKS.map((l) => (
-              <Link key={l.label} href={l.href} style={{ color: "var(--secondary)", fontSize: "0.8rem", textDecoration: "none" }}>{l.label}</Link>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Link href="/login" style={{ color: "var(--secondary)", fontSize: "0.8rem", textDecoration: "none", padding: "6px 12px" }}>Log in</Link>
-            <Link href="/signup" style={{ background: "var(--primary)", color: "var(--background)", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none", padding: "7px 14px", borderRadius: 8 }}>Sign up</Link>
+
+          <nav className={styles.nav}>
+            <a href="#product">Product</a>
+            <a href="#keywords">Keywords</a>
+            <a href="#audience">Audience</a>
+            <a href="#execution">Automations</a>
+            <Link href="/pricing">Pricing</Link>
+          </nav>
+
+          <div className={styles.account}>
+            <Link href="/login">
+              Log in
+            </Link>
+
+            <Link href="/signup" className={styles.signup}>
+              Sign up
+            </Link>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <section style={{ position: "relative", padding: "90px 24px 0" }}>
-        <GlowOrb />
-        <div style={{ position: "relative", maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <p style={{ fontSize: "1.15rem", color: "var(--secondary)", lineHeight: 1.65, margin: "0 auto 32px", maxWidth: 480 }}>
-            Growth OS crawls your site, finds what&apos;s costing you rankings, and ships the fix — then checks its own work.
+      <section className={styles.hero} id="product">
+        <div className={styles.heroCopy} data-reveal>
+          <div className={styles.eyebrow}>
+            <span className={styles.liveDot} />
+            Growth intelligence for operators
+          </div>
+
+          <h1>
+            Run organic growth
+            <span> like a product team.</span>
+          </h1>
+
+          <p>
+            Connect website intelligence, search demand,
+            audience behavior and execution in one operating system.
           </p>
-          <div style={{ display: "flex", gap: 20, justifyContent: "center", alignItems: "center", marginBottom: 16 }}>
-            <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: "0.9rem", textDecoration: "none", padding: "10px 18px", borderRadius: 8 }}>
-              Start free <ArrowRight size={14} />
+
+          <div className={styles.heroActions}>
+            <Link href="/signup" className={styles.primaryButton}>
+              Get started
+              <ArrowRight size={12} />
             </Link>
-            <Link href="#how" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.9rem", fontWeight: 500, color: "var(--secondary)", textDecoration: "none" }}>
-              See how it works <ArrowRight size={13} />
-            </Link>
-          </div>
-          <p style={{ fontSize: "0.72rem", color: "var(--muted)" }}>No credit card · Connects to Search Console in under a minute</p>
-        </div>
 
-        <div id="product" style={{ position: "relative", maxWidth: 980, margin: "56px auto 0" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.3fr 1fr",
-              gridTemplateAreas: `"kw ov" "sig ov" "iss cms"`,
-              gap: 14,
-            }}
-          >
-            <div style={{ gridArea: "kw" }}><KeywordStatsCard /></div>
-            <div style={{ gridArea: "ov" }}><OverviewStatsCard /></div>
-            <div style={{ gridArea: "sig" }}><SignalsCard /></div>
-            <div style={{ gridArea: "iss" }}><IssuesCard /></div>
-            <div style={{ gridArea: "cms" }}><CmsCard /></div>
+            <a href="#keywords" className={styles.textButton}>
+              Explore the product
+              <ArrowRight size={11} />
+            </a>
           </div>
         </div>
-      </section>
 
-      <section id="how" style={{ padding: "150px 24px 60px" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>How it works</p>
-          <h2 style={{ fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 52, maxWidth: 620 }}>Three steps, running continuously</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 40 }}>
-            {WORKFLOW_STEPS.map((s) => (
-              <div key={s.n}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--muted)", marginBottom: 12 }}>{s.n}</div>
-                <div style={{ fontWeight: 600, fontSize: "1rem", marginBottom: 8, letterSpacing: "-0.01em" }}>{s.title}</div>
-                <div style={{ fontSize: "0.85rem", color: "var(--secondary)", lineHeight: 1.65 }}>{s.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <div className={styles.productFrame} data-reveal>
+          <div className={styles.appTopbar}>
+            <div className={styles.appBrand}>
+              <Logo />
+              <span>Growth OS</span>
 
-      {FEATURE_BLOCKS.map((block, i) => (
-        <section key={block.title} style={{ padding: "80px 24px", borderTop: i === 0 ? "1px solid var(--border)" : "none" }}>
-          <div style={{ maxWidth: 1040, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", direction: i % 2 === 1 ? "rtl" : "ltr" }}>
-            <div style={{ direction: "ltr" }}>
-              <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>{block.kicker}</p>
-              <h3 style={{ fontSize: "clamp(1.7rem, 2.8vw, 2.2rem)", fontWeight: 700, letterSpacing: "-0.025em", marginBottom: 18, lineHeight: 1.15 }}>{block.title}</h3>
-              <p style={{ fontSize: "0.95rem", color: "var(--secondary)", lineHeight: 1.7 }}>{block.desc}</p>
+              <i />
+
+              <span className={styles.websitePicker}>
+                Website
+                <ChevronDown size={9} />
+              </span>
             </div>
-            <div style={{ direction: "ltr" }}>
-              <MiniMock variant={block.mock as "issues" | "keywords" | "trends"} />
+
+            <span className={styles.workspaceName}>
+              Workspace
+            </span>
+
+            <div className={styles.appTools}>
+              <Search size={11} />
+              <span>⌘ K</span>
+              <b>G</b>
             </div>
           </div>
-        </section>
-      ))}
 
-      <section style={{ padding: "80px 24px", borderTop: "1px solid var(--border)" }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "var(--border)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-            {SMALL_CARDS.map((c) => (
-              <div key={c.title} style={{ background: "var(--surface)", padding: "28px 24px" }}>
-                <div style={{ fontWeight: 600, fontSize: "0.92rem", marginBottom: 8, letterSpacing: "-0.01em" }}>{c.title}</div>
-                <div style={{ fontSize: "0.82rem", color: "var(--secondary)", lineHeight: 1.6 }}>{c.desc}</div>
+          <div className={styles.appBody}>
+            <aside className={styles.sidebar}>
+              <Sidebar icon={<Gauge size={12} />} label="Overview" />
+              <Sidebar icon={<CircleDot size={12} />} label="SEO" />
+              <Sidebar icon={<Search size={12} />} label="Keywords" active />
+              <Sidebar icon={<Users size={12} />} label="Audience" />
+              <Sidebar icon={<FileText size={12} />} label="Content" />
+              <Sidebar icon={<Sparkles size={12} />} label="Opportunities" />
+              <Sidebar icon={<Zap size={12} />} label="Automations" />
+              <Sidebar icon={<BarChart3 size={12} />} label="Reports" />
+
+              <div className={styles.sidebarFooter}>
+                <Sidebar
+                  icon={<Settings size={12} />}
+                  label="Settings"
+                />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </aside>
 
-      <section style={{ padding: "110px 24px", borderTop: "1px solid var(--border)" }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 52, textAlign: "center" }}>Built for sites that can&apos;t afford to guess</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 28 }}>
-            {STATS.map((s) => (
-              <div key={s.l} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "2.6rem", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--primary)", marginBottom: 8 }}>{s.v}</div>
-                <div style={{ fontSize: "0.8rem", color: "var(--secondary)" }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section style={{ padding: "90px 24px", borderTop: "1px solid var(--border)" }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 44, textAlign: "center" }}>Pricing</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "var(--border)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-            {[
-              { name: "Starter", price: 49, features: ["Website monitoring", "SEO analysis", "Keyword intelligence"] },
-              { name: "Growth", price: 99, features: ["Everything in Starter", "Search Console integration", "Automations"] },
-              { name: "Autopilot", price: 199, features: ["Everything in Growth", "Advanced automation", "Continuous optimization"] },
-            ].map((p) => (
-              <div key={p.name} style={{ background: "var(--surface)", padding: "30px 26px" }}>
-                <div style={{ fontWeight: 600, fontSize: "0.92rem", marginBottom: 18 }}>{p.name}</div>
-                <div style={{ marginBottom: 26 }}>
-                  <span style={{ fontSize: "2.3rem", fontWeight: 700, letterSpacing: "-0.03em" }}>${p.price}</span>
-                  <span style={{ fontSize: "0.78rem", color: "var(--muted)", marginLeft: 4 }}>/mo</span>
+            <div className={styles.workspace}>
+              <div className={styles.workspaceHeader}>
+                <div>
+                  <span>Search intelligence</span>
+                  <strong>Keywords</strong>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 26 }}>
-                  {p.features.map((f) => (
-                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.8rem", color: "var(--secondary)" }}>
-                      <CheckCircle2 size={12} color="var(--primary)" />
-                      {f}
+
+                <div className={styles.headerActions}>
+                  <button type="button">
+                    🇺🇸 United States
+                    <ChevronDown size={9} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.syncButton}
+                  >
+                    Sync now
+                    <ArrowRight size={10} />
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.presetRow}>
+                {presets.map(([label, Icon]) => (
+                  <button key={label} type="button">
+                    <Icon size={10} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className={styles.workspaceContent}>
+                <section className={styles.signalPanel}>
+                  <PanelHeader
+                    kicker="Ranking history"
+                    title="Signals"
+                    source="Search Console"
+                  />
+
+                  <div>
+                    {signals.map((signal) => (
+                      <SignalRow
+                        key={signal.name}
+                        tone={signal.tone}
+                        name={signal.name}
+                        description={signal.description}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                <section className={styles.explorerPanel}>
+                  <PanelHeader
+                    kicker="Keyword explorer"
+                    title="Market + ranking metrics"
+                    source="GSC · DataForSEO"
+                  />
+
+                  <div className={styles.explorerToolbar}>
+                    <div>
+                      <Search size={10} />
+                      Search keywords
                     </div>
-                  ))}
-                </div>
-                <Link href="/signup" style={{ display: "block", textAlign: "center", padding: "10px", borderRadius: 8, textDecoration: "none", fontWeight: 600, fontSize: "0.84rem", background: "var(--elevated)", color: "var(--primary)" }}>
-                  Start Free
-                </Link>
+
+                    <button type="button">
+                      Filters
+                    </button>
+                  </div>
+
+                  <div className={styles.tableHeader}>
+                    <span>Keyword</span>
+                    <span>Position</span>
+                    <span>Volume</span>
+                    <span>Difficulty</span>
+                  </div>
+
+                  <div className={styles.connectedState}>
+                    <div className={styles.connectedIcon}>
+                      <Search size={16} />
+                    </div>
+
+                    <strong>
+                      Connected keyword intelligence
+                    </strong>
+
+                    <p>
+                      Rankings come from Search Console.
+                      Market metrics are enriched independently.
+                    </p>
+
+                    <div className={styles.sourceTags}>
+                      <span>Search Console</span>
+                      <span>DataForSEO</span>
+                    </div>
+                  </div>
+                </section>
               </div>
-            ))}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.integrationStrip}>
+          <span>Connected system</span>
+
+          <div>
+            <strong>Crawler</strong>
+            <strong>Search Console</strong>
+            <strong>DataForSEO</strong>
+            <strong>Cloudflare</strong>
+            <strong>CMS</strong>
           </div>
         </div>
       </section>
 
-      <section style={{ padding: "130px 24px", borderTop: "1px solid var(--border)", textAlign: "center" }}>
-        <h2 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 700, letterSpacing: "-0.035em", margin: "0 0 24px", lineHeight: 1.1 }}>
-          Stop finding SEO problems.<br />Start closing them.
-        </h2>
-        <p style={{ fontSize: "0.92rem", color: "var(--secondary)", marginBottom: 32 }}>Free while you&apos;re under 500 tracked keywords.</p>
-        <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: "0.9rem", textDecoration: "none", padding: "11px 20px", borderRadius: 8 }}>
-          Get Started Free <ArrowRight size={14} />
-        </Link>
+      <section className={styles.statement} data-reveal>
+        <div className={styles.statementIndex}>
+          01
+        </div>
+
+        <div>
+          <span className={styles.sectionEyebrow}>
+            ONE SYSTEM
+          </span>
+
+          <h2>
+            Less reporting.
+            <br />
+            More operating.
+          </h2>
+
+          <p>
+            Growth OS keeps analysis, evidence, priorities and
+            execution in the same workspace instead of spreading
+            them across disconnected tools.
+          </p>
+        </div>
       </section>
 
-      <footer style={{ borderTop: "1px solid var(--border)", padding: "28px 24px" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <LogoMark size={16} />
-            <span style={{ fontWeight: 600, fontSize: "0.8rem" }}>Growth OS</span>
+      <section
+        className={styles.featureSection}
+        id="keywords"
+        data-reveal
+      >
+        <div className={styles.featureCopy}>
+          <span className={styles.sectionEyebrow}>
+            02 · KEYWORDS
+          </span>
+
+          <h2>
+            Search signals
+            you can act on.
+          </h2>
+
+          <p>
+            Ranking history becomes a structured queue of
+            opportunities instead of another spreadsheet.
+          </p>
+        </div>
+
+        <div className={styles.issueView}>
+          <div className={styles.issueTopbar}>
+            <div>
+              <Zap size={11} />
+              <span>Keyword signals</span>
+            </div>
+
+            <span>
+              Ranking history
+            </span>
           </div>
-          <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>© 2026 Growth OS</span>
+
+          <SignalGroup
+            tone="success"
+            title="Quick wins"
+            description="Ranking 11–20 with meaningful impressions."
+          />
+
+          <SignalGroup
+            tone="warning"
+            title="High impressions, low CTR"
+            description="Frequently visible in search but under-clicked."
+          />
+
+          <SignalGroup
+            tone="danger"
+            title="Declining"
+            description="Average position has started moving down."
+          />
+
+          <SignalGroup
+            tone="accent"
+            title="Growing"
+            description="Ranking history is moving in the right direction."
+          />
+
+          <SignalGroup
+            tone="muted"
+            title="Lost"
+            description="Fresh ranking data is no longer available."
+          />
+
+          <SignalGroup
+            tone="danger"
+            title="Cannibalization"
+            description="Multiple pages compete for the same keyword."
+          />
+        </div>
+      </section>
+
+      <section
+        className={styles.featureSection}
+        id="audience"
+        data-reveal
+      >
+        <div className={styles.featureCopy}>
+          <span className={styles.sectionEyebrow}>
+            03 · AUDIENCE
+          </span>
+
+          <h2>
+            Understand what
+            reaches the site.
+          </h2>
+
+          <p>
+            Traffic snapshots stay tied to their source,
+            with period controls and real breakdown dimensions.
+          </p>
+        </div>
+
+        <div className={styles.audiencePanel}>
+          <div className={styles.audienceTopbar}>
+            <div>
+              <Activity size={11} />
+              <span>Traffic overview</span>
+            </div>
+
+            <div className={styles.periodControl}>
+              <span className={styles.periodActive}>7</span>
+              <span>15</span>
+              <span>30</span>
+            </div>
+          </div>
+
+          <div className={styles.audienceMetrics}>
+            <AudienceMetric
+              icon={<Activity size={11} />}
+              label="Requests"
+            />
+
+            <AudienceMetric
+              icon={<Users size={11} />}
+              label="Visitor days"
+            />
+
+            <AudienceMetric
+              icon={<Bot size={11} />}
+              label="Verified bots"
+            />
+
+            <AudienceMetric
+              icon={<Globe2 size={11} />}
+              label="Bandwidth"
+            />
+          </div>
+
+          <div className={styles.audienceBody}>
+            <div className={styles.trafficArea}>
+              <div className={styles.trafficHeader}>
+                <div>
+                  <span>Traffic activity</span>
+                  <strong>Requests over time</strong>
+                </div>
+
+                <span>Cloudflare</span>
+              </div>
+
+              <div className={styles.trafficCanvas}>
+                <i />
+                <i />
+                <i />
+                <i />
+
+                <div className={styles.snapshotState}>
+                  <span className={styles.liveDot} />
+                  Synced daily snapshots
+                </div>
+              </div>
+            </div>
+
+            <aside className={styles.breakdowns}>
+              <Breakdown
+                icon={<Globe2 size={11} />}
+                label="Countries"
+              />
+
+              <Breakdown
+                icon={<Users size={11} />}
+                label="Devices"
+              />
+
+              <Breakdown
+                icon={<Bot size={11} />}
+                label="Bot activity"
+              />
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className={styles.executionSection}
+        id="execution"
+        data-reveal
+      >
+        <div className={styles.executionHeader}>
+          <span className={styles.sectionEyebrow}>
+            04 · EXECUTION
+          </span>
+
+          <h2>
+            Close the loop.
+          </h2>
+
+          <p>
+            From connected data to analysis, review,
+            execution and verification.
+          </p>
+        </div>
+
+        <div className={styles.pipeline}>
+          <PipelineStep
+            index="01"
+            icon={<Globe2 size={13} />}
+            title="Connect"
+            detail="Website + sources"
+            tone="accent"
+          />
+
+          <PipelineStep
+            index="02"
+            icon={<Search size={13} />}
+            title="Analyze"
+            detail="Rules + signals"
+            tone="accent"
+          />
+
+          <PipelineStep
+            index="03"
+            icon={<Sparkles size={13} />}
+            title="Prioritize"
+            detail="Opportunity"
+            tone="warning"
+          />
+
+          <PipelineStep
+            index="04"
+            icon={<Zap size={13} />}
+            title="Apply"
+            detail="Approved action"
+            tone="accent"
+          />
+
+          <PipelineStep
+            index="05"
+            icon={<CheckCircle2 size={13} />}
+            title="Verify"
+            detail="Real re-fetch"
+            tone="success"
+            last
+          />
+        </div>
+      </section>
+
+      <section className={styles.final} data-reveal>
+        <div>
+          <span className={styles.sectionEyebrow}>
+            GROWTH OS
+          </span>
+
+          <h2>
+            Understand the signal.
+            <br />
+            Move the work.
+          </h2>
+        </div>
+
+        <div className={styles.finalRight}>
+          <p>
+            One operating system for organic growth,
+            from first signal to verified outcome.
+          </p>
+
+          <div>
+            <Link href="/signup" className={styles.primaryButton}>
+              Start growing
+              <ArrowRight size={12} />
+            </Link>
+
+            <Link href="/pricing" className={styles.secondaryButton}>
+              Pricing
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className={styles.footer}>
+        <Link href="/" className={styles.brand}>
+          <Logo />
+          <span>Growth OS</span>
+        </Link>
+
+        <span>
+          SEO intelligence + growth operations
+        </span>
+
+        <div>
+          <Link href="/pricing">
+            Pricing
+          </Link>
+
+          <Link href="/login">
+            Log in
+          </Link>
         </div>
       </footer>
+    </main>
+  );
+}
+
+function Logo() {
+  return (
+    <span className={styles.logo}>
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
+function Sidebar({
+  icon,
+  label,
+  active = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className={
+        active
+          ? `${styles.sidebarItem} ${styles.sidebarActive}`
+          : styles.sidebarItem
+      }
+    >
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function PanelHeader({
+  kicker,
+  title,
+  source,
+}: {
+  kicker: string;
+  title: string;
+  source: string;
+}) {
+  return (
+    <div className={styles.panelHeader}>
+      <div>
+        <span>{kicker}</span>
+        <strong>{title}</strong>
+      </div>
+
+      <span>{source}</span>
+    </div>
+  );
+}
+
+function SignalRow({
+  tone,
+  name,
+  description,
+}: {
+  tone: string;
+  name: string;
+  description: string;
+}) {
+  return (
+    <div className={styles.signalRow}>
+      <span
+        className={styles.statusDot}
+        data-tone={tone}
+      />
+
+      <div>
+        <strong>{name}</strong>
+        <span>{description}</span>
+      </div>
+
+      <ArrowRight size={10} />
+    </div>
+  );
+}
+
+function SignalGroup({
+  tone,
+  title,
+  description,
+}: {
+  tone: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className={styles.issueRow}>
+      <span
+        className={styles.statusDot}
+        data-tone={tone}
+      />
+
+      <div>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </div>
+
+      <ArrowRight size={11} />
+    </div>
+  );
+}
+
+function AudienceMetric({
+  icon,
+  label,
+}: {
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <div className={styles.audienceMetric}>
+      <div>
+        {icon}
+        <span>{label}</span>
+      </div>
+
+      <strong>Connected</strong>
+    </div>
+  );
+}
+
+function Breakdown({
+  icon,
+  label,
+}: {
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <div className={styles.breakdown}>
+      <div>
+        {icon}
+        <strong>{label}</strong>
+      </div>
+
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
+
+function PipelineStep({
+  index,
+  icon,
+  title,
+  detail,
+  tone,
+  last = false,
+}: {
+  index: string;
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  tone: string;
+  last?: boolean;
+}) {
+  return (
+    <div className={styles.pipelineStep}>
+      <div className={styles.pipelineMeta}>
+        <span>{index}</span>
+
+        <i data-tone={tone}>
+          {icon}
+        </i>
+      </div>
+
+      <strong>{title}</strong>
+      <span>{detail}</span>
+
+      {!last && (
+        <ArrowRight
+          size={12}
+          className={styles.pipelineArrow}
+        />
+      )}
     </div>
   );
 }

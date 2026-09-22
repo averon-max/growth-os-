@@ -1,0 +1,136 @@
+.workspace {
+  overflow: hidden;
+
+  border-top: 1px solid var(--border);
+
+  background: transparent;
+}
+
+.loading {
+  padding: 28px 14px;
+
+  color: var(--secondary);
+
+  font-size: 11px;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+
+  margin: 0;
+}
+
+.select {
+  height: 29px;
+
+  padding: 0 9px;
+
+  outline: none;
+
+  border: 1px solid var(--border);
+  border-radius: 5px;
+
+  background: var(--surface);
+  color: #a8aab0;
+
+  font-size: 10px;
+}
+
+.select:hover {
+  border-color: var(--border-hover);
+}
+
+.searchBox {
+  min-height: 29px;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 0 9px;
+
+  border: 1px solid var(--border);
+  border-radius: 5px;
+
+  background: #0e0f11;
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: #696c73;
+}
+
+.searchInput {
+  width: 100%;
+
+  padding: 6px 0;
+
+  outline: none;
+  border: 0;
+
+  background: transparent;
+  color: var(--primary);
+
+  font-size: 10px;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:hover {
+  background: rgba(255,255,255,.018);
+}
+
+.pagination {
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  border-top: 1px solid var(--border);
+}
+
+.pageButton {
+  padding: 4px 9px;
+
+  border: 0;
+
+  background: transparent;
+  color: #85888f;
+
+  font-size: 10px;
+
+  cursor: pointer;
+}
+
+.pageButton:hover {
+  color: #d2d3d6;
+}
+
+.pageButton:disabled {
+  color: #4f5258;
+  cursor: not-allowed;
+}
+
+.pageLabel {
+  color: #60636a;
+
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.emptyRow {
+  padding: 34px 0 !important;
+
+  color: var(--secondary) !important;
+
+  text-align: center;
+}

@@ -17,14 +17,15 @@ model User {
 }
 
 model Workspace {
-  id                  String               @id @default(cuid())
-  name                String
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  members             WorkspaceMember[]
-  businesses          Business[]
-  keywords            Keyword[]
-  providerConnections ProviderConnection[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  members               WorkspaceMember[]
+  businesses            Business[]
+  keywords              Keyword[]
+  providerConnections   ProviderConnection[]
+  keywordOutcomeActions KeywordOutcomeAction[]
 }
 
 model WorkspaceMember {
@@ -41,31 +42,36 @@ model WorkspaceMember {
 }
 
 model Business {
-  id          String    @id @default(cuid())
-  name        String
-  industry    String?
-  location    String?
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  websites    Website[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String         @id @default(cuid())
+  name          String
+  industry      String?
+  location      String?
+  workspaceId   String
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  websites      Website[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  businessFacts BusinessFact[]
 
   @@index([workspaceId])
 }
 
 model Website {
-  id               String            @id @default(cuid())
-  url              String
-  ga4PropertyId    String?
-  businessId       String
-  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  analyses         Analysis[]
-  audienceSegments AudienceSegment[]
-  cmsConnection    CMSConnection?
-  contentBriefs    ContentBrief[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id                       String                    @id @default(cuid())
+  url                      String
+  ga4PropertyId            String?
+  businessId               String
+  business                 Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  analyses                 Analysis[]
+  audienceSegments         AudienceSegment[]
+  cmsConnection            CMSConnection?
+  cloudflareConnection     CloudflareConnection?
+  contentBriefs            ContentBrief[]
+  competitors              Competitor[]
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  contentEvidenceSnapshots ContentEvidenceSnapshot[]
+  keywordOutcomeActions    KeywordOutcomeAction[]
 
   @@index([businessId])
 }
@@ -120,7 +126,7 @@ model Page {
 }
 
 model SEOIssue {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   type           String
   severity       String
   pageUrl        String?
@@ -128,8 +134,8 @@ model SEOIssue {
   evidence       String?
   recommendation String
   analysisId     String
-  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
+  analysis       Analysis     @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
   appliedFixes   AppliedFix[]
 
   @@index([analysisId])
@@ -137,19 +143,19 @@ model SEOIssue {
 }
 
 model Opportunity {
-  id             String   @id @default(cuid())
+  id             String         @id @default(cuid())
   title          String
   type           String
   priority       String
   score          Int
   reason         String
   recommendation String
-  affectedPages  Int      @default(0)
+  affectedPages  Int            @default(0)
   appliedFixes   AppliedFix[]
   contentBriefs  ContentBrief[]
   analysisId     String
-  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
+  analysis       Analysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
 
   @@index([analysisId])
   @@index([score])
@@ -190,22 +196,43 @@ model ProviderConnection {
 }
 
 model Keyword {
-  id          String            @id @default(cuid())
-  workspaceId String
-  text        String
-  normalized  String
-  intent      KeywordIntent?
-  cluster     String?
-  volume      Int?
-  difficulty  Int?
-  cpc         Decimal?          @db.Decimal(10, 4)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  snapshots   KeywordSnapshot[]
+  id             String                 @id @default(cuid())
+  workspaceId    String
+  text           String
+  normalized     String
+  intent         KeywordIntent?
+  cluster        String?
+  volume         Int?
+  difficulty     Int?
+  cpc            Decimal?               @db.Decimal(10, 4)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  snapshots      KeywordSnapshot[]
+  marketMetrics  KeywordMarketMetric[]
+  outcomeActions KeywordOutcomeAction[]
 
   @@unique([workspaceId, normalized])
   @@index([workspaceId])
+}
+
+model KeywordMarketMetric {
+  id               String   @id @default(cuid())
+  keywordId        String
+  market           String
+  language         String
+  volume           Int?
+  difficulty       Int?
+  cpc              Decimal? @db.Decimal(10, 4)
+  competitionIndex Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([keywordId, market, language])
+  @@index([keywordId])
+  @@index([market])
 }
 
 model KeywordSuggestionCache {
@@ -331,25 +358,25 @@ enum FixRiskLevel {
 }
 
 model AppliedFix {
-  id              String            @id @default(cuid())
+  id              String           @id @default(cuid())
   opportunityId   String?
-  opportunity     Opportunity?      @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  opportunity     Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   issueId         String?
-  issue           SEOIssue?         @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  issue           SEOIssue?        @relation(fields: [issueId], references: [id], onDelete: SetNull)
   cmsConnectionId String
-  cmsConnection   CMSConnection     @relation(fields: [cmsConnectionId], references: [id], onDelete: Cascade)
+  cmsConnection   CMSConnection    @relation(fields: [cmsConnectionId], references: [id], onDelete: Cascade)
   pageUrl         String
   fixType         FixType
   riskLevel       FixRiskLevel
   previousValue   String?
   newValue        String
-  status          AppliedFixStatus  @default(PENDING)
+  status          AppliedFixStatus @default(PENDING)
   errorMessage    String?
   appliedAt       DateTime?
   verifiedAt      DateTime?
   rolledBackAt    DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([cmsConnectionId])
   @@index([opportunityId])
@@ -358,27 +385,123 @@ model AppliedFix {
   @@index([appliedAt])
 }
 
+enum BusinessFactType {
+  CAPABILITY
+  METRIC
+  DATA_SOURCE
+  POLICY
+  DIFFERENTIATOR
+  COMPLIANCE
+  OTHER
+}
+
+enum BusinessFactStatus {
+  PROPOSED
+  VERIFIED
+  REJECTED
+  ARCHIVED
+}
+
+enum BusinessFactEvidenceStatus {
+  UNCHECKED
+  FRESH
+  DRIFTED
+  UNAVAILABLE
+}
+
+model BusinessFact {
+  id                    String                     @id @default(cuid())
+  businessId            String
+  business              Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type                  BusinessFactType
+  claim                 String
+  status                BusinessFactStatus         @default(PROPOSED)
+  sourceUrl             String?
+  sourceLabel           String?
+  evidence              String?
+  confidence            Float?
+  evidenceStatus        BusinessFactEvidenceStatus @default(UNCHECKED)
+  evidenceHash          String?
+  sourceContentHash     String?
+  lastEvidenceCheckedAt DateTime?
+  lastEvidenceSeenAt    DateTime?
+  evidenceCheckError    String?
+  version               Int                        @default(1)
+  supersedesId          String?
+  supersedes            BusinessFact?              @relation("BusinessFactVersion", fields: [supersedesId], references: [id], onDelete: SetNull)
+  revisions             BusinessFact[]             @relation("BusinessFactVersion")
+  createdByUserId       String?
+  verifiedByUserId      String?
+  verifiedAt            DateTime?
+  events                BusinessFactEvent[]
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  @@index([businessId, status])
+  @@index([businessId, status, evidenceStatus])
+  @@index([businessId, type])
+  @@index([supersedesId])
+}
+
+model BusinessFactEvent {
+  id             String              @id @default(cuid())
+  businessFactId String
+  businessFact   BusinessFact        @relation(fields: [businessFactId], references: [id], onDelete: Cascade)
+  action         String
+  actorUserId    String?
+  previousStatus BusinessFactStatus?
+  nextStatus     BusinessFactStatus?
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+
+  @@index([businessFactId, createdAt])
+}
+
+model ContentEvidenceSnapshot {
+  id             String       @id @default(cuid())
+  briefId        String       @unique
+  brief          ContentBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  websiteId      String
+  website        Website      @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  topic          String
+  primaryKeyword String
+  searchIntent   String
+  plan           Json
+  businessFacts  Json
+  keywordContext Json?
+  plannerVersion String
+  gateVersion    String
+  generatorModel String
+  createdAt      DateTime     @default(now())
+
+  @@index([websiteId, createdAt])
+}
+
 enum ContentBriefStatus {
   DRAFT
   READY
 }
 
 model ContentBrief {
-  id               String             @id @default(cuid())
-  websiteId        String
-  website          Website            @relation(fields: [websiteId], references: [id], onDelete: Cascade)
-  opportunityId    String?
-  opportunity      Opportunity?       @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-  topic            String
-  searchIntent     String
-  primaryKeyword   String
+  id            String       @id @default(cuid())
+  websiteId     String
+  website       Website      @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  outcomeActionId   String?                  @unique
+  outcomeAction     KeywordOutcomeAction?    @relation(fields: [outcomeActionId], references: [id], onDelete: SetNull)
+  topic             String
+  searchIntent      String
+  primaryKeyword    String
   secondaryKeywords String[]
-  outline          Json
-  status           ContentBriefStatus @default(DRAFT)
-  generatedBy      String
-  articles         ContentArticle[]
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  outline           Json
+  status            ContentBriefStatus       @default(DRAFT)
+  generatedBy       String
+  articles          ContentArticle[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  evidenceSnapshot  ContentEvidenceSnapshot?
 
   @@index([websiteId])
   @@index([opportunityId])
@@ -395,21 +518,275 @@ enum ContentArticleStatus {
 }
 
 model ContentArticle {
-  id              String                @id @default(cuid())
-  briefId         String
-  brief           ContentBrief          @relation(fields: [briefId], references: [id], onDelete: Cascade)
-  title           String
-  metaDescription String
-  h1              String
-  bodyMarkdown    String
-  status          ContentArticleStatus  @default(GENERATING)
-  generatedBy     String
-  publishedUrl    String?
-  publishedAt     DateTime?
-  publishError    String?
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
+  id                  String               @id @default(cuid())
+  briefId             String
+  brief               ContentBrief         @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  title               String
+  metaDescription     String
+  h1                  String
+  bodyMarkdown        String
+  status              ContentArticleStatus @default(GENERATING)
+  generatedBy         String
+  publishedUrl        String?
+  publishedAt         DateTime?
+  publishError        String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  serpReplayArtifacts SerpReplayArtifact[]
 
   @@index([briefId])
   @@index([status])
+}
+
+enum SerpReplayArtifactExecutionStatus {
+  SUCCEEDED
+  FAILED
+}
+
+enum SerpReplayArtifactStatus {
+  READY
+  WARN
+  BLOCK
+  INSUFFICIENT_CONTEXT
+}
+
+model SerpReplayArtifact {
+  id               String         @id @default(cuid())
+  contentArticleId String
+  contentArticle   ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
+
+  artifactVersion String                            @default("SERP_REPLAY_ARTIFACT_V1")
+  replayVersion   String                            @default("SERP_REPLAY_V1")
+  executionStatus SerpReplayArtifactExecutionStatus
+  replayStatus    SerpReplayArtifactStatus?
+
+  articleFingerprint     String
+  articleFingerprintAlgo String @default("SHA256_V1")
+
+  keyword                 String?
+  serpSnapshotFingerprint String?
+  serpCapturedAt          DateTime?
+
+  comparisons Json?
+  blockers    Json?
+  warnings    Json?
+  provenance  Json?
+
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([contentArticleId, createdAt])
+  @@index([serpSnapshotFingerprint])
+  @@index([replayStatus])
+}
+
+model Competitor {
+  id        String               @id @default(cuid())
+  websiteId String
+  website   Website              @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  domain    String
+  name      String?
+  addedAt   DateTime             @default(now())
+  snapshots CompetitorSnapshot[]
+
+  @@unique([websiteId, domain])
+  @@index([websiteId])
+}
+
+model CompetitorSnapshot {
+  id                  String     @id @default(cuid())
+  competitorId        String
+  competitor          Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  capturedAt          DateTime   @default(now())
+  title               String?
+  metaDescription     String?
+  h1                  String?
+  wordCount           Int?
+  imagesCount         Int?
+  imagesWithoutAlt    Int?
+  hasJsonLd           Boolean?
+  rankedKeywordsCount Int?
+  topKeywords         Json?
+  gapKeywords         Json?
+  fromCache           Boolean    @default(false)
+
+  @@index([competitorId])
+}
+
+model CloudflareConnection {
+  id                String   @id @default(cuid())
+  websiteId         String   @unique
+  website           Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  zoneId            String
+  apiTokenEncrypted String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  snapshots     TrafficSnapshot[]
+  pageSnapshots PageTrafficSnapshot[]
+}
+
+model TrafficSnapshot {
+  id           String               @id @default(cuid())
+  connectionId String
+  connection   CloudflareConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  date         DateTime             @db.Date
+
+  totalRequests         Int
+  unclassifiedRequests  Int
+  verifiedBotRequests   Int
+  unverifiedBotRequests Int?
+  threatsBlocked        Int?
+  bandwidthBytes        BigInt
+  uniqueVisitors        Int
+  countryBreakdown      Json?
+  deviceBreakdown       Json?
+  botCategoryBreakdown  Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([connectionId, date])
+  @@index([connectionId, date])
+}
+
+model PageTrafficSnapshot {
+  id           String               @id @default(cuid())
+  connectionId String
+  connection   CloudflareConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  date         DateTime             @db.Date
+  path         String
+
+  totalRequests        Int
+  visits               Int
+  verifiedBotRequests  Int
+  unclassifiedRequests Int
+  botCategoryBreakdown Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([connectionId, date, path])
+  @@index([connectionId, path, date])
+  @@index([connectionId, date])
+}
+
+enum KeywordOutcomeDecision {
+  CREATE
+  UPDATE
+  SKIP
+}
+
+enum KeywordOutcomeActionStatus {
+  PLANNED
+  EXECUTED
+  CANCELLED
+}
+
+enum KeywordOutcomeCheckpoint {
+  BASELINE
+  DAY_7
+  DAY_14
+  DAY_28
+  DAY_56
+  DAY_90
+}
+
+enum KeywordOutcomeLiveRankState {
+  FOUND
+  NOT_TOP_100
+  UNAVAILABLE
+}
+
+enum KeywordOutcomeObservationSource {
+  ACTION_BASELINE
+  LIVE_SERP
+  GOOGLE_SEARCH_CONSOLE
+  COMBINED
+  MANUAL
+  NO_DATA
+}
+
+model KeywordOutcomeAction {
+  id                      String                            @id @default(cuid())
+  workspaceId             String
+  websiteId               String
+  keywordId               String?
+  keywordText             String
+  normalizedKeyword       String
+  market                  String
+  language                String                            @default("en")
+  device                  String                            @default("desktop")
+  decision                KeywordOutcomeDecision
+  compatibilityStatus     KeywordOutcomeCompatibilityStatus
+  compatibilityReason     String
+  compatibilitySnapshot   Json
+  compatibilityCheckedAt  DateTime                          @default(now())
+  status                  KeywordOutcomeActionStatus        @default(PLANNED)
+  targetPageUrl           String?
+  rationale               String
+  evidence                Json
+  planSnapshot            Json
+  source                  String                            @default("GROWTH_OS_ACTION_PLAN_V1")
+  baselineLiveRank        Int?
+  baselineLiveRankState   KeywordOutcomeLiveRankState
+  baselineImpressions     Int?
+  baselineClicks          Int?
+  baselineCtr             Decimal?                          @db.Decimal(8, 4)
+  baselineAveragePosition Decimal?                          @db.Decimal(6, 2)
+  baselineGscSnapshotDate DateTime?                         @db.Date
+  appliedFixId            String?
+  contentArticleId        String?
+  supersedesActionId      String?                           @unique
+  executedAt              DateTime?
+  createdAt               DateTime                          @default(now())
+  updatedAt               DateTime                          @updatedAt
+
+  workspace        Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  website          Website                     @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  keyword          Keyword?                    @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  observations     KeywordOutcomeObservation[]
+  contentBrief     ContentBrief?
+  supersedesAction KeywordOutcomeAction?       @relation("KeywordOutcomeActionRevision", fields: [supersedesActionId], references: [id], onDelete: SetNull)
+  supersededBy     KeywordOutcomeAction?       @relation("KeywordOutcomeActionRevision")
+
+  @@index([workspaceId])
+  @@index([websiteId])
+  @@index([keywordId])
+  @@index([websiteId, normalizedKeyword, market])
+  @@index([status])
+  @@index([createdAt])
+  @@index([appliedFixId])
+  @@index([contentArticleId])
+}
+
+model KeywordOutcomeObservation {
+  id              String                          @id @default(cuid())
+  actionId        String
+  checkpoint      KeywordOutcomeCheckpoint
+  source          KeywordOutcomeObservationSource
+  liveRank        Int?
+  liveRankState   KeywordOutcomeLiveRankState
+  impressions     Int?
+  clicks          Int?
+  ctr             Decimal?                        @db.Decimal(8, 4)
+  averagePosition Decimal?                        @db.Decimal(6, 2)
+  gscSnapshotDate DateTime?                       @db.Date
+  pageUrl         String?
+  observedAt      DateTime                        @default(now())
+  createdAt       DateTime                        @default(now())
+
+  action KeywordOutcomeAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@unique([actionId, checkpoint])
+  @@index([actionId])
+  @@index([checkpoint])
+  @@index([observedAt])
+}
+
+enum KeywordOutcomeCompatibilityStatus {
+  SUPPORTED
+  EDUCATIONAL_ONLY
+  UNVERIFIED
+  CONFLICT
 }

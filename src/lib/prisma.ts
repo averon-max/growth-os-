@@ -3,7 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 const pool = new Pool({
-  connectionString: "postgresql://user@localhost:5432/signal_db",
+  connectionString: process.env.DATABASE_URL!,
 });
 
 const adapter = new PrismaPg(pool);

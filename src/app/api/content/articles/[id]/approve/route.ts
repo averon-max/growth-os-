@@ -1,7 +1,13 @@
+import {
+  ContentGateError,
+} from "@/lib/content/content-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { getContentArticleById } from "@/lib/content/repository";
 import { approveArticle } from "@/lib/content/service";
+import {
+  ArticlePublicationPolicyError,
+} from "@/lib/content/article-publication-policy";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,6 +28,53 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const updated = await approveArticle(id);
     return NextResponse.json({ article: updated });
   } catch (err) {
+    if (
+      err instanceof
+      ArticlePublicationPolicyError
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Article requires editorial or evidence review.",
+
+          issues:
+            err.issues,
+
+          planWarnings:
+            err.planWarnings,
+
+          evidenceFindings:
+            err.evidenceFindings,
+        },
+        {
+          status:
+            409,
+        }
+      );
+    }
+
+
+    if (
+      err instanceof
+      ContentGateError
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Article blocked by Content Quality Gate.",
+
+          issues:
+            err.issues,
+
+          claims:
+            err.claimFindings,
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
     console.error("content/articles/[id]/approve POST error", err);
     const { status, body: errBody } = authErrorResponse(err);
     return NextResponse.json(errBody, { status });

@@ -9,6 +9,7 @@ export interface ParsedPage {
   canonical: string | null;
   robots: string | null;
   wordCount: number;
+  bodyText: string;
   internalLinks: string[];
   externalLinks: string[];
   imagesCount: number;
@@ -131,6 +132,7 @@ export function parsePage(html: string, baseUrl: string): ParsedPage {
     canonical,
     robots,
     wordCount,
+    bodyText,
     internalLinks: [...new Set(internalLinks)],
     externalLinks: [...new Set(externalLinks)],
     imagesCount,

@@ -1,0 +1,765 @@
+import {
+  describe,
+  expect,
+  it,
+} from "vitest";
+
+import {
+  createSearchMission,
+} from "./search-mission";
+
+import {
+  buildQueryGraph,
+} from "./query-graph";
+
+import type {
+  ExpectedCoverageModel,
+} from "./expected-coverage";
+
+import type {
+  GapAnalysis,
+} from "./gap-engine";
+
+import type {
+  OriginalValuePlan,
+} from "./original-value";
+
+import type {
+  ClaimLedger,
+} from "./claim-ledger";
+
+import {
+  buildEvidenceGraph,
+} from "./evidence-graph";
+
+import {
+  buildMasterSearchBlueprint,
+  reviseMasterSearchBlueprint,
+} from "./master-search-blueprint";
+
+
+const mission =
+  createSearchMission({
+    id:
+      "mission-1",
+
+    websiteId:
+      "site-1",
+
+    topic:
+      "what is credit monitoring",
+
+    audience:
+      "US consumers",
+
+    readerGoal:
+      "Understand credit monitoring and its limitations.",
+
+    businessRelationship:
+      "DIRECT",
+
+    jurisdiction:
+      "US",
+
+    language:
+      "en",
+
+    location:
+      "United States",
+
+    riskClass:
+      "YMYL_FINANCE",
+
+    createdAt:
+      new Date(
+        "2026-09-21T00:00:00.000Z"
+      ),
+
+    version:
+      1,
+  });
+
+
+const queryGraph =
+  buildQueryGraph({
+    mission,
+
+    missionIntent:
+      "INFORMATIONAL",
+
+    signals: [
+      {
+        query:
+          "what is credit monitoring",
+
+        intent:
+          "INFORMATIONAL",
+
+        cluster:
+          "CREDIT_MONITORING",
+
+        siteCoverage:
+          "WEAK",
+
+        source:
+          "DATAFORSEO",
+
+        sourceConfidence:
+          0.9,
+
+        sameMissionEvidence:
+          true,
+      },
+
+      {
+        query:
+          "credit monitoring limitations",
+
+        intent:
+          "INFORMATIONAL",
+
+        cluster:
+          "CREDIT_MONITORING",
+
+        siteCoverage:
+          "NONE",
+
+        source:
+          "PAA",
+
+        sourceConfidence:
+          0.8,
+
+        sameMissionEvidence:
+          true,
+      },
+    ],
+  });
+
+
+const expected:
+  ExpectedCoverageModel = {
+    version:
+      "EXPECTED_COVERAGE_V1",
+
+    missionId:
+      mission.id,
+
+    queryGraphVersion:
+      queryGraph.version,
+
+    items:
+      [],
+
+    requiredTopics: [
+      "Definition",
+      "Limitations",
+    ],
+
+    supportingTopics: [
+      "Alerts",
+    ],
+
+    opportunityTopics:
+      [],
+
+    excludedTopics: [
+      "Best services",
+    ],
+
+    evidence:
+      [],
+  };
+
+
+const gaps:
+  GapAnalysis = {
+    version:
+      "GAP_ENGINE_V1",
+
+    missionId:
+      mission.id,
+
+    gaps: [
+      {
+        type:
+          "EVIDENCE_GAP",
+
+        topic:
+          "Limitations",
+
+        severity:
+          "MAJOR",
+
+        coverageRole:
+          "REQUIRED",
+
+        evidence: [
+          "COMPETITOR_EVIDENCE_WEAK",
+        ],
+
+        opportunity:
+          "Use primary evidence.",
+      },
+    ],
+
+    byType: {
+      MISSION_GAP:
+        0,
+
+      EXPECTED_GAP:
+        0,
+
+      DEPTH_GAP:
+        0,
+
+      CLARITY_GAP:
+        0,
+
+      EVIDENCE_GAP:
+        1,
+
+      ACTION_GAP:
+        0,
+
+      ORIGINAL_VALUE_GAP:
+        0,
+    },
+
+    criticalCount:
+      0,
+
+    majorCount:
+      1,
+
+    evidence:
+      [],
+  };
+
+
+const originalValue:
+  OriginalValuePlan = {
+    version:
+      "ORIGINAL_VALUE_PLAN_V1",
+
+    missionId:
+      mission.id,
+
+    strength:
+      "DEFENSIBLE",
+
+    gate:
+      "PASS",
+
+    assets: [
+      {
+        id:
+          "detection-matrix",
+
+        type:
+          "COMPARISON_MATRIX",
+
+        title:
+          "Detection vs prevention matrix",
+
+        description:
+          "Shows what monitoring can and cannot detect.",
+
+        firstParty:
+          false,
+
+        verified:
+          true,
+
+        evidenceIds: [
+          "ev-1",
+        ],
+      },
+    ],
+
+    commodity: {
+      risk:
+        "LOW",
+
+      evidence:
+        [],
+    },
+
+    issues:
+      [],
+
+    evidence:
+      [],
+  };
+
+
+const ledger:
+  ClaimLedger = {
+    version:
+      "CLAIM_LEDGER_V1",
+
+    claims: [
+      {
+        id:
+          "claim-monitoring-detects",
+
+        text:
+          "Credit monitoring can detect changes in a credit report.",
+
+        category:
+          "FINANCIAL",
+
+        risk:
+          "HIGH",
+
+        jurisdiction:
+          "US",
+
+        evidenceIds: [
+          "ev-1",
+        ],
+
+        status:
+          "VERIFIED",
+      },
+
+      {
+        id:
+          "claim-monitoring-prevents",
+
+        text:
+          "Credit monitoring prevents identity theft.",
+
+        category:
+          "FINANCIAL",
+
+        risk:
+          "HIGH",
+
+        jurisdiction:
+          "US",
+
+        evidenceIds: [
+          "ev-2",
+        ],
+
+        status:
+          "CONTRADICTED",
+      },
+    ],
+
+    counts: {
+      VERIFIED:
+        1,
+
+      PARTIAL:
+        0,
+
+      UNSUPPORTED:
+        0,
+
+      CONTRADICTED:
+        1,
+
+      STALE:
+        0,
+
+      JURISDICTION_MISMATCH:
+        0,
+    },
+
+    verified:
+      1,
+
+    unsupported:
+      0,
+
+    blockingCandidateCount:
+      1,
+  };
+
+
+const evidenceGraph =
+  buildEvidenceGraph({
+    sources: [
+      {
+        id:
+          "cfpb",
+
+        url:
+          "https://consumerfinance.gov/example",
+
+        publisher:
+          "CFPB",
+
+        sourceType:
+          "PRIMARY_GOVERNMENT",
+
+        authorityTier:
+          "A",
+
+        jurisdiction:
+          "US",
+
+        retrievedAt:
+          new Date(
+            "2026-09-21T00:00:00.000Z"
+          ),
+      },
+    ],
+
+    claimEvidence: [
+      {
+        id:
+          "ev-1",
+
+        claimId:
+          "claim-monitoring-detects",
+
+        sourceId:
+          "cfpb",
+
+        relation:
+          "SUPPORTS",
+
+        kind:
+          "VERIFIED_EXCERPT",
+
+        excerpt:
+          "Monitoring can detect changes.",
+      },
+
+      {
+        id:
+          "ev-2",
+
+        claimId:
+          "claim-monitoring-prevents",
+
+        sourceId:
+          "cfpb",
+
+        relation:
+          "CONTRADICTS",
+
+        kind:
+          "VERIFIED_EXCERPT",
+
+        excerpt:
+          "Monitoring does not prevent identity theft.",
+      },
+    ],
+  });
+
+
+const primaryNode =
+  queryGraph.nodes[0]!;
+
+
+function build() {
+  return buildMasterSearchBlueprint({
+    mission,
+
+    queryGraph,
+
+    expectedCoverage:
+      expected,
+
+    gaps,
+
+    originalValue,
+
+    claimLedger:
+      ledger,
+
+    evidenceGraph,
+
+    action:
+      "CREATE",
+
+    primaryQuery:
+      "what is credit monitoring",
+
+    queryNodeIds:
+      queryGraph.nodes.map(
+        (node) =>
+          node.id
+      ),
+
+    intent:
+      "INFORMATIONAL",
+
+    pageType:
+      "ARTICLE",
+
+    requiredEntities: [
+      "credit report",
+    ],
+
+    questions: [
+      "What does credit monitoring detect?",
+    ],
+
+    evidenceIds: [
+      "cfpb",
+      "ev-1",
+    ],
+
+    requiredClaims: [
+      "claim-monitoring-detects",
+    ],
+
+    forbiddenClaims: [
+      "claim-monitoring-prevents",
+    ],
+
+    competitorWeaknesses: [
+      "Weak explanation of limitations",
+    ],
+
+    internalLinkTargets: [
+      "/identity-theft-protection",
+    ],
+
+    technicalRequirements: [
+      "INDEXABLE",
+      "SELF_CANONICAL",
+    ],
+
+    conversionGoal:
+      "Explain when ScanMyCreds solves a different exposure problem.",
+  });
+}
+
+
+describe(
+  "Master Search Blueprint V1",
+  () => {
+    it(
+      "contains the master research-stage contract",
+      () => {
+        const blueprint =
+          build();
+
+        expect(
+          blueprint.version
+        ).toBe(
+          "MASTER_SEARCH_BLUEPRINT_V1"
+        );
+
+        expect(
+          blueprint.missionId
+        ).toBe(
+          mission.id
+        );
+
+        expect(
+          blueprint.requiredTopics
+        ).toEqual([
+          "Definition",
+          "Limitations",
+        ]);
+
+        expect(
+          blueprint.supportingTopics
+        ).toEqual([
+          "Alerts",
+        ]);
+
+        expect(
+          blueprint.excludedTopics
+        ).toEqual([
+          "Best services",
+        ]);
+
+        expect(
+          blueprint.originalAssets
+        ).toEqual([
+          "detection-matrix",
+        ]);
+
+        expect(
+          blueprint.fingerprint
+        ).toBeTruthy();
+      }
+    );
+
+
+    it(
+      "does not permit unknown query nodes",
+      () => {
+        expect(
+          () =>
+            buildMasterSearchBlueprint({
+              ...({
+                mission,
+
+                queryGraph,
+
+                expectedCoverage:
+                  expected,
+
+                gaps,
+
+                originalValue,
+
+                claimLedger:
+                  ledger,
+
+                evidenceGraph,
+
+                action:
+                  "CREATE",
+
+                primaryQuery:
+                  "what is credit monitoring",
+
+                queryNodeIds: [
+                  primaryNode.id,
+                  "unknown-node",
+                ],
+
+                intent:
+                  "INFORMATIONAL",
+
+                pageType:
+                  "ARTICLE",
+              }),
+            })
+        ).toThrow(
+          "MASTER_BLUEPRINT_UNKNOWN_QUERY_NODE:unknown-node"
+        );
+      }
+    );
+
+
+    it(
+      "fails closed when original value is rejected",
+      () => {
+        expect(
+          () =>
+            buildMasterSearchBlueprint({
+              mission,
+
+              queryGraph,
+
+              expectedCoverage:
+                expected,
+
+              gaps,
+
+              originalValue: {
+                ...originalValue,
+
+                strength:
+                  "NONE",
+
+                gate:
+                  "REJECTED",
+              },
+
+              claimLedger:
+                ledger,
+
+              evidenceGraph,
+
+              action:
+                "CREATE",
+
+              primaryQuery:
+                "what is credit monitoring",
+
+              queryNodeIds: [
+                primaryNode.id,
+              ],
+
+              intent:
+                "INFORMATIONAL",
+
+              pageType:
+                "ARTICLE",
+            })
+        ).toThrow(
+          "MASTER_BLUEPRINT_ORIGINAL_VALUE_REJECTED"
+        );
+      }
+    );
+
+
+    it(
+      "requires an explicit revision to change immutable blueprint state",
+      () => {
+        const first =
+          build();
+
+        const second =
+          reviseMasterSearchBlueprint({
+            previous:
+              first,
+
+            input: {
+              mission,
+
+              queryGraph,
+
+              expectedCoverage:
+                expected,
+
+              gaps,
+
+              originalValue,
+
+              claimLedger:
+                ledger,
+
+              evidenceGraph,
+
+              action:
+                "CREATE",
+
+              primaryQuery:
+                "what is credit monitoring",
+
+              queryNodeIds:
+                queryGraph.nodes.map(
+                  (node) =>
+                    node.id
+                ),
+
+              intent:
+                "INFORMATIONAL",
+
+              pageType:
+                "ARTICLE",
+
+              requiredEntities: [
+                "credit report",
+                "credit bureau",
+              ],
+
+              requiredClaims: [
+                "claim-monitoring-detects",
+              ],
+
+              forbiddenClaims: [
+                "claim-monitoring-prevents",
+              ],
+            },
+          });
+
+        expect(
+          second.revision
+        ).toBe(
+          first.revision +
+          1
+        );
+
+        expect(
+          second.fingerprint
+        ).not.toBe(
+          first.fingerprint
+        );
+      }
+    );
+  }
+);

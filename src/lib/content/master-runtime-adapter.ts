@@ -1,0 +1,886 @@
+import {
+  normalizeMasterRuntimeUrlOwnershipV1,
+  type MasterRuntimeUrlOwnershipV1,
+} from "./master-runtime-url-ownership";
+
+import type {
+  SearchMission,
+} from "./search-mission";
+
+import type {
+  QueryGraph,
+} from "./query-graph";
+
+import type {
+  SerpSnapshot,
+} from "./serp-observatory";
+
+import type {
+  ExpectedCoverageModel,
+} from "./expected-coverage";
+
+import type {
+  GapAnalysis,
+} from "./gap-engine";
+
+import type {
+  OriginalValuePlan,
+} from "./original-value";
+
+import type {
+  EvidenceGraph,
+} from "./evidence-graph";
+
+import type {
+  ClaimLedger,
+} from "./claim-ledger";
+
+import {
+  evaluateClaimPublicationGate,
+} from "./claim-publication-gate";
+
+import type {
+  MasterSearchBlueprint,
+} from "./master-search-blueprint";
+
+import type {
+  SectionBlueprintSet,
+} from "./section-blueprint";
+
+import {
+  hydrateMasterRuntimeDates,
+} from "./master-runtime-hydration";
+
+import {
+  buildImmutableResearchPack,
+  type ImmutableResearchPack,
+  type InternalLinkPlanItem,
+} from "./immutable-research-pack";
+
+
+export type MasterRuntimeReadiness =
+  | "READY"
+  | "BLOCKED";
+
+
+export type MasterRuntimeBlocker =
+  | "MASTER_RUNTIME_SNAPSHOT_MISSING"
+  | "MASTER_RUNTIME_VERSION_INVALID"
+  | "MASTER_RUNTIME_MISSION_INVALID"
+  | "MASTER_RUNTIME_QUERY_GRAPH_INVALID"
+  | "MASTER_RUNTIME_EXPECTED_COVERAGE_INVALID"
+  | "MASTER_RUNTIME_GAPS_INVALID"
+  | "MASTER_RUNTIME_ORIGINAL_VALUE_INVALID"
+  | "MASTER_RUNTIME_EVIDENCE_GRAPH_INVALID"
+  | "MASTER_RUNTIME_CLAIM_LEDGER_INVALID"
+  | "MASTER_RUNTIME_SEARCH_BLUEPRINT_INVALID"
+  | "MASTER_RUNTIME_SECTION_BLUEPRINTS_INVALID"
+  | "MASTER_RUNTIME_MISSION_MISMATCH"
+  | "MASTER_RUNTIME_BLUEPRINT_REVISION_MISMATCH"
+  | "MASTER_RUNTIME_ORIGINAL_VALUE_BLOCKED"
+  | "MASTER_RUNTIME_CLAIM_GATE_BLOCKED"
+  | "MASTER_RUNTIME_NO_GO"
+  | "MASTER_RUNTIME_PERSISTED_DATE_INVALID"
+  | "MASTER_RUNTIME_URL_OWNERSHIP_INVALID";
+
+
+export interface MasterRuntimeSnapshotV1 {
+  version:
+    "MASTER_RUNTIME_SNAPSHOT_V1";
+
+  mission:
+    Readonly<SearchMission>;
+
+  queryGraph:
+    Readonly<QueryGraph>;
+
+  /*
+   * Real Stage-3 URL ownership artifact.
+   *
+   * Optional only for backwards compatibility with historical
+   * persisted snapshots created before URL ownership became
+   * part of MasterRuntime.
+   *
+   * Normalized runtimes always expose URL_OWNERSHIP_V1 or null.
+   */
+  urlOwnership?:
+    Readonly<MasterRuntimeUrlOwnershipV1> |
+    null;
+
+  serpResearch:
+    Readonly<SerpSnapshot> | null;
+
+  expectedCoverage:
+    Readonly<ExpectedCoverageModel>;
+
+  gaps:
+    Readonly<GapAnalysis>;
+
+  originalValue:
+    Readonly<OriginalValuePlan>;
+
+  evidenceGraph:
+    Readonly<EvidenceGraph>;
+
+  claimLedger:
+    Readonly<ClaimLedger>;
+
+  searchBlueprint:
+    Readonly<MasterSearchBlueprint>;
+
+  sectionBlueprints:
+    Readonly<SectionBlueprintSet>;
+
+  internalLinkPlan:
+    readonly Readonly<InternalLinkPlanItem>[];
+
+  styleRules:
+    readonly string[];
+}
+
+
+export interface MasterRuntimeInspection {
+  version:
+    "MASTER_RUNTIME_ADAPTER_V1";
+
+  readiness:
+    MasterRuntimeReadiness;
+
+  blockers:
+    readonly MasterRuntimeBlocker[];
+
+  runtime:
+    Readonly<MasterRuntimeSnapshotV1> | null;
+}
+
+
+function isRecord(
+  value: unknown
+): value is Record<string, unknown> {
+  return (
+    typeof value ===
+      "object" &&
+    value !==
+      null &&
+    !Array.isArray(
+      value
+    )
+  );
+}
+
+
+function hasPositiveIntegerVersion(
+  value: unknown
+): boolean {
+  return (
+    isRecord(
+      value
+    ) &&
+    typeof value.version ===
+      "number" &&
+    Number.isInteger(
+      value.version
+    ) &&
+    value.version >
+      0
+  );
+}
+
+
+function hasVersion(
+  value: unknown,
+  version: string
+): boolean {
+  return (
+    isRecord(
+      value
+    ) &&
+    value.version ===
+      version
+  );
+}
+
+
+function hasString(
+  value: unknown
+): value is string {
+  return (
+    typeof value ===
+      "string" &&
+    value.trim().length >
+      0
+  );
+}
+
+
+function freezeStringArray(
+  value: unknown
+): readonly string[] | null {
+  if (
+    !Array.isArray(
+      value
+    ) ||
+    !value.every(
+      hasString
+    )
+  ) {
+    return null;
+  }
+
+  return Object.freeze(
+    value.map(
+      (item) =>
+        item.trim()
+    )
+  );
+}
+
+
+function validateInternalLinks(
+  value: unknown
+): readonly Readonly<InternalLinkPlanItem>[] | null {
+  if (
+    !Array.isArray(
+      value
+    )
+  ) {
+    return null;
+  }
+
+  const output:
+    Readonly<InternalLinkPlanItem>[] =
+      [];
+
+  for (
+    const item
+    of value
+  ) {
+    if (
+      !isRecord(
+        item
+      ) ||
+      !hasString(
+        item.fromUrl
+      ) ||
+      !hasString(
+        item.toUrl
+      ) ||
+      !hasString(
+        item.reason
+      ) ||
+      (
+        item.anchor !==
+          undefined &&
+        !hasString(
+          item.anchor
+        )
+      )
+    ) {
+      return null;
+    }
+
+    output.push(
+      Object.freeze({
+        fromUrl:
+          item.fromUrl.trim(),
+
+        toUrl:
+          item.toUrl.trim(),
+
+        anchor:
+          typeof item.anchor ===
+            "string"
+            ? item.anchor.trim()
+            : undefined,
+
+        reason:
+          item.reason.trim(),
+      })
+    );
+  }
+
+  return Object.freeze(
+    output
+  );
+}
+
+
+function runtimeContainer(
+  planSnapshot: unknown
+): unknown {
+  if (
+    !isRecord(
+      planSnapshot
+    )
+  ) {
+    return null;
+  }
+
+  /*
+   * Only the explicit future masterRuntime field is accepted.
+   *
+   * Legacy fields such as:
+   * - searchBlueprintShadow
+   * - informationGain
+   * - architecture
+   * - strategy
+   *
+   * are intentionally NOT reconstructed into Stage 1–8 artifacts.
+   */
+  return (
+    planSnapshot.masterRuntime ??
+    null
+  );
+}
+
+
+export function inspectMasterRuntimeSnapshot(
+  planSnapshot: unknown
+): Readonly<MasterRuntimeInspection> {
+  const candidate =
+    runtimeContainer(
+      planSnapshot
+    );
+
+  if (
+    !isRecord(
+      candidate
+    )
+  ) {
+    return Object.freeze({
+      version:
+        "MASTER_RUNTIME_ADAPTER_V1" as const,
+
+      readiness:
+        "BLOCKED" as const,
+
+      blockers:
+        Object.freeze([
+          "MASTER_RUNTIME_SNAPSHOT_MISSING" as const,
+        ]),
+
+      runtime:
+        null,
+    });
+  }
+
+  const blockers:
+    MasterRuntimeBlocker[] =
+      [];
+
+  if (
+    candidate.version !==
+    "MASTER_RUNTIME_SNAPSHOT_V1"
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_VERSION_INVALID"
+    );
+  }
+
+  if (
+    !hasPositiveIntegerVersion(
+      candidate.mission
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_MISSION_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.queryGraph,
+      "QUERY_GRAPH_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_QUERY_GRAPH_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.expectedCoverage,
+      "EXPECTED_COVERAGE_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_EXPECTED_COVERAGE_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.gaps,
+      "GAP_ENGINE_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_GAPS_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.originalValue,
+      "ORIGINAL_VALUE_PLAN_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_ORIGINAL_VALUE_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.evidenceGraph,
+      "EVIDENCE_GRAPH_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_EVIDENCE_GRAPH_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.claimLedger,
+      "CLAIM_LEDGER_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_CLAIM_LEDGER_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.searchBlueprint,
+      "MASTER_SEARCH_BLUEPRINT_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_SEARCH_BLUEPRINT_INVALID"
+    );
+  }
+
+  if (
+    !hasVersion(
+      candidate.sectionBlueprints,
+      "SECTION_BLUEPRINT_SET_V1"
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_SECTION_BLUEPRINTS_INVALID"
+    );
+  }
+
+  const internalLinkPlan =
+    validateInternalLinks(
+      candidate.internalLinkPlan
+    );
+
+  const styleRules =
+    freezeStringArray(
+      candidate.styleRules
+    );
+
+  if (
+    !internalLinkPlan
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_SEARCH_BLUEPRINT_INVALID"
+    );
+  }
+
+  if (
+    !styleRules
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_SEARCH_BLUEPRINT_INVALID"
+    );
+  }
+
+
+  let urlOwnership:
+    Readonly<MasterRuntimeUrlOwnershipV1> |
+    null =
+      null;
+
+  try {
+    urlOwnership =
+      normalizeMasterRuntimeUrlOwnershipV1(
+        candidate.urlOwnership
+      );
+  } catch {
+    blockers.push(
+      "MASTER_RUNTIME_URL_OWNERSHIP_INVALID"
+    );
+  }
+
+
+  if (
+    blockers.length >
+    0
+  ) {
+    return Object.freeze({
+      version:
+        "MASTER_RUNTIME_ADAPTER_V1" as const,
+
+      readiness:
+        "BLOCKED" as const,
+
+      blockers:
+        Object.freeze([
+          ...new Set(
+            blockers
+          ),
+        ]),
+
+      runtime:
+        null,
+    });
+  }
+
+  let hydratedDates:
+    ReturnType<
+      typeof hydrateMasterRuntimeDates
+    >;
+
+  try {
+    hydratedDates =
+      hydrateMasterRuntimeDates({
+        mission:
+          candidate.mission,
+
+        serpResearch:
+          candidate.serpResearch,
+
+        evidenceGraph:
+          candidate.evidenceGraph,
+      });
+  } catch {
+    return Object.freeze({
+      version:
+        "MASTER_RUNTIME_ADAPTER_V1" as const,
+
+      readiness:
+        "BLOCKED" as const,
+
+      blockers:
+        Object.freeze([
+          "MASTER_RUNTIME_PERSISTED_DATE_INVALID" as const,
+        ]),
+
+      runtime:
+        null,
+    });
+  }
+
+
+  /*
+   * Structural versions have now been validated.
+   * The casts below do not manufacture data; they expose only
+   * the explicitly persisted masterRuntime object.
+   */
+  const mission =
+    hydratedDates.mission;
+
+  const queryGraph =
+    candidate.queryGraph as unknown as
+      Readonly<QueryGraph>;
+
+  const expectedCoverage =
+    candidate.expectedCoverage as unknown as
+      Readonly<ExpectedCoverageModel>;
+
+  const gaps =
+    candidate.gaps as unknown as
+      Readonly<GapAnalysis>;
+
+  const originalValue =
+    candidate.originalValue as unknown as
+      Readonly<OriginalValuePlan>;
+
+  const evidenceGraph =
+    hydratedDates
+      .evidenceGraph;
+
+  const claimLedger =
+    candidate.claimLedger as unknown as
+      Readonly<ClaimLedger>;
+
+  const searchBlueprint =
+    candidate.searchBlueprint as unknown as
+      Readonly<MasterSearchBlueprint>;
+
+  const sectionBlueprints =
+    candidate.sectionBlueprints as unknown as
+      Readonly<SectionBlueprintSet>;
+
+  const missionIds = [
+    queryGraph.missionId,
+    expectedCoverage.missionId,
+    gaps.missionId,
+    originalValue.missionId,
+    searchBlueprint.missionId,
+
+    ...(
+      urlOwnership
+        ? [
+            urlOwnership.missionId,
+          ]
+        : []
+    ),
+  ];
+
+  if (
+    missionIds.some(
+      (missionId) =>
+        missionId !==
+        mission.id
+    )
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_MISSION_MISMATCH"
+    );
+  }
+
+  if (
+    sectionBlueprints
+      .blueprintFingerprint !==
+    searchBlueprint
+      .fingerprint
+  ) {
+    blockers.push(
+      "MASTER_RUNTIME_BLUEPRINT_REVISION_MISMATCH"
+    );
+  }
+
+  /*
+   * Mission/fingerprint mismatches are persistence-integrity
+   * failures. They invalidate the snapshot itself.
+   */
+  if (
+    blockers.length >
+    0
+  ) {
+    return Object.freeze({
+      version:
+        "MASTER_RUNTIME_ADAPTER_V1" as const,
+
+      readiness:
+        "BLOCKED" as const,
+
+      blockers:
+        Object.freeze([
+          ...new Set(
+            blockers
+          ),
+        ]),
+
+      runtime:
+        null,
+    });
+  }
+
+  /*
+   * These are valid research outcomes.
+   *
+   * They MUST remain persistable for audit, diagnosis,
+   * outcome learning, and future explicit revision.
+   *
+   * They block the WRITER, not persistence.
+   */
+  const writerBlockers:
+    MasterRuntimeBlocker[] =
+      [];
+
+  if (
+    originalValue.gate ===
+    "REJECTED"
+  ) {
+    writerBlockers.push(
+      "MASTER_RUNTIME_ORIGINAL_VALUE_BLOCKED"
+    );
+  }
+
+  const claimGate =
+    evaluateClaimPublicationGate(
+      claimLedger
+    );
+
+  if (
+    !claimGate.pass
+  ) {
+    writerBlockers.push(
+      "MASTER_RUNTIME_CLAIM_GATE_BLOCKED"
+    );
+  }
+
+  if (
+    searchBlueprint.action ===
+    "NO_GO"
+  ) {
+    writerBlockers.push(
+      "MASTER_RUNTIME_NO_GO"
+    );
+  }
+
+  const serpResearch =
+    hydratedDates
+      .serpResearch;
+
+  const runtime:
+    MasterRuntimeSnapshotV1 = {
+      version:
+        "MASTER_RUNTIME_SNAPSHOT_V1",
+
+      mission,
+
+      queryGraph,
+
+      urlOwnership,
+
+      serpResearch,
+
+      expectedCoverage,
+
+      gaps,
+
+      originalValue,
+
+      evidenceGraph,
+
+      claimLedger,
+
+      searchBlueprint,
+
+      sectionBlueprints,
+
+      internalLinkPlan:
+        internalLinkPlan!,
+
+      styleRules:
+        styleRules!,
+  };
+
+  const frozenRuntime =
+    Object.freeze(
+      runtime
+    );
+
+  if (
+    writerBlockers.length >
+    0
+  ) {
+    return Object.freeze({
+      version:
+        "MASTER_RUNTIME_ADAPTER_V1" as const,
+
+      readiness:
+        "BLOCKED" as const,
+
+      blockers:
+        Object.freeze([
+          ...new Set(
+            writerBlockers
+          ),
+        ]),
+
+      runtime:
+        frozenRuntime,
+    });
+  }
+
+  return Object.freeze({
+    version:
+      "MASTER_RUNTIME_ADAPTER_V1" as const,
+
+    readiness:
+      "READY" as const,
+
+    blockers:
+      Object.freeze([]),
+
+    runtime:
+      frozenRuntime,
+  });
+}
+
+
+export function buildProductionMasterResearchPack({
+  planSnapshot,
+}: {
+  planSnapshot:
+    unknown;
+}): Readonly<ImmutableResearchPack> {
+  const inspection =
+    inspectMasterRuntimeSnapshot(
+      planSnapshot
+    );
+
+  if (
+    inspection.readiness !==
+      "READY" ||
+    !inspection.runtime
+  ) {
+    throw new Error(
+      `MASTER_RUNTIME_BLOCKED:${inspection.blockers.join(",")}`
+    );
+  }
+
+  const runtime =
+    inspection.runtime;
+
+  return buildImmutableResearchPack({
+    mission:
+      runtime.mission,
+
+    queryGraph:
+      runtime.queryGraph,
+
+    serpResearch:
+      runtime.serpResearch,
+
+    searchBlueprint:
+      runtime.searchBlueprint,
+
+    sectionBlueprints:
+      runtime.sectionBlueprints,
+
+    claimLedger:
+      runtime.claimLedger,
+
+    evidenceGraph:
+      runtime.evidenceGraph,
+
+    gaps:
+      runtime.gaps,
+
+    originalValue:
+      runtime.originalValue,
+
+    internalLinkPlan:
+      runtime.internalLinkPlan.map(
+        (item) => ({
+          fromUrl:
+            item.fromUrl,
+
+          toUrl:
+            item.toUrl,
+
+          anchor:
+            item.anchor,
+
+          reason:
+            item.reason,
+        })
+      ),
+
+    styleRules:
+      [
+        ...runtime.styleRules,
+      ],
+  });
+}

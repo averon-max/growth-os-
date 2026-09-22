@@ -1,0 +1,46 @@
+import { Users, Globe } from "lucide-react";
+import { requireUser } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
+import { getAudienceSegments } from "@/lib/audience/repository";
+import { Topbar } from "@/components/dashboard/topbar";
+import { TrafficOverview } from "@/components/dashboard/traffic-overview";
+import { AudienceSearchQueries } from "@/components/dashboard/audience-search-queries";
+import { EmptyState, Badge } from "@/components/dashboard/ui";
+import styles from "@/components/dashboard/ui.module.css";
+
+export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
+  const user = await requireUser();
+  const { websiteId } = await searchParams;
+  const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
+  const website = membership ? websiteId ? await prisma.website.findFirst({ where: { id: websiteId, business: { workspaceId: membership.workspaceId } } }) : await prisma.website.findFirst({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" } }) : null;
+
+  if (!website) return <><Topbar title="Audience" /><div className={styles.pageBody}><EmptyState icon={Globe} title="Add a website first" description="Connect a website before viewing audience data." actionLabel="Add Website" actionHref="/dashboard/add-website" /></div></>;
+
+  const { segments, pagination } = await getAudienceSegments(website.id);
+
+  return (
+    <>
+      <Topbar title="Audience" subtitle={website.url} websiteSwitcher={membership ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined} />
+      <div className={styles.pageBody}>
+        <div className={styles.workspaceIntro}><div><div className={styles.eyebrow}>Traffic intelligence</div><h1 className={styles.heroTitle}>Audience</h1><p className={styles.heroSubtitle}>Understand who reaches your site and how automated traffic behaves.</p></div></div>
+
+        <TrafficOverview websiteId={website.id} />
+          <AudienceSearchQueries websiteId={website.id} />
+
+        {segments.length === 0 ? (
+          <div className={styles.inlineEmpty}><Users size={15} /><span>No GA4 audience segments available yet.</span><a href="/dashboard/settings">Connect GA4</a></div>
+        ) : (
+          <>
+            <div className={styles.sectionBar}><div><span className={styles.sectionTitle}>Audience segments</span><span className={styles.sectionCount}>{pagination.total}</span></div></div>
+            <div className={styles.dataList}>
+              {segments.map((segment) => {
+                const criteria = segment.criteria as Record<string, string | number>;
+                return <div key={segment.id} className={styles.dataRow}><div className={styles.dataIdentity}><div className={styles.siteIcon}><Users size={14} /></div><div><div className={styles.dataTitle}>{segment.name}</div><div className={styles.dataSecondary}>{Object.entries(criteria).map(([key, value]) => `${key}: ${value}`).join(" · ")}</div></div></div><div className={styles.badgeRow}>{Object.keys(criteria).map((key) => <Badge key={key} tone="muted">{key}</Badge>)}</div></div>;
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}

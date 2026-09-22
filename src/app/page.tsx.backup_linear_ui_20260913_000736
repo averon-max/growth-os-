@@ -1,0 +1,335 @@
+import Image from "next/image";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BarChart3,
+  Search,
+  Target,
+  Zap,
+} from "lucide-react";
+import styles from "./landing.module.css";
+
+export default function Home() {
+  return (
+    <main className={styles.page} data-version="growth-linear-v7">
+      <header className={styles.header}>
+        <Link href="/" className={styles.brand}>
+          <span className={styles.logo} />
+          Growth OS
+        </Link>
+
+        <nav className={styles.nav}>
+          <a href="#product">Product</a>
+          <a href="#keywords">Keywords</a>
+          <a href="#audience">Audience</a>
+          <Link href="/pricing">Pricing</Link>
+        </nav>
+
+        <div className={styles.account}>
+          <Link href="/login">Log in</Link>
+          <Link href="/signup" className={styles.signup}>
+            Sign up
+          </Link>
+        </div>
+      </header>
+
+      <section className={styles.hero}>
+        <div className={styles.heroGlow} />
+
+        <div className={styles.heroCopy}>
+          <div className={styles.eyebrow}>
+            <span />
+            Growth intelligence for modern teams
+          </div>
+
+          <h1>
+            Turn signals into growth.
+            <br />
+            All in one system.
+          </h1>
+
+          <p>
+            Growth OS brings search demand, SEO intelligence and real
+            audience data into one system — so every signal points
+            toward the next move.
+          </p>
+
+          <div className={styles.actions}>
+            <Link href="/signup" className={styles.primary}>
+              Start with your website
+              <ArrowRight size={14} />
+            </Link>
+
+            <a href="#product" className={styles.secondary}>
+              See the product
+            </a>
+          </div>
+        </div>
+
+        <div className={styles.scene} id="product">
+          <div className={styles.sceneGlow} />
+
+          <ProductWindow
+            title="Keyword Intelligence"
+            image="/landing/keywords.png"
+            className={styles.mainProduct}
+          />
+
+          <ProductWindow
+            title="Audience Intelligence"
+            image="/landing/audience.png"
+            className={styles.overlayProduct}
+          />
+
+          <div className={styles.sceneFade} />
+        </div>
+      </section>
+
+      <section className={styles.intro}>
+        <span className={styles.number}>01</span>
+
+        <div>
+          <span className={styles.kicker}>One operating system</span>
+
+          <h2>
+            Data is everywhere.
+            <br />
+            Direction shouldn&apos;t be.
+          </h2>
+
+          <p>
+            Instead of jumping between SEO reports, keyword tools and
+            analytics dashboards, Growth OS connects the signals and
+            shows what deserves attention now.
+          </p>
+        </div>
+      </section>
+
+      <section className={styles.feature} id="keywords">
+        <div className={styles.copy}>
+          <div className={styles.icon}>
+            <Search size={16} />
+          </div>
+
+          <span className={styles.kicker}>Keyword Intelligence</span>
+
+          <h2>
+            See demand
+            <br />
+            before you chase it.
+          </h2>
+
+          <p>
+            Search volume, difficulty, CPC, competition and market
+            momentum live together so you can see where demand exists
+            and where your site has room to win.
+          </p>
+
+          <div className={styles.tags}>
+            <span>Search volume</span>
+            <span>Difficulty</span>
+            <span>CPC</span>
+            <span>Momentum</span>
+          </div>
+
+          <Link href="/signup" className={styles.textLink}>
+            Explore keywords
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        <div className={styles.visual}>
+          <div className={styles.purpleGlow} />
+
+          <ProductWindow
+            title="Keywords"
+            image="/landing/keywords.png"
+            className={styles.featureProduct}
+          />
+        </div>
+      </section>
+
+      <section
+        className={`${styles.feature} ${styles.reverse}`}
+        id="audience"
+      >
+        <div className={styles.copy}>
+          <div className={`${styles.icon} ${styles.cyanIcon}`}>
+            <BarChart3 size={16} />
+          </div>
+
+          <span className={styles.kicker}>Audience Intelligence</span>
+
+          <h2>
+            Understand what
+            <br />
+            happens after search.
+          </h2>
+
+          <p>
+            Bring real traffic activity next to your SEO work.
+            See acquisition and audience signals without synthetic
+            dashboard numbers hiding what is actually happening.
+          </p>
+
+          <div className={styles.tags}>
+            <span>Traffic history</span>
+            <span>Cloudflare</span>
+            <span>Search discovery</span>
+            <span>Audience signals</span>
+          </div>
+
+          <Link href="/signup" className={styles.textLink}>
+            Explore audience
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        <div className={styles.visual}>
+          <div className={styles.cyanGlow} />
+
+          <ProductWindow
+            title="Audience"
+            image="/landing/audience.png"
+            className={styles.featureProduct}
+          />
+        </div>
+      </section>
+
+      <section className={styles.system}>
+        <div className={styles.systemTitle}>
+          <span className={styles.number}>02</span>
+
+          <div>
+            <span className={styles.kicker}>Signal → decision → action</span>
+
+            <h2>
+              Everything points
+              <br />
+              to the next move.
+            </h2>
+          </div>
+        </div>
+
+        <div className={styles.systemGrid}>
+          <SystemItem
+            n="01"
+            icon={<Search size={15} />}
+            title="Understand demand"
+            text="Map what people search for and how demand is moving."
+          />
+
+          <SystemItem
+            n="02"
+            icon={<Target size={15} />}
+            title="Find the gap"
+            text="Connect rankings, competition and website weaknesses."
+          />
+
+          <SystemItem
+            n="03"
+            icon={<Zap size={15} />}
+            title="Act on it"
+            text="Turn the highest-value opportunities into actual work."
+          />
+        </div>
+      </section>
+
+      <section className={styles.final}>
+        <div className={styles.finalGlow} />
+
+        <span>Growth OS</span>
+
+        <h2>
+          Build a growth system.
+          <br />
+          Not another dashboard.
+        </h2>
+
+        <p>
+          One workspace for understanding demand, finding opportunities
+          and measuring what happens next.
+        </p>
+
+        <Link href="/signup" className={styles.primary}>
+          Start growing
+          <ArrowRight size={14} />
+        </Link>
+      </section>
+
+      <footer className={styles.footer}>
+        <Link href="/" className={styles.brand}>
+          <span className={styles.logo} />
+          Growth OS
+        </Link>
+
+        <span>SEO intelligence &amp; business growth automation.</span>
+
+        <div>
+          <Link href="/pricing">Pricing</Link>
+          <Link href="/login">Log in</Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function ProductWindow({
+  title,
+  image,
+  className,
+}: {
+  title: string;
+  image: string;
+  className?: string;
+}) {
+  return (
+    <div className={`${styles.window} ${className ?? ""}`}>
+      <div className={styles.windowTop}>
+        <div className={styles.dots}>
+          <i />
+          <i />
+          <i />
+        </div>
+
+        <span>{title}</span>
+
+        <span>Growth OS</span>
+      </div>
+
+      <div className={styles.imageFrame}>
+        <Image
+          src={image}
+          alt={`${title} in Growth OS`}
+          width={1580}
+          height={660}
+          className={styles.productImage}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SystemItem({
+  n,
+  icon,
+  title,
+  text,
+}: {
+  n: string;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <article className={styles.systemItem}>
+      <div className={styles.systemItemTop}>
+        <span>{n}</span>
+        {icon}
+      </div>
+
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </article>
+  );
+}

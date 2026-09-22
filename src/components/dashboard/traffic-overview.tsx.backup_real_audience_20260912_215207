@@ -1,0 +1,326 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+import { Stat, Badge } from "@/components/dashboard/ui";
+import sharedStyles from "@/components/dashboard/ui.module.css";
+import styles from "./traffic-overview.module.css";
+
+interface CountryBreakdownEntry {
+  country: string;
+  requests: number;
+  visits: number;
+}
+
+interface DeviceBreakdownEntry {
+  device: string;
+  requests: number;
+  visits: number;
+}
+
+interface BotCategoryEntry {
+  category: string; // "" = not identified as a known bot
+  requests: number;
+}
+
+interface TrafficSnapshotData {
+  date: string;
+  totalRequests: number;
+  unclassifiedRequests: number;
+  verifiedBotRequests: number;
+  uniqueVisitors: number;
+  bandwidthBytes: string;
+  countryBreakdown: CountryBreakdownEntry[] | null;
+  deviceBreakdown: DeviceBreakdownEntry[] | null;
+  botCategoryBreakdown: BotCategoryEntry[] | null;
+}
+
+interface TrafficResponse {
+  connected: boolean;
+  snapshots: TrafficSnapshotData[];
+}
+
+const RANGE_OPTIONS = [
+  { label: "7 days", value: 7 },
+  { label: "14 days", value: 14 },
+  { label: "30 days", value: 30 },
+];
+
+const BOT_CATEGORY_LABELS: Record<string, string> = {
+  "Search Engine Crawler": "Search engine crawlers (Google, Bing, etc.)",
+  "AI Crawler": "AI crawlers (model training)",
+  "AI Search": "AI search (ChatGPT, Perplexity, etc.)",
+  "AI Assistant": "AI assistants",
+  "Search Engine Optimization": "SEO tools",
+};
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
+
+function aggregateByKey<T extends object>(
+  snapshots: TrafficSnapshotData[],
+  field: "countryBreakdown" | "deviceBreakdown" | "botCategoryBreakdown",
+  key: string,
+  valueFields: string[]
+): Array<Record<string, string | number>> {
+  const map = new Map<string, Record<string, number>>();
+  for (const snapshot of snapshots) {
+    const entries = (snapshot[field] as unknown as T[]) ?? [];
+    for (const entry of entries) {
+      const record = entry as unknown as Record<string, unknown>;
+      const k = String(record[key]);
+      const existing = map.get(k) ?? Object.fromEntries(valueFields.map((f) => [f, 0]));
+      for (const f of valueFields) {
+        existing[f] += Number(record[f]) || 0;
+      }
+      map.set(k, existing);
+    }
+  }
+  return Array.from(map.entries())
+    .map(([k, v]) => ({ [key]: k, ...v }))
+    .sort((a, b) => Number(b[valueFields[0]]) - Number(a[valueFields[0]]));
+}
+
+export function TrafficOverview({ websiteId }: { websiteId: string }) {
+  const [days, setDays] = useState(7);
+  const [data, setData] = useState<TrafficResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/traffic?websiteId=${websiteId}&days=${days}`, {
+        cache: "no-store",
+      })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load traffic data.");
+        return res.json();
+      })
+      .then((json: TrafficResponse) => {
+        if (!cancelled) setData(json);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load traffic data.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [websiteId, days]);
+
+  if (loading) return <p className={styles.status}>Loading traffic data...</p>;
+  if (error) return <p className={styles.statusError}>{error}</p>;
+  if (!data?.connected) return null;
+  if (data.snapshots.length === 0) {
+    return <p className={styles.status}>No traffic data synced yet.</p>;
+  }
+
+  const totalRequests = data.snapshots.reduce((sum, s) => sum + s.totalRequests, 0);
+  const totalHuman = data.snapshots.reduce((sum, s) => sum + s.unclassifiedRequests, 0);
+  const totalBots = data.snapshots.reduce((sum, s) => sum + s.verifiedBotRequests, 0);
+  const totalVisitors = data.snapshots.reduce((sum, s) => sum + s.uniqueVisitors, 0);
+  const totalBandwidth = data.snapshots.reduce((sum, s) => sum + Number(s.bandwidthBytes), 0);
+  const humanPct = totalRequests > 0 ? Math.round((totalHuman / totalRequests) * 100) : 0;
+  const botPct = 100 - humanPct;
+
+  const chartData = data.snapshots.map((s) => ({
+    date: s.date.slice(5),
+    human: s.unclassifiedRequests,
+    bots: s.verifiedBotRequests,
+  }));
+
+  const topCountries = aggregateByKey<CountryBreakdownEntry>(
+    data.snapshots,
+    "countryBreakdown",
+    "country",
+    ["requests", "visits"]
+  ).slice(0, 8);
+
+  const topDevices = aggregateByKey<DeviceBreakdownEntry>(
+    data.snapshots,
+    "deviceBreakdown",
+    "device",
+    ["requests", "visits"]
+  );
+
+  const botCategories = aggregateByKey<BotCategoryEntry>(
+    data.snapshots,
+    "botCategoryBreakdown",
+    "category",
+    ["requests"]
+  ).filter((c) => c.category !== "");
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        {RANGE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            className={`${styles.filterButton} ${days === opt.value ? styles.filterButtonActive : ""}`}
+            onClick={() => setDays(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={sharedStyles.statGrid}>
+        <Stat label={`Requests (${days}d)`} value={totalRequests.toLocaleString()} />
+        <Stat label={`Unique visitors (${days}d)`} value={totalVisitors.toLocaleString()} />
+        <Stat label={`Bandwidth (${days}d)`} value={formatBytes(totalBandwidth)} />
+      </div>
+
+      <div className={styles.explainBox}>
+        <p className={styles.explainTitle}>Humans vs. bots — in plain terms</p>
+        <p className={styles.explainText}>
+          Out of {totalRequests.toLocaleString()} requests over the last {days} days, about{" "}
+          <strong>{humanPct}%</strong> ({totalHuman.toLocaleString()}) are not flagged by
+          Cloudflare as a known bot — most likely real visitors, though on the Free plan there
+          is no way to fully distinguish a human from a new or stealthy bot. The remaining{" "}
+          <strong>{botPct}%</strong> ({totalBots.toLocaleString()}) is traffic from crawlers and
+          bots that Cloudflare has identified.
+        </p>
+        {botCategories.length > 0 && (
+          <ul className={styles.botList}>
+            {botCategories.map((c) => (
+              <li key={String(c.category)} className={styles.botListItem}>
+                <span>{BOT_CATEGORY_LABELS[String(c.category)] ?? String(c.category)}</span>
+                <span className={styles.botCount}>{Number(c.requests).toLocaleString()} requests</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className={styles.chartBlock}>
+        <div className={styles.chartLabel}>Requests per day: humans vs. bots</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--secondary)" }} />
+            <YAxis tick={{ fontSize: 10, fill: "var(--secondary)" }} width={36} />
+            <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", fontSize: 12 }} />
+            <Bar dataKey="human" stackId="a" fill="var(--accent)" name="Likely human" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="bots" stackId="a" fill="var(--secondary)" name="Bots" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={sharedStyles.group}>
+        <div className={sharedStyles.groupHeader}>
+          <span className={sharedStyles.groupLabel}>Daily detail</span>
+          <span className={sharedStyles.groupCount}>{data.snapshots.length}</span>
+        </div>
+        {[...data.snapshots].reverse().map((s) => {
+          const isExpanded = expandedDate === s.date;
+          const dayHumanPct = s.totalRequests > 0 ? Math.round((s.unclassifiedRequests / s.totalRequests) * 100) : 0;
+          return (
+            <div key={s.date}>
+              <button
+                className={sharedStyles.issueRow}
+                style={{ width: "100%", cursor: "pointer", background: "none", border: "none", textAlign: "left" }}
+                onClick={() => setExpandedDate(isExpanded ? null : s.date)}
+              >
+                <div className={sharedStyles.issueMain}>
+                  <span className={sharedStyles.issueDot} data-tone="accent" />
+                  <div style={{ minWidth: 0 }}>
+                    <div className={sharedStyles.issueTitle}>{s.date}</div>
+                    <div className={sharedStyles.issueDesc}>
+                      {s.totalRequests.toLocaleString()} requests · {s.uniqueVisitors.toLocaleString()} visits · {formatBytes(Number(s.bandwidthBytes))} · {dayHumanPct}% likely human
+                    </div>
+                  </div>
+                </div>
+                <div className={sharedStyles.issueMeta}>
+                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </button>
+              {isExpanded && (
+                <div className={styles.dayDetail}>
+                  <div className={styles.dayDetailCol}>
+                    <div className={styles.dayDetailLabel}>Top countries</div>
+                    {(s.countryBreakdown ?? []).slice(0, 5).map((c) => (
+                      <div key={c.country} className={styles.dayDetailRow}>
+                        <span>{c.country}</span>
+                        <span>{c.requests.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.dayDetailCol}>
+                    <div className={styles.dayDetailLabel}>Devices</div>
+                    {(s.deviceBreakdown ?? []).map((d) => (
+                      <div key={d.device} className={styles.dayDetailRow}>
+                        <span>{d.device}</span>
+                        <span>{d.requests.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={sharedStyles.group}>
+        <div className={sharedStyles.groupHeader}>
+          <span className={sharedStyles.groupLabel}>{`Top countries (${days}d)`}</span>
+          <span className={sharedStyles.groupCount}>{topCountries.length}</span>
+        </div>
+        {topCountries.map((c) => (
+          <div key={String(c.country)} className={sharedStyles.issueRow}>
+            <div className={sharedStyles.issueMain}>
+              <span className={sharedStyles.issueDot} data-tone="accent" />
+              <div style={{ minWidth: 0 }}>
+                <div className={sharedStyles.issueTitle}>{String(c.country)}</div>
+                <div className={sharedStyles.issueDesc}>
+                  {Number(c.requests).toLocaleString()} requests · {Number(c.visits).toLocaleString()} visits
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className={sharedStyles.group}>
+        <div className={sharedStyles.groupHeader}>
+          <span className={sharedStyles.groupLabel}>{`Devices (${days}d)`}</span>
+          <span className={sharedStyles.groupCount}>{topDevices.length}</span>
+        </div>
+        {topDevices.map((d) => (
+          <div key={String(d.device)} className={sharedStyles.issueRow}>
+            <div className={sharedStyles.issueMain}>
+              <span className={sharedStyles.issueDot} data-tone="accent" />
+              <div style={{ minWidth: 0 }}>
+                <div className={sharedStyles.issueTitle}>{String(d.device)}</div>
+                <div className={sharedStyles.issueDesc}>
+                  {Number(d.requests).toLocaleString()} requests · {Number(d.visits).toLocaleString()} visits
+                </div>
+              </div>
+            </div>
+            <div className={sharedStyles.issueMeta}>
+              <Badge tone="muted">{String(d.device)}</Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}

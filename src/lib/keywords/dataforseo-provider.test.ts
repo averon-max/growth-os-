@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchSearchVolume, fetchRelatedKeywords, DataForSEOError } from "./dataforseo-provider";
+import { fetchSearchVolume, fetchRelatedKeywords, fetchKeywordDifficulty, DataForSEOError } from "./dataforseo-provider";
 
 describe("fetchSearchVolume", () => {
   beforeEach(() => {
@@ -262,5 +262,157 @@ describe("fetchRelatedKeywords", () => {
     );
     const result = await fetchRelatedKeywords("seo audit");
     expect(result).toEqual([]);
+  });
+});
+
+describe("fetchKeywordDifficulty", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.stubEnv("DATAFORSEO_LOGIN", "test-login");
+    vi.stubEnv("DATAFORSEO_PASSWORD", "test-password");
+  });
+
+  it("returns an empty array for an empty keyword list without calling fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await fetchKeywordDifficulty([]);
+    expect(result).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("parses a successful response into normalized results", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status_code: 20000,
+          status_message: "Ok.",
+          tasks: [
+            {
+              status_code: 20000,
+              status_message: "Ok.",
+              result: [
+                {
+                  items: [
+                    { keyword: "buy laptop", keyword_difficulty: 72 },
+                    { keyword: "laptop deals", keyword_difficulty: 45 },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      })
+    );
+
+    const result = await fetchKeywordDifficulty(["buy laptop", "laptop deals"]);
+    expect(result).toEqual([
+      { keyword: "buy laptop", keywordDifficulty: 72 },
+      { keyword: "laptop deals", keywordDifficulty: 45 },
+    ]);
+  });
+
+  it("maps null keyword_difficulty to null", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status_code: 20000,
+          status_message: "Ok.",
+          tasks: [
+            {
+              status_code: 20000,
+              status_message: "Ok.",
+              result: [{ items: [{ keyword: "obscure kw", keyword_difficulty: null }] }],
+            },
+          ],
+        }),
+      })
+    );
+
+    const result = await fetchKeywordDifficulty(["obscure kw"]);
+    expect(result).toEqual([{ keyword: "obscure kw", keywordDifficulty: null }]);
+  });
+
+  it("returns empty array when result/items are missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status_code: 20000,
+          status_message: "Ok.",
+          tasks: [{ status_code: 20000, status_message: "Ok.", result: null }],
+        }),
+      })
+    );
+
+    const result = await fetchKeywordDifficulty(["kw"]);
+    expect(result).toEqual([]);
+  });
+
+  it("throws DataForSEOError on a non-ok HTTP response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "Unauthorized" }));
+    await expect(fetchKeywordDifficulty(["kw"])).rejects.toThrow(DataForSEOError);
+  });
+
+  it("throws DataForSEOError when the top-level status_code is not 20000", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status_code: 40000, status_message: "Bad request.", tasks: [] }),
+      })
+    );
+    await expect(fetchKeywordDifficulty(["kw"])).rejects.toThrow(DataForSEOError);
+  });
+
+  it("throws DataForSEOError when the task-level status_code is not 20000", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status_code: 20000,
+          status_message: "Ok.",
+          tasks: [{ status_code: 40501, status_message: "Invalid Field.", result: null }],
+        }),
+      })
+    );
+    await expect(fetchKeywordDifficulty(["kw"])).rejects.toThrow(DataForSEOError);
+  });
+
+  it("batches keywords into chunks of 1000 and merges results", async () => {
+    const keywords = Array.from({ length: 1500 }, (_, i) => `kw-${i}`);
+    let callCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status_code: 20000,
+            status_message: "Ok.",
+            tasks: [
+              {
+                status_code: 20000,
+                status_message: "Ok.",
+                result: [{ items: [{ keyword: `batch-${callCount}`, keyword_difficulty: callCount * 10 }] }],
+              },
+            ],
+          }),
+        });
+      })
+    );
+
+    const result = await fetchKeywordDifficulty(keywords);
+    expect(callCount).toBe(2);
+    expect(result).toEqual([
+      { keyword: "batch-1", keywordDifficulty: 10 },
+      { keyword: "batch-2", keywordDifficulty: 20 },
+    ]);
   });
 });

@@ -1,0 +1,58 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: #08090b;
+  color: var(--primary);
+}
+
+.main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      850px 480px at 38% -180px,
+      rgba(121,107,220,.085),
+      rgba(70,75,120,.026) 40%,
+      transparent 72%
+    ),
+    radial-gradient(
+      760px 520px at 100% 18%,
+      rgba(64,119,145,.035),
+      transparent 72%
+    ),
+    #08090b;
+}
+
+.main::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  left: 232px;
+  right: 0;
+  top: 54px;
+  height: 240px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.012),
+      transparent
+    );
+
+  mask-image: linear-gradient(to bottom, black, transparent);
+}
+
+@media (max-width: 900px) {
+  .shell {
+    display: block;
+  }
+
+  .main::after {
+    left: 0;
+  }
+}

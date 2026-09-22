@@ -1,0 +1,844 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  ChevronDown,
+  CircleDot,
+  FileText,
+  Globe2,
+  Search,
+  Settings,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import styles from "./landing.module.css";
+
+export default function HomePage() {
+  return (
+    <main className={styles.page} data-landing="dark-linear-v5">
+      <header className={styles.header}>
+        <Link href="/" className={styles.brand}>
+          <Logo />
+          <span>Growth OS</span>
+        </Link>
+
+        <nav className={styles.nav}>
+          <a href="#product">Product</a>
+          <a href="#search">Keywords</a>
+          <a href="#audience">Audience</a>
+          <a href="#workflow">Workflows</a>
+          <Link href="/pricing">Pricing</Link>
+        </nav>
+
+        <div className={styles.account}>
+          <Link href="/login">Log in</Link>
+
+          <Link href="/signup" className={styles.signup}>
+            Sign up
+          </Link>
+        </div>
+      </header>
+
+      <section className={styles.hero} id="product">
+        <div className={styles.heroProduct}>
+          <div className={styles.heroShadow} />
+
+          <div className={styles.issueWindow}>
+            <WindowTop
+              title="Growth queue"
+              right="12 issues"
+            />
+
+            <IssueGroup
+              title="In review"
+              count="3"
+              color="green"
+              items={[
+                ["SEO-2498", "Canonical conflict on priority pages"],
+                ["SEO-2380", "Search demand increased for core topic"],
+                ["SEO-2039", "Internal linking opportunity detected"],
+              ]}
+            />
+
+            <IssueGroup
+              title="In progress"
+              count="4"
+              color="yellow"
+              items={[
+                ["SEO-2076", "Expand content coverage"],
+                ["SEO-2108", "Resolve duplicate metadata"],
+                ["SEO-2143", "Strengthen page relationships"],
+              ]}
+            />
+
+            <IssueGroup
+              title="Todo"
+              count="4"
+              color="gray"
+              items={[
+                ["SEO-2254", "Create page for emerging demand"],
+                ["SEO-2291", "Review declining keyword group"],
+              ]}
+            />
+          </div>
+
+          <div className={styles.codeWindow}>
+            <WindowTop
+              title="opportunity / apply-fix.ts"
+              right="Growth OS"
+            />
+
+            <div className={styles.diff}>
+              <CodePane title="Before" good={false} />
+              <CodePane title="After" good />
+            </div>
+          </div>
+
+          <div className={styles.verifyFloat}>
+            <CheckCircle2 size={14} />
+
+            <div>
+              <strong>Verified</strong>
+              <span>Change confirmed after re-fetch</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.heroRail}>
+          <span>SEO intelligence</span>
+          <span>Search demand</span>
+          <span>Audience signals</span>
+          <span>Verified execution</span>
+        </div>
+      </section>
+
+      <section className={styles.section} id="search">
+        <div className={styles.sectionCopy}>
+          <span>01 · SEARCH INTELLIGENCE</span>
+
+          <h2>
+            See what the market
+            is asking for.
+          </h2>
+
+          <p>
+            Demand, intent, competition and momentum stay together instead
+            of being scattered across reports.
+          </p>
+        </div>
+
+        <div className={styles.searchVisual}>
+          <div className={styles.searchVisualTop}>
+            <div>
+              <Search size={13} />
+              <span>Keyword Intelligence</span>
+            </div>
+
+            <div className={styles.filters}>
+              <button>United States</button>
+              <button>
+                30 days
+                <ChevronDown size={10} />
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.searchContent}>
+            <div className={styles.keywordTable}>
+              <div className={styles.keywordHeader}>
+                <span>Keyword</span>
+                <span>Intent</span>
+                <span>Difficulty</span>
+                <span>Momentum</span>
+              </div>
+
+              <KeywordRow
+                color="blue"
+                keyword="identity protection"
+                intent="Commercial"
+                difficulty="Medium"
+                trend="Growing"
+              />
+
+              <KeywordRow
+                color="green"
+                keyword="data breach checker"
+                intent="Informational"
+                difficulty="Low"
+                trend="Growing"
+              />
+
+              <KeywordRow
+                color="amber"
+                keyword="dark web monitoring"
+                intent="Commercial"
+                difficulty="Medium"
+                trend="Stable"
+              />
+
+              <KeywordRow
+                color="purple"
+                keyword="credit monitoring"
+                intent="Commercial"
+                difficulty="Low"
+                trend="Growing"
+              />
+
+              <KeywordRow
+                color="gray"
+                keyword="online privacy"
+                intent="Informational"
+                difficulty="Low"
+                trend="Stable"
+              />
+            </div>
+
+            <aside className={styles.momentumPanel}>
+              <div className={styles.panelTitle}>
+                <div>
+                  <span>Market</span>
+                  <strong>Search momentum</strong>
+                </div>
+
+                <TrendingUp size={13} />
+              </div>
+
+              <Momentum
+                title="Identity protection"
+                width="87%"
+                color="blue"
+              />
+
+              <Momentum
+                title="Breach monitoring"
+                width="72%"
+                color="green"
+              />
+
+              <Momentum
+                title="Privacy tools"
+                width="59%"
+                color="purple"
+              />
+
+              <Momentum
+                title="Credit alerts"
+                width="45%"
+                color="amber"
+              />
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.reverse}`} id="audience">
+        <div className={styles.sectionCopy}>
+          <span>02 · AUDIENCE</span>
+
+          <h2>
+            Understand what happens
+            after search.
+          </h2>
+
+          <p>
+            Traffic and discovery signals live next to the work that created
+            them, with one consistent view across the site.
+          </p>
+        </div>
+
+        <div className={styles.audienceVisual}>
+          <div className={styles.audienceHeader}>
+            <div>
+              <BarChart3 size={13} />
+              <span>Audience Intelligence</span>
+            </div>
+
+            <span className={styles.connected}>
+              <i />
+              Connected
+            </span>
+          </div>
+
+          <div className={styles.audienceMetrics}>
+            <Metric
+              label="Traffic"
+              value="Connected"
+              color="blue"
+            />
+
+            <Metric
+              label="Search discovery"
+              value="Connected"
+              color="green"
+            />
+
+            <Metric
+              label="Verified bots"
+              value="Classified"
+              color="amber"
+            />
+          </div>
+
+          <div className={styles.chart}>
+            <div className={styles.chartLabel}>
+              <div>
+                <span>Traffic activity</span>
+                <strong>Requests over time</strong>
+              </div>
+
+              <span>Cloudflare</span>
+            </div>
+
+            <div className={styles.gridLines}>
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+
+            <div className={styles.chartBars}>
+              {[44,59,51,73,61,82,67,91,74,84,66,93,78,86,72,96].map(
+                (height, index) => (
+                  <span key={index}>
+                    <i
+                      style={{ height: `${height}%` }}
+                      className={
+                        index % 7 === 0
+                          ? styles.chartGreen
+                          : index % 5 === 0
+                            ? styles.chartPurple
+                            : index % 3 === 0
+                              ? styles.chartBlue
+                              : ""
+                      }
+                    />
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+
+          <div className={styles.breakdowns}>
+            <Breakdown
+              icon={<Globe2 size={12} />}
+              title="Countries"
+              color="blue"
+            />
+
+            <Breakdown
+              icon={<Users size={12} />}
+              title="Devices"
+              color="green"
+            />
+
+            <Breakdown
+              icon={<Target size={12} />}
+              title="Discovery"
+              color="purple"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section} id="workflow">
+        <div className={styles.sectionCopy}>
+          <span>03 · WORKFLOWS</span>
+
+          <h2>
+            Turn signals into
+            repeatable systems.
+          </h2>
+
+          <p>
+            Move from website data to analysis, priority, execution and
+            verification without losing context between steps.
+          </p>
+        </div>
+
+        <div className={styles.workflowVisual}>
+          <div className={styles.workflowTop}>
+            <div>
+              <Zap size={13} />
+              <span>Growth workflow</span>
+            </div>
+
+            <button>Run workflow</button>
+          </div>
+
+          <div className={styles.workflowCanvas}>
+            <WorkflowNode
+              className={styles.nodeOne}
+              color="cyan"
+              icon={<Globe2 size={13} />}
+              title="Website"
+              subtitle="Connected"
+            />
+
+            <WorkflowNode
+              className={styles.nodeTwo}
+              color="purple"
+              icon={<Search size={13} />}
+              title="Analyze"
+              subtitle="SEO + market"
+            />
+
+            <WorkflowNode
+              className={styles.nodeThree}
+              color="amber"
+              icon={<Target size={13} />}
+              title="Prioritize"
+              subtitle="Opportunity"
+            />
+
+            <WorkflowNode
+              className={styles.nodeFour}
+              color="pink"
+              icon={<Zap size={13} />}
+              title="Execute"
+              subtitle="Approved"
+            />
+
+            <WorkflowNode
+              className={styles.nodeFive}
+              color="green"
+              icon={<CheckCircle2 size={13} />}
+              title="Verify"
+              subtitle="Confirmed"
+            />
+
+            <span className={styles.lineOne} />
+            <span className={styles.lineTwo} />
+            <span className={styles.lineThree} />
+            <span className={styles.lineFour} />
+          </div>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.reverse}`}>
+        <div className={styles.sectionCopy}>
+          <span>04 · OPPORTUNITIES</span>
+
+          <h2>
+            Keep the next move
+            obvious.
+          </h2>
+
+          <p>
+            A Linear-like priority queue keeps technical fixes, content gaps
+            and growth opportunities in one ordered system.
+          </p>
+        </div>
+
+        <div className={styles.opportunityVisual}>
+          <div className={styles.opportunitySidebar}>
+            <div className={styles.miniBrand}>
+              <Logo />
+              <span>Growth OS</span>
+            </div>
+
+            <div className={styles.sideItems}>
+              <span>Overview</span>
+              <span>SEO</span>
+              <span>Keywords</span>
+              <span className={styles.activeSide}>
+                Opportunities
+              </span>
+              <span>Content</span>
+              <span>Reports</span>
+            </div>
+
+            <div className={styles.settings}>
+              <Settings size={12} />
+              Settings
+            </div>
+          </div>
+
+          <div className={styles.opportunityMain}>
+            <div className={styles.opportunityTop}>
+              <div>
+                <span>Workspace</span>
+                <strong>Opportunities</strong>
+              </div>
+
+              <button>
+                Filter
+                <ChevronDown size={10} />
+              </button>
+            </div>
+
+            <OpportunityGroup
+              name="High priority"
+              count="3"
+              color="red"
+              rows={[
+                "Resolve duplicate canonical",
+                "Recover declining search cluster",
+                "Fix blocked internal pages",
+              ]}
+            />
+
+            <OpportunityGroup
+              name="Growth"
+              count="3"
+              color="green"
+              rows={[
+                "Expand high-demand topic",
+                "Build supporting content",
+                "Improve internal linking",
+              ]}
+            />
+
+            <OpportunityGroup
+              name="Research"
+              count="2"
+              color="purple"
+              rows={[
+                "Investigate emerging search",
+                "Review competitor movement",
+              ]}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.cta}>
+        <div>
+          <span>GROWTH OS</span>
+
+          <h2>
+            One workspace.
+            Clearer decisions.
+          </h2>
+        </div>
+
+        <div className={styles.ctaActions}>
+          <Link href="/signup" className={styles.ctaPrimary}>
+            Start growing
+            <ArrowRight size={12} />
+          </Link>
+
+          <Link href="/pricing" className={styles.ctaSecondary}>
+            Pricing
+          </Link>
+        </div>
+      </section>
+
+      <footer className={styles.footer}>
+        <Link href="/" className={styles.footerBrand}>
+          <Logo />
+          Growth OS
+        </Link>
+
+        <span>
+          SEO intelligence and growth operations.
+        </span>
+
+        <div>
+          <Link href="/pricing">Pricing</Link>
+          <Link href="/login">Log in</Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function Logo() {
+  return (
+    <span className={styles.logo}>
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
+function WindowTop({
+  title,
+  right,
+}: {
+  title: string;
+  right: string;
+}) {
+  return (
+    <div className={styles.windowTop}>
+      <div className={styles.windowDots}>
+        <i />
+        <i />
+        <i />
+      </div>
+
+      <span>{title}</span>
+      <span>{right}</span>
+    </div>
+  );
+}
+
+function IssueGroup({
+  title,
+  count,
+  color,
+  items,
+}: {
+  title: string;
+  count: string;
+  color: "green" | "yellow" | "gray";
+  items: [string, string][];
+}) {
+  return (
+    <div className={styles.issueGroup}>
+      <div className={styles.issueTitle}>
+        <CircleDot size={12} />
+        <strong>{title}</strong>
+        <span>{count}</span>
+      </div>
+
+      {items.map(([id, text]) => (
+        <div className={styles.issueRow} key={id}>
+          <i className={styles[color]} />
+          <span>{id}</span>
+          <strong>{text}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CodePane({
+  title,
+  good,
+}: {
+  title: string;
+  good: boolean;
+}) {
+  return (
+    <div className={styles.codePane}>
+      <div className={styles.codeTitle}>
+        {title}
+      </div>
+
+      <CodeLine number="01">
+        <b>import</b> fetchPage from crawler
+      </CodeLine>
+
+      <CodeLine number="02">
+        <em>const</em> page = await fetchPage()
+      </CodeLine>
+
+      <CodeLine number="03" changed good={good}>
+        <b>const</b> canonical = {good ? "resolvedUrl" : "pageUrl"}
+      </CodeLine>
+
+      <CodeLine number="04">
+        <em>const</em> result = analyzePage()
+      </CodeLine>
+
+      <CodeLine number="05">
+        {" "}
+      </CodeLine>
+
+      <CodeLine number="06" changed good={good}>
+        {good ? "verifyAfterApply()" : "applyFix()"}
+      </CodeLine>
+
+      <CodeLine number="07">
+        <b>return</b> result
+      </CodeLine>
+    </div>
+  );
+}
+
+function CodeLine({
+  number,
+  children,
+  changed = false,
+  good = false,
+}: {
+  number: string;
+  children: ReactNode;
+  changed?: boolean;
+  good?: boolean;
+}) {
+  return (
+    <div
+      className={
+        changed
+          ? good
+            ? styles.codeGood
+            : styles.codeBad
+          : styles.codeLine
+      }
+    >
+      <span>{number}</span>
+      <code>{children}</code>
+    </div>
+  );
+}
+
+function KeywordRow({
+  color,
+  keyword,
+  intent,
+  difficulty,
+  trend,
+}: {
+  color: "blue" | "green" | "amber" | "purple" | "gray";
+  keyword: string;
+  intent: string;
+  difficulty: string;
+  trend: string;
+}) {
+  return (
+    <div className={styles.keywordRow}>
+      <div>
+        <i className={styles[color]} />
+        <strong>{keyword}</strong>
+      </div>
+
+      <span>{intent}</span>
+      <span>{difficulty}</span>
+      <span>{trend}</span>
+    </div>
+  );
+}
+
+function Momentum({
+  title,
+  width,
+  color,
+}: {
+  title: string;
+  width: string;
+  color: "blue" | "green" | "purple" | "amber";
+}) {
+  return (
+    <div className={styles.momentum}>
+      <span>{title}</span>
+
+      <div>
+        <i
+          style={{ width }}
+          className={styles[color]}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: "blue" | "green" | "amber";
+}) {
+  return (
+    <div className={styles.metric}>
+      <span>{label}</span>
+
+      <div>
+        <i className={styles[color]} />
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function Breakdown({
+  icon,
+  title,
+  color,
+}: {
+  icon: ReactNode;
+  title: string;
+  color: "blue" | "green" | "purple";
+}) {
+  return (
+    <div className={styles.breakdown}>
+      <div>
+        {icon}
+        <strong>{title}</strong>
+      </div>
+
+      <span>
+        <i className={styles[color]} />
+      </span>
+
+      <span>
+        <i className={styles[color]} />
+      </span>
+
+      <span>
+        <i className={styles[color]} />
+      </span>
+    </div>
+  );
+}
+
+function WorkflowNode({
+  className,
+  color,
+  icon,
+  title,
+  subtitle,
+}: {
+  className: string;
+  color: "cyan" | "purple" | "amber" | "pink" | "green";
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className={`${styles.workflowNode} ${className}`}>
+      <div className={`${styles.nodeIcon} ${styles[color]}`}>
+        {icon}
+      </div>
+
+      <strong>{title}</strong>
+      <span>{subtitle}</span>
+    </div>
+  );
+}
+
+function OpportunityGroup({
+  name,
+  count,
+  color,
+  rows,
+}: {
+  name: string;
+  count: string;
+  color: "red" | "green" | "purple";
+  rows: string[];
+}) {
+  return (
+    <div className={styles.opportunityGroup}>
+      <div className={styles.opportunityGroupTitle}>
+        <i className={styles[color]} />
+        <strong>{name}</strong>
+        <span>{count}</span>
+      </div>
+
+      {rows.map((row, index) => (
+        <div className={styles.opportunityRow} key={row}>
+          <i className={styles[color]} />
+
+          <span>
+            GR-{2400 + index}
+          </span>
+
+          <strong>{row}</strong>
+
+          <span className={styles.owner}>
+            GO
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}

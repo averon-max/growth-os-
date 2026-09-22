@@ -1,0 +1,129 @@
+import type {
+  SectionRepairInputV1,
+} from "./master-section-repair";
+
+
+export function buildMasterSectionRepairPrompt(
+  input:
+    Readonly<SectionRepairInputV1>
+): string {
+  const {
+    contract,
+    section,
+    reconciliation,
+    semanticVerification,
+  } =
+    input;
+
+
+  const context =
+    JSON.stringify(
+      {
+        sectionContract: {
+          sectionIndex:
+            contract.sectionIndex,
+
+          sectionNumber:
+            contract.sectionNumber,
+
+          totalSections:
+            contract.totalSections,
+
+          blueprint:
+            contract.blueprint,
+
+          hardRules:
+            contract.hardRules,
+        },
+
+        authoritativeClaims:
+          contract.claimLedger,
+
+        authoritativeEvidence:
+          contract.evidenceGraph,
+
+        originalSection: {
+          heading:
+            section.heading,
+
+          bodyMarkdown:
+            section.bodyMarkdown,
+
+          coveredQueryNodeIds:
+            section
+              .coveredQueryNodeIds,
+
+          referencedClaimIds:
+            section
+              .referencedClaimIds,
+
+          referencedEvidenceIds:
+            section
+              .referencedEvidenceIds,
+
+          usedInternalLinks:
+            section
+              .usedInternalLinks,
+
+          assetUsed:
+            section.assetUsed,
+        },
+
+        deterministicReconciliation:
+          reconciliation,
+
+        semanticVerification:
+          semanticVerification,
+      },
+      null,
+      2
+    );
+
+
+  return [
+    "You are repairing EXACTLY ONE article section inside a contract-bound publishing system.",
+    "",
+    "You are NOT rewriting the article.",
+    "You are NOT allowed to change any other section.",
+    "You are NOT allowed to change the article title, meta description, H1, or this section's canonical H2.",
+    "",
+    "AUTHORITATIVE INPUT:",
+    context,
+    "",
+    "REPAIR GOAL:",
+    "Resolve the supplied reconciliation and/or semantic BLOCK findings while preserving all already-correct useful prose.",
+    "",
+    "HARD RULES:",
+    "1. Return body content for this one section only.",
+    "2. Do NOT output an H1.",
+    "3. Do NOT output an H2.",
+    "4. H3 is allowed only when materially useful inside this section.",
+    "5. Preserve the section's information job and expected outcome.",
+    "6. Preserve every required claim that can be stated accurately.",
+    "7. Never state a forbidden claim.",
+    "8. Never invent a fact, statistic, date, price, law, study, citation, ranking, comparison, capability, guarantee, award, dataset, customer, security property, or source.",
+    "9. Never invent claim IDs, evidence IDs, query node IDs, internal links, or asset IDs.",
+    "10. Use only claim/evidence IDs assigned by the section contract.",
+    "11. If a blocked factual sentence cannot be supported, remove it or narrow it instead of fabricating support.",
+    "12. SUPPORTS + VERIFIED_EXCERPT is the only publication-grade evidence for factual support.",
+    "13. Do not use SEARCH_SNIPPET or REFERENCE_ONLY material as factual authorization.",
+    "14. Do not keyword-stuff.",
+    "15. Do not add headings or prose to hit a length target.",
+    "16. Do not mention repair instructions, contracts, IDs, critics, or verification machinery in reader-facing prose.",
+    "",
+    "OUTPUT JSON ONLY:",
+    "{",
+    '  "bodyMarkdown": "repaired body for this section only; no H1 or H2",',
+    '  "coveredQueryNodeIds": ["only assigned query IDs actually covered"],',
+    '  "referencedClaimIds": ["only assigned claim IDs actually represented"],',
+    '  "referencedEvidenceIds": ["only assigned evidence IDs actually relied upon"],',
+    '  "usedInternalLinks": ["only assigned internal links actually used"],',
+    '  "assetUsed": "assigned asset ID if actually used, otherwise null"',
+    "}",
+    "",
+    "Do not add any other fields.",
+    "Do not include markdown fences around the JSON.",
+  ].join(
+    "\n"
+  );
+}

@@ -3,12 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getProviderConnection } from "@/lib/keywords/repository";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState } from "@/components/dashboard/ui";
-import { KeywordsExplorer } from "@/components/dashboard/keywords-explorer";
-import { KeywordSignals } from "@/components/dashboard/keyword-signals";
+import { KeywordsPageClient } from "@/components/dashboard/keywords-page-client";
+import { KeywordRankIntelligence } from "@/components/dashboard/keyword-rank-intelligence";
 import { SyncKeywordsButton } from "@/components/dashboard/sync-keywords-button";
 import { EnrichVolumeButton } from "@/components/dashboard/enrich-volume-button";
-import { KeywordSuggestions } from "@/components/dashboard/keyword-suggestions";
-import { IndustryTopKeywords } from "@/components/dashboard/industry-top-keywords";
 import { deriveSearchSeed } from "@/lib/keywords/seed-utils";
 import { GlobalTrending } from "@/components/dashboard/global-trending";
 import { deriveSeedKeyword } from "@/lib/keywords/seed";
@@ -69,12 +67,16 @@ export default async function KeywordsPage({ searchParams }: { searchParams: Pro
       <div className={styles.pageBody}>
         {website && <SyncKeywordsButton workspaceId={workspaceId} siteUrl={website.url} />}
         <EnrichVolumeButton workspaceId={workspaceId} />
-        {website?.business.industry && !website.business.industry.startsWith("http") && (
-          <IndustryTopKeywords workspaceId={workspaceId} seed={deriveSearchSeed(website.business.industry)} />
-        )}
-        <KeywordSuggestions workspaceId={workspaceId} />
-        <KeywordSignals workspaceId={workspaceId} />
-        <KeywordsExplorer workspaceId={workspaceId} />
+
+        <KeywordRankIntelligence
+          workspaceId={workspaceId}
+        />
+
+        <KeywordsPageClient
+          workspaceId={workspaceId}
+          websiteId={website?.id ?? null}
+          industrySeed={website?.business.industry && !website.business.industry.startsWith("http") ? deriveSearchSeed(website.business.industry) : null}
+        />
       </div>
     </>
   );

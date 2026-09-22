@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAuth, getPage, patchPage } from "@/lib/cms/mock-provider-store";
+import { assertMockProviderEnabled, MockProviderDisabledError, checkAuth, getPage, patchPage } from "@/lib/cms/mock-provider-store";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    assertMockProviderEnabled();
+  } catch (err) {
+    if (err instanceof MockProviderDisabledError) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    throw err;
+  }
   if (!checkAuth(req.headers.get("authorization"))) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
   }
@@ -12,6 +20,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    assertMockProviderEnabled();
+  } catch (err) {
+    if (err instanceof MockProviderDisabledError) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    throw err;
+  }
   if (!checkAuth(req.headers.get("authorization"))) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
   }

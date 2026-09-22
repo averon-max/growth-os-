@@ -1,0 +1,238 @@
+import type {
+  GeneratedArticle,
+} from "./types";
+
+import {
+  findExternalEvidenceSupport,
+  type ExternalEvidenceSource,
+} from "./external-evidence-sources";
+
+export type ExternalEvidenceIssueCode =
+  | "EXTERNAL_PRICE_REQUIRES_EVIDENCE"
+  | "EXTERNAL_LEGAL_REQUIRES_EVIDENCE"
+  | "EXTERNAL_RANKING_REQUIRES_EVIDENCE"
+  | "EXTERNAL_ABSOLUTE_CLAIM_REQUIRES_EVIDENCE";
+
+export interface ExternalEvidenceFinding {
+  code:
+    ExternalEvidenceIssueCode;
+
+  sentence:
+    string;
+
+  reason:
+    string;
+}
+
+function stripMarkdown(
+  value:
+    string
+): string {
+  return value
+    .replace(
+      /\[([^\]]+)\]\([^)]+\)/g,
+      "$1"
+    )
+    .replace(
+      /```[\s\S]*?```/g,
+      " "
+    )
+    .replace(
+      /[`*_>#]/g,
+      " "
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
+function sentences(
+  article:
+    GeneratedArticle
+): string[] {
+  const value =
+    stripMarkdown(
+      [
+        article.title,
+        article.metaDescription,
+        article.h1,
+        article.bodyMarkdown,
+      ].join(
+        "\n"
+      )
+    );
+
+  return (
+    value.match(
+      /[^.!?]+(?:[.!?]+|$)/g
+    ) ??
+    []
+  )
+    .map(
+      (sentence) =>
+        sentence.trim()
+    )
+    .filter(
+      (sentence) =>
+        sentence.length >=
+        12
+    );
+}
+
+const RULES:
+  Array<{
+    code:
+      ExternalEvidenceIssueCode;
+
+    reason:
+      string;
+
+    pattern:
+      RegExp;
+  }> =
+  [
+    {
+      code:
+        "EXTERNAL_PRICE_REQUIRES_EVIDENCE",
+
+      reason:
+        "Specific external pricing or monetary claims require source evidence before approval.",
+
+      pattern:
+        /(?:[$€£]\s?\d|\b\d+(?:\.\d+)?\s*(?:usd|cad|eur|gbp|dollars?)\b|\bbetween\s+\$?\d+\s+(?:and|to)\s+\$?\d+)/i,
+    },
+
+    {
+      code:
+        "EXTERNAL_LEGAL_REQUIRES_EVIDENCE",
+
+      reason:
+        "Legal or regulatory claims require source evidence before approval.",
+
+      pattern:
+        /\b(?:fair credit reporting act|fcra|federal law|state law|permissible purpose|legally allowed|legally required|legally prohibited|illegal|lawful)\b/i,
+    },
+
+    {
+      code:
+        "EXTERNAL_RANKING_REQUIRES_EVIDENCE",
+
+      reason:
+        "Rankings, best-of claims, or broad third-party recognition claims require source evidence.",
+
+      pattern:
+        /\b(?:top\s+\d+|best|leading|most popular|widely recognized|highest[- ]rated|number one|#1)\b/i,
+    },
+
+    {
+      code:
+        "EXTERNAL_ABSOLUTE_CLAIM_REQUIRES_EVIDENCE",
+
+      reason:
+        "Precise timing, completeness, or prevention claims require source evidence.",
+
+      pattern:
+        /\b(?:immediate alert|immediately alerts?|daily credit score|daily alerts?|complete view|prevents? new creditors|simultaneously)\b/i,
+    },
+  ];
+
+export function auditExternalEvidenceClaims(
+  article:
+    GeneratedArticle,
+  sources:
+    ExternalEvidenceSource[] = []
+): ExternalEvidenceFinding[] {
+  const findings:
+    ExternalEvidenceFinding[] =
+      [];
+
+  const seen =
+    new Set<string>();
+
+  for (
+    const sentence
+    of sentences(
+      article
+    )
+  ) {
+    if (
+      sentence
+        .trim()
+        .endsWith(
+          "?"
+        )
+    ) {
+      continue;
+    }
+
+    if (
+      /\bscanmycreds\b/i.test(
+        sentence
+      )
+    ) {
+      continue;
+    }
+
+    for (
+      const rule
+      of RULES
+    ) {
+      if (
+        !rule.pattern.test(
+          sentence
+        )
+      ) {
+        continue;
+      }
+
+      const support =
+        findExternalEvidenceSupport({
+          sentence,
+
+          code:
+            rule.code,
+
+          sources,
+        });
+
+      if (
+        support.supported
+      ) {
+        continue;
+      }
+
+      const key =
+        `${rule.code}:${sentence.toLowerCase()}`;
+
+      if (
+        seen.has(
+          key
+        )
+      ) {
+        continue;
+      }
+
+      seen.add(
+        key
+      );
+
+      findings.push({
+        code:
+          rule.code,
+
+        sentence:
+          sentence.slice(
+            0,
+            320
+          ),
+
+        reason:
+          rule.reason,
+      });
+    }
+  }
+
+  return findings;
+}

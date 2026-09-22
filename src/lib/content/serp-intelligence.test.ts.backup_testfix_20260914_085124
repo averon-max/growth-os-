@@ -1,0 +1,71 @@
+import {
+  describe,
+  expect,
+  it,
+} from "vitest";
+
+import {
+  classifyPageType,
+} from "./serp-intelligence";
+
+
+describe(
+  "SERP intelligence",
+  () => {
+    it(
+      "classifies guides",
+      () => {
+        expect(
+          classifyPageType(
+            "https://example.com/blog/check-email-breach",
+            "How to Check If Your Email Was Compromised"
+          )
+        ).toBe(
+          "GUIDE"
+        );
+      }
+    );
+
+    it(
+      "classifies comparison pages",
+      () => {
+        expect(
+          classifyPageType(
+            "https://example.com/a-vs-b",
+            "Service A vs Service B"
+          )
+        ).toBe(
+          "COMPARISON"
+        );
+      }
+    );
+
+    it(
+      "classifies tools",
+      () => {
+        expect(
+          classifyPageType(
+            "https://example.com/email-checker",
+            "Free Email Breach Checker"
+          )
+        ).toBe(
+          "TOOL"
+        );
+      }
+    );
+
+    it(
+      "classifies listicles",
+      () => {
+        expect(
+          classifyPageType(
+            "https://example.com/security",
+            "10 Best Identity Protection Services"
+          )
+        ).toBe(
+          "LISTICLE"
+        );
+      }
+    );
+  }
+);

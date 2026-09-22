@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Flame } from "lucide-react";
 import styles from "./keyword-suggestions.module.css";
-import { SuggestionTrendDrawer } from "./suggestion-trend-drawer";
+import { KeywordOverviewDrawer } from "./keyword-overview-drawer";
+import { SuggestionFilterBar, applySuggestionFilters, EMPTY_FILTERS, type SuggestionFilters } from "./suggestion-filters";
 import {
   SuggestionTable,
   TrendingQueries,
@@ -12,13 +13,15 @@ import {
   type TrendingData,
 } from "./keyword-suggestions";
 
-export function IndustryTopKeywords({ workspaceId, seed }: { workspaceId: string; seed: string }) {
+export function IndustryTopKeywords({ workspaceId, seed, market = "US" }: { workspaceId: string; seed: string; market?: string }) {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [trending, setTrending] = useState<TrendingData | null>(null);
   const [fromCache, setFromCache] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Suggestion | null>(null);
+  const [filters, setFilters] = useState<SuggestionFilters>(EMPTY_FILTERS);
+  const effectiveMarket = market ?? "US";
 
   useEffect(() => {
     if (!seed.trim()) {
@@ -27,7 +30,7 @@ export function IndustryTopKeywords({ workspaceId, seed }: { workspaceId: string
     }
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams({ workspaceId, seed: seed.trim(), limit: "30" });
+    const params = new URLSearchParams({ workspaceId, seed: seed.trim(), limit: "50", market });
     fetch(`/api/keywords/explore?${params.toString()}`)
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
@@ -64,18 +67,30 @@ export function IndustryTopKeywords({ workspaceId, seed }: { workspaceId: string
 
       {suggestions && suggestions.length > 0 && (
         <>
-          <div className={styles.resultCount}>
-            {suggestions.length} keywords -- click a row for its 12-month trend <CacheBadge fromCache={fromCache} />
-          </div>
           <TrendingQueries trending={trending} />
-          <SuggestionTable suggestions={suggestions} onSelect={setSelected} />
+          {(() => {
+            const filtered = applySuggestionFilters(suggestions, filters);
+            return (
+              <>
+                <SuggestionFilterBar
+                  filters={filters}
+                  onChange={setFilters}
+                  resultCount={filtered.length}
+                  totalCount={suggestions.length}
+                />
+                <SuggestionTable suggestions={filtered} onSelect={setSelected} />
+              </>
+            );
+          })()}
         </>
       )}
 
       {selected && (
-        <SuggestionTrendDrawer
+        <KeywordOverviewDrawer
           keyword={selected.keyword}
-          monthlySearches={selected.monthlySearches}
+          workspaceId={workspaceId}
+          market={effectiveMarket}
+          language="English"
           onClose={() => setSelected(null)}
         />
       )}

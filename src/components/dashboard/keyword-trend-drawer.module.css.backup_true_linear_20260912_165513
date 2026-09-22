@@ -1,0 +1,39 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 50;
+}
+
+.panel {
+  width: 420px;
+  max-width: 90vw;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.title { font-size: 0.95rem; font-weight: 600; color: var(--primary); }
+.subtitle { font-size: 0.75rem; color: var(--secondary); margin-top: 2px; }
+
+.closeButton {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--secondary);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+}
+.closeButton:hover { background: var(--elevated); color: var(--primary); }
+
+.status { font-size: 0.8rem; color: var(--secondary); padding: 16px 0; }
+.statusError { font-size: 0.8rem; color: var(--danger); padding: 16px 0; }
+
+.chartBlock { margin-bottom: 24px; }
+.chartLabel { font-size: 0.72rem; color: var(--secondary); margin-bottom: 8px; font-weight: 500; }

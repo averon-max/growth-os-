@@ -1,0 +1,2861 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  Check,
+  ChevronDown,
+  Database,
+  FileSearch,
+  Plus,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+
+import styles from "./content-governance.module.css";
+
+
+const FACT_TYPES = [
+  "CAPABILITY",
+  "METRIC",
+  "DATA_SOURCE",
+  "POLICY",
+  "DIFFERENTIATOR",
+  "COMPLIANCE",
+  "OTHER",
+] as const;
+
+
+interface FactEventRow {
+  id: string;
+  action: string;
+  actorUserId: string | null;
+  previousStatus: string | null;
+  nextStatus: string | null;
+  metadata: unknown;
+  createdAt: string;
+}
+
+interface FactRow {
+  id: string;
+  type: string;
+  claim: string;
+  status: string;
+  sourceUrl: string | null;
+  sourceLabel: string | null;
+  evidence: string | null;
+  confidence: number | null;
+  version: number;
+  supersedesId: string | null;
+  evidenceStatus:
+    | "UNCHECKED"
+    | "FRESH"
+    | "DRIFTED"
+    | "UNAVAILABLE";
+  evidenceHash: string | null;
+  sourceContentHash: string | null;
+  lastEvidenceCheckedAt: string | null;
+  lastEvidenceSeenAt: string | null;
+  evidenceCheckError: string | null;
+  createdAt: string;
+  verifiedAt: string | null;
+  events: FactEventRow[];
+}
+
+
+interface EvidenceCheckResult {
+  total: number;
+  checked: number;
+  fresh: number;
+  drifted: number;
+  unavailable: number;
+  unchanged: number;
+  sourceFetches: number;
+}
+
+
+interface BriefRow {
+  id: string;
+  topic: string;
+  primaryKeyword: string;
+  searchIntent: string;
+  status: string;
+}
+
+
+interface EvidenceSnapshot {
+  id: string;
+  topic: string;
+  primaryKeyword: string;
+  searchIntent: string;
+  plannerVersion: string;
+  gateVersion: string;
+  generatorModel: string;
+  createdAt: string;
+  businessFacts: unknown;
+  keywordContext: unknown;
+  plan: unknown;
+}
+
+
+interface FactDiscoveryResult {
+  pagesCrawled: number;
+  pagesAnalyzed: number;
+  candidatesExtracted: number;
+  created: number;
+  duplicatesSkipped: number;
+  invalidCandidatesSkipped: number;
+  modelErrors: number;
+  modelUsed: string | null;
+  quotaExhausted: boolean;
+}
+
+
+function registryClaims(
+  value: unknown
+): string[] {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return [];
+  }
+
+  const raw =
+    value as Record<string, unknown>;
+
+  if (
+    !Array.isArray(
+      raw.verifiedClaims
+    )
+  ) {
+    return [];
+  }
+
+  return raw.verifiedClaims.filter(
+    (value): value is string =>
+      typeof value === "string"
+  );
+}
+
+
+function registryFactIds(
+  value: unknown
+): string[] {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return [];
+  }
+
+  const raw =
+    value as Record<string, unknown>;
+
+  if (
+    !Array.isArray(
+      raw.factIds
+    )
+  ) {
+    return [];
+  }
+
+  return raw.factIds.filter(
+    (value): value is string =>
+      typeof value === "string"
+  );
+}
+
+
+function planDecision(
+  value: unknown
+): string | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  const plan =
+    value as Record<string, unknown>;
+
+  const strategy =
+    plan.strategy;
+
+  if (
+    !strategy ||
+    typeof strategy !== "object" ||
+    Array.isArray(strategy)
+  ) {
+    return null;
+  }
+
+  const action =
+    (
+      strategy as Record<
+        string,
+        unknown
+      >
+    ).action;
+
+  if (
+    !action ||
+    typeof action !== "object" ||
+    Array.isArray(action)
+  ) {
+    return null;
+  }
+
+  const type =
+    (
+      action as Record<
+        string,
+        unknown
+      >
+    ).type;
+
+  return typeof type === "string"
+    ? type
+    : null;
+}
+
+
+function metadataRecord(
+  value: unknown
+): Record<string, unknown> | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+
+function metadataText(
+  value: unknown,
+  key: string
+): string | null {
+  const raw =
+    metadataRecord(
+      value
+    );
+
+  const candidate =
+    raw?.[key];
+
+  return typeof candidate === "string"
+    ? candidate
+    : null;
+}
+
+
+function metadataBoolean(
+  value: unknown,
+  key: string
+): boolean {
+  const raw =
+    metadataRecord(
+      value
+    );
+
+  return raw?.[key] === true;
+}
+
+
+function formatSourceUrl(
+  value: string | null
+): string {
+  if (!value) {
+    return "No source URL";
+  }
+
+  try {
+    const url =
+      new URL(
+        value
+      );
+
+    const path =
+      url.pathname === "/"
+        ? ""
+        : url.pathname;
+
+    return `${url.hostname}${path}`;
+  } catch {
+    return value;
+  }
+}
+
+
+function factRiskFlags(
+  fact: Pick<
+    FactRow,
+    "claim" |
+    "evidence" |
+    "type"
+  >
+): string[] {
+  const text =
+    `${fact.claim} ${fact.evidence ?? ""}`
+      .toLowerCase();
+
+  const flags: string[] =
+    [];
+
+  if (
+    /password|k-anonym|plaintext|encrypt|security/i.test(
+      text
+    )
+  ) {
+    flags.push(
+      "SECURITY"
+    );
+  }
+
+  if (
+    /\$|price|pricing|cost|per month|\/mo|free plan|pro plan|family plan/i.test(
+      text
+    )
+  ) {
+    flags.push(
+      "PRICING"
+    );
+  }
+
+  if (
+    /guarantee|money back|refund/i.test(
+      text
+    )
+  ) {
+    flags.push(
+      "GUARANTEE"
+    );
+  }
+
+  if (
+    /data retention|zero retention|retention/i.test(
+      text
+    )
+  ) {
+    flags.push(
+      "RETENTION"
+    );
+  }
+
+  if (
+    /puppeteer|automatically|every hour|hourly|every month|re-verif/i.test(
+      text
+    )
+  ) {
+    flags.push(
+      "AUTOMATION"
+    );
+  }
+
+  if (
+    /dark web|breach/i.test(
+      text
+    )
+  ) {
+    flags.push(
+      "DARK_WEB"
+    );
+  }
+
+  return [
+    ...new Set(
+      flags
+    ),
+  ];
+}
+
+
+function factProvenance(
+  fact: FactRow
+) {
+  const origin =
+    fact.events.find(
+      (event) =>
+        event.action ===
+          "DISCOVERED" ||
+        event.action ===
+          "ATOMIC_SPLIT_CREATED" ||
+        event.action ===
+          "CREATED"
+    ) ??
+    fact.events[
+      fact.events.length - 1
+    ] ??
+    null;
+
+  const discoveryVersion =
+    origin
+      ? metadataText(
+          origin.metadata,
+          "discoveryVersion"
+        )
+      : null;
+
+  const transformation =
+    origin
+      ? metadataText(
+          origin.metadata,
+          "transformation"
+        )
+      : null;
+
+  const model =
+    origin
+      ? metadataText(
+          origin.metadata,
+          "model"
+        )
+      : null;
+
+  const atomic =
+    Boolean(
+      fact.supersedesId
+    ) ||
+    origin?.action ===
+      "ATOMIC_SPLIT_CREATED" ||
+    (
+      origin
+        ? metadataBoolean(
+            origin.metadata,
+            "atomicValidation"
+          )
+        : false
+    );
+
+  return {
+    origin:
+      origin?.action ??
+      "UNKNOWN",
+
+    discoveryVersion:
+      discoveryVersion ??
+      transformation ??
+      "—",
+
+    model:
+      model ??
+      "—",
+
+    atomic,
+
+    lineage:
+      fact.supersedesId
+        ? `split from ${fact.supersedesId}`
+        : "direct",
+  };
+}
+
+
+export function ContentGovernancePanel({
+  websiteId,
+}: {
+  websiteId: string;
+}) {
+  const [
+    facts,
+    setFacts,
+  ] =
+    useState<FactRow[]>([]);
+
+  const [
+    briefs,
+    setBriefs,
+  ] =
+    useState<BriefRow[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    showForm,
+    setShowForm,
+  ] =
+    useState(false);
+
+  const [
+    busyFactId,
+    setBusyFactId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    discovering,
+    setDiscovering,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    discoveryResult,
+    setDiscoveryResult,
+  ] =
+    useState<FactDiscoveryResult | null>(
+      null
+    );
+
+  const [
+    evidenceChecking,
+    setEvidenceChecking,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    evidenceCheckResult,
+    setEvidenceCheckResult,
+  ] =
+    useState<EvidenceCheckResult | null>(
+      null
+    );
+
+
+  const [
+    factFilter,
+    setFactFilter,
+  ] =
+    useState<
+      | "PROPOSED"
+      | "VERIFIED"
+      | "REJECTED"
+      | "ARCHIVED"
+    >(
+      "PROPOSED"
+    );
+
+  const [
+    openFactId,
+    setOpenFactId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    openBriefId,
+    setOpenBriefId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    evidenceLoadingId,
+    setEvidenceLoadingId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    evidenceCache,
+    setEvidenceCache,
+  ] =
+    useState<
+      Record<
+        string,
+        EvidenceSnapshot | null
+      >
+    >({});
+
+  const [
+    form,
+    setForm,
+  ] =
+    useState({
+      type:
+        "CAPABILITY",
+
+      claim:
+        "",
+
+      sourceUrl:
+        "",
+
+      sourceLabel:
+        "",
+
+      evidence:
+        "",
+
+      confidence:
+        "",
+    });
+
+
+  const load =
+    useCallback(
+      async () => {
+        setLoading(
+          true
+        );
+
+        setError(
+          null
+        );
+
+        try {
+          const [
+            factsResponse,
+            briefsResponse,
+          ] =
+            await Promise.all([
+              fetch(
+                `/api/content/facts?websiteId=${encodeURIComponent(
+                  websiteId
+                )}`,
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+
+              fetch(
+                `/api/content/briefs?websiteId=${encodeURIComponent(
+                  websiteId
+                )}&limit=100`,
+                {
+                  cache:
+                    "no-store",
+                }
+              ),
+            ]);
+
+          const factsJson =
+            await factsResponse.json();
+
+          const briefsJson =
+            await briefsResponse.json();
+
+          if (
+            !factsResponse.ok
+          ) {
+            throw new Error(
+              factsJson.error ||
+                "Could not load Business Fact Registry."
+            );
+          }
+
+          if (
+            !briefsResponse.ok
+          ) {
+            throw new Error(
+              briefsJson.error ||
+                "Could not load content briefs."
+            );
+          }
+
+          setFacts(
+            Array.isArray(
+              factsJson.items
+            )
+              ? factsJson.items
+              : []
+          );
+
+          setBriefs(
+            Array.isArray(
+              briefsJson.items
+            )
+              ? briefsJson.items
+              : []
+          );
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Could not load content governance data."
+          );
+        } finally {
+          setLoading(
+            false
+          );
+        }
+      },
+      [
+        websiteId,
+      ]
+    );
+
+
+  useEffect(
+    () => {
+      void load();
+    },
+    [
+      load,
+    ]
+  );
+
+
+  const counts =
+    useMemo(
+      () => ({
+        verified:
+          facts.filter(
+            (fact) =>
+              fact.status ===
+              "VERIFIED"
+          ).length,
+
+        proposed:
+          facts.filter(
+            (fact) =>
+              fact.status ===
+              "PROPOSED"
+          ).length,
+
+        rejected:
+          facts.filter(
+            (fact) =>
+              fact.status ===
+              "REJECTED"
+          ).length,
+
+
+
+        archived:
+
+
+          facts.filter(
+
+
+            (fact) =>
+
+
+              fact.status ===
+
+
+              "ARCHIVED"
+
+
+          ).length,
+      }),
+      [
+        facts,
+      ]
+    );
+
+
+  const sortedFacts =
+    useMemo(
+      () => {
+        const weight:
+          Record<
+            string,
+            number
+          > = {
+            PROPOSED:
+              0,
+
+            VERIFIED:
+              1,
+
+            REJECTED:
+              2,
+
+            ARCHIVED:
+              3,
+          };
+
+        return [
+          ...facts,
+        ].sort(
+          (a, b) =>
+            (
+              weight[
+                a.status
+              ] ??
+              9
+            ) -
+            (
+              weight[
+                b.status
+              ] ??
+              9
+            )
+        );
+      },
+      [
+        facts,
+      ]
+    );
+
+
+  const createFact =
+    async () => {
+      const claim =
+        form.claim.trim();
+
+      if (!claim) {
+        setError(
+          "Fact claim is required."
+        );
+
+        return;
+      }
+
+      setError(
+        null
+      );
+
+      try {
+        const confidence =
+          form.confidence.trim()
+            ? Number(
+                form.confidence
+              )
+            : undefined;
+
+        const response =
+          await fetch(
+            "/api/content/facts",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  websiteId,
+
+                  type:
+                    form.type,
+
+                  claim,
+
+                  sourceUrl:
+                    form.sourceUrl.trim() ||
+                    undefined,
+
+                  sourceLabel:
+                    form.sourceLabel.trim() ||
+                    undefined,
+
+                  evidence:
+                    form.evidence.trim() ||
+                    undefined,
+
+                  confidence:
+                    Number.isFinite(
+                      confidence
+                    )
+                      ? confidence
+                      : undefined,
+                }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            data.error ||
+              "Could not create fact."
+          );
+        }
+
+        setForm({
+          type:
+            "CAPABILITY",
+
+          claim:
+            "",
+
+          sourceUrl:
+            "",
+
+          sourceLabel:
+            "",
+
+          evidence:
+            "",
+
+          confidence:
+            "",
+        });
+
+        setShowForm(
+          false
+        );
+
+        await load();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not create fact."
+        );
+      }
+    };
+
+
+  const checkEvidenceFreshness =
+    async () => {
+      setEvidenceChecking(
+        true
+      );
+
+      setEvidenceCheckResult(
+        null
+      );
+
+      setError(
+        null
+      );
+
+      try {
+        const response =
+          await fetch(
+            "/api/content/facts/check-evidence",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  websiteId,
+                }),
+            }
+          );
+
+        const data =
+          await response.json() as {
+            result?: EvidenceCheckResult;
+            error?: string;
+          };
+
+        if (
+          !response.ok ||
+          !data.result
+        ) {
+          throw new Error(
+            data.error ||
+              "Could not check evidence freshness."
+          );
+        }
+
+        setEvidenceCheckResult(
+          data.result
+        );
+
+        await load();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not check evidence freshness."
+        );
+      } finally {
+        setEvidenceChecking(
+          false
+        );
+      }
+    };
+
+
+  const discoverFacts =
+    async () => {
+      setDiscovering(
+        true
+      );
+
+      setDiscoveryResult(
+        null
+      );
+
+      setError(
+        null
+      );
+
+      try {
+        const response =
+          await fetch(
+            "/api/content/facts/discover",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  websiteId,
+                }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            data.error ||
+              "Could not discover business facts."
+          );
+        }
+
+        setDiscoveryResult(
+          data.result ??
+            null
+        );
+
+        await load();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not discover business facts."
+        );
+      } finally {
+        setDiscovering(
+          false
+        );
+      }
+    };
+
+
+  const transitionFact =
+    async (
+      fact:
+        FactRow,
+      action:
+        "verify" |
+        "reject"
+    ) => {
+      setBusyFactId(
+        `${action}:${fact.id}`
+      );
+
+      setError(
+        null
+      );
+
+      try {
+        const response =
+          await fetch(
+            `/api/content/facts/${fact.id}/${action}`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  websiteId,
+                }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            data.error ||
+              `Could not ${action} fact.`
+          );
+        }
+
+        await load();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : `Could not ${action} fact.`
+        );
+      } finally {
+        setBusyFactId(
+          null
+        );
+      }
+    };
+
+
+  const toggleEvidence =
+    async (
+      briefId:
+        string
+    ) => {
+      if (
+        openBriefId ===
+        briefId
+      ) {
+        setOpenBriefId(
+          null
+        );
+
+        return;
+      }
+
+      setOpenBriefId(
+        briefId
+      );
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          evidenceCache,
+          briefId
+        )
+      ) {
+        return;
+      }
+
+      setEvidenceLoadingId(
+        briefId
+      );
+
+      setError(
+        null
+      );
+
+      try {
+        const response =
+          await fetch(
+            `/api/content/briefs/${briefId}/evidence`,
+            {
+              cache:
+                "no-store",
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            data.error ||
+              "Could not load evidence snapshot."
+          );
+        }
+
+        setEvidenceCache(
+          (current) => ({
+            ...current,
+
+            [briefId]:
+              data.evidence ??
+              null,
+          })
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not load evidence snapshot."
+        );
+      } finally {
+        setEvidenceLoadingId(
+          null
+        );
+      }
+    };
+
+
+  return (
+    <section
+      className={
+        styles.shell
+      }
+    >
+      <div
+        className={
+          styles.header
+        }
+      >
+        <div>
+          <div
+            className={
+              styles.eyebrow
+            }
+          >
+            <ShieldCheck
+              size={
+                13
+              }
+            />
+
+            Content governance
+          </div>
+
+          <div
+            className={
+              styles.titleRow
+            }
+          >
+            <h2>
+              Fact registry
+            </h2>
+
+            <div
+              className={
+                styles.counts
+              }
+            >
+              <span>
+                <strong>
+                  {
+                    counts.verified
+                  }
+                </strong>{" "}
+                verified
+              </span>
+
+              <span>
+                <strong>
+                  {
+                    counts.proposed
+                  }
+                </strong>{" "}
+                proposed
+              </span>
+
+              <span>
+                <strong>
+                  {
+                    counts.rejected
+                  }
+                </strong>{" "}
+                rejected
+              </span>
+
+              <span>
+                <strong>
+                  {
+                    counts.archived
+                  }
+                </strong>{" "}
+                archived
+              </span>
+            </div>
+          </div>
+
+          <p>
+            Only verified product
+            claims enter new
+            evidence snapshots.
+          </p>
+        </div>
+
+        <div
+          className={
+            styles.headerActions
+          }
+        >
+          <button
+            type="button"
+            className={
+              styles.secondaryButton
+            }
+            disabled={
+              evidenceChecking ||
+              counts.verified ===
+                0
+            }
+            title={
+              counts.verified ===
+              0
+                ? "Verify at least one fact before checking evidence"
+                : "Re-fetch verified fact sources and validate exact evidence"
+            }
+            onClick={
+              () =>
+                void checkEvidenceFreshness()
+            }
+          >
+            <ShieldCheck
+              size={
+                12
+              }
+            />
+
+            {
+              evidenceChecking
+                ? "Checking evidence…"
+                : "Check evidence"
+            }
+          </button>
+
+          <button
+            type="button"
+            className={
+              styles.secondaryButton
+            }
+            disabled={
+              discovering
+            }
+            onClick={
+              () =>
+                void discoverFacts()
+            }
+          >
+            <FileSearch
+              size={
+                12
+              }
+            />
+
+            {
+              discovering
+                ? "Discovering…"
+                : "Discover facts"
+            }
+          </button>
+
+          <button
+          type="button"
+          className={
+            styles.primaryButton
+          }
+          onClick={
+            () =>
+              setShowForm(
+                (value) =>
+                  !value
+              )
+          }
+        >
+          {
+            showForm
+              ? (
+                <X
+                  size={
+                    12
+                  }
+                />
+              )
+              : (
+                <Plus
+                  size={
+                    12
+                  }
+                />
+              )
+          }
+
+          {
+            showForm
+              ? "Cancel"
+              : "Add fact"
+          }
+        </button>
+        </div>
+      </div>
+
+
+      {
+        error && (
+          <div
+            className={
+              styles.error
+            }
+          >
+            {
+              error
+            }
+          </div>
+        )
+      }
+
+
+      {
+        evidenceCheckResult && (
+          <div
+            className={
+              styles.evidenceCheckSummary
+            }
+          >
+            <div>
+              <span>
+                Checked
+              </span>
+
+              <strong>
+                {
+                  evidenceCheckResult.checked
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Fresh
+              </span>
+
+              <strong
+                className={
+                  styles.evidenceSummaryFresh
+                }
+              >
+                {
+                  evidenceCheckResult.fresh
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Drifted
+              </span>
+
+              <strong
+                className={
+                  styles.evidenceSummaryDrifted
+                }
+              >
+                {
+                  evidenceCheckResult.drifted
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Unavailable
+              </span>
+
+              <strong
+                className={
+                  styles.evidenceSummaryUnavailable
+                }
+              >
+                {
+                  evidenceCheckResult.unavailable
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Sources fetched
+              </span>
+
+              <strong>
+                {
+                  evidenceCheckResult.sourceFetches
+                }
+              </strong>
+            </div>
+          </div>
+        )
+      }
+
+
+      {
+        discoveryResult && (
+          <div
+            className={
+              styles.discoveryResult
+            }
+          >
+            <div>
+              <span>
+                Crawled
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.pagesCrawled
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Analyzed
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.pagesAnalyzed
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Candidates
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.candidatesExtracted
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Proposed
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.created
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Duplicates
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.duplicatesSkipped
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Invalid
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.invalidCandidatesSkipped
+                }
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                Model errors
+              </span>
+
+              <strong>
+                {
+                  discoveryResult.modelErrors
+                }
+              </strong>
+            </div>
+          </div>
+        )
+      }
+
+
+      {
+        showForm && (
+          <div
+            className={
+              styles.factForm
+            }
+          >
+            <select
+              value={
+                form.type
+              }
+              onChange={
+                (event) =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      type:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
+              }
+            >
+              {
+                FACT_TYPES.map(
+                  (type) => (
+                    <option
+                      key={
+                        type
+                      }
+                      value={
+                        type
+                      }
+                    >
+                      {
+                        type
+                      }
+                    </option>
+                  )
+                )
+              }
+            </select>
+
+            <input
+              value={
+                form.claim
+              }
+              onChange={
+                (event) =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      claim:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
+              }
+              placeholder="Exact factual claim"
+            />
+
+            <input
+              value={
+                form.sourceUrl
+              }
+              onChange={
+                (event) =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      sourceUrl:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
+              }
+              placeholder="Evidence URL"
+            />
+
+            <input
+              value={
+                form.sourceLabel
+              }
+              onChange={
+                (event) =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      sourceLabel:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
+              }
+              placeholder="Source label"
+            />
+
+            <input
+              value={
+                form.evidence
+              }
+              onChange={
+                (event) =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      evidence:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
+              }
+              placeholder="Evidence note / quote / internal proof"
+            />
+
+            <input
+              value={
+                form.confidence
+              }
+              onChange={
+                (event) =>
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      confidence:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
+              }
+              inputMode="decimal"
+              placeholder="Confidence 0–1"
+            />
+
+            <button
+              type="button"
+              className={
+                styles.primaryButton
+              }
+              onClick={
+                () =>
+                  void createFact()
+              }
+            >
+              <Plus
+                size={
+                  12
+                }
+              />
+
+              Create proposed fact
+            </button>
+          </div>
+        )
+      }
+
+
+      <div
+        className={
+          styles.grid
+        }
+      >
+                            <div
+            className={
+              styles.panel
+            }
+          >
+            <div
+              className={
+                styles.panelHeader
+              }
+            >
+              <span>
+                Business facts
+              </span>
+
+              <span>
+                {
+                  sortedFacts.filter(
+                    (fact) =>
+                      fact.status ===
+                      factFilter
+                  ).length
+                }{" "}
+                /{" "}
+                {
+                  facts.length
+                }
+              </span>
+            </div>
+
+            <div
+              className={
+                styles.factFilters
+              }
+            >
+              {
+                (
+                  [
+                    [
+                      "PROPOSED",
+                      counts.proposed,
+                    ],
+                    [
+                      "VERIFIED",
+                      counts.verified,
+                    ],
+                    [
+                      "REJECTED",
+                      counts.rejected,
+                    ],
+                    [
+                      "ARCHIVED",
+                      counts.archived,
+                    ],
+                  ] as const
+                ).map(
+                  ([
+                    status,
+                    count,
+                  ]) => (
+                    <button
+                      key={
+                        status
+                      }
+                      type="button"
+                      className={`${styles.factFilter} ${
+                        factFilter ===
+                        status
+                          ? styles.factFilterActive
+                          : ""
+                      }`}
+                      onClick={
+                        () => {
+                          setFactFilter(
+                            status
+                          );
+
+                          setOpenFactId(
+                            null
+                          );
+                        }
+                      }
+                    >
+                      {
+                        status
+                      }
+
+                      <span>
+                        {
+                          count
+                        }
+                      </span>
+                    </button>
+                  )
+                )
+              }
+            </div>
+
+            {
+              loading ? (
+                <div
+                  className={
+                    styles.empty
+                  }
+                >
+                  Loading fact registry…
+                </div>
+              ) : sortedFacts.filter(
+                  (fact) =>
+                    fact.status ===
+                    factFilter
+                ).length ===
+                0 ? (
+                <div
+                  className={
+                    styles.empty
+                  }
+                >
+                  No{" "}
+                  {
+                    factFilter.toLowerCase()
+                  }{" "}
+                  business facts.
+                </div>
+              ) : (
+                <div
+                  className={
+                    styles.reviewList
+                  }
+                >
+                  {
+                    sortedFacts
+                      .filter(
+                        (fact) =>
+                          fact.status ===
+                          factFilter
+                      )
+                      .map(
+                        (fact) => {
+                          const canVerify =
+                            fact.status ===
+                              "PROPOSED" &&
+                            Boolean(
+                              fact.sourceUrl &&
+                              fact.evidence?.trim()
+                            );
+
+                          const isOpen =
+                            openFactId ===
+                            fact.id;
+
+                          const risks =
+                            factRiskFlags(
+                              fact
+                            );
+
+                          const provenance =
+                            factProvenance(
+                              fact
+                            );
+
+                          return (
+                            <article
+                              key={
+                                fact.id
+                              }
+                              className={
+                                styles.reviewRow
+                              }
+                            >
+                              <div
+                                className={
+                                  styles.reviewHead
+                                }
+                              >
+                                <div
+                                  className={
+                                    styles.reviewSummary
+                                  }
+                                >
+                                  <div
+                                    className={
+                                      styles.factMeta
+                                    }
+                                  >
+                                    <span
+                                      className={`${styles.status} ${
+                                        fact.status ===
+                                        "VERIFIED"
+                                          ? styles.verified
+                                          : fact.status ===
+                                              "PROPOSED"
+                                            ? styles.proposed
+                                            : fact.status ===
+                                                "ARCHIVED"
+                                              ? styles.archived
+                                              : styles.rejected
+                                      }`}
+                                    >
+                                      {
+                                        fact.status
+                                      }
+                                    </span>
+
+                                    <span>
+                                      {
+                                        fact.type
+                                      }
+                                    </span>
+
+                                    {
+                                      fact.confidence !==
+                                        null && (
+                                        <span>
+                                          confidence{" "}
+                                          {
+                                            Math.round(
+                                              fact.confidence *
+                                                100
+                                            )
+                                          }
+                                          %
+                                        </span>
+                                      )
+                                    }
+
+                                    {
+                                      risks.map(
+                                        (
+                                          risk
+                                        ) => (
+                                          <span
+                                            key={
+                                              risk
+                                            }
+                                            className={
+                                              styles.riskBadge
+                                            }
+                                          >
+                                            {
+                                              risk
+                                            }
+                                          </span>
+                                        )
+                                      )
+                                    }
+                                  </div>
+
+                                  <strong
+                                    className={
+                                      styles.reviewClaim
+                                    }
+                                  >
+                                    {
+                                      fact.claim
+                                    }
+                                  </strong>
+
+                                  <div
+                                    className={
+                                      styles.reviewSource
+                                    }
+                                  >
+                                    {
+                                      fact.status ===
+                                        "VERIFIED" && (
+                                        <span
+                                          className={`${styles.evidenceFreshnessBadge} ${
+                                            fact.evidenceStatus ===
+                                            "FRESH"
+                                              ? styles.evidenceFresh
+                                              : fact.evidenceStatus ===
+                                                  "UNCHECKED"
+                                                ? styles.evidenceUnchecked
+                                                : fact.evidenceStatus ===
+                                                    "DRIFTED"
+                                                  ? styles.evidenceDrifted
+                                                  : styles.evidenceUnavailable
+                                          }`}
+                                        >
+                                          {
+                                            fact.evidenceStatus
+                                          }
+                                        </span>
+                                      )
+                                    }
+
+                                    {
+                                      fact.sourceUrl ? (
+                                        <a
+                                          href={
+                                            fact.sourceUrl
+                                          }
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          {
+                                            fact.sourceLabel ||
+                                            formatSourceUrl(
+                                              fact.sourceUrl
+                                            )
+                                          }
+                                          {" ↗"}
+                                        </a>
+                                      ) : (
+                                        <span
+                                          className={
+                                            styles.noEvidence
+                                          }
+                                        >
+                                          No source URL
+                                        </span>
+                                      )
+                                    }
+
+                                    <span>
+                                      v
+                                      {
+                                        fact.version
+                                      }
+                                    </span>
+
+                                    <span>
+                                      {
+                                        provenance.atomic
+                                          ? "atomic"
+                                          : "direct"
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className={
+                                    styles.expandButton
+                                  }
+                                  aria-expanded={
+                                    isOpen
+                                  }
+                                  title={
+                                    isOpen
+                                      ? "Hide provenance"
+                                      : "Review evidence and provenance"
+                                  }
+                                  onClick={
+                                    () =>
+                                      setOpenFactId(
+                                        isOpen
+                                          ? null
+                                          : fact.id
+                                      )
+                                  }
+                                >
+                                  <ChevronDown
+                                    size={
+                                      13
+                                    }
+                                    className={
+                                      isOpen
+                                        ? styles.rotate
+                                        : undefined
+                                    }
+                                  />
+                                </button>
+                              </div>
+
+                              <div
+                                className={
+                                  styles.reviewEvidence
+                                }
+                              >
+                                <span
+                                  className={
+                                    styles.reviewLabel
+                                  }
+                                >
+                                  Exact evidence
+                                </span>
+
+                                {
+                                  fact.evidence ? (
+                                    <span>
+                                      “
+                                      {
+                                        fact.evidence
+                                      }
+                                      ”
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={
+                                        styles.noEvidence
+                                      }
+                                    >
+                                      No evidence attached
+                                    </span>
+                                  )
+                                }
+                              </div>
+
+                              {
+                                isOpen && (
+                                  <div
+                                    className={
+                                      styles.reviewDetails
+                                    }
+                                  >
+
+                                    {
+                                      fact.status ===
+                                        "VERIFIED" && (
+                                        <div
+                                          className={
+                                            styles.evidenceFreshnessBox
+                                          }
+                                        >
+                                          <div
+                                            className={
+                                              styles.evidenceFreshnessHead
+                                            }
+                                          >
+                                            <span>
+                                              Evidence freshness
+                                            </span>
+
+                                            <strong
+                                              className={`${styles.evidenceFreshnessBadge} ${
+                                                fact.evidenceStatus ===
+                                                "FRESH"
+                                                  ? styles.evidenceFresh
+                                                  : fact.evidenceStatus ===
+                                                      "UNCHECKED"
+                                                    ? styles.evidenceUnchecked
+                                                    : fact.evidenceStatus ===
+                                                        "DRIFTED"
+                                                      ? styles.evidenceDrifted
+                                                      : styles.evidenceUnavailable
+                                              }`}
+                                            >
+                                              {
+                                                fact.evidenceStatus
+                                              }
+                                            </strong>
+                                          </div>
+
+                                          <div
+                                            className={
+                                              styles.evidenceFreshnessMeta
+                                            }
+                                          >
+                                            <div>
+                                              <span>
+                                                Last checked
+                                              </span>
+
+                                              <strong>
+                                                {
+                                                  fact.lastEvidenceCheckedAt
+                                                    ? new Date(
+                                                        fact.lastEvidenceCheckedAt
+                                                      ).toLocaleString()
+                                                    : "Never"
+                                                }
+                                              </strong>
+                                            </div>
+
+                                            <div>
+                                              <span>
+                                                Last seen
+                                              </span>
+
+                                              <strong>
+                                                {
+                                                  fact.lastEvidenceSeenAt
+                                                    ? new Date(
+                                                        fact.lastEvidenceSeenAt
+                                                      ).toLocaleString()
+                                                    : "Never"
+                                                }
+                                              </strong>
+                                            </div>
+
+                                            <div>
+                                              <span>
+                                                Evidence hash
+                                              </span>
+
+                                              <strong>
+                                                {
+                                                  fact.evidenceHash
+                                                    ? fact.evidenceHash.slice(
+                                                        0,
+                                                        12
+                                                      )
+                                                    : "—"
+                                                }
+                                              </strong>
+                                            </div>
+
+                                            <div>
+                                              <span>
+                                                Source hash
+                                              </span>
+
+                                              <strong>
+                                                {
+                                                  fact.sourceContentHash
+                                                    ? fact.sourceContentHash.slice(
+                                                        0,
+                                                        12
+                                                      )
+                                                    : "—"
+                                                }
+                                              </strong>
+                                            </div>
+                                          </div>
+
+                                          {
+                                            fact.evidenceCheckError && (
+                                              <div
+                                                className={
+                                                  styles.evidenceFreshnessError
+                                                }
+                                              >
+                                                {
+                                                  fact.evidenceCheckError
+                                                }
+                                              </div>
+                                            )
+                                          }
+                                        </div>
+                                      )
+                                    }
+
+                                    <div
+                                      className={
+                                        styles.provenanceTitle
+                                      }
+                                    >
+                                      <Database
+                                        size={
+                                          12
+                                        }
+                                      />
+
+                                      Provenance
+                                    </div>
+
+                                    <div
+                                      className={
+                                        styles.provenanceGrid
+                                      }
+                                    >
+                                      <div>
+                                        <span>
+                                          Origin
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            provenance.origin
+                                          }
+                                        </strong>
+                                      </div>
+
+                                      <div>
+                                        <span>
+                                          Discovery
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            provenance.discoveryVersion
+                                          }
+                                        </strong>
+                                      </div>
+
+                                      <div>
+                                        <span>
+                                          Model
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            provenance.model
+                                          }
+                                        </strong>
+                                      </div>
+
+                                      <div>
+                                        <span>
+                                          Lineage
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            provenance.lineage
+                                          }
+                                        </strong>
+                                      </div>
+
+                                      <div>
+                                        <span>
+                                          Atomic
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            provenance.atomic
+                                              ? "yes"
+                                              : "not recorded"
+                                          }
+                                        </strong>
+                                      </div>
+
+                                      <div>
+                                        <span>
+                                          Created
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            new Date(
+                                              fact.createdAt
+                                            ).toLocaleString()
+                                          }
+                                        </strong>
+                                      </div>
+                                    </div>
+
+                                    <div
+                                      className={
+                                        styles.eventHistory
+                                      }
+                                    >
+                                      <span
+                                        className={
+                                          styles.reviewLabel
+                                        }
+                                      >
+                                        Event history
+                                      </span>
+
+                                      {
+                                        fact.events.length >
+                                          0 ? (
+                                          fact.events
+                                            .slice(
+                                              0,
+                                              8
+                                            )
+                                            .map(
+                                              (
+                                                event
+                                              ) => (
+                                                <div
+                                                  key={
+                                                    event.id
+                                                  }
+                                                  className={
+                                                    styles.eventRow
+                                                  }
+                                                >
+                                                  <strong>
+                                                    {
+                                                      event.action
+                                                    }
+                                                  </strong>
+
+                                                  <span>
+                                                    {
+                                                      event.previousStatus ??
+                                                      "—"
+                                                    }
+                                                    {" → "}
+                                                    {
+                                                      event.nextStatus ??
+                                                      "—"
+                                                    }
+                                                  </span>
+
+                                                  <time>
+                                                    {
+                                                      new Date(
+                                                        event.createdAt
+                                                      ).toLocaleString()
+                                                    }
+                                                  </time>
+                                                </div>
+                                              )
+                                            )
+                                        ) : (
+                                          <div
+                                            className={
+                                              styles.reviewMissing
+                                            }
+                                          >
+                                            No provenance events.
+                                          </div>
+                                        )
+                                      }
+                                    </div>
+                                  </div>
+                                )
+                              }
+
+                              {
+                                fact.status ===
+                                  "PROPOSED" && (
+                                  <div
+                                    className={
+                                      styles.reviewActions
+                                    }
+                                  >
+                                    <span>
+                                      {
+                                        canVerify
+                                          ? "Source + evidence attached"
+                                          : "Source URL and exact evidence required"
+                                      }
+                                    </span>
+
+                                    <div
+                                      className={
+                                        styles.factActions
+                                      }
+                                    >
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          busyFactId !==
+                                          null
+                                        }
+                                        onClick={
+                                          () =>
+                                            void transitionFact(
+                                              fact,
+                                              "reject"
+                                            )
+                                        }
+                                      >
+                                        <X
+                                          size={
+                                            12
+                                          }
+                                        />
+
+                                        Reject
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          !canVerify ||
+                                          busyFactId !==
+                                            null
+                                        }
+                                        title={
+                                          canVerify
+                                            ? "Verify grounded fact"
+                                            : "Source URL and exact evidence are required"
+                                        }
+                                        onClick={
+                                          () =>
+                                            void transitionFact(
+                                              fact,
+                                              "verify"
+                                            )
+                                        }
+                                      >
+                                        <Check
+                                          size={
+                                            12
+                                          }
+                                        />
+
+                                        Verify
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                            </article>
+                          );
+                        }
+                      )
+                  }
+                </div>
+              )
+            }
+          </div>
+
+<div
+          className={
+            styles.panel
+          }
+        >
+          <div
+            className={
+              styles.panelHeader
+            }
+          >
+            <span>
+              Evidence snapshots
+            </span>
+
+            <span>
+              {
+                briefs.length
+              }{" "}
+              briefs
+            </span>
+          </div>
+
+          {
+            briefs.length ===
+            0 ? (
+              <div
+                className={
+                  styles.empty
+                }
+              >
+                No content briefs yet.
+              </div>
+            ) : (
+              <div>
+                {
+                  briefs
+                    .slice(
+                      0,
+                      12
+                    )
+                    .map(
+                      (
+                        brief
+                      ) => {
+                        const open =
+                          openBriefId ===
+                          brief.id;
+
+                        const evidence =
+                          evidenceCache[
+                            brief.id
+                          ];
+
+                        const claims =
+                          evidence
+                            ? registryClaims(
+                                evidence.businessFacts
+                              )
+                            : [];
+
+                        const factIds =
+                          evidence
+                            ? registryFactIds(
+                                evidence.businessFacts
+                              )
+                            : [];
+
+                        const decision =
+                          evidence
+                            ? planDecision(
+                                evidence.plan
+                              )
+                            : null;
+
+                        return (
+                          <div
+                            key={
+                              brief.id
+                            }
+                            className={
+                              styles.evidenceRow
+                            }
+                          >
+                            <button
+                              type="button"
+                              className={
+                                styles.evidenceToggle
+                              }
+                              onClick={
+                                () =>
+                                  void toggleEvidence(
+                                    brief.id
+                                  )
+                              }
+                            >
+                              <FileSearch
+                                size={
+                                  12
+                                }
+                              />
+
+                              <div>
+                                <strong>
+                                  {
+                                    brief.topic
+                                  }
+                                </strong>
+
+                                <span>
+                                  {
+                                    brief.primaryKeyword
+                                  }
+                                  {" · "}
+                                  {
+                                    brief.searchIntent
+                                  }
+                                </span>
+                              </div>
+
+                              <ChevronDown
+                                size={
+                                  13
+                                }
+                                className={
+                                  open
+                                    ? styles.rotate
+                                    : undefined
+                                }
+                              />
+                            </button>
+
+                            {
+                              open && (
+                                <div
+                                  className={
+                                    styles.evidenceDetails
+                                  }
+                                >
+                                  {
+                                    evidenceLoadingId ===
+                                    brief.id ? (
+                                      <span>
+                                        Loading immutable snapshot…
+                                      </span>
+                                    ) : evidence ===
+                                      null ? (
+                                      <span
+                                        className={
+                                          styles.legacy
+                                        }
+                                      >
+                                        Legacy brief — no immutable
+                                        Evidence Snapshot exists.
+                                      </span>
+                                    ) : evidence ? (
+                                      <>
+                                        <div
+                                          className={
+                                            styles.evidenceMetrics
+                                          }
+                                        >
+                                          <div>
+                                            <span>
+                                              Decision
+                                            </span>
+
+                                            <strong>
+                                              {
+                                                decision ||
+                                                "—"
+                                              }
+                                            </strong>
+                                          </div>
+
+                                          <div>
+                                            <span>
+                                              Facts used
+                                            </span>
+
+                                            <strong>
+                                              {
+                                                factIds.length
+                                              }
+                                            </strong>
+                                          </div>
+
+                                          <div>
+                                            <span>
+                                              Planner
+                                            </span>
+
+                                            <strong>
+                                              {
+                                                evidence.plannerVersion
+                                              }
+                                            </strong>
+                                          </div>
+
+                                          <div>
+                                            <span>
+                                              Gate
+                                            </span>
+
+                                            <strong>
+                                              {
+                                                evidence.gateVersion
+                                              }
+                                            </strong>
+                                          </div>
+
+                                          <div>
+                                            <span>
+                                              Model
+                                            </span>
+
+                                            <strong>
+                                              {
+                                                evidence.generatorModel
+                                              }
+                                            </strong>
+                                          </div>
+                                        </div>
+
+                                        <div
+                                          className={
+                                            styles.claimSnapshot
+                                          }
+                                        >
+                                          <span>
+                                            Verified claims frozen in snapshot
+                                          </span>
+
+                                          {
+                                            claims.length >
+                                            0 ? (
+                                              claims.map(
+                                                (
+                                                  claim
+                                                ) => (
+                                                  <div
+                                                    key={
+                                                      claim
+                                                    }
+                                                  >
+                                                    <Check
+                                                      size={
+                                                        11
+                                                      }
+                                                    />
+
+                                                    {
+                                                      claim
+                                                    }
+                                                  </div>
+                                                )
+                                              )
+                                            ) : (
+                                              <div>
+                                                No verified product claims were
+                                                available when this brief was
+                                                created.
+                                              </div>
+                                            )
+                                          }
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <span>
+                                        Open snapshot to load evidence.
+                                      </span>
+                                    )
+                                  }
+                                </div>
+                              )
+                            }
+                          </div>
+                        );
+                      }
+                    )
+                }
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </section>
+  );
+}

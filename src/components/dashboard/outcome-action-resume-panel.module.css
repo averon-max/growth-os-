@@ -1,0 +1,80 @@
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 18px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin-bottom: 3px;
+  color: var(--secondary);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.title {
+  display: block;
+  color: var(--primary);
+  font-size: 11px;
+}
+
+.description {
+  display: block;
+  margin-top: 4px;
+  color: var(--secondary);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status {
+  color: var(--secondary);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.button {
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid rgba(94, 106, 210, .65);
+  border-radius: 4px;
+  background: rgba(94, 106, 210, .12);
+  color: var(--primary);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: rgba(94, 106, 210, .2);
+}
+
+.button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.error {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: #df9a7c;
+  font-size: 9px;
+  line-height: 1.5;
+}

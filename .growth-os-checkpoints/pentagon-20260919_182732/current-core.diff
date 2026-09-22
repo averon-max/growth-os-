@@ -1,0 +1,3863 @@
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 8308385..2f73c7d 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -17,14 +17,15 @@ model User {
+ }
+ 
+ model Workspace {
+-  id                  String               @id @default(cuid())
+-  name                String
+-  createdAt           DateTime             @default(now())
+-  updatedAt           DateTime             @updatedAt
+-  members             WorkspaceMember[]
+-  businesses          Business[]
+-  keywords            Keyword[]
+-  providerConnections ProviderConnection[]
++  id                    String                 @id @default(cuid())
++  name                  String
++  createdAt             DateTime               @default(now())
++  updatedAt             DateTime               @updatedAt
++  members               WorkspaceMember[]
++  businesses            Business[]
++  keywords              Keyword[]
++  providerConnections   ProviderConnection[]
++  keywordOutcomeActions KeywordOutcomeAction[]
+ }
+ 
+ model WorkspaceMember {
+@@ -41,31 +42,36 @@ model WorkspaceMember {
+ }
+ 
+ model Business {
+-  id          String    @id @default(cuid())
+-  name        String
+-  industry    String?
+-  location    String?
+-  workspaceId String
+-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+-  websites    Website[]
+-  createdAt   DateTime  @default(now())
+-  updatedAt   DateTime  @updatedAt
++  id            String         @id @default(cuid())
++  name          String
++  industry      String?
++  location      String?
++  workspaceId   String
++  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
++  websites      Website[]
++  createdAt     DateTime       @default(now())
++  updatedAt     DateTime       @updatedAt
++  businessFacts BusinessFact[]
+ 
+   @@index([workspaceId])
+ }
+ 
+ model Website {
+-  id               String            @id @default(cuid())
+-  url              String
+-  ga4PropertyId    String?
+-  businessId       String
+-  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+-  analyses         Analysis[]
+-  audienceSegments AudienceSegment[]
+-  cmsConnection    CMSConnection?
+-  contentBriefs    ContentBrief[]
+-  createdAt        DateTime          @default(now())
+-  updatedAt        DateTime          @updatedAt
++  id                       String                    @id @default(cuid())
++  url                      String
++  ga4PropertyId            String?
++  businessId               String
++  business                 Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
++  analyses                 Analysis[]
++  audienceSegments         AudienceSegment[]
++  cmsConnection            CMSConnection?
++  cloudflareConnection     CloudflareConnection?
++  contentBriefs            ContentBrief[]
++  competitors              Competitor[]
++  createdAt                DateTime                  @default(now())
++  updatedAt                DateTime                  @updatedAt
++  contentEvidenceSnapshots ContentEvidenceSnapshot[]
++  keywordOutcomeActions    KeywordOutcomeAction[]
+ 
+   @@index([businessId])
+ }
+@@ -120,7 +126,7 @@ model Page {
+ }
+ 
+ model SEOIssue {
+-  id             String   @id @default(cuid())
++  id             String       @id @default(cuid())
+   type           String
+   severity       String
+   pageUrl        String?
+@@ -128,8 +134,8 @@ model SEOIssue {
+   evidence       String?
+   recommendation String
+   analysisId     String
+-  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+-  createdAt      DateTime @default(now())
++  analysis       Analysis     @relation(fields: [analysisId], references: [id], onDelete: Cascade)
++  createdAt      DateTime     @default(now())
+   appliedFixes   AppliedFix[]
+ 
+   @@index([analysisId])
+@@ -137,19 +143,19 @@ model SEOIssue {
+ }
+ 
+ model Opportunity {
+-  id             String   @id @default(cuid())
++  id             String         @id @default(cuid())
+   title          String
+   type           String
+   priority       String
+   score          Int
+   reason         String
+   recommendation String
+-  affectedPages  Int      @default(0)
++  affectedPages  Int            @default(0)
+   appliedFixes   AppliedFix[]
+   contentBriefs  ContentBrief[]
+   analysisId     String
+-  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+-  createdAt      DateTime @default(now())
++  analysis       Analysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
++  createdAt      DateTime       @default(now())
+ 
+   @@index([analysisId])
+   @@index([score])
+@@ -190,24 +196,45 @@ model ProviderConnection {
+ }
+ 
+ model Keyword {
+-  id          String            @id @default(cuid())
+-  workspaceId String
+-  text        String
+-  normalized  String
+-  intent      KeywordIntent?
+-  cluster     String?
+-  volume      Int?
+-  difficulty  Int?
+-  cpc         Decimal?          @db.Decimal(10, 4)
+-  createdAt   DateTime          @default(now())
+-  updatedAt   DateTime          @updatedAt
+-  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+-  snapshots   KeywordSnapshot[]
++  id             String                 @id @default(cuid())
++  workspaceId    String
++  text           String
++  normalized     String
++  intent         KeywordIntent?
++  cluster        String?
++  volume         Int?
++  difficulty     Int?
++  cpc            Decimal?               @db.Decimal(10, 4)
++  createdAt      DateTime               @default(now())
++  updatedAt      DateTime               @updatedAt
++  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
++  snapshots      KeywordSnapshot[]
++  marketMetrics  KeywordMarketMetric[]
++  outcomeActions KeywordOutcomeAction[]
+ 
+   @@unique([workspaceId, normalized])
+   @@index([workspaceId])
+ }
+ 
++model KeywordMarketMetric {
++  id               String   @id @default(cuid())
++  keywordId        String
++  market           String
++  language         String
++  volume           Int?
++  difficulty       Int?
++  cpc              Decimal? @db.Decimal(10, 4)
++  competitionIndex Int?
++  createdAt        DateTime @default(now())
++  updatedAt        DateTime @updatedAt
++
++  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
++
++  @@unique([keywordId, market, language])
++  @@index([keywordId])
++  @@index([market])
++}
++
+ model KeywordSuggestionCache {
+   id         String   @id @default(cuid())
+   normalized String
+@@ -331,25 +358,25 @@ enum FixRiskLevel {
+ }
+ 
+ model AppliedFix {
+-  id              String            @id @default(cuid())
++  id              String           @id @default(cuid())
+   opportunityId   String?
+-  opportunity     Opportunity?      @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
++  opportunity     Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+   issueId         String?
+-  issue           SEOIssue?         @relation(fields: [issueId], references: [id], onDelete: SetNull)
++  issue           SEOIssue?        @relation(fields: [issueId], references: [id], onDelete: SetNull)
+   cmsConnectionId String
+-  cmsConnection   CMSConnection     @relation(fields: [cmsConnectionId], references: [id], onDelete: Cascade)
++  cmsConnection   CMSConnection    @relation(fields: [cmsConnectionId], references: [id], onDelete: Cascade)
+   pageUrl         String
+   fixType         FixType
+   riskLevel       FixRiskLevel
+   previousValue   String?
+   newValue        String
+-  status          AppliedFixStatus  @default(PENDING)
++  status          AppliedFixStatus @default(PENDING)
+   errorMessage    String?
+   appliedAt       DateTime?
+   verifiedAt      DateTime?
+   rolledBackAt    DateTime?
+-  createdAt       DateTime          @default(now())
+-  updatedAt       DateTime          @updatedAt
++  createdAt       DateTime         @default(now())
++  updatedAt       DateTime         @updatedAt
+ 
+   @@index([cmsConnectionId])
+   @@index([opportunityId])
+@@ -358,27 +385,123 @@ model AppliedFix {
+   @@index([appliedAt])
+ }
+ 
++enum BusinessFactType {
++  CAPABILITY
++  METRIC
++  DATA_SOURCE
++  POLICY
++  DIFFERENTIATOR
++  COMPLIANCE
++  OTHER
++}
++
++enum BusinessFactStatus {
++  PROPOSED
++  VERIFIED
++  REJECTED
++  ARCHIVED
++}
++
++enum BusinessFactEvidenceStatus {
++  UNCHECKED
++  FRESH
++  DRIFTED
++  UNAVAILABLE
++}
++
++model BusinessFact {
++  id                    String                     @id @default(cuid())
++  businessId            String
++  business              Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
++  type                  BusinessFactType
++  claim                 String
++  status                BusinessFactStatus         @default(PROPOSED)
++  sourceUrl             String?
++  sourceLabel           String?
++  evidence              String?
++  confidence            Float?
++  evidenceStatus        BusinessFactEvidenceStatus @default(UNCHECKED)
++  evidenceHash          String?
++  sourceContentHash     String?
++  lastEvidenceCheckedAt DateTime?
++  lastEvidenceSeenAt    DateTime?
++  evidenceCheckError    String?
++  version               Int                        @default(1)
++  supersedesId          String?
++  supersedes            BusinessFact?              @relation("BusinessFactVersion", fields: [supersedesId], references: [id], onDelete: SetNull)
++  revisions             BusinessFact[]             @relation("BusinessFactVersion")
++  createdByUserId       String?
++  verifiedByUserId      String?
++  verifiedAt            DateTime?
++  events                BusinessFactEvent[]
++  createdAt             DateTime                   @default(now())
++  updatedAt             DateTime                   @updatedAt
++
++  @@index([businessId, status])
++  @@index([businessId, status, evidenceStatus])
++  @@index([businessId, type])
++  @@index([supersedesId])
++}
++
++model BusinessFactEvent {
++  id             String              @id @default(cuid())
++  businessFactId String
++  businessFact   BusinessFact        @relation(fields: [businessFactId], references: [id], onDelete: Cascade)
++  action         String
++  actorUserId    String?
++  previousStatus BusinessFactStatus?
++  nextStatus     BusinessFactStatus?
++  metadata       Json?
++  createdAt      DateTime            @default(now())
++
++  @@index([businessFactId, createdAt])
++}
++
++model ContentEvidenceSnapshot {
++  id             String       @id @default(cuid())
++  briefId        String       @unique
++  brief          ContentBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
++  websiteId      String
++  website        Website      @relation(fields: [websiteId], references: [id], onDelete: Cascade)
++  topic          String
++  primaryKeyword String
++  searchIntent   String
++  plan           Json
++  businessFacts  Json
++  keywordContext Json?
++  plannerVersion String
++  gateVersion    String
++  generatorModel String
++  createdAt      DateTime     @default(now())
++
++  @@index([websiteId, createdAt])
++}
++
+ enum ContentBriefStatus {
+   DRAFT
+   READY
+ }
+ 
+ model ContentBrief {
+-  id               String             @id @default(cuid())
+-  websiteId        String
+-  website          Website            @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+-  opportunityId    String?
+-  opportunity      Opportunity?       @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+-  topic            String
+-  searchIntent     String
+-  primaryKeyword   String
++  id            String       @id @default(cuid())
++  websiteId     String
++  website       Website      @relation(fields: [websiteId], references: [id], onDelete: Cascade)
++  opportunityId String?
++  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
++
++  outcomeActionId   String?                  @unique
++  outcomeAction     KeywordOutcomeAction?    @relation(fields: [outcomeActionId], references: [id], onDelete: SetNull)
++  topic             String
++  searchIntent      String
++  primaryKeyword    String
+   secondaryKeywords String[]
+-  outline          Json
+-  status           ContentBriefStatus @default(DRAFT)
+-  generatedBy      String
+-  articles         ContentArticle[]
+-  createdAt        DateTime           @default(now())
+-  updatedAt        DateTime           @updatedAt
++  outline           Json
++  status            ContentBriefStatus       @default(DRAFT)
++  generatedBy       String
++  articles          ContentArticle[]
++  createdAt         DateTime                 @default(now())
++  updatedAt         DateTime                 @updatedAt
++  evidenceSnapshot  ContentEvidenceSnapshot?
+ 
+   @@index([websiteId])
+   @@index([opportunityId])
+@@ -395,21 +518,229 @@ enum ContentArticleStatus {
+ }
+ 
+ model ContentArticle {
+-  id              String                @id @default(cuid())
++  id              String               @id @default(cuid())
+   briefId         String
+-  brief           ContentBrief          @relation(fields: [briefId], references: [id], onDelete: Cascade)
++  brief           ContentBrief         @relation(fields: [briefId], references: [id], onDelete: Cascade)
+   title           String
+   metaDescription String
+   h1              String
+   bodyMarkdown    String
+-  status          ContentArticleStatus  @default(GENERATING)
++  status          ContentArticleStatus @default(GENERATING)
+   generatedBy     String
+   publishedUrl    String?
+   publishedAt     DateTime?
+   publishError    String?
+-  createdAt       DateTime              @default(now())
+-  updatedAt       DateTime              @updatedAt
++  createdAt       DateTime             @default(now())
++  updatedAt       DateTime             @updatedAt
+ 
+   @@index([briefId])
+   @@index([status])
+ }
++
++model Competitor {
++  id        String               @id @default(cuid())
++  websiteId String
++  website   Website              @relation(fields: [websiteId], references: [id], onDelete: Cascade)
++  domain    String
++  name      String?
++  addedAt   DateTime             @default(now())
++  snapshots CompetitorSnapshot[]
++
++  @@unique([websiteId, domain])
++  @@index([websiteId])
++}
++
++model CompetitorSnapshot {
++  id                  String     @id @default(cuid())
++  competitorId        String
++  competitor          Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
++  capturedAt          DateTime   @default(now())
++  title               String?
++  metaDescription     String?
++  h1                  String?
++  wordCount           Int?
++  imagesCount         Int?
++  imagesWithoutAlt    Int?
++  hasJsonLd           Boolean?
++  rankedKeywordsCount Int?
++  topKeywords         Json?
++  gapKeywords         Json?
++  fromCache           Boolean    @default(false)
++
++  @@index([competitorId])
++}
++
++model CloudflareConnection {
++  id                String   @id @default(cuid())
++  websiteId         String   @unique
++  website           Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
++  zoneId            String
++  apiTokenEncrypted String
++  createdAt         DateTime @default(now())
++  updatedAt         DateTime @updatedAt
++
++  snapshots     TrafficSnapshot[]
++  pageSnapshots PageTrafficSnapshot[]
++}
++
++model TrafficSnapshot {
++  id           String               @id @default(cuid())
++  connectionId String
++  connection   CloudflareConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
++  date         DateTime             @db.Date
++
++  totalRequests         Int
++  unclassifiedRequests  Int
++  verifiedBotRequests   Int
++  unverifiedBotRequests Int?
++  threatsBlocked        Int?
++  bandwidthBytes        BigInt
++  uniqueVisitors        Int
++  countryBreakdown      Json?
++  deviceBreakdown       Json?
++  botCategoryBreakdown  Json?
++
++  createdAt DateTime @default(now())
++
++  @@unique([connectionId, date])
++  @@index([connectionId, date])
++}
++
++model PageTrafficSnapshot {
++  id           String               @id @default(cuid())
++  connectionId String
++  connection   CloudflareConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
++  date         DateTime             @db.Date
++  path         String
++
++  totalRequests        Int
++  visits               Int
++  verifiedBotRequests  Int
++  unclassifiedRequests Int
++  botCategoryBreakdown Json?
++
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
++
++  @@unique([connectionId, date, path])
++  @@index([connectionId, path, date])
++  @@index([connectionId, date])
++}
++
++enum KeywordOutcomeDecision {
++  CREATE
++  UPDATE
++  SKIP
++}
++
++enum KeywordOutcomeActionStatus {
++  PLANNED
++  EXECUTED
++  CANCELLED
++}
++
++enum KeywordOutcomeCheckpoint {
++  BASELINE
++  DAY_7
++  DAY_14
++  DAY_28
++}
++
++enum KeywordOutcomeLiveRankState {
++  FOUND
++  NOT_TOP_100
++  UNAVAILABLE
++}
++
++enum KeywordOutcomeObservationSource {
++  ACTION_BASELINE
++  LIVE_SERP
++  GOOGLE_SEARCH_CONSOLE
++  COMBINED
++  MANUAL
++  NO_DATA
++}
++
++model KeywordOutcomeAction {
++  id                      String                            @id @default(cuid())
++  workspaceId             String
++  websiteId               String
++  keywordId               String?
++  keywordText             String
++  normalizedKeyword       String
++  market                  String
++  language                String                            @default("en")
++  device                  String                            @default("desktop")
++  decision                KeywordOutcomeDecision
++  compatibilityStatus     KeywordOutcomeCompatibilityStatus
++  compatibilityReason     String
++  compatibilitySnapshot   Json
++  compatibilityCheckedAt  DateTime                          @default(now())
++  status                  KeywordOutcomeActionStatus        @default(PLANNED)
++  targetPageUrl           String?
++  rationale               String
++  evidence                Json
++  planSnapshot            Json
++  source                  String                            @default("GROWTH_OS_ACTION_PLAN_V1")
++  baselineLiveRank        Int?
++  baselineLiveRankState   KeywordOutcomeLiveRankState
++  baselineImpressions     Int?
++  baselineClicks          Int?
++  baselineCtr             Decimal?                          @db.Decimal(8, 4)
++  baselineAveragePosition Decimal?                          @db.Decimal(6, 2)
++  baselineGscSnapshotDate DateTime?                         @db.Date
++  appliedFixId            String?
++  contentArticleId        String?
++  supersedesActionId      String?                           @unique
++  executedAt              DateTime?
++  createdAt               DateTime                          @default(now())
++  updatedAt               DateTime                          @updatedAt
++
++  workspace        Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
++  website          Website                     @relation(fields: [websiteId], references: [id], onDelete: Cascade)
++  keyword          Keyword?                    @relation(fields: [keywordId], references: [id], onDelete: SetNull)
++  observations     KeywordOutcomeObservation[]
++  contentBrief     ContentBrief?
++  supersedesAction KeywordOutcomeAction?       @relation("KeywordOutcomeActionRevision", fields: [supersedesActionId], references: [id], onDelete: SetNull)
++  supersededBy     KeywordOutcomeAction?       @relation("KeywordOutcomeActionRevision")
++
++  @@index([workspaceId])
++  @@index([websiteId])
++  @@index([keywordId])
++  @@index([websiteId, normalizedKeyword, market])
++  @@index([status])
++  @@index([createdAt])
++  @@index([appliedFixId])
++  @@index([contentArticleId])
++}
++
++model KeywordOutcomeObservation {
++  id              String                          @id @default(cuid())
++  actionId        String
++  checkpoint      KeywordOutcomeCheckpoint
++  source          KeywordOutcomeObservationSource
++  liveRank        Int?
++  liveRankState   KeywordOutcomeLiveRankState
++  impressions     Int?
++  clicks          Int?
++  ctr             Decimal?                        @db.Decimal(8, 4)
++  averagePosition Decimal?                        @db.Decimal(6, 2)
++  gscSnapshotDate DateTime?                       @db.Date
++  pageUrl         String?
++  observedAt      DateTime                        @default(now())
++  createdAt       DateTime                        @default(now())
++
++  action KeywordOutcomeAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
++
++  @@unique([actionId, checkpoint])
++  @@index([actionId])
++  @@index([checkpoint])
++  @@index([observedAt])
++}
++
++enum KeywordOutcomeCompatibilityStatus {
++  SUPPORTED
++  EDUCATIONAL_ONLY
++  UNVERIFIED
++  CONFLICT
++}
+diff --git a/src/app/api/content/articles/[id]/approve/route.ts b/src/app/api/content/articles/[id]/approve/route.ts
+index 026783a..9de5202 100644
+--- a/src/app/api/content/articles/[id]/approve/route.ts
++++ b/src/app/api/content/articles/[id]/approve/route.ts
+@@ -1,3 +1,6 @@
++import {
++  ContentGateError,
++} from "@/lib/content/content-gate";
+ import { NextRequest, NextResponse } from "next/server";
+ import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
+ import { getContentArticleById } from "@/lib/content/repository";
+@@ -22,6 +25,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
+     const updated = await approveArticle(id);
+     return NextResponse.json({ article: updated });
+   } catch (err) {
++    if (
++      err instanceof
++      ContentGateError
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "Article blocked by Content Quality Gate.",
++
++          issues:
++            err.issues,
++
++          claims:
++            err.claimFindings,
++        },
++        {
++          status: 409,
++        }
++      );
++    }
++
+     console.error("content/articles/[id]/approve POST error", err);
+     const { status, body: errBody } = authErrorResponse(err);
+     return NextResponse.json(errBody, { status });
+diff --git a/src/app/api/content/articles/[id]/publish/route.ts b/src/app/api/content/articles/[id]/publish/route.ts
+index 2382e08..21dc79e 100644
+--- a/src/app/api/content/articles/[id]/publish/route.ts
++++ b/src/app/api/content/articles/[id]/publish/route.ts
+@@ -1,34 +1,313 @@
+-import { NextRequest, NextResponse } from "next/server";
+-import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
+-import { getContentArticleById } from "@/lib/content/repository";
+-import { publishArticle } from "@/lib/content/service";
+-import { getCMSConnection } from "@/lib/cms/repository";
+-import { getProviderForType } from "@/lib/cms/registry";
+-
+-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++import {
++  ContentGateError,
++} from "@/lib/content/content-gate";
++
++import {
++  NextRequest,
++  NextResponse,
++} from "next/server";
++
++import {
++  requireUser,
++  requireWebsiteAccess,
++  authErrorResponse,
++} from "@/lib/auth-helpers";
++
++import {
++  getContentArticleById,
++} from "@/lib/content/repository";
++
++import {
++  publishArticle,
++} from "@/lib/content/service";
++
++import {
++  getCMSConnection,
++} from "@/lib/cms/repository";
++
++import {
++  getProviderForType,
++} from "@/lib/cms/registry";
++
++import {
++  assertOutcomeActionExecutable,
++  markOutcomeActionExecuted,
++} from "@/lib/keywords/outcome-service";
++
++export async function POST(
++  req: NextRequest,
++  {
++    params,
++  }: {
++    params:
++      Promise<{
++        id:
++          string;
++      }>;
++  }
++) {
+   try {
+-    const { id } = await params;
+-    const user = await requireUser();
++    const {
++      id,
++    } =
++      await params;
++
++    const user =
++      await requireUser();
++
++    const body =
++      await req
++        .json()
++        .catch(
++          () => ({})
++        ) as {
++          outcomeActionId?:
++            string;
++        };
++
++    const outcomeActionId =
++      typeof body.outcomeActionId ===
++        "string"
++        ? body.outcomeActionId.trim()
++        : "";
++
++    const article =
++      await getContentArticleById(
++        id
++      );
++
++    if (
++      !article
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "Article not found.",
++        },
++        {
++          status:
++            404,
++        }
++      );
++    }
++
++    const website =
++      await requireWebsiteAccess(
++        user.id,
++        article.brief.websiteId
++      );
++
++    const effectiveOutcomeActionId =
++      outcomeActionId ||
++      article.brief.outcomeActionId?.trim() ||
++      "";
++
++    if (
++      effectiveOutcomeActionId
++    ) {
++      try {
++        await assertOutcomeActionExecutable({
++          workspaceId:
++            website.business.workspaceId,
++
++          websiteId:
++            article.brief.websiteId,
++
++          actionId:
++            effectiveOutcomeActionId,
++
++          executionKind:
++            "CONTENT_PUBLISH",
+ 
+-    const article = await getContentArticleById(id);
+-    if (!article) {
+-      return NextResponse.json({ error: "Article not found." }, { status: 404 });
++          primaryKeyword:
++            article.brief.primaryKeyword,
++        });
++      } catch {
++        return NextResponse.json(
++          {
++            error:
++              "This Growth OS action cannot be linked to this content execution.",
++          },
++          {
++            status:
++              409,
++          }
++        );
++      }
+     }
+ 
+-    await requireWebsiteAccess(user.id, article.brief.websiteId);
++    const connection =
++      await getCMSConnection(
++        article.brief.websiteId
++      );
+ 
+-    const connection = await getCMSConnection(article.brief.websiteId);
+-    if (!connection) {
+-      return NextResponse.json({ error: "CMS is not connected for this website." }, { status: 409 });
++    if (
++      !connection
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "CMS is not connected for this website.",
++        },
++        {
++          status:
++            409,
++        }
++      );
+     }
+ 
+-    const provider = getProviderForType(connection.cmsType);
+-    const updated = await publishArticle(provider, id);
++    const provider =
++      getProviderForType(
++        connection.cmsType
++      );
++
++    const updated =
++      await publishArticle(
++        provider,
++        id
++      );
++
++    let outcomeLink:
++      | {
++          status:
++            "EXECUTED";
++          actionId:
++            string;
++        }
++      | {
++          status:
++            "NOT_EXECUTED";
++          actionId:
++            string;
++        }
++      | {
++          status:
++            "FAILED_TO_RECORD";
++          actionId:
++            string;
++        }
++      | null =
++      null;
++
++    if (
++      effectiveOutcomeActionId
++    ) {
++      if (
++        updated.status ===
++        "PUBLISHED"
++      ) {
++        try {
++          await markOutcomeActionExecuted({
++            workspaceId:
++              website.business.workspaceId,
++
++            websiteId:
++              article.brief.websiteId,
++
++            actionId:
++              effectiveOutcomeActionId,
++
++            executionKind:
++              "CONTENT_PUBLISH",
++
++            primaryKeyword:
++              article.brief.primaryKeyword,
++
++            contentArticleId:
++              updated.id,
++          });
++
++          outcomeLink = {
++            status:
++              "EXECUTED",
++
++            actionId:
++              effectiveOutcomeActionId,
++          };
++        } catch (
++          linkError
++        ) {
++          console.error(
++            "content publish outcome link error",
++            linkError
++          );
++
++          outcomeLink = {
++            status:
++              "FAILED_TO_RECORD",
++
++            actionId:
++              effectiveOutcomeActionId,
++          };
++        }
++      } else {
++        outcomeLink = {
++          status:
++            "NOT_EXECUTED",
++
++          actionId:
++            effectiveOutcomeActionId,
++        };
++      }
++    }
++
++    return NextResponse.json(
++      outcomeLink
++        ? {
++            article:
++              updated,
++
++            outcomeLink,
++          }
++        : {
++            article:
++              updated,
++          }
++    );
++  } catch (
++    err
++  ) {
++    if (
++      err instanceof
++      ContentGateError
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "Article blocked by Content Quality Gate.",
++
++          issues:
++            err.issues,
++
++          claims:
++            err.claimFindings,
++        },
++        {
++          status:
++            409,
++        }
++      );
++    }
++
++    console.error(
++      "content/articles/[id]/publish POST error",
++      err
++    );
++
++    const {
++      status,
++      body:
++        errBody,
++    } =
++      authErrorResponse(
++        err
++      );
+ 
+-    return NextResponse.json({ article: updated });
+-  } catch (err) {
+-    console.error("content/articles/[id]/publish POST error", err);
+-    const { status, body: errBody } = authErrorResponse(err);
+-    return NextResponse.json(errBody, { status });
++    return NextResponse.json(
++      errBody,
++      {
++        status,
++      }
++    );
+   }
+ }
+diff --git a/src/app/api/content/articles/[id]/route.ts b/src/app/api/content/articles/[id]/route.ts
+index eb3e3f7..2d4b0f4 100644
+--- a/src/app/api/content/articles/[id]/route.ts
++++ b/src/app/api/content/articles/[id]/route.ts
+@@ -1,23 +1,296 @@
+-import { NextRequest, NextResponse } from "next/server";
+-import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
+-import { getContentArticleById } from "@/lib/content/repository";
++import {
++  NextRequest,
++  NextResponse,
++} from "next/server";
+ 
+-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++import {
++  authErrorResponse,
++  requireUser,
++  requireWebsiteAccess,
++} from "@/lib/auth-helpers";
++
++import {
++  getContentArticleById,
++} from "@/lib/content/repository";
++
++import {
++  prisma,
++} from "@/lib/prisma";
++
++export async function GET(
++  _req: NextRequest,
++  {
++    params,
++  }: {
++    params:
++      Promise<{
++        id: string;
++      }>;
++  }
++) {
+   try {
+-    const { id } = await params;
+-    const user = await requireUser();
++    const {
++      id,
++    } =
++      await params;
++
++    const user =
++      await requireUser();
++
++    const article =
++      await getContentArticleById(
++        id
++      );
+ 
+-    const article = await getContentArticleById(id);
+     if (!article) {
+-      return NextResponse.json({ error: "Article not found." }, { status: 404 });
++      return NextResponse.json(
++        {
++          error:
++            "Article not found.",
++        },
++        {
++          status:
++            404,
++        }
++      );
+     }
+ 
+-    await requireWebsiteAccess(user.id, article.brief.websiteId);
++    await requireWebsiteAccess(
++      user.id,
++      article.brief
++        .websiteId
++    );
++
++    return NextResponse.json({
++      article,
++    });
++  } catch (
++    error
++  ) {
++    const {
++      status,
++      body,
++    } =
++      authErrorResponse(
++        error
++      );
++
++    return NextResponse.json(
++      body,
++      {
++        status,
++      }
++    );
++  }
++}
++
++export async function PATCH(
++  req: NextRequest,
++  {
++    params,
++  }: {
++    params:
++      Promise<{
++        id: string;
++      }>;
++  }
++) {
++  try {
++    const {
++      id,
++    } =
++      await params;
++
++    const user =
++      await requireUser();
++
++    const article =
++      await getContentArticleById(
++        id
++      );
++
++    if (!article) {
++      return NextResponse.json(
++        {
++          error:
++            "Article not found.",
++        },
++        {
++          status:
++            404,
++        }
++      );
++    }
++
++    await requireWebsiteAccess(
++      user.id,
++      article.brief
++        .websiteId
++    );
++
++    if (
++      article.status ===
++      "PUBLISHED"
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "Published articles cannot be edited here. Create a new revision instead.",
++        },
++        {
++          status:
++            409,
++        }
++      );
++    }
++
++    if (
++      article.status ===
++      "GENERATING"
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "This article is still being generated.",
++        },
++        {
++          status:
++            409,
++        }
++      );
++    }
++
++    const body =
++      await req.json();
++
++    const data: {
++      title?: string;
++      metaDescription?: string;
++      h1?: string;
++      bodyMarkdown?: string;
++      status?: "DRAFT";
++    } = {};
++
++    if (
++      typeof body.title ===
++      "string"
++    ) {
++      const value =
++        body.title.trim();
++
++      if (!value) {
++        return NextResponse.json(
++          {
++            error:
++              "Title cannot be empty.",
++          },
++          {
++            status:
++              400,
++          }
++        );
++      }
++
++      data.title =
++        value;
++    }
++
++    if (
++      typeof body.metaDescription ===
++      "string"
++    ) {
++      data.metaDescription =
++        body.metaDescription.trim();
++    }
++
++    if (
++      typeof body.h1 ===
++      "string"
++    ) {
++      const value =
++        body.h1.trim();
++
++      if (!value) {
++        return NextResponse.json(
++          {
++            error:
++              "H1 cannot be empty.",
++          },
++          {
++            status:
++              400,
++          }
++        );
++      }
++
++      data.h1 =
++        value;
++    }
++
++    if (
++      typeof body.bodyMarkdown ===
++      "string"
++    ) {
++      data.bodyMarkdown =
++        body.bodyMarkdown;
++    }
++
++    const hasChanges =
++      Object.keys(
++        data
++      ).length >
++      0;
++
++    if (!hasChanges) {
++      return NextResponse.json(
++        {
++          error:
++            "No article changes were supplied.",
++        },
++        {
++          status:
++            400,
++        }
++      );
++    }
++
++    data.status =
++      "DRAFT";
++
++    const updated =
++      await prisma.contentArticle.update({
++        where: {
++          id,
++        },
++
++        data,
++      });
++
++    return NextResponse.json({
++      article:
++        updated,
++    });
++  } catch (
++    error
++  ) {
++    console.error(
++      "content/articles/[id] PATCH error",
++      error
++    );
++
++    const {
++      status,
++      body,
++    } =
++      authErrorResponse(
++        error
++      );
+ 
+-    return NextResponse.json({ article });
+-  } catch (err) {
+-    console.error("content/articles/[id] GET error", err);
+-    const { status, body: errBody } = authErrorResponse(err);
+-    return NextResponse.json(errBody, { status });
++    return NextResponse.json(
++      body,
++      {
++        status,
++      }
++    );
+   }
+ }
+diff --git a/src/app/api/content/briefs/[id]/generate-article/route.ts b/src/app/api/content/briefs/[id]/generate-article/route.ts
+index 5019efb..c3c4bab 100644
+--- a/src/app/api/content/briefs/[id]/generate-article/route.ts
++++ b/src/app/api/content/briefs/[id]/generate-article/route.ts
+@@ -19,6 +19,80 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
+     const article = await generateArticleFromBrief(geminiGenerator, id);
+     return NextResponse.json({ article }, { status: 201 });
+   } catch (err) {
++
++    const providerMessage =
++      err instanceof Error
++        ? err.message
++        : "";
++
++    const providerMatch =
++      /Gemini API error (429|500|502|503|504)\b/.exec(
++        providerMessage
++      );
++
++    if (providerMatch) {
++      const originalStatus =
++        Number(
++          providerMatch[1]
++        );
++
++      const status =
++        originalStatus === 429
++          ? 429
++          : 503;
++
++      return NextResponse.json(
++        {
++          error:
++            status === 429
++              ? "AI generation is currently rate-limited. Retry when provider capacity is available."
++              : "AI generation is temporarily unavailable. Please retry.",
++
++          code:
++            "CONTENT_PROVIDER_TEMPORARY",
++
++          retryable:
++            true,
++        },
++        {
++          status,
++
++          headers: {
++            "Retry-After":
++              "15",
++          },
++        }
++      );
++    }
++
++    if (
++      /AbortError|aborted|timeout/i.test(
++        providerMessage
++      )
++    ) {
++      return NextResponse.json(
++        {
++          error:
++            "AI generation timed out. Please retry.",
++
++          code:
++            "CONTENT_PROVIDER_TIMEOUT",
++
++          retryable:
++            true,
++        },
++        {
++          status:
++            504,
++
++          headers: {
++            "Retry-After":
++              "10",
++          },
++        }
++      );
++    }
++
+     console.error("content/briefs/[id]/generate-article POST error", err);
+     const { status, body: errBody } = authErrorResponse(err);
+     return NextResponse.json(errBody, { status });
+diff --git a/src/app/api/content/briefs/route.ts b/src/app/api/content/briefs/route.ts
+index b76b559..2100bbc 100644
+--- a/src/app/api/content/briefs/route.ts
++++ b/src/app/api/content/briefs/route.ts
+@@ -61,8 +61,41 @@ export async function POST(req: NextRequest) {
+     return NextResponse.json({ brief }, { status: 201 });
+   } catch (err) {
+     console.error("content/briefs POST error", err);
+-    const { status, body: errBody } = authErrorResponse(err);
+-    return NextResponse.json(errBody, { status });
++
++    const { status, body: errBody } =
++      authErrorResponse(err);
++
++    if (
++      process.env.NODE_ENV !== "production" &&
++      status >= 500
++    ) {
++      const message =
++        err instanceof Error
++          ? err.message
++          : "Unknown content brief error";
++
++      const name =
++        err instanceof Error
++          ? err.name
++          : "UnknownError";
++
++      return NextResponse.json(
++        {
++          error: `${name}: ${message}`,
++          stage: "CREATE_CONTENT_BRIEF",
++        },
++        {
++          status,
++        }
++      );
++    }
++
++    return NextResponse.json(
++      errBody,
++      {
++        status,
++      }
++    );
+   }
+ }
+ 
+diff --git a/src/app/api/keywords/explore/route.ts b/src/app/api/keywords/explore/route.ts
+index ffc0b39..07fa558 100644
+--- a/src/app/api/keywords/explore/route.ts
++++ b/src/app/api/keywords/explore/route.ts
+@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
+     const workspaceId = req.nextUrl.searchParams.get("workspaceId");
+     const seed = req.nextUrl.searchParams.get("seed");
+     const limitParam = req.nextUrl.searchParams.get("limit");
+-    const limit = limitParam ? Math.min(50, Math.max(1, Number.parseInt(limitParam, 10) || 30)) : 30;
++    const limit = limitParam ? Math.min(50, Math.max(1, Number.parseInt(limitParam, 10) || 50)) : 50;
+ 
+     if (!workspaceId) {
+       return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
+diff --git a/src/app/api/keywords/route.ts b/src/app/api/keywords/route.ts
+index 997d590..6e52c98 100644
+--- a/src/app/api/keywords/route.ts
++++ b/src/app/api/keywords/route.ts
+@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
+ import { requireUser, requireWorkspaceAccess, authErrorResponse } from "@/lib/auth-helpers";
+ import { getKeywords } from "@/lib/keywords/repository";
+ import type { KeywordIntent } from "@/lib/keywords/types";
++import type { KeywordSortField, SortDir } from "@/lib/keywords/repository";
+ 
+ const VALID_INTENTS: KeywordIntent[] = ["INFORMATIONAL", "COMMERCIAL", "TRANSACTIONAL", "NAVIGATIONAL"];
++const VALID_SORT_FIELDS: KeywordSortField[] = ["text", "position", "volume", "difficulty", "cpc", "impressions", "clicks"];
+ 
+ function parsePositiveInt(value: string | null): number | undefined {
+   if (!value) return undefined;
+@@ -11,27 +13,82 @@ function parsePositiveInt(value: string | null): number | undefined {
+   return Number.isFinite(n) && n > 0 ? n : undefined;
+ }
+ 
++function parseNonNegInt(value: string | null): number | undefined {
++  if (!value) return undefined;
++  const n = Number.parseInt(value, 10);
++  return Number.isFinite(n) && n >= 0 ? n : undefined;
++}
++
++function parseNonNegFloat(value: string | null): number | undefined {
++  if (!value) return undefined;
++  const n = Number.parseFloat(value);
++  return Number.isFinite(n) && n >= 0 ? n : undefined;
++}
+ export async function GET(req: NextRequest) {
+   try {
+     const user = await requireUser();
+-    const workspaceId = req.nextUrl.searchParams.get("workspaceId");
+-    if (!workspaceId) {
+-      return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
+-    }
++    const sp = req.nextUrl.searchParams;
++    const workspaceId = sp.get("workspaceId");
++    if (!workspaceId) return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
+     await requireWorkspaceAccess(user.id, workspaceId);
+ 
+-    const page = parsePositiveInt(req.nextUrl.searchParams.get("page")) ?? 1;
+-    const limit = parsePositiveInt(req.nextUrl.searchParams.get("limit")) ?? 25;
+-    const filter = req.nextUrl.searchParams.get("filter") ?? undefined;
+-    const intentParam = req.nextUrl.searchParams.get("intent");
+-    const intent =
+-      intentParam && VALID_INTENTS.includes(intentParam as KeywordIntent)
+-        ? (intentParam as KeywordIntent)
+-        : undefined;
+-    const minPosition = parsePositiveInt(req.nextUrl.searchParams.get("minPosition"));
+-    const maxPosition = parsePositiveInt(req.nextUrl.searchParams.get("maxPosition"));
++    const page = parsePositiveInt(sp.get("page")) ?? 1;
++    const limit = parsePositiveInt(sp.get("limit")) ?? 25;
++    const filter = sp.get("filter") ?? undefined;
++    const intentParam = sp.get("intent");
++    const intent = intentParam && VALID_INTENTS.includes(intentParam as KeywordIntent) ? (intentParam as KeywordIntent) : undefined;
++    const minPosition = parsePositiveInt(sp.get("minPosition"));
++    const maxPosition = parsePositiveInt(sp.get("maxPosition"));
++    const market = sp.get("market") ?? undefined;
++    const language = sp.get("language") ?? undefined;
++    const sortByParam = sp.get("sortBy");
++    const sortBy = sortByParam && VALID_SORT_FIELDS.includes(sortByParam as KeywordSortField) ? (sortByParam as KeywordSortField) : undefined;
++    const sortDirParam = sp.get("sortDir");
++    const sortDir: SortDir = sortDirParam === "asc" ? "asc" : "desc";
++    const minVolume = parseNonNegInt(sp.get("minVolume"));
++    const maxVolume = parseNonNegInt(sp.get("maxVolume"));
++    const minKd = parseNonNegInt(sp.get("minKd"));
++    const maxKd = parseNonNegInt(sp.get("maxKd"));
++    const minCpc = parseNonNegFloat(sp.get("minCpc"));
++    const maxCpc = parseNonNegFloat(sp.get("maxCpc"));
++    const hasVolume = sp.get("hasVolume") === "1" ? true : undefined;
++
++    const minCompetition = parseNonNegInt(sp.get("minCompetition"));
++    const maxCompetition = parseNonNegInt(sp.get("maxCompetition"));
++    const minImpressions = parseNonNegInt(sp.get("minImpressions"));
++    const maxImpressions = parseNonNegInt(sp.get("maxImpressions"));
++    const minClicks = parseNonNegInt(sp.get("minClicks"));
++    const maxClicks = parseNonNegInt(sp.get("maxClicks"));
++    const minCtr = parseNonNegFloat(sp.get("minCtr"));
++    const maxCtr = parseNonNegFloat(sp.get("maxCtr"));
++    const minWords = parsePositiveInt(sp.get("minWords"));
++    const maxWords = parsePositiveInt(sp.get("maxWords"));
++    const include = sp.get("include") ?? undefined;
++    const exclude = sp.get("exclude") ?? undefined;
++    const exact = sp.get("exact") ?? undefined;
++    const hasRanking = sp.get("hasRanking") === "1" ? true : undefined;
+ 
+-    const result = await getKeywords(workspaceId, { page, limit, filter, intent, minPosition, maxPosition });
++    const result = await getKeywords(workspaceId, {
++      page,
++      limit,
++      filter,
++      intent,
++      minPosition,
++      maxPosition,
++      market,
++      language,
++      sortBy,
++      sortDir,
++      minVolume,
++      maxVolume,
++      minKd,
++      maxKd,
++      hasVolume,
++      minCpc,
++      maxCpc,
++      minCompetition,
++      maxCompetition,
++    });
+     return NextResponse.json(result);
+   } catch (err) {
+     const { status, body } = authErrorResponse(err);
+diff --git a/src/app/api/keywords/volume-sync/route.ts b/src/app/api/keywords/volume-sync/route.ts
+index 95335e1..3a22153 100644
+--- a/src/app/api/keywords/volume-sync/route.ts
++++ b/src/app/api/keywords/volume-sync/route.ts
+@@ -7,7 +7,12 @@ export async function POST(req: NextRequest) {
+   try {
+     const user = await requireUser();
+     const body = await req.json();
+-    const { workspaceId, forceRefresh } = body as { workspaceId?: string; forceRefresh?: boolean };
++    const { workspaceId, forceRefresh, market, language } = body as {
++      workspaceId?: string;
++      forceRefresh?: boolean;
++      market?: string;
++      language?: string;
++    };
+ 
+     if (!workspaceId) {
+       return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
+@@ -15,7 +20,12 @@ export async function POST(req: NextRequest) {
+ 
+     await requireWorkspaceAccess(user.id, workspaceId);
+ 
+-    const result = await updateKeywordVolumes(workspaceId, forceRefresh ?? false);
++    const result = await updateKeywordVolumes(
++      workspaceId,
++      forceRefresh ?? false,
++      market ?? "US",
++      language ?? "English",
++    );
+     return NextResponse.json(result);
+   } catch (err) {
+     if (err instanceof DataForSEOError) {
+diff --git a/src/lib/content/gemini-generator.ts b/src/lib/content/gemini-generator.ts
+index 952ed80..b35b81e 100644
+--- a/src/lib/content/gemini-generator.ts
++++ b/src/lib/content/gemini-generator.ts
+@@ -22,7 +22,7 @@ interface GeminiResponse {
+ 
+ const MAX_RETRIES = 3;
+ const BASE_BACKOFF_MS = 2000;
+-const RETRYABLE_STATUS_CODES = new Set([429, 503]);
++const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+ 
+ function sleep(ms: number): Promise<void> {
+   return new Promise((resolve) => setTimeout(resolve, ms));
+@@ -53,7 +53,27 @@ async function callGemini(prompt: string): Promise<string> {
+         lastError = new ContentGenerationError(`Gemini API error ${res.status}: ${body.slice(0, 300)}`);
+ 
+         if (RETRYABLE_STATUS_CODES.has(res.status) && attempt < MAX_RETRIES) {
+-          await sleep(BASE_BACKOFF_MS * 2 ** attempt);
++          const retryAfterHeader = res.headers.get("Retry-After");
++
++          const retryAfterSeconds =
++            retryAfterHeader
++              ? Number(retryAfterHeader)
++              : Number.NaN;
++
++          const retryAfterMs =
++            Number.isFinite(retryAfterSeconds) &&
++            retryAfterSeconds > 0
++              ? Math.min(retryAfterSeconds * 1000, 30000)
++              : BASE_BACKOFF_MS * 2 ** attempt;
++
++          console.warn("[gemini] temporary provider failure", {
++            status: res.status,
++            attempt: attempt + 1,
++            nextAttempt: attempt + 2,
++            retryAfterMs,
++          });
++
++          await sleep(retryAfterMs);
+           continue;
+         }
+         throw lastError;
+@@ -115,9 +135,20 @@ Produce a content brief as JSON with this exact shape:
+   "outline": [{ "heading": "string", "level": 2, "summary": "string" }]
+ }
+ 
+-The outline must have exactly one H1-equivalent implied by the article title (not included here), 4-8 H2/H3 sections, each with a one-sentence summary of what it covers. Respond with JSON only.`;
++The outline must assume exactly one page-level H1 represented by the article title and not included in the outline.
++
++There is no required or ideal number of H2 or H3 headings.
++
++Create an H2 only when there is a genuinely distinct major sub-intent, user question, process stage, comparison, concept, or topic required to satisfy the search intent.
++
++Create an H3 only when a specific H2 genuinely requires meaningful subdivision.
++
++Do not add headings to hit a numerical target, increase article length, repeat keywords, or imitate competitor heading counts.
++
++Every heading must earn its place by improving the information architecture.
++
++Respond with JSON only.`;
+ 
+-    console.log("[gemini] FULL PROMPT >>>\n" + prompt + "\n<<< END PROMPT");
+     const text = await callGemini(prompt);
+     const parsed = parseJson<GeneratedBrief>(text);
+ 
+@@ -138,6 +169,20 @@ Primary keyword: ${input.primaryKeyword}
+ Secondary keywords: ${input.secondaryKeywords.join(", ")}
+ Search intent: ${input.searchIntent}
+ 
++Reason:
++${input.reason}
++
++Editorial constraints and verified evidence:
++${input.recommendation}
++
++FACTUAL REQUIREMENTS:
++- Never invent facts about the business or product.
++- Never infer product capabilities from competitors, SERP results, the topic, the industry, or the company name.
++- Never invent dataset sizes, breach-record counts, customer counts, dark-web coverage, stealer-log coverage, monitoring capabilities, guarantees, awards, or superlatives.
++- If a product-specific claim is not explicitly verified in the evidence above, omit it.
++- Generic educational cybersecurity statements must be written cautiously and without fabricated sources.
++- Make the title and H1 clearly aligned with the primary search intent. Exact-match wording is preferred only when it reads naturally.
++
+ Outline:
+ ${outlineText}
+ 
+diff --git a/src/lib/content/service.ts b/src/lib/content/service.ts
+index 317318c..3279259 100644
+--- a/src/lib/content/service.ts
++++ b/src/lib/content/service.ts
+@@ -1,13 +1,219 @@
+-import { prisma } from "@/lib/prisma";
+-import type { Prisma } from "@prisma/client";
+-import type { ContentGenerator } from "./generator";
+-import type { CMSProvider } from "@/lib/cms/provider";
+-import { ContentGenerationError } from "./generator";
+-import type { ContentBriefInput } from "./types";
+-import { getWebsiteKeywordContext } from "./keyword-context";
+-import { fetchRelatedKeywords } from "@/lib/keywords/dataforseo-provider";
++import {
++  businessFactPrompt,
++} from "./business-facts";
++
++import {
++  getBusinessFactRegistryForWebsite,
++} from "./business-fact-repository";
++
++import {
++  createContentEvidenceSnapshot,
++  getBusinessFactRegistryForBrief,
++} from "./evidence-snapshot";
++
++import {
++  assertContentGatePassed,
++  evaluateContentGate,
++  formatContentGateFailure,
++} from "./content-gate";
++
++import {
++  prisma,
++} from "@/lib/prisma";
++
++import type {
++  Prisma,
++} from "@prisma/client";
++
++import type {
++  ContentGenerator,
++} from "./generator";
++
++import type {
++  CMSProvider,
++} from "@/lib/cms/provider";
++
++import {
++  ContentGenerationError,
++} from "./generator";
++
++import type {
++  ContentBriefInput,
++  ContentStrategy,
++} from "./types";
++
++import {
++  getWebsiteKeywordContext,
++} from "./keyword-context";
++
++import {
++  normalizeOutline,
++} from "./seo-strategy";
++
++import {
++  buildFinalContentPlan,
++  finalPlanPrompt,
++} from "./final-content-plan";
++
++import {
++  auditArticle,
++  repairGeneratedArticle,
++} from "./content-quality";
++
++import {
++  analyzeArticleAgainstPlan,
++} from "./content-plan-analysis";
++
++
++async function analyzeStoredContentPlan({
++  briefId,
++  title,
++  metaDescription,
++  h1,
++  bodyMarkdown,
++  primaryKeyword,
++  secondaryKeywords,
++}: {
++  briefId: string;
++  title: string;
++  metaDescription?: string | null;
++  h1: string;
++  bodyMarkdown: string;
++  primaryKeyword: string;
++  secondaryKeywords?: string[];
++}) {
++  const evidence =
++    await prisma.contentEvidenceSnapshot.findUnique({
++      where: {
++        briefId,
++      },
++
++      select: {
++        plan:
++          true,
++      },
++    });
++
++  return analyzeArticleAgainstPlan({
++    title,
++    metaDescription,
++    h1,
++    bodyMarkdown,
++    primaryKeyword,
++    secondaryKeywords,
++
++    plan:
++      evidence?.plan ??
++      null,
++  });
++}
++
++
++function logContentIntelligence(
++  briefId: string,
++  intelligence: Awaited<
++    ReturnType<
++      typeof analyzeStoredContentPlan
++    >
++  >
++): void {
++  console.info(
++    "[content intelligence]",
++    {
++      briefId,
++
++      planAvailable:
++        intelligence
++          .planAvailable,
++
++      confidence:
++        intelligence
++          .confidence,
++
++      structure: {
++        h1:
++          intelligence
++            .article
++            .structure
++            .totalH1,
++
++        h2:
++          intelligence
++            .article
++            .structure
++            .h2,
++
++        h3:
++          intelligence
++            .article
++            .structure
++            .h3,
++
++        words:
++          intelligence
++            .article
++            .wordCount,
++      },
++
++      plannedKeywords:
++        intelligence
++          .article
++          .keywordCoverage
++          .planned,
++
++      usedPlannedKeywords:
++        intelligence
++          .article
++          .keywordCoverage
++          .used,
++
++      missingPlannedKeywords:
++        intelligence
++          .article
++          .keywordCoverage
++          .missing,
++
++      topicCoverage: {
++        covered:
++          intelligence
++            .topics
++            .covered,
++
++        total:
++          intelligence
++            .topics
++            .total,
++      },
++
++      questionCoverage: {
++        covered:
++          intelligence
++            .questions
++            .covered,
++
++        total:
++          intelligence
++            .questions
++            .total,
++      },
++
++      structurallyValid:
++        intelligence
++          .article
++          .structurallyValid,
++
++      warnings:
++        intelligence
++          .warnings,
++    }
++  );
++}
++
++
+ 
+ export interface CreateBriefInput {
++  outcomeActionId?: string;
++  requiredPrimaryKeyword?: string;
+   websiteId: string;
+   opportunityId?: string;
+   topic: string;
+@@ -17,132 +223,959 @@ export interface CreateBriefInput {
+   websiteUrl: string;
+ }
+ 
+-export async function createContentBrief(generator: ContentGenerator, input: CreateBriefInput) {
+-  const context = await getWebsiteKeywordContext(input.websiteId).catch((err) => {
+-    console.error("[content] keyword context lookup failed, continuing without it:", err);
+-    return null;
+-  });
+ 
+-  let relatedKeywords: ContentBriefInput["relatedKeywords"] = [];
+-  try {
+-    const related = await fetchRelatedKeywords(input.topic);
+-    relatedKeywords = related.slice(0, 10).map((r) => ({
+-      keyword: r.keyword,
+-      searchVolume: r.searchVolume,
+-      cpc: r.cpc,
+-      keywordDifficulty: r.keywordDifficulty,
+-    }));
+-  } catch (err) {
+-    console.error("[content] related keywords fetch failed, continuing without grounding:", err);
++function strategyPrompt(
++  strategy:
++    ContentStrategy
++): string {
++  const secondary =
++    strategy.secondary
++      .map(
++        (item) =>
++          item.keyword
++      )
++      .join(", ");
++
++  const supporting =
++    strategy.supporting
++      .map(
++        (item) =>
++          item.keyword
++      )
++      .join(", ");
++
++  return [
++    "CONTENT STRATEGY:",
++    `Intent: ${strategy.searchIntent}`,
++    `Primary keyword: ${strategy.primary.keyword}`,
++    secondary
++      ? `Secondary keywords: ${secondary}`
++      : "",
++    supporting
++      ? `Supporting concepts: ${supporting}`
++      : "",
++    `Page decision: ${strategy.action.type}`,
++    "Use exactly one page-level H1.",
++    "There is NO target number of H2 or H3 headings.",
++    "Create an H2 only for a genuinely distinct major sub-intent, question, process stage, comparison, or concept required to satisfy the query.",
++    "Create an H3 only when one specific H2 genuinely needs subdivision. Never add H3 headings merely to increase structure.",
++    "Do not create headings solely to repeat keywords.",
++    "Answer the main query directly near the beginning.",
++    "Avoid keyword stuffing.",
++    "Keep synonymous queries with the same intent on one page.",
++    "Do not invent facts, statistics, sources, security claims, or studies.",
++    "Prefer concise definitions, direct answers, lists, steps, comparisons, and extractable factual statements where appropriate.",
++  ]
++    .filter(Boolean)
++    .join("\n");
++}
++
++
++export async function createContentBrief(
++  generator:
++    ContentGenerator,
++  input:
++    CreateBriefInput
++) {
++  const [
++    finalPlan,
++    context,
++  ] =
++    await Promise.all([
++      buildFinalContentPlan({
++        websiteId:
++          input.websiteId,
++
++        topic:
++          input.topic,
++
++        businessName:
++          input.businessName,
++      }),
++
++      getWebsiteKeywordContext(
++        input.websiteId
++      ).catch(
++        () => null
++      ),
++    ]);
++
++  const strategy =
++    finalPlan.strategy;
++
++  if (
++    input.requiredPrimaryKeyword
++  ) {
++    const requiredPrimaryKeyword =
++      input.requiredPrimaryKeyword
++        .trim()
++        .toLowerCase()
++        .replace(
++          /\s+/g,
++          " "
++        );
++
++    const plannedPrimaryKeyword =
++      strategy.primary.keyword
++        .trim()
++        .toLowerCase()
++        .replace(
++          /\s+/g,
++          " "
++        );
++
++    if (
++      requiredPrimaryKeyword !==
++      plannedPrimaryKeyword
++    ) {
++      throw new Error(
++        `Content plan primary keyword "${strategy.primary.keyword}" does not match required Outcome Action keyword "${input.requiredPrimaryKeyword}".`
++      );
++    }
+   }
+ 
+-  const briefInput: ContentBriefInput = {
+-    topic: input.topic,
+-    reason: input.reason,
+-    recommendation: input.recommendation,
+-    businessName: input.businessName,
+-    websiteUrl: input.websiteUrl,
+-    topKeywords: context?.topKeywords,
+-    relatedKeywords,
+-  };
++  const factRegistry =
++    await getBusinessFactRegistryForWebsite(
++      input.websiteId
++    );
+ 
+-  const generated = await generator.generateBrief(briefInput);
++  const relatedKeywords:
++    ContentBriefInput["relatedKeywords"] =
++      [
++        strategy.primary,
++        ...strategy.secondary,
++        ...strategy.supporting,
++      ]
++        .slice(0, 15)
++        .map(
++          (keyword) => ({
++            keyword:
++              keyword.keyword,
+ 
+-  return prisma.contentBrief.create({
+-    data: {
+-      websiteId: input.websiteId,
+-      opportunityId: input.opportunityId,
+-      topic: input.topic,
+-      searchIntent: generated.searchIntent,
+-      primaryKeyword: generated.primaryKeyword,
+-      secondaryKeywords: generated.secondaryKeywords,
+-      outline: generated.outline as unknown as Prisma.InputJsonValue,
+-      status: "READY",
+-      generatedBy: generator.modelName,
+-    },
+-  });
++            searchVolume:
++              keyword.searchVolume,
++
++            cpc:
++              keyword.cpc,
++
++            keywordDifficulty:
++              keyword.difficulty,
++          })
++        );
++
++  const briefInput:
++    ContentBriefInput = {
++      topic:
++        input.topic,
++
++      reason:
++        input.reason,
++
++      recommendation:
++        [
++          input.recommendation,
++          strategyPrompt(
++            strategy
++          ),
++
++          finalPlanPrompt(
++            finalPlan
++          ),
++
++          businessFactPrompt(
++            factRegistry
++          ),
++        ].join(
++          "\n\n"
++        ),
++
++      businessName:
++        input.businessName,
++
++      websiteUrl:
++        input.websiteUrl,
++
++      topKeywords:
++        context?.topKeywords,
++
++      relatedKeywords,
++
++      strategy,
++    };
++
++  const generated =
++    await generator.generateBrief(
++      briefInput
++    );
++
++  const outline =
++    normalizeOutline(
++      generated.outline,
++      strategy
++    );
++
++  const createdBrief =
++    await prisma.contentBrief.create({
++      data: {
++        websiteId:
++          input.websiteId,
++
++        opportunityId:
++          input.opportunityId,
++
++        outcomeActionId:
++          input.outcomeActionId,
++
++        topic:
++          input.topic,
++
++        searchIntent:
++          strategy.searchIntent,
++
++        primaryKeyword:
++          strategy.primary
++            .keyword,
++
++        secondaryKeywords:
++          strategy.secondary.map(
++            (item) =>
++              item.keyword
++          ),
++
++        outline:
++          outline as unknown as
++            Prisma.InputJsonValue,
++
++        status:
++          "READY",
++
++        generatedBy:
++          generator.modelName,
++      },
++    });
++
++  try {
++    await createContentEvidenceSnapshot({
++      briefId:
++        createdBrief.id,
++
++      websiteId:
++        input.websiteId,
++
++      topic:
++        input.topic,
++
++      primaryKeyword:
++        strategy.primary.keyword,
++
++      searchIntent:
++        strategy.searchIntent,
++
++      plan:
++        finalPlan,
++
++      businessFacts:
++        factRegistry,
++
++      keywordContext:
++        context,
++
++      generatorModel:
++        generator.modelName,
++    });
++  } catch (error) {
++    await prisma.contentBrief.delete({
++      where: {
++        id:
++          createdBrief.id,
++      },
++    }).catch(
++      () => undefined
++    );
++
++    throw error;
++  }
++
++  return createdBrief;
+ }
+ 
+-export async function generateArticleFromBrief(generator: ContentGenerator, briefId: string) {
+-  const brief = await prisma.contentBrief.findUnique({ where: { id: briefId }, include: { website: { include: { business: true } } } });
++
++export async function generateArticleFromBrief(
++  generator:
++    ContentGenerator,
++  briefId:
++    string
++) {
++  const brief =
++    await prisma.contentBrief.findUnique({
++      where: {
++        id:
++          briefId,
++      },
++
++      include: {
++        website: {
++          include: {
++            business:
++              true,
++          },
++        },
++      },
++    });
++
+   if (!brief) {
+-    throw new Error("Content brief not found");
++    throw new Error(
++      "Content brief not found"
++    );
+   }
+ 
+-  const pendingArticle = await prisma.contentArticle.create({
+-    data: {
+-      briefId: brief.id,
+-      title: "",
+-      metaDescription: "",
+-      h1: "",
+-      bodyMarkdown: "",
+-      status: "GENERATING",
+-      generatedBy: generator.modelName,
+-    },
+-  });
++  const factRegistry =
++    await getBusinessFactRegistryForBrief({
++      briefId:
++        brief.id,
+ 
+-  try {
+-    const generated = await generator.generateArticle({
+-      topic: brief.topic,
+-      reason: "",
+-      recommendation: "",
+-      businessName: brief.website.business.name,
+-      websiteUrl: brief.website.url,
+-      searchIntent: brief.searchIntent,
+-      primaryKeyword: brief.primaryKeyword,
+-      secondaryKeywords: brief.secondaryKeywords,
+-      outline: brief.outline as { heading: string; level: 2 | 3; summary: string }[],
++      websiteId:
++        brief.websiteId,
+     });
+ 
++
++  const pendingArticle =
++    await prisma.contentArticle.create({
++      data: {
++        briefId:
++          brief.id,
++
++        title:
++          "",
++
++        metaDescription:
++          "",
++
++        h1:
++          "",
++
++        bodyMarkdown:
++          "",
++
++        status:
++          "GENERATING",
++
++        generatedBy:
++          generator.modelName,
++      },
++    });
++
++  try {
++    const generated =
++      await generator.generateArticle({
++        topic:
++          brief.topic,
++
++        reason:
++          "Create the strongest single page for this exact search intent without cannibalizing closely related content.",
++
++        recommendation: [
++          `Primary keyword: ${brief.primaryKeyword}.`,
++          `Search intent: ${brief.searchIntent}.`,
++          "Exactly one H1 exists outside bodyMarkdown.",
++          "Do not place an H1 inside bodyMarkdown.",
++          "Use H2 for major intent sections.",
++          "Use H3 only underneath a relevant H2.",
++          "Answer the core question early.",
++          "Use keywords naturally.",
++          "Do not invent statistics, citations, claims, or sources.",
++          businessFactPrompt(
++            factRegistry
++          ),
++          "Write for humans first while making facts and answers easy for search engines and retrieval systems to extract.",
++        ].join(
++          "\n"
++        ),
++
++        businessName:
++          brief.website
++            .business
++            .name,
++
++        websiteUrl:
++          brief.website.url,
++
++        searchIntent:
++          brief.searchIntent,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        secondaryKeywords:
++          brief.secondaryKeywords,
++
++        outline:
++          brief.outline as {
++            heading: string;
++            level: 2 | 3;
++            summary: string;
++          }[],
++      });
++
++    const repaired =
++      repairGeneratedArticle(
++        generated
++      );
++
++    const intelligence =
++      await analyzeStoredContentPlan({
++        briefId:
++          brief.id,
++
++        title:
++          repaired.title,
++
++        metaDescription:
++          repaired.metaDescription,
++
++        h1:
++          repaired.h1,
++
++        bodyMarkdown:
++          repaired.bodyMarkdown,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        secondaryKeywords:
++          brief.secondaryKeywords,
++      });
++
++    logContentIntelligence(
++      brief.id,
++      intelligence
++    );
++
++    const audit =
++      auditArticle({
++        article:
++          repaired,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++      });
++
++    console.info(
++      "[content quality]",
++      {
++        briefId:
++          brief.id,
++
++        score:
++          audit.score,
++
++        words:
++          audit.wordCount,
++
++        h2:
++          audit.h2Count,
++
++        h3:
++          audit.h3Count,
++
++        primaryKeywordDensityPct:
++          audit.primaryKeywordDensityPct,
++
++        issues:
++          audit.issues,
++      }
++    );
++
++    const gate =
++      evaluateContentGate({
++        article:
++          repaired,
++
++        primaryKeyword:
++          brief.primaryKeyword,
++
++        audit,
++
++        registry:
++          factRegistry,
++      });
++
++    console.info(
++      "[content gate]",
++      {
++        briefId:
++          brief.id,
++
++        pass:
++          gate.pass,
++
++        blockingIssues:
++          gate.blockingIssues,
++
++        warnings:
++          gate.warnings,
++
++        topicAlignment:
++          gate.topicAlignment,
++
++        claims:
++          gate.claimFindings.map(
++            (finding) => ({
++              code:
++                finding.code,
++
++              sentence:
++                finding.sentence,
++            })
++          ),
++      }
++    );
++
++    if (
++      !gate.pass
++    ) {
++      return prisma.contentArticle.update({
++        where: {
++          id:
++            pendingArticle.id,
++        },
++
++        data: {
++          title:
++            repaired.title,
++
++          metaDescription:
++            repaired.metaDescription,
++
++          h1:
++            repaired.h1,
++
++          bodyMarkdown:
++            repaired.bodyMarkdown,
++
++          status:
++            "REJECTED",
++
++          publishError:
++            formatContentGateFailure(
++              gate
++            ),
++        },
++      });
++    }
++
++
+     return prisma.contentArticle.update({
+-      where: { id: pendingArticle.id },
++      where: {
++        id:
++          pendingArticle.id,
++      },
++
+       data: {
+-        title: generated.title,
+-        metaDescription: generated.metaDescription,
+-        h1: generated.h1,
+-        bodyMarkdown: generated.bodyMarkdown,
+-        status: "DRAFT",
++        title:
++          repaired.title,
++
++        metaDescription:
++          repaired.metaDescription,
++
++        h1:
++          repaired.h1,
++
++        bodyMarkdown:
++          repaired.bodyMarkdown,
++
++        status:
++          "DRAFT",
++
++        publishError:
++          null,
+       },
+     });
+-  } catch (err) {
+-    const message = err instanceof ContentGenerationError ? err.message : "Article generation failed";
++  } catch (error) {
++    const rawMessage =
++      error instanceof Error
++        ? error.message
++        : "";
++
++    const transientProviderFailure =
++      /Gemini API error (429|500|502|503|504)\b/.test(
++        rawMessage
++      ) ||
++      /AbortError|aborted|timeout/i.test(
++        rawMessage
++      );
++
++    if (transientProviderFailure) {
++      console.warn(
++        "[content generation] temporary provider failure",
++        {
++          briefId:
++            brief.id,
++
++          articleId:
++            pendingArticle.id,
++
++          message:
++            rawMessage.slice(
++              0,
++              240
++            ),
++        }
++      );
++
++      await prisma.contentArticle.delete({
++        where: {
++          id:
++            pendingArticle.id,
++        },
++      }).catch(
++        () => undefined
++      );
++
++      throw error;
++    }
++
++    const message =
++      error instanceof
++      ContentGenerationError
++        ? error.message
++        : "Article generation failed";
++
+     return prisma.contentArticle.update({
+-      where: { id: pendingArticle.id },
+-      data: { status: "REJECTED", publishError: message },
++      where: {
++        id:
++          pendingArticle.id,
++      },
++
++      data: {
++        status:
++          "REJECTED",
++
++        publishError:
++          message,
++      },
+     });
+   }
+ }
+ 
+-export async function approveArticle(articleId: string) {
++
++export async function approveArticle(
++  articleId:
++    string
++) {
++  const article =
++    await prisma.contentArticle.findUnique({
++      where: {
++        id:
++          articleId,
++      },
++
++      include: {
++        brief: {
++          include: {
++            website: {
++              include: {
++                business:
++                  true,
++              },
++            },
++          },
++        },
++      },
++    });
++
++  if (!article) {
++    throw new Error(
++      "Article not found"
++    );
++  }
++
++  if (
++    article.status !==
++      "DRAFT" &&
++    article.status !==
++      "IN_REVIEW"
++  ) {
++    throw new Error(
++      `Cannot approve article with status ${article.status}`
++    );
++  }
++
++  const intelligence =
++    await analyzeStoredContentPlan({
++      briefId:
++        article.briefId,
++
++      title:
++        article.title,
++
++      metaDescription:
++        article.metaDescription,
++
++      h1:
++        article.h1,
++
++      bodyMarkdown:
++        article.bodyMarkdown,
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      secondaryKeywords:
++        article.brief
++          .secondaryKeywords,
++    });
++
++  logContentIntelligence(
++    article.briefId,
++    intelligence
++  );
++
++  const audit =
++    auditArticle({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++    });
++
++  const registry =
++    await getBusinessFactRegistryForWebsite(
++      article.brief.websiteId
++    );
++
++  const gate =
++    evaluateContentGate({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      audit,
++
++      registry,
++    });
++
++  assertContentGatePassed(
++    gate
++  );
++
+   return prisma.contentArticle.update({
+-    where: { id: articleId },
+-    data: { status: "APPROVED" },
++    where: {
++      id:
++        articleId,
++    },
++
++    data: {
++      status:
++        "APPROVED",
++
++      publishError:
++        null,
++    },
+   });
+ }
+ 
+-export async function publishArticle(provider: CMSProvider, articleId: string) {
+-  const article = await prisma.contentArticle.findUnique({ where: { id: articleId }, include: { brief: true } });
++
++export async function publishArticle(
++  provider:
++    CMSProvider,
++  articleId:
++    string
++) {
++  const article =
++    await prisma.contentArticle.findUnique({
++      where: {
++        id:
++          articleId,
++      },
++
++      include: {
++        brief: {
++          include: {
++            website: {
++              include: {
++                business:
++                  true,
++              },
++            },
++          },
++        },
++      },
++    });
++
+   if (!article) {
+-    throw new Error("Article not found");
++    throw new Error(
++      "Article not found"
++    );
+   }
+-  if (article.status !== "APPROVED") {
+-    throw new Error("Only approved articles can be published");
++
++  if (
++    article.status !==
++    "APPROVED"
++  ) {
++    throw new Error(
++      "Only approved articles can be published"
++    );
+   }
+ 
+-  const result = await provider.publishContent(article.brief.websiteId, {
+-    title: article.title,
+-    metaDescription: article.metaDescription,
+-    h1: article.h1,
+-    bodyMarkdown: article.bodyMarkdown,
+-  });
++  const intelligence =
++    await analyzeStoredContentPlan({
++      briefId:
++        article.briefId,
++
++      title:
++        article.title,
++
++      metaDescription:
++        article.metaDescription,
++
++      h1:
++        article.h1,
++
++      bodyMarkdown:
++        article.bodyMarkdown,
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      secondaryKeywords:
++        article.brief
++          .secondaryKeywords,
++    });
++
++  logContentIntelligence(
++    article.briefId,
++    intelligence
++  );
++
++  const audit =
++    auditArticle({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++    });
++
++  const registry =
++    await getBusinessFactRegistryForWebsite(
++      article.brief.websiteId
++    );
++
++  const gate =
++    evaluateContentGate({
++      article: {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      },
++
++      primaryKeyword:
++        article.brief
++          .primaryKeyword,
++
++      audit,
++
++      registry,
++    });
++
++  assertContentGatePassed(
++    gate
++  );
++
++
++  const result =
++    await provider.publishContent(
++      article.brief
++        .websiteId,
++      {
++        title:
++          article.title,
++
++        metaDescription:
++          article.metaDescription,
++
++        h1:
++          article.h1,
++
++        bodyMarkdown:
++          article.bodyMarkdown,
++      }
++    );
+ 
+   return prisma.contentArticle.update({
+-    where: { id: articleId },
++    where: {
++      id:
++        articleId,
++    },
++
+     data: {
+-      status: result.status === "SUCCESS" ? "PUBLISHED" : "PUBLISH_FAILED",
+-      publishedUrl: result.publishedUrl,
+-      publishedAt: result.status === "SUCCESS" ? new Date() : null,
+-      publishError: result.errorMessage,
++      status:
++        result.status ===
++        "SUCCESS"
++          ? "PUBLISHED"
++          : "PUBLISH_FAILED",
++
++      publishedUrl:
++        result.publishedUrl,
++
++      publishedAt:
++        result.status ===
++        "SUCCESS"
++          ? new Date()
++          : null,
++
++      publishError:
++        result.errorMessage,
+     },
+   });
+ }
+diff --git a/src/lib/content/types.ts b/src/lib/content/types.ts
+index b48c264..c6373c7 100644
+--- a/src/lib/content/types.ts
++++ b/src/lib/content/types.ts
+@@ -20,6 +20,112 @@ export interface RelatedKeywordContextItem {
+   keywordDifficulty: number | null;
+ }
+ 
++export type ContentSearchIntent =
++  | "INFORMATIONAL"
++  | "COMMERCIAL"
++  | "TRANSACTIONAL"
++  | "NAVIGATIONAL";
++
++export type ContentAction =
++  | "CREATE_NEW"
++  | "UPDATE_EXISTING"
++  | "MERGE_OR_UPDATE";
++
++export interface MonthlySearchPoint {
++  year: number;
++  month: number;
++  searchVolume: number;
++}
++
++export interface KeywordTrendAnalysis {
++  points: MonthlySearchPoint[];
++  average12m: number | null;
++  average3m: number | null;
++  previous3mAverage: number | null;
++  momentumPct: number | null;
++  peakVolume: number | null;
++  latestVolume: number | null;
++  seasonal: boolean;
++}
++
++export interface KeywordScoreBreakdown {
++  intentMatch: number;
++  businessRelevance: number;
++  rankability: number;
++  demand: number;
++  trendMomentum: number;
++  gscOpportunity: number;
++  commercialValue: number;
++  topicalAuthority: number;
++  penalties: number;
++}
++
++export interface ContentStrategyKeyword {
++  keyword: string;
++  score: number;
++  source: string[];
++  searchVolume: number | null;
++  difficulty: number | null;
++  cpc: number | null;
++  existingPosition: number | null;
++  impressions: number;
++  clicks: number;
++  intent: ContentSearchIntent;
++  trend: KeywordTrendAnalysis;
++  breakdown: KeywordScoreBreakdown;
++  reasons: string[];
++}
++
++export interface ContentStrategy {
++  topic: string;
++  searchIntent: ContentSearchIntent;
++
++  action: {
++    type: ContentAction;
++    existingBriefId: string | null;
++    existingTopic: string | null;
++    similarity: number;
++    reason: string;
++  };
++
++  primary: ContentStrategyKeyword;
++  secondary: ContentStrategyKeyword[];
++  supporting: ContentStrategyKeyword[];
++  excluded: ContentStrategyKeyword[];
++
++  headingPolicy: {
++    h1: 1;
++    h2: "AS_NEEDED";
++    h3: "ONLY_WHEN_NEEDED";
++    maxDepth: 3;
++    noOrphanH3: true;
++    noDuplicateHeadings: true;
++    noHeadingForKeywordStuffing: true;
++  };
++
++  qualityRequirements: {
++    oneH1: true;
++    directAnswer: true;
++    noKeywordStuffing: true;
++    semanticHeadings: true;
++    internalLinks: true;
++    sourceEvidenceWhenNeeded: true;
++    articleSchema: true;
++    breadcrumbSchema: true;
++    authorMetadata: true;
++    datePublished: true;
++    dateModified: true;
++  };
++
++  measurementPlan: {
++    searchConsole: true;
++    rankTracking: true;
++    ga4: true;
++    cloudflareVerifiedBots: true;
++    aiCrawlerReadiness: true;
++  };
++}
++
+ export interface ContentBriefInput {
+   topic: string;
+   reason: string;
+@@ -28,6 +134,7 @@ export interface ContentBriefInput {
+   websiteUrl: string;
+   topKeywords?: KeywordContextItem[];
+   relatedKeywords?: RelatedKeywordContextItem[];
++  strategy?: ContentStrategy;
+ }
+ 
+ export interface GeneratedBrief {
+diff --git a/src/lib/keywords/dataforseo-provider.test.ts b/src/lib/keywords/dataforseo-provider.test.ts
+index 037d43c..accb9f3 100644
+--- a/src/lib/keywords/dataforseo-provider.test.ts
++++ b/src/lib/keywords/dataforseo-provider.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, it, expect, vi, beforeEach } from "vitest";
+-import { fetchSearchVolume, fetchRelatedKeywords, DataForSEOError } from "./dataforseo-provider";
++import { fetchSearchVolume, fetchRelatedKeywords, fetchKeywordDifficulty, DataForSEOError } from "./dataforseo-provider";
+ 
+ describe("fetchSearchVolume", () => {
+   beforeEach(() => {
+@@ -264,3 +264,155 @@ describe("fetchRelatedKeywords", () => {
+     expect(result).toEqual([]);
+   });
+ });
++
++describe("fetchKeywordDifficulty", () => {
++  beforeEach(() => {
++    vi.restoreAllMocks();
++    vi.stubEnv("DATAFORSEO_LOGIN", "test-login");
++    vi.stubEnv("DATAFORSEO_PASSWORD", "test-password");
++  });
++
++  it("returns an empty array for an empty keyword list without calling fetch", async () => {
++    const fetchMock = vi.fn();
++    vi.stubGlobal("fetch", fetchMock);
++    const result = await fetchKeywordDifficulty([]);
++    expect(result).toEqual([]);
++    expect(fetchMock).not.toHaveBeenCalled();
++  });
++
++  it("parses a successful response into normalized results", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        json: async () => ({
++          status_code: 20000,
++          status_message: "Ok.",
++          tasks: [
++            {
++              status_code: 20000,
++              status_message: "Ok.",
++              result: [
++                {
++                  items: [
++                    { keyword: "buy laptop", keyword_difficulty: 72 },
++                    { keyword: "laptop deals", keyword_difficulty: 45 },
++                  ],
++                },
++              ],
++            },
++          ],
++        }),
++      })
++    );
++
++    const result = await fetchKeywordDifficulty(["buy laptop", "laptop deals"]);
++    expect(result).toEqual([
++      { keyword: "buy laptop", keywordDifficulty: 72 },
++      { keyword: "laptop deals", keywordDifficulty: 45 },
++    ]);
++  });
++
++  it("maps null keyword_difficulty to null", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        json: async () => ({
++          status_code: 20000,
++          status_message: "Ok.",
++          tasks: [
++            {
++              status_code: 20000,
++              status_message: "Ok.",
++              result: [{ items: [{ keyword: "obscure kw", keyword_difficulty: null }] }],
++            },
++          ],
++        }),
++      })
++    );
++
++    const result = await fetchKeywordDifficulty(["obscure kw"]);
++    expect(result).toEqual([{ keyword: "obscure kw", keywordDifficulty: null }]);
++  });
++
++  it("returns empty array when result/items are missing", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        json: async () => ({
++          status_code: 20000,
++          status_message: "Ok.",
++          tasks: [{ status_code: 20000, status_message: "Ok.", result: null }],
++        }),
++      })
++    );
++
++    const result = await fetchKeywordDifficulty(["kw"]);
++    expect(result).toEqual([]);
++  });
++
++  it("throws DataForSEOError on a non-ok HTTP response", async () => {
++    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "Unauthorized" }));
++    await expect(fetchKeywordDifficulty(["kw"])).rejects.toThrow(DataForSEOError);
++  });
++
++  it("throws DataForSEOError when the top-level status_code is not 20000", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        json: async () => ({ status_code: 40000, status_message: "Bad request.", tasks: [] }),
++      })
++    );
++    await expect(fetchKeywordDifficulty(["kw"])).rejects.toThrow(DataForSEOError);
++  });
++
++  it("throws DataForSEOError when the task-level status_code is not 20000", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        json: async () => ({
++          status_code: 20000,
++          status_message: "Ok.",
++          tasks: [{ status_code: 40501, status_message: "Invalid Field.", result: null }],
++        }),
++      })
++    );
++    await expect(fetchKeywordDifficulty(["kw"])).rejects.toThrow(DataForSEOError);
++  });
++
++  it("batches keywords into chunks of 1000 and merges results", async () => {
++    const keywords = Array.from({ length: 1500 }, (_, i) => `kw-${i}`);
++    let callCount = 0;
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockImplementation(() => {
++        callCount++;
++        return Promise.resolve({
++          ok: true,
++          json: async () => ({
++            status_code: 20000,
++            status_message: "Ok.",
++            tasks: [
++              {
++                status_code: 20000,
++                status_message: "Ok.",
++                result: [{ items: [{ keyword: `batch-${callCount}`, keyword_difficulty: callCount * 10 }] }],
++              },
++            ],
++          }),
++        });
++      })
++    );
++
++    const result = await fetchKeywordDifficulty(keywords);
++    expect(callCount).toBe(2);
++    expect(result).toEqual([
++      { keyword: "batch-1", keywordDifficulty: 10 },
++      { keyword: "batch-2", keywordDifficulty: 20 },
++    ]);
++  });
++});
+diff --git a/src/lib/keywords/dataforseo-provider.ts b/src/lib/keywords/dataforseo-provider.ts
+index 2511713..288727b 100644
+--- a/src/lib/keywords/dataforseo-provider.ts
++++ b/src/lib/keywords/dataforseo-provider.ts
+@@ -266,6 +266,99 @@ export async function fetchRelatedKeywords(
+     });
+ }
+ 
++
++function chunk<T>(items: T[], size: number): T[][] {
++  const result: T[][] = [];
++  for (let i = 0; i < items.length; i += size) {
++    result.push(items.slice(i, i + size));
++  }
++  return result;
++}
++
++export interface KeywordDifficultyResult {
++  keyword: string;
++  keywordDifficulty: number | null;
++}
++
++async function requestKeywordDifficultyWithRetry(
++  auth: string,
++  locationName: string,
++  languageName: string,
++  keywords: string[]
++): Promise<Response> {
++  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), DATAFORSEO_TIMEOUT_MS);
++
++    try {
++      const res = await fetch(`${DATAFORSEO_API_BASE}/dataforseo_labs/google/bulk_keyword_difficulty/live`, {
++        method: "POST",
++        signal: controller.signal,
++        headers: {
++          Authorization: `Basic ${auth}`,
++          "Content-Type": "application/json",
++        },
++        body: JSON.stringify([{ keywords, location_name: locationName, language_name: languageName }]),
++      });
++
++      if (res.status !== 429 || attempt === MAX_RETRIES) {
++        return res;
++      }
++
++      const retryAfterHeader = res.headers.get("Retry-After");
++      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : BASE_BACKOFF_MS * 2 ** attempt;
++      await sleep(retryAfterMs);
++    } finally {
++      clearTimeout(timeout);
++    }
++  }
++
++  throw new DataForSEOError("DataForSEO rate limit exceeded after retries");
++}
++
++export async function fetchKeywordDifficulty(
++  keywords: string[],
++  locationName = "United States",
++  languageName = "English"
++): Promise<KeywordDifficultyResult[]> {
++  if (keywords.length === 0) return [];
++
++  const auth = buildAuthHeader();
++  const batches = chunk(keywords, 1000);
++  const output: KeywordDifficultyResult[] = [];
++
++  for (const batch of batches) {
++    const res = await requestKeywordDifficultyWithRetry(auth, locationName, languageName, batch);
++
++    if (!res.ok) {
++      const body = await res.text().catch(() => "");
++      throw new DataForSEOError(`DataForSEO HTTP error ${res.status}: ${body.slice(0, 300)}`);
++    }
++
++    const data = await res.json();
++
++    if (data.status_code !== 20000) {
++      throw new DataForSEOError(`DataForSEO API error: ${data.status_message}`);
++    }
++
++    const task = data.tasks?.[0];
++    if (!task || task.status_code !== 20000) {
++      throw new DataForSEOError(`DataForSEO task error: ${task?.status_message ?? "no task returned"}`);
++    }
++
++    const rows = task.result?.[0]?.items ?? [];
++
++    for (const item of rows) {
++      output.push({
++        keyword: item.keyword,
++        keywordDifficulty: item.keyword_difficulty ?? null,
++      });
++    }
++  }
++
++  return output;
++}
++
+ export async function fetchSearchVolume(
+   keywords: string[],
+   locationName = "United States",
+@@ -302,3 +395,135 @@ export async function fetchSearchVolume(
+     cpc: r.cpc,
+   }));
+ }
++
++export interface RankedKeywordResult {
++  keyword: string;
++  searchVolume: number | null;
++  cpc: number | null;
++  keywordDifficulty: number | null;
++  rankGroup: number | null;
++  relativeUrl: string | null;
++}
++
++interface DataForSEORankedSerpItem {
++  type: string;
++  rank_group: number | null;
++  relative_url: string | null;
++}
++
++interface DataForSEORankedSerpElement {
++  serp_item: DataForSEORankedSerpItem | null;
++}
++
++interface DataForSEORankedItem {
++  keyword_data: DataForSEORelatedKeywordData;
++  ranked_serp_element: DataForSEORankedSerpElement | null;
++}
++
++interface DataForSEORankedResult {
++  items: DataForSEORankedItem[] | null;
++}
++
++interface DataForSEORankedTask {
++  status_code: number;
++  status_message: string;
++  result: DataForSEORankedResult[] | null;
++}
++
++interface DataForSEORankedResponse {
++  status_code: number;
++  status_message: string;
++  tasks: DataForSEORankedTask[];
++}
++
++async function requestRankedWithRetry(
++  auth: string,
++  targetDomain: string,
++  locationName: string,
++  languageName: string,
++  limit: number
++): Promise<Response> {
++  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), DATAFORSEO_TIMEOUT_MS);
++
++    try {
++      const res = await fetch(`${DATAFORSEO_API_BASE}/dataforseo_labs/google/ranked_keywords/live`, {
++        method: "POST",
++        signal: controller.signal,
++        headers: {
++          Authorization: `Basic ${auth}`,
++          "Content-Type": "application/json",
++        },
++        body: JSON.stringify([
++          {
++            target: targetDomain,
++            location_name: locationName,
++            language_name: languageName,
++            item_types: ["organic"],
++            filters: [["keyword_data.keyword_info.search_volume", ">", 0]],
++            order_by: ["keyword_data.keyword_info.search_volume,desc"],
++            limit,
++          },
++        ]),
++      });
++
++      if (res.status !== 429 || attempt === MAX_RETRIES) {
++        return res;
++      }
++
++      const retryAfterHeader = res.headers.get("Retry-After");
++      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : BASE_BACKOFF_MS * 2 ** attempt;
++      await sleep(retryAfterMs);
++    } finally {
++      clearTimeout(timeout);
++    }
++  }
++
++  throw new DataForSEOError("DataForSEO rate limit exceeded after retries");
++}
++
++/**
++ * Fetches the organic keywords a competitor domain currently ranks for,
++ * sorted by search volume. `target` must be a bare domain (no https:///www)
++ * to get whole-domain results rather than a single page -- see DataForSEO
++ * Labs Ranked Keywords docs.
++ */
++export async function fetchRankedKeywords(
++  targetDomain: string,
++  locationName = "United States",
++  languageName = "English",
++  limit = 50
++): Promise<RankedKeywordResult[]> {
++  if (!targetDomain.trim()) return [];
++
++  const auth = buildAuthHeader();
++  const res = await requestRankedWithRetry(auth, targetDomain, locationName, languageName, limit);
++
++  if (!res.ok) {
++    const body = await res.text().catch(() => "");
++    throw new DataForSEOError(`DataForSEO HTTP error ${res.status}: ${body.slice(0, 300)}`);
++  }
++
++  const data = (await res.json()) as DataForSEORankedResponse;
++
++  if (data.status_code !== 20000) {
++    throw new DataForSEOError(`DataForSEO API error: ${data.status_message}`);
++  }
++
++  const task = data.tasks[0];
++  if (!task || task.status_code !== 20000) {
++    throw new DataForSEOError(`DataForSEO task error: ${task?.status_message ?? "no task returned"}`);
++  }
++
++  const items = task.result?.[0]?.items ?? [];
++
++  return items.map((item) => ({
++    keyword: item.keyword_data.keyword,
++    searchVolume: item.keyword_data.keyword_info?.search_volume ?? null,
++    cpc: item.keyword_data.keyword_info?.cpc ?? null,
++    keywordDifficulty: item.keyword_data.keyword_properties?.keyword_difficulty ?? null,
++    rankGroup: item.ranked_serp_element?.serp_item?.rank_group ?? null,
++    relativeUrl: item.ranked_serp_element?.serp_item?.relative_url ?? null,
++  }));
++}
+diff --git a/src/lib/keywords/repository.ts b/src/lib/keywords/repository.ts
+index 473a1f7..d0303f3 100644
+--- a/src/lib/keywords/repository.ts
++++ b/src/lib/keywords/repository.ts
+@@ -2,10 +2,13 @@ import { prisma } from "@/lib/prisma";
+ import type { Prisma } from "@prisma/client";
+ import type { KeywordIntent, ProviderType } from "./types";
+ 
+-const DEFAULT_PAGE_SIZE = 25;
++const DEFAULT_PAGE_SIZE = 50;
+ const MAX_PAGE_SIZE = 100;
+ const SNAPSHOT_LOOKBACK_MAX_DAYS = 365;
+ 
++export type KeywordSortField = "text" | "position" | "volume" | "difficulty" | "cpc" | "impressions" | "clicks";
++export type SortDir = "asc" | "desc";
++
+ export interface GetKeywordsOptions {
+   page?: number;
+   limit?: number;
+@@ -13,13 +16,38 @@ export interface GetKeywordsOptions {
+   intent?: KeywordIntent;
+   minPosition?: number;
+   maxPosition?: number;
++  market?: string;
++  language?: string;
++  sortBy?: KeywordSortField;
++  sortDir?: SortDir;
++  minVolume?: number;
++  maxVolume?: number;
++  minKd?: number;
++  maxKd?: number;
++  hasVolume?: boolean;
++  minCpc?: number;
++  maxCpc?: number;
++  minCompetition?: number;
++  maxCompetition?: number;
+ }
+ 
+ export async function getKeywords(workspaceId: string, options: GetKeywordsOptions = {}) {
+   const page = Math.max(1, options.page ?? 1);
+   const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, options.limit ?? DEFAULT_PAGE_SIZE));
++  const market = options.market ?? "US";
++  const language = options.language ?? "English";
++  const sortBy = options.sortBy ?? "text";
++  const sortDir = options.sortDir ?? "asc";
+ 
+   const hasPositionFilter = options.minPosition !== undefined || options.maxPosition !== undefined;
++  const hasMarketFilter =
++    options.minVolume !== undefined ||
++    options.maxVolume !== undefined ||
++    options.minKd !== undefined ||
++    options.maxKd !== undefined ||
++    options.hasVolume ||
++    options.minCpc !== undefined ||
++    options.maxCpc !== undefined;
+ 
+   const where: Prisma.KeywordWhereInput = {
+     workspaceId,
+@@ -37,38 +65,127 @@ export async function getKeywords(workspaceId: string, options: GetKeywordsOptio
+           },
+         }
+       : {}),
++    ...(hasMarketFilter
++      ? {
++          marketMetrics: {
++            some: {
++              market,
++              language,
++              ...(options.hasVolume ? { volume: { not: null } } : {}),
++              ...(options.minVolume !== undefined || options.maxVolume !== undefined
++                ? {
++                    volume: {
++                      ...(options.minVolume !== undefined ? { gte: options.minVolume } : {}),
++                      ...(options.maxVolume !== undefined ? { lte: options.maxVolume } : {}),
++                    },
++                  }
++                : {}),
++              ...(options.minKd !== undefined || options.maxKd !== undefined
++                ? {
++                    difficulty: {
++                      ...(options.minKd !== undefined ? { gte: options.minKd } : {}),
++                      ...(options.maxKd !== undefined ? { lte: options.maxKd } : {}),
++                    },
++                  }
++                : {}),
++              ...(options.minCpc !== undefined || options.maxCpc !== undefined
++                ? {
++                    cpc: {
++                      ...(options.minCpc !== undefined ? { gte: options.minCpc } : {}),
++                      ...(options.maxCpc !== undefined ? { lte: options.maxCpc } : {}),
++                    },
++                  }
++                : {}),
++            },
++          },
++        }
++      : {}),
+   };
+ 
++  // For text/intent sorting we can use Prisma orderBy directly.
++  // For metric-based sorting (volume, difficulty, cpc, position, impressions, clicks)
++  // we fetch all matching IDs with their sort value, sort in JS, then paginate.
++  // This avoids complex raw SQL while keeping the API clean.
++  const needsMetricSort = ["volume", "difficulty", "cpc", "position", "impressions", "clicks"].includes(sortBy);
++
++  if (needsMetricSort) {
++    // Fetch all matching keywords with their metric + snapshot for sorting
++    const all = await prisma.keyword.findMany({
++      where,
++      select: {
++        id: true,
++        text: true,
++        intent: true,
++        snapshots: { orderBy: { date: "desc" }, take: 1, select: { position: true, impressions: true, clicks: true, ctr: true } },
++        marketMetrics: { where: { market, language }, take: 1, select: { volume: true, difficulty: true, cpc: true, competitionIndex: true } },
++      },
++    });
++
++    const getValue = (kw: typeof all[0]): number => {
++      const snap = kw.snapshots[0];
++      const m = kw.marketMetrics[0];
++      if (sortBy === "volume") return m?.volume ?? -1;
++      if (sortBy === "difficulty") return m?.difficulty ?? -1;
++      if (sortBy === "cpc") return m?.cpc ? Number(m.cpc) : -1;
++      if (sortBy === "position") return snap?.position ? Number(snap.position) : 9999;
++      if (sortBy === "impressions") return snap?.impressions ?? -1;
++      if (sortBy === "clicks") return snap?.clicks ?? -1;
++      return 0;
++    };
++
++    all.sort((a, b) => {
++      const av = getValue(a);
++      const bv = getValue(b);
++      // position: lower is better, so asc = best first means smallest number first
++      // but for volume/clicks/impressions: desc = highest first
++      return sortDir === "asc" ? av - bv : bv - av;
++    });
++
++    const total = all.length;
++    const sliced = all.slice((page - 1) * limit, page * limit);
++
++    // Now fetch full rows for the sliced IDs to get complete data
++    const ids = sliced.map((k) => k.id);
++    const items = await prisma.keyword.findMany({
++      where: { id: { in: ids } },
++      include: {
++        snapshots: { orderBy: { date: "desc" }, take: 1 },
++        marketMetrics: { where: { market, language }, take: 1 },
++      },
++    });
++
++    // Preserve sort order
++    const itemMap = new Map(items.map((i) => [i.id, i]));
++    const ordered = ids.map((id) => itemMap.get(id)).filter(Boolean) as typeof items;
++
++    return { items: ordered, page, limit, total, totalPages: Math.ceil(total / limit) };
++  }
++
++  // Text/default sort — use Prisma orderBy
++  const orderBy: Prisma.KeywordOrderByWithRelationInput =
++    sortBy === "text" ? { text: sortDir } : { text: "asc" };
++
+   const [items, total] = await Promise.all([
+     prisma.keyword.findMany({
+       where,
+-      orderBy: { text: "asc" },
++      orderBy,
+       skip: (page - 1) * limit,
+       take: limit,
+       include: {
+-        snapshots: {
+-          orderBy: { date: "desc" },
+-          take: 1,
+-        },
++        snapshots: { orderBy: { date: "desc" }, take: 1 },
++        marketMetrics: { where: { market, language }, take: 1 },
+       },
+     }),
+     prisma.keyword.count({ where }),
+   ]);
+ 
+-  return {
+-    items,
+-    page,
+-    limit,
+-    total,
+-    totalPages: Math.ceil(total / limit),
+-  };
++  return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
+ }
+ 
+ export async function getKeywordSnapshots(keywordId: string, days: number) {
+   const boundedDays = Math.min(SNAPSHOT_LOOKBACK_MAX_DAYS, Math.max(1, days));
+   const since = new Date();
+   since.setDate(since.getDate() - boundedDays);
+-
+   return prisma.keywordSnapshot.findMany({
+     where: { keywordId, date: { gte: since } },
+     orderBy: { date: "desc" },
+diff --git a/src/lib/keywords/suggestion-cache.ts b/src/lib/keywords/suggestion-cache.ts
+index ec83ee5..74707b9 100644
+--- a/src/lib/keywords/suggestion-cache.ts
++++ b/src/lib/keywords/suggestion-cache.ts
+@@ -55,12 +55,15 @@ export interface CachedSuggestionsResult {
+ export async function getCachedRelatedKeywords(
+   workspaceId: string,
+   seed: string,
+-  limit = 30
++  limit = 30,
++  market = "US",
++  language = "English",
+ ): Promise<CachedSuggestionsResult> {
+   const normalized = normalizeKeyword(seed);
++  const cacheKey = `${normalized}:${market}:${language}`;
+ 
+   const cached = await prisma.keywordSuggestionCache.findUnique({
+-    where: { normalized_source: { normalized, source: SOURCE } },
++    where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
+   });
+ 
+   if (cached && isFresh(cached.fetchedAt, CACHE_TTL_DAYS)) {
+@@ -69,11 +72,17 @@ export async function getCachedRelatedKeywords(
+ 
+   await checkAndIncrementDailyLimit(workspaceId);
+ 
+-  const suggestions = await fetchRelatedKeywords(seed, "United States", "English", 1, limit);
++  const locationName =
++    market === "CA" ? "Canada" :
++    market === "GB" ? "United Kingdom" :
++    market === "AU" ? "Australia" :
++    "United States";
++
++  const suggestions = await fetchRelatedKeywords(seed, locationName, language, 1, limit);
+ 
+   await prisma.keywordSuggestionCache.upsert({
+-    where: { normalized_source: { normalized, source: SOURCE } },
+-    create: { normalized, source: SOURCE, payload: suggestions as unknown as Prisma.InputJsonValue },
++    where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
++    create: { normalized: cacheKey, source: SOURCE, payload: suggestions as unknown as Prisma.InputJsonValue },
+     update: { payload: suggestions as unknown as Prisma.InputJsonValue, fetchedAt: new Date() },
+   });
+ 
+diff --git a/src/lib/keywords/trends-provider.ts b/src/lib/keywords/trends-provider.ts
+index b11958c..f4219bc 100644
+--- a/src/lib/keywords/trends-provider.ts
++++ b/src/lib/keywords/trends-provider.ts
+@@ -41,9 +41,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  */
+ export async function fetchTrendingQueries(seed: string, geo = "US"): Promise<TrendsResult | null> {
+   const normalized = normalizeKeyword(seed);
++  const cacheKey = `${normalized}:${geo.toUpperCase()}`;
+ 
+   const cached = await prisma.keywordSuggestionCache.findUnique({
+-    where: { normalized_source: { normalized, source: SOURCE } },
++    where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
+   });
+ 
+   if (cached && isFresh(cached.fetchedAt, TRENDS_CACHE_TTL_DAYS)) {
+@@ -64,8 +65,8 @@ export async function fetchTrendingQueries(seed: string, geo = "US"): Promise<Tr
+     };
+ 
+     await prisma.keywordSuggestionCache.upsert({
+-      where: { normalized_source: { normalized, source: SOURCE } },
+-      create: { normalized, source: SOURCE, payload: result as unknown as Prisma.InputJsonValue },
++      where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
++      create: { normalized: cacheKey, source: SOURCE, payload: result as unknown as Prisma.InputJsonValue },
+       update: { payload: result as unknown as Prisma.InputJsonValue, fetchedAt: new Date() },
+     });
+ 
+diff --git a/src/lib/keywords/volume-service.ts b/src/lib/keywords/volume-service.ts
+index 82acb8c..22524c6 100644
+--- a/src/lib/keywords/volume-service.ts
++++ b/src/lib/keywords/volume-service.ts
+@@ -1,5 +1,8 @@
+ import { prisma } from "@/lib/prisma";
+-import { fetchSearchVolume } from "./dataforseo-provider";
++import {
++  fetchSearchVolume,
++  fetchKeywordDifficulty,
++} from "./dataforseo-provider";
+ 
+ const BATCH_SIZE = 1000;
+ 
+@@ -17,11 +20,26 @@ function chunk<T>(items: T[], size: number): T[][] {
+   return result;
+ }
+ 
+-export async function updateKeywordVolumes(workspaceId: string, forceRefresh = false): Promise<UpdateKeywordVolumesResult> {
++export async function updateKeywordVolumes(
++  workspaceId: string,
++  forceRefresh = false,
++  market = "US",
++  language = "English",
++): Promise<UpdateKeywordVolumesResult> {
++  const locationName =
++    market === "CA" ? "Canada" :
++    market === "GB" ? "United Kingdom" :
++    market === "AU" ? "Australia" :
++    "United States";
++
+   const keywords = await prisma.keyword.findMany({
+     where: {
+       workspaceId,
+-      ...(forceRefresh ? {} : { volume: null }),
++      ...(forceRefresh ? {} : {
++        marketMetrics: {
++          none: { market, language },
++        },
++      }),
+     },
+     select: { id: true, text: true },
+   });
+@@ -34,24 +52,54 @@ export async function updateKeywordVolumes(workspaceId: string, forceRefresh = f
+   let updated = 0;
+ 
+   for (const batch of batches) {
+-    const results = await fetchSearchVolume(batch.map((k) => k.text));
+-    const byKeyword = new Map(results.map((r) => [r.keyword, r]));
++    const texts = batch.map((k) => k.text);
++
++    const [volumeResults, difficultyResults] = await Promise.all([
++      fetchSearchVolume(texts, locationName, language),
++      fetchKeywordDifficulty(texts, locationName, language),
++    ]);
++
++    const volumes = new Map(volumeResults.map((r) => [r.keyword, r]));
++    const difficulties = new Map(difficultyResults.map((r) => [r.keyword, r]));
+ 
+     for (const kw of batch) {
+-      const result = byKeyword.get(kw.text);
+-      if (!result) continue;
+-
+-      await prisma.keyword.update({
+-        where: { id: kw.id },
+-        data: {
+-          volume: result.searchVolume,
+-          difficulty: result.competitionIndex,
+-          cpc: result.cpc,
++      const volume = volumes.get(kw.text);
++      const difficulty = difficulties.get(kw.text);
++
++      if (!volume && !difficulty) continue;
++
++      await prisma.keywordMarketMetric.upsert({
++        where: {
++          keywordId_market_language: {
++            keywordId: kw.id,
++            market,
++            language,
++          },
++        },
++        create: {
++          keywordId: kw.id,
++          market,
++          language,
++          volume: volume?.searchVolume ?? null,
++          difficulty: difficulty?.keywordDifficulty ?? null,
++          cpc: volume?.cpc ?? null,
++          competitionIndex: volume?.competitionIndex ?? null,
++        },
++        update: {
++          volume: volume?.searchVolume ?? null,
++          difficulty: difficulty?.keywordDifficulty ?? null,
++          cpc: volume?.cpc ?? null,
++          competitionIndex: volume?.competitionIndex ?? null,
+         },
+       });
++
+       updated++;
+     }
+   }
+ 
+-  return { updated, skipped: keywords.length - updated, requested: keywords.length };
++  return {
++    updated,
++    skipped: keywords.length - updated,
++    requested: keywords.length,
++  };
+ }

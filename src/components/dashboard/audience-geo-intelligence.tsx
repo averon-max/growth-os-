@@ -1,0 +1,1818 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  ZoomableGroup,
+} from "react-simple-maps";
+
+
+import {
+  Activity,
+  BarChart3,
+  ExternalLink,
+  Globe2,
+  MapPin,
+  MousePointer2,
+  Radio,
+  Users,
+} from "lucide-react";
+
+import styles from "./audience-geo-intelligence.module.css";
+
+interface CloudflareCountry {
+  country: string;
+  requests: number;
+  visits?: number;
+  bandwidthBytes?: number;
+}
+
+interface Ga4Country {
+  country: string;
+  countryId: string;
+  activeUsers: number;
+  sessions: number;
+  engagedSessions: number;
+  pageViews: number;
+}
+
+interface Ga4Response {
+  connected: boolean;
+  source:
+    "GOOGLE_ANALYTICS_4";
+
+  connectUrl?:
+    string;
+
+  needsProperty?:
+    boolean;
+
+  properties?:
+    Array<{
+      id: string;
+      displayName: string;
+      accountName:
+        string | null;
+    }>;
+
+  propertyId?:
+    string;
+
+  filterCountry?:
+    string | null;
+
+  period?: {
+    label: string;
+    days: number;
+    mode: string;
+  };
+
+  summary?: {
+    activeUsers: number;
+    newUsers: number;
+    sessions: number;
+    engagedSessions: number;
+    engagementRate: number;
+    screenPageViews: number;
+    eventCount: number;
+  };
+
+  countries?:
+    Ga4Country[];
+
+  cities?:
+    Array<{
+      country: string;
+      countryId: string;
+      city: string;
+      activeUsers: number;
+      sessions: number;
+    }>;
+
+  devices?:
+    Array<{
+      device: string;
+      activeUsers: number;
+      sessions: number;
+    }>;
+
+  acquisition?:
+    Array<{
+      sourceMedium: string;
+      activeUsers: number;
+      sessions: number;
+      engagedSessions: number;
+    }>;
+
+  landingPages?:
+    Array<{
+      path: string;
+      activeUsers: number;
+      sessions: number;
+      pageViews: number;
+    }>;
+
+  realtime?: {
+    activeUsers: number;
+
+    countries: Array<{
+      country: string;
+      countryId: string;
+      activeUsers: number;
+    }>;
+  };
+
+  error?:
+    string;
+}
+
+type MapMetric =
+  | "users"
+  | "edge";
+
+const MAP_COLORS = [
+  "#15171a",
+  "#1d1d29",
+  "#272438",
+  "#342e4d",
+  "#44395f",
+  "#594979",
+  "#725e9d",
+  "#8a74c6",
+];
+
+const COUNTRY_ALIASES:
+  Record<
+    string,
+    string
+  > = {
+    "united states of america":
+      "united states",
+
+    "russian federation":
+      "russia",
+
+    "czech republic":
+      "czechia",
+
+    "republic of korea":
+      "south korea",
+
+    "democratic republic of the congo":
+      "democratic republic of congo",
+
+    "viet nam":
+      "vietnam",
+  };
+
+function displayCountry(
+  value: string
+): string {
+  const clean =
+    value.trim();
+
+  if (
+    /^[A-Za-z]{2}$/.test(
+      clean
+    )
+  ) {
+    try {
+      return (
+        new Intl.DisplayNames(
+          ["en"],
+          {
+            type:
+              "region",
+          }
+        ).of(
+          clean.toUpperCase()
+        ) ??
+        clean.toUpperCase()
+      );
+    } catch {
+      return clean.toUpperCase();
+    }
+  }
+
+  return (
+    clean ||
+    "Unknown"
+  );
+}
+
+function normalizeCountry(
+  value: string
+): string {
+  const clean =
+    displayCountry(
+      value
+    )
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        ""
+      )
+      .replace(
+        /[^a-z0-9]+/g,
+        " "
+      )
+      .trim();
+
+  return (
+    COUNTRY_ALIASES[
+      clean
+    ] ??
+    clean
+  );
+}
+
+function flag(
+  countryId:
+    string | undefined
+): string {
+  if (
+    !countryId ||
+    !/^[A-Za-z]{2}$/.test(
+      countryId
+    )
+  ) {
+    return "🌐";
+  }
+
+  return String.fromCodePoint(
+    ...countryId
+      .toUpperCase()
+      .split("")
+      .map(
+        (char) =>
+          127397 +
+          char.charCodeAt(
+            0
+          )
+      )
+  );
+}
+
+function fmt(
+  value:
+    number | undefined
+): string {
+  if (
+    value ===
+    undefined
+  ) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      notation:
+        value >= 10000
+          ? "compact"
+          : "standard",
+
+      maximumFractionDigits:
+        1,
+    }
+  ).format(value);
+}
+
+function pct(
+  value:
+    number | undefined
+): string {
+  if (
+    value ===
+    undefined
+  ) {
+    return "—";
+  }
+
+  return `${(
+    value *
+    100
+  ).toFixed(1)}%`;
+}
+
+export function AudienceGeoIntelligence({
+  websiteId,
+  days,
+  mode,
+  cloudflareCountries,
+}: {
+  websiteId: string;
+  days: 7 | 15 | 30;
+
+  mode:
+    | "live"
+    | "24h"
+    | "history";
+
+  cloudflareCountries:
+    CloudflareCountry[];
+}) {
+  const [
+    data,
+    setData,
+  ] =
+    useState<Ga4Response | null>(
+      null
+    );
+
+  const [
+    selected,
+    setSelected,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    detail,
+    setDetail,
+  ] =
+    useState<Ga4Response | null>(
+      null
+    );
+
+  const [
+    hovered,
+    setHovered,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    metric,
+    setMetric,
+  ] =
+    useState<MapMetric>(
+      "edge"
+    );
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    propertyId,
+    setPropertyId,
+  ] =
+    useState("");
+
+  const periodDays =
+    mode ===
+    "history"
+      ? days
+      : 1;
+
+  const periodMode =
+    mode ===
+    "history"
+      ? "history"
+      : "current";
+
+  const load =
+    useCallback(
+      async () => {
+        setLoading(true);
+
+        try {
+          const params =
+            new URLSearchParams({
+              websiteId,
+
+              days:
+                String(
+                  periodDays
+                ),
+
+              mode:
+                periodMode,
+            });
+
+          const response =
+            await fetch(
+              `/api/audience/ga4?${params.toString()}`,
+              {
+                cache:
+                  "no-store",
+              }
+            );
+
+          const json:
+            Ga4Response =
+              await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              json.error ??
+              "Could not load Google Analytics."
+            );
+          }
+
+          setData(
+            json
+          );
+
+          setError(
+            null
+          );
+
+          if (
+            json.connected &&
+            !json.needsProperty
+          ) {
+            setMetric(
+              "users"
+            );
+          }
+        } catch (loadError) {
+          setError(
+            loadError instanceof
+              Error
+              ? loadError.message
+              : "Could not load Google Analytics."
+          );
+        } finally {
+          setLoading(
+            false
+          );
+        }
+      },
+      [
+        websiteId,
+        periodDays,
+        periodMode,
+      ]
+    );
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    setSelected(
+      null
+    );
+
+    setDetail(
+      null
+    );
+  }, [
+    periodDays,
+    periodMode,
+  ]);
+
+  useEffect(() => {
+    if (
+      !selected ||
+      !data?.connected ||
+      data.needsProperty
+    ) {
+      setDetail(
+        null
+      );
+
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    const run =
+      async () => {
+        try {
+          const params =
+            new URLSearchParams({
+              websiteId,
+
+              days:
+                String(
+                  periodDays
+                ),
+
+              mode:
+                periodMode,
+
+              country:
+                selected,
+            });
+
+          const response =
+            await fetch(
+              `/api/audience/ga4?${params.toString()}`,
+              {
+                cache:
+                  "no-store",
+              }
+            );
+
+          const json:
+            Ga4Response =
+              await response.json();
+
+          if (
+            !cancelled &&
+            response.ok
+          ) {
+            setDetail(
+              json
+            );
+          }
+        } catch {
+          if (
+            !cancelled
+          ) {
+            setDetail(
+              null
+            );
+          }
+        }
+      };
+
+    void run();
+
+    return () => {
+      cancelled =
+        true;
+    };
+  }, [
+    selected,
+    data?.connected,
+    data?.needsProperty,
+    websiteId,
+    periodDays,
+    periodMode,
+  ]);
+
+  const gaCountries =
+    data?.countries ??
+    [];
+
+  const gaByCountry =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          Ga4Country
+        >();
+
+      for (
+        const country of
+        gaCountries
+      ) {
+        map.set(
+          normalizeCountry(
+            country.country
+          ),
+          country
+        );
+      }
+
+      return map;
+    }, [gaCountries]);
+
+  const cfByCountry =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          CloudflareCountry
+        >();
+
+      for (
+        const country of
+        cloudflareCountries
+      ) {
+        map.set(
+          normalizeCountry(
+            country.country
+          ),
+          country
+        );
+      }
+
+      return map;
+    }, [
+      cloudflareCountries,
+    ]);
+
+  const combined =
+    useMemo(() => {
+      const names =
+        new Set<string>();
+
+      gaCountries.forEach(
+        (country) =>
+          names.add(
+            normalizeCountry(
+              country.country
+            )
+          )
+      );
+
+      cloudflareCountries.forEach(
+        (country) =>
+          names.add(
+            normalizeCountry(
+              country.country
+            )
+          )
+      );
+
+      return Array.from(
+        names
+      )
+        .map(
+          (key) => {
+            const ga =
+              gaByCountry.get(
+                key
+              );
+
+            const cf =
+              cfByCountry.get(
+                key
+              );
+
+            return {
+              key,
+
+              country:
+                ga?.country ??
+                displayCountry(
+                  cf?.country ??
+                  key
+                ),
+
+              countryId:
+                ga?.countryId,
+
+              activeUsers:
+                ga?.activeUsers ??
+                0,
+
+              sessions:
+                ga?.sessions ??
+                0,
+
+              requests:
+                cf?.requests ??
+                0,
+            };
+          }
+        )
+        .sort(
+          (a, b) =>
+            metric ===
+            "users"
+              ? b.activeUsers -
+                a.activeUsers
+              : b.requests -
+                a.requests
+        );
+    }, [
+      gaCountries,
+      cloudflareCountries,
+      gaByCountry,
+      cfByCountry,
+      metric,
+    ]);
+
+  const maxValue =
+    Math.max(
+      1,
+      ...combined.map(
+        (country) =>
+          metric ===
+          "users"
+            ? country.activeUsers
+            : country.requests
+      )
+    );
+
+  function mapColor(
+    name: string
+  ): string {
+    const key =
+      normalizeCountry(
+        name
+      );
+
+    const ga =
+      gaByCountry.get(
+        key
+      );
+
+    const cf =
+      cfByCountry.get(
+        key
+      );
+
+    const value =
+      metric ===
+      "users"
+        ? ga?.activeUsers ??
+          0
+        : cf?.requests ??
+          0;
+
+    if (
+      value <= 0
+    ) {
+      return MAP_COLORS[0];
+    }
+
+    const ratio =
+      value /
+      maxValue;
+
+    const index =
+      Math.min(
+        MAP_COLORS.length -
+          1,
+        Math.max(
+          1,
+          Math.ceil(
+            ratio *
+              (
+                MAP_COLORS.length -
+                1
+              )
+          )
+        )
+      );
+
+    return MAP_COLORS[
+      index
+    ];
+  }
+
+  const hoverRow =
+    hovered
+      ? combined.find(
+          (row) =>
+            row.key ===
+            normalizeCountry(
+              hovered
+            )
+        )
+      : null;
+
+  const selectedRow =
+    selected
+      ? combined.find(
+          (row) =>
+            row.key ===
+            normalizeCountry(
+              selected
+            )
+        )
+      : null;
+
+  const selectedData =
+    detail?.summary
+      ? detail
+      : data;
+
+  async function saveProperty() {
+    if (
+      !propertyId.trim()
+    ) {
+      return;
+    }
+
+    setLoading(
+      true
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/audience/ga4",
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                websiteId,
+
+                propertyId:
+                  propertyId.trim(),
+              }),
+          }
+        );
+
+      const json:
+        {
+          error?:
+            string;
+        } =
+          await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          json.error ??
+          "Could not save GA4 property."
+        );
+      }
+
+      await load();
+    } catch (saveError) {
+      setError(
+        saveError instanceof
+          Error
+          ? saveError.message
+          : "Could not save GA4 property."
+      );
+    } finally {
+      setLoading(
+        false
+      );
+    }
+  }
+
+  return (
+    <section
+      className={
+        styles.shell
+      }
+    >
+      <div
+        className={
+          styles.header
+        }
+      >
+        <div
+          className={
+            styles.headerTitle
+          }
+        >
+          <Globe2
+            size={13}
+          />
+
+          <strong>
+            Geography intelligence
+          </strong>
+
+          <span>
+            Cloudflare + Google Analytics
+          </span>
+        </div>
+
+        <div
+          className={
+            styles.metricSwitch
+          }
+        >
+          <button
+            type="button"
+            data-active={
+              metric ===
+              "users"
+            }
+            disabled={
+              !data?.summary
+            }
+            onClick={() =>
+              setMetric(
+                "users"
+              )
+            }
+          >
+            GA4 users
+          </button>
+
+          <button
+            type="button"
+            data-active={
+              metric ===
+              "edge"
+            }
+            onClick={() =>
+              setMetric(
+                "edge"
+              )
+            }
+          >
+            Edge requests
+          </button>
+        </div>
+      </div>
+
+      {!data?.connected && (
+        <div
+          className={
+            styles.integrationBar
+          }
+        >
+          <div>
+            <BarChart3
+              size={14}
+            />
+
+            <span>
+              Google Analytics 4
+              is not connected.
+            </span>
+          </div>
+
+          {data?.connectUrl && (
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href =
+                  data.connectUrl!;
+              }}
+            >
+              Connect GA4
+              <ExternalLink
+                size={11}
+              />
+            </button>
+          )}
+        </div>
+      )}
+
+      {data?.connected &&
+        data.needsProperty && (
+          <div
+            className={
+              styles.integrationBar
+            }
+          >
+            <div>
+              <BarChart3
+                size={14}
+              />
+
+              <span>
+                Select the GA4
+                property for this
+                website.
+              </span>
+            </div>
+
+            <div
+              className={
+                styles.propertyPicker
+              }
+            >
+              {data.properties &&
+              data.properties.length >
+                0 ? (
+                <select
+                  value={
+                    propertyId
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setPropertyId(
+                      event
+                        .target
+                        .value
+                    )
+                  }
+                >
+                  <option value="">
+                    Select property…
+                  </option>
+
+                  {data.properties.map(
+                    (
+                      property
+                    ) => (
+                      <option
+                        key={
+                          property.id
+                        }
+                        value={
+                          property.id
+                        }
+                      >
+                        {
+                          property.displayName
+                        }{" "}
+                        ·{" "}
+                        {
+                          property.id
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+              ) : (
+                <input
+                  value={
+                    propertyId
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setPropertyId(
+                      event
+                        .target
+                        .value
+                    )
+                  }
+                  placeholder="GA4 property ID"
+                />
+              )}
+
+              <button
+                type="button"
+                disabled={
+                  loading ||
+                  !propertyId.trim()
+                }
+                onClick={() =>
+                  void saveProperty()
+                }
+              >
+                Use property
+              </button>
+            </div>
+          </div>
+        )}
+
+      {error && (
+        <div
+          className={
+            styles.error
+          }
+        >
+          {error}
+        </div>
+      )}
+
+      {data?.summary && (
+        <div
+          className={
+            styles.gaMetrics
+          }
+        >
+          <Metric
+            label="Active users"
+            value={
+              fmt(
+                data.summary
+                  .activeUsers
+              )
+            }
+          />
+
+          <Metric
+            label="Sessions"
+            value={
+              fmt(
+                data.summary
+                  .sessions
+              )
+            }
+          />
+
+          <Metric
+            label="Engaged"
+            value={
+              fmt(
+                data.summary
+                  .engagedSessions
+              )
+            }
+          />
+
+          <Metric
+            label="Engagement"
+            value={
+              pct(
+                data.summary
+                  .engagementRate
+              )
+            }
+          />
+
+          <Metric
+            label="Page views"
+            value={
+              fmt(
+                data.summary
+                  .screenPageViews
+              )
+            }
+          />
+
+          <Metric
+            label="Live · 30m"
+            value={
+              fmt(
+                data.realtime
+                  ?.activeUsers
+              )
+            }
+            live
+          />
+        </div>
+      )}
+
+      <div
+        className={
+          styles.workspace
+        }
+      >
+        <div
+          className={
+            styles.mapPanel
+          }
+        >
+          <div
+            className={
+              styles.mapMeta
+            }
+          >
+            <span>
+              <MousePointer2
+                size={11}
+              />
+              Click a country
+              to inspect it
+            </span>
+
+            <span>
+              {data?.period
+                ?.label ??
+                (
+                  mode ===
+                  "history"
+                    ? `${days}d`
+                    : "Current"
+                )}
+            </span>
+          </div>
+
+          <div
+            className={
+              styles.mapWrap
+            }
+          >
+            <ComposableMap
+              projectionConfig={{
+                scale:
+                  142,
+              }}
+              width={800}
+              height={390}
+            >
+              <ZoomableGroup
+                center={[
+                  5,
+                  12,
+                ]}
+                zoom={1}
+                minZoom={1}
+                maxZoom={4}
+              >
+                <Geographies
+                  geography="/world-110m.json"
+                >
+                  {({
+                    geographies,
+                  }) =>
+                    geographies.map(
+                      (
+                        geo
+                      ) => {
+                        const name =
+                          String(
+                            geo
+                              .properties
+                              ?.name ??
+                            ""
+                          );
+
+                        const key =
+                          normalizeCountry(
+                            name
+                          );
+
+                        const isSelected =
+                          selected
+                            ? normalizeCountry(
+                                selected
+                              ) ===
+                              key
+                            : false;
+
+                        return (
+                          <Geography
+                            key={
+                              geo.rsmKey
+                            }
+                            geography={
+                              geo
+                            }
+                            onMouseEnter={() =>
+                              setHovered(
+                                name
+                              )
+                            }
+                            onMouseLeave={() =>
+                              setHovered(
+                                null
+                              )
+                            }
+                            onClick={() =>
+                              setSelected(
+                                (
+                                  current
+                                ) =>
+                                  current &&
+                                  normalizeCountry(
+                                    current
+                                  ) ===
+                                    key
+                                    ? null
+                                    : name
+                              )
+                            }
+                            className={
+                              styles.geoPath
+                            }
+                            fill={
+                              mapColor(
+                                name
+                              )
+                            }
+                            stroke={
+                              isSelected
+                                ? "#d7d4ea"
+                                : "#25282d"
+                            }
+                            strokeWidth={
+                              isSelected
+                                ? 1.1
+                                : 0.45
+                            }
+                            style={{
+                              outline:
+                                "none",
+                            }}
+                          />
+                        );
+                      }
+                    )
+                  }
+                </Geographies>
+              </ZoomableGroup>
+            </ComposableMap>
+
+            {hoverRow && (
+              <div
+                className={
+                  styles.hoverCard
+                }
+              >
+                <strong>
+                  {flag(
+                    hoverRow
+                      .countryId
+                  )}{" "}
+                  {
+                    hoverRow.country
+                  }
+                </strong>
+
+                <div>
+                  <span>
+                    GA4 users
+                  </span>
+
+                  <b>
+                    {fmt(
+                      hoverRow
+                        .activeUsers
+                    )}
+                  </b>
+                </div>
+
+                <div>
+                  <span>
+                    Sessions
+                  </span>
+
+                  <b>
+                    {fmt(
+                      hoverRow
+                        .sessions
+                    )}
+                  </b>
+                </div>
+
+                <div>
+                  <span>
+                    Edge requests
+                  </span>
+
+                  <b>
+                    {fmt(
+                      hoverRow
+                        .requests
+                    )}
+                  </b>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <aside
+          className={
+            styles.sidePanel
+          }
+        >
+          {selected &&
+          selectedRow ? (
+            <CountryDetail
+              country={
+                selectedRow
+              }
+              data={
+                selectedData
+              }
+            />
+          ) : (
+            <TopCountries
+              rows={
+                combined
+              }
+              metric={
+                metric
+              }
+              onSelect={
+                setSelected
+              }
+            />
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  live = false,
+}: {
+  label: string;
+  value: string;
+  live?: boolean;
+}) {
+  return (
+    <div
+      className={
+        styles.metric
+      }
+    >
+      <span>
+        {live && (
+          <i />
+        )}
+
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function TopCountries({
+  rows,
+  metric,
+  onSelect,
+}: {
+  rows: Array<{
+    country: string;
+    countryId?: string;
+    activeUsers: number;
+    sessions: number;
+    requests: number;
+  }>;
+
+  metric:
+    MapMetric;
+
+  onSelect:
+    (
+      country: string
+    ) => void;
+}) {
+  return (
+    <>
+      <div
+        className={
+          styles.sideHeader
+        }
+      >
+        <strong>
+          Top countries
+        </strong>
+
+        <span>
+          {metric ===
+          "users"
+            ? "Active users"
+            : "Edge requests"}
+        </span>
+      </div>
+
+      <div
+        className={
+          styles.countryRows
+        }
+      >
+        {rows
+          .slice(
+            0,
+            10
+          )
+          .map(
+            (
+              row,
+              index
+            ) => (
+              <button
+                key={
+                  row.country
+                }
+                type="button"
+                onClick={() =>
+                  onSelect(
+                    row.country
+                  )
+                }
+                className={
+                  styles.countryRow
+                }
+              >
+                <span
+                  className={
+                    styles.rank
+                  }
+                >
+                  {String(
+                    index +
+                      1
+                  ).padStart(
+                    2,
+                    "0"
+                  )}
+                </span>
+
+                <span
+                  className={
+                    styles.flag
+                  }
+                >
+                  {flag(
+                    row.countryId
+                  )}
+                </span>
+
+                <strong>
+                  {
+                    row.country
+                  }
+                </strong>
+
+                <div>
+                  <b>
+                    {fmt(
+                      metric ===
+                      "users"
+                        ? row.activeUsers
+                        : row.requests
+                    )}
+                  </b>
+
+                  {metric ===
+                    "users" && (
+                    <small>
+                      {fmt(
+                        row.sessions
+                      )}{" "}
+                      sessions
+                    </small>
+                  )}
+                </div>
+              </button>
+            )
+          )}
+      </div>
+    </>
+  );
+}
+
+function CountryDetail({
+  country,
+  data,
+}: {
+  country: {
+    country: string;
+    countryId?: string;
+    activeUsers: number;
+    sessions: number;
+    requests: number;
+  };
+
+  data:
+    Ga4Response | null;
+}) {
+  const realtime =
+    data?.realtime
+      ?.countries
+      ?.find(
+        (item) =>
+          normalizeCountry(
+            item.country
+          ) ===
+          normalizeCountry(
+            country.country
+          )
+      )
+      ?.activeUsers ??
+    0;
+
+  return (
+    <>
+      <div
+        className={
+          styles.countryHero
+        }
+      >
+        <span>
+          {flag(
+            country.countryId
+          )}
+        </span>
+
+        <div>
+          <strong>
+            {
+              country.country
+            }
+          </strong>
+
+          <small>
+            Country drilldown
+          </small>
+        </div>
+      </div>
+
+      <div
+        className={
+          styles.countryStats
+        }
+      >
+        <div>
+          <span>
+            Active users
+          </span>
+
+          <b>
+            {fmt(
+              data?.summary
+                ?.activeUsers ??
+              country.activeUsers
+            )}
+          </b>
+        </div>
+
+        <div>
+          <span>
+            Sessions
+          </span>
+
+          <b>
+            {fmt(
+              data?.summary
+                ?.sessions ??
+              country.sessions
+            )}
+          </b>
+        </div>
+
+        <div>
+          <span>
+            Edge requests
+          </span>
+
+          <b>
+            {fmt(
+              country.requests
+            )}
+          </b>
+        </div>
+
+        <div>
+          <span>
+            Live · 30m
+          </span>
+
+          <b
+            className={
+              styles.liveValue
+            }
+          >
+            {fmt(
+              realtime
+            )}
+          </b>
+        </div>
+      </div>
+
+      <MiniList
+        title="Acquisition"
+        rows={
+          data?.acquisition
+            ?.slice(
+              0,
+              5
+            )
+            .map(
+              (row) => ({
+                label:
+                  row.sourceMedium ||
+                  "(not set)",
+
+                value:
+                  row.sessions,
+              })
+            ) ??
+          []
+        }
+      />
+
+      <MiniList
+        title="Devices"
+        rows={
+          data?.devices
+            ?.slice(
+              0,
+              4
+            )
+            .map(
+              (row) => ({
+                label:
+                  row.device,
+
+                value:
+                  row.activeUsers,
+              })
+            ) ??
+          []
+        }
+      />
+
+      <MiniList
+        title="Landing pages"
+        rows={
+          data?.landingPages
+            ?.slice(
+              0,
+              5
+            )
+            .map(
+              (row) => ({
+                label:
+                  row.path ||
+                  "/",
+
+                value:
+                  row.sessions,
+              })
+            ) ??
+          []
+        }
+      />
+    </>
+  );
+}
+
+function MiniList({
+  title,
+  rows,
+}: {
+  title: string;
+
+  rows: Array<{
+    label: string;
+    value: number;
+  }>;
+}) {
+  const max =
+    rows[0]?.value ??
+    1;
+
+  return (
+    <div
+      className={
+        styles.miniSection
+      }
+    >
+      <div
+        className={
+          styles.miniHeader
+        }
+      >
+        {title}
+      </div>
+
+      {rows.length >
+      0 ? (
+        rows.map(
+          (
+            row,
+            index
+          ) => (
+            <div
+              className={
+                styles.miniRow
+              }
+              key={`${row.label}-${index}`}
+            >
+              <span>
+                {row.label}
+              </span>
+
+              <div
+                className={
+                  styles.miniTrack
+                }
+              >
+                <i
+                  style={{
+                    width:
+                      `${Math.max(
+                        3,
+                        row.value /
+                          max *
+                          100
+                      )}%`,
+                  }}
+                />
+              </div>
+
+              <b>
+                {fmt(
+                  row.value
+                )}
+              </b>
+            </div>
+          )
+        )
+      ) : (
+        <div
+          className={
+            styles.empty
+          }
+        >
+          No GA4 data for
+          this country.
+        </div>
+      )}
+    </div>
+  );
+}

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Sparkles, Search, TrendingUp, TrendingDown, Minus, Zap, Flame } from "lucide-react";
 import uiStyles from "./ui.module.css";
 import styles from "./keyword-suggestions.module.css";
-import { SuggestionTrendDrawer } from "./suggestion-trend-drawer";
+import { KeywordOverviewDrawer } from "./keyword-overview-drawer";
+import { SuggestionFilterBar, applySuggestionFilters, EMPTY_FILTERS, type SuggestionFilters } from "./suggestion-filters";
 
 export interface MonthlySearchPoint {
   year: number;
@@ -38,6 +39,35 @@ export interface TrendingData {
   risingQueries: TrendQuery[];
 }
 
+function formatSuggVol(v: number | null): string {
+  if (v === null || !Number.isFinite(v)) return "—";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 100_000) return `${Math.round(v / 1_000)}K`;
+  if (v >= 10_000) return `${Math.round(v / 1_000)}K`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  return v.toLocaleString("en-US");
+}
+
+function formatTrend(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+
+  const sign = v > 0 ? "+" : "";
+
+  if (Math.abs(v) >= 1000000) {
+    return `${sign}${(v / 1000000).toFixed(1)}M%`;
+  }
+
+  if (Math.abs(v) >= 10000) {
+    return `${sign}${(v / 1000).toFixed(0)}K%`;
+  }
+
+  if (Math.abs(v) >= 1000) {
+    return `${sign}${(v / 1000).toFixed(1)}K%`;
+  }
+
+  return `${sign}${v}%`;
+}
+
 export function difficultyTone(difficulty: number | null): "success" | "warning" | "danger" | "muted" {
   if (difficulty === null) return "muted";
   if (difficulty < 30) return "success";
@@ -50,15 +80,15 @@ export function TrendBadge({ trend }: { trend: SearchVolumeTrend | null }) {
   if (value === null) return <span className={uiStyles.mono}>&mdash;</span>;
   if (value > 0) {
     return (
-      <span className={`${styles.trendBadge} ${styles.trendUp}`}>
-        <TrendingUp size={12} /> {value}%
+      <span className={`${styles.trendBadge} ${styles.trendUp}`} title={`${value}%`}>
+        <TrendingUp size={12} /> {formatTrend(value)}
       </span>
     );
   }
   if (value < 0) {
     return (
-      <span className={`${styles.trendBadge} ${styles.trendDown}`}>
-        <TrendingDown size={12} /> {value}%
+      <span className={`${styles.trendBadge} ${styles.trendDown}`} title={`${value}%`}>
+        <TrendingDown size={12} /> {formatTrend(value)}
       </span>
     );
   }
@@ -72,32 +102,57 @@ export function TrendBadge({ trend }: { trend: SearchVolumeTrend | null }) {
 export function TrendingQueries({ trending }: { trending: TrendingData | null }) {
   if (!trending || (trending.topQueries.length === 0 && trending.risingQueries.length === 0)) return null;
 
+  const rising = trending.risingQueries.slice(0, 10);
+  const top = trending.topQueries.slice(0, 10);
+
   return (
     <div className={styles.trendingBlock}>
       <div className={styles.trendingHeader}>
-        <Flame size={13} className={styles.trendingIcon} />
-        <span>Trending searches</span>
-        <span className={styles.freeBadge}>free -- Google Trends</span>
+        <div className={styles.trendingTitle}>
+          <Flame size={13} className={styles.trendingIcon} />
+          <span>Search momentum</span>
+        </div>
+        <span className={styles.freeBadge}>Google Trends</span>
       </div>
-      <div className={styles.trendingChips}>
-        {trending.risingQueries.slice(0, 15).map((q, idx) => (
-          <span
-            key={`rising-${q.query}`}
-            className={`${styles.chip} ${styles.chipRising}`}
-            title={`Rising ${q.value.toLocaleString()}%`}
-          >
-            {idx + 1}. {q.query}
-          </span>
-        ))}
-        {trending.topQueries.slice(0, 15).map((q, idx) => (
-          <span
-            key={`top-${q.query}`}
-            className={styles.chip}
-            title={`Relative popularity ${q.value}/100`}
-          >
-            {idx + 1}. {q.query}
-          </span>
-        ))}
+
+      <div className={styles.trendColumns}>
+        <div className={styles.trendColumn}>
+          <div className={styles.trendColumnLabel}>Rising searches</div>
+          <div className={styles.trendList}>
+            {rising.map((q, index) => (
+              <div key={`rise-${q.query}`} className={styles.trendRow}>
+                <span className={styles.trendRank}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className={styles.trendName} title={q.query}>
+                  {q.query}
+                </span>
+                <span className={`${styles.trendValue} ${styles.risingValue}`}>
+                  +{q.value.toLocaleString()}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.trendColumn}>
+          <div className={styles.trendColumnLabel}>Top searches</div>
+          <div className={styles.trendList}>
+            {top.map((q, index) => (
+              <div key={`top-${q.query}`} className={styles.trendRow}>
+                <span className={styles.trendRank}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className={styles.trendName} title={q.query}>
+                  {q.query}
+                </span>
+                <span className={styles.trendValue}>
+                  {q.value}/100
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -141,7 +196,7 @@ export function SuggestionTable({
         {suggestions.map((s) => (
           <tr key={s.keyword} className={styles.clickableRow} onClick={() => onSelect(s)}>
             <td>{s.keyword}</td>
-            <td className={uiStyles.mono}>{s.searchVolume != null ? s.searchVolume.toLocaleString() : "\u2014"}</td>
+            <td className={uiStyles.mono}>{formatSuggVol(s.searchVolume)}</td>
             <td><TrendBadge trend={s.trend} /></td>
             <td className={uiStyles.mono}>
               {s.keywordDifficulty != null ? (
@@ -161,7 +216,7 @@ export function SuggestionTable({
   );
 }
 
-export function KeywordSuggestions({ workspaceId }: { workspaceId: string }) {
+export function KeywordSuggestions({ workspaceId, market = "US" }: { workspaceId: string; market?: string }) {
   const [seed, setSeed] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [trending, setTrending] = useState<TrendingData | null>(null);
@@ -170,6 +225,7 @@ export function KeywordSuggestions({ workspaceId }: { workspaceId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const [selected, setSelected] = useState<Suggestion | null>(null);
+  const [filters, setFilters] = useState<SuggestionFilters>(EMPTY_FILTERS);
 
   const explore = async () => {
     if (!seed.trim() || loading) return;
@@ -177,7 +233,7 @@ export function KeywordSuggestions({ workspaceId }: { workspaceId: string }) {
     setError(null);
     setRateLimited(false);
     try {
-      const params = new URLSearchParams({ workspaceId, seed: seed.trim(), limit: "30" });
+      const params = new URLSearchParams({ workspaceId, seed: seed.trim(), limit: "50", market });
       const res = await fetch(`/api/keywords/explore?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) {
@@ -236,18 +292,30 @@ export function KeywordSuggestions({ workspaceId }: { workspaceId: string }) {
 
       {suggestions && suggestions.length > 0 && (
         <>
-          <div className={styles.resultCount}>
-            {suggestions.length} keyword ideas -- click a row for its 12-month trend <CacheBadge fromCache={fromCache} />
-          </div>
           <TrendingQueries trending={trending} />
-          <SuggestionTable suggestions={suggestions} onSelect={setSelected} />
+          {(() => {
+            const filtered = applySuggestionFilters(suggestions, filters);
+            return (
+              <>
+                <SuggestionFilterBar
+                  filters={filters}
+                  onChange={setFilters}
+                  resultCount={filtered.length}
+                  totalCount={suggestions.length}
+                />
+                <SuggestionTable suggestions={filtered} onSelect={setSelected} />
+              </>
+            );
+          })()}
         </>
       )}
 
       {selected && (
-        <SuggestionTrendDrawer
+        <KeywordOverviewDrawer
           keyword={selected.keyword}
-          monthlySearches={selected.monthlySearches}
+          workspaceId={workspaceId}
+          market={market}
+          language="English"
           onClose={() => setSelected(null)}
         />
       )}

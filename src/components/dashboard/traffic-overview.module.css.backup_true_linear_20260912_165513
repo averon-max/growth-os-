@@ -1,0 +1,137 @@
+.status {
+  color: var(--secondary);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.statusError {
+  color: var(--danger);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filterGroupLabel {
+  font-size: 12px;
+  color: var(--secondary);
+  padding: 6px 4px 6px 0;
+}
+
+.filterButton {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--secondary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filterButton:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+.filterButtonActive {
+  background: var(--accent);
+  color: var(--primary);
+  border-color: var(--accent);
+}
+
+.filterNote {
+  font-size: 12px;
+  color: var(--secondary);
+  margin: 4px 0 16px 0;
+  font-style: italic;
+}
+
+.explainBox {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--elevated);
+}
+
+.explainTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0 0 8px 0;
+}
+
+.explainText {
+  font-size: 13px;
+  color: var(--secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.botList {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+}
+
+.botListItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.botCount {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.chartBlock {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.chartLabel {
+  font-size: 12px;
+  color: var(--secondary);
+  margin-bottom: 8px;
+}
+
+.dayDetail {
+  display: flex;
+  gap: 24px;
+  padding: 8px 16px 16px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dayDetailCol {
+  flex: 1;
+}
+
+.dayDetailLabel {
+  font-size: 11px;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.dayDetailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--primary);
+  padding: 3px 0;
+}

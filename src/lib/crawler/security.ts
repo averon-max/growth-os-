@@ -81,9 +81,28 @@ export async function isSafeUrl(urlStr: string): Promise<{ safe: boolean; reason
 
 export function isSameDomain(base: string, target: string): boolean {
   try {
-    const baseUrl = new URL(base);
-    const targetUrl = new URL(target);
-    return baseUrl.hostname === targetUrl.hostname;
+    const baseHostname = new URL(base).hostname.toLowerCase();
+    const targetHostname = new URL(target).hostname.toLowerCase();
+
+    if (baseHostname === targetHostname) {
+      return true;
+    }
+
+    if (
+      baseHostname.startsWith("www.") &&
+      baseHostname.slice(4) === targetHostname
+    ) {
+      return true;
+    }
+
+    if (
+      targetHostname.startsWith("www.") &&
+      targetHostname.slice(4) === baseHostname
+    ) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }

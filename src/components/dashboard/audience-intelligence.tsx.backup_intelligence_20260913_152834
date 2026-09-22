@@ -1,0 +1,237 @@
+"use client";
+
+import {
+  useCallback,
+  useState,
+} from "react";
+import Link from "next/link";
+import {
+  Cloud,
+  Database,
+  RefreshCw,
+  RotateCw,
+  Search,
+  Settings2,
+} from "lucide-react";
+import { TrafficOverview } from "./traffic-overview";
+import { AudienceSearchQueries } from "./audience-search-queries";
+import styles from "./audience-intelligence.module.css";
+
+export type AudienceDays =
+  7 | 15 | 30;
+
+const OPTIONS:
+  AudienceDays[] = [
+    7,
+    15,
+    30,
+  ];
+
+export function AudienceIntelligence({
+  websiteId,
+}: {
+  websiteId: string;
+}) {
+  const [days, setDays] =
+    useState<AudienceDays>(7);
+
+  const [refreshKey, setRefreshKey] =
+    useState(0);
+
+  const [syncing, setSyncing] =
+    useState(false);
+
+  const [syncMessage, setSyncMessage] =
+    useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    setRefreshKey(
+      (value) => value + 1
+    );
+  }, []);
+
+  async function syncNow() {
+    if (syncing) return;
+
+    setSyncing(true);
+    setSyncMessage(null);
+
+    try {
+      const response =
+        await fetch(
+          "/api/traffic/sync",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              websiteId,
+            }),
+          }
+        );
+
+      const json =
+        (await response.json()) as {
+          error?: string;
+          syncedDays?: number;
+          skippedDays?: Array<unknown>;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          json.error ??
+            "Cloudflare sync failed."
+        );
+      }
+
+      const syncedDays =
+        json.syncedDays ?? 0;
+
+      const skipped =
+        json.skippedDays?.length ??
+        0;
+
+      setSyncMessage(
+        skipped > 0
+          ? `${syncedDays} days synced · ${skipped} unavailable`
+          : `${syncedDays} days synced`
+      );
+
+      refresh();
+    } catch (error) {
+      setSyncMessage(
+        error instanceof Error
+          ? error.message
+          : "Cloudflare sync failed."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div className={styles.root}>
+      <div className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <div className={styles.eyebrow}>
+            Audience intelligence
+          </div>
+
+          <h1 className={styles.title}>
+            Traffic &amp; search discovery
+          </h1>
+
+          <p className={styles.description}>
+            Real Cloudflare edge traffic and
+            Google Search Console search data.
+            No synthetic traffic values.
+          </p>
+
+          <div className={styles.sources}>
+            <div className={styles.source}>
+              <Cloud size={12} />
+              <span>Cloudflare</span>
+              <span className={styles.liveDot} />
+            </div>
+
+            <div className={styles.source}>
+              <Search size={12} />
+              <span>Search Console</span>
+            </div>
+
+            <div className={styles.source}>
+              <Database size={12} />
+              <span>PostgreSQL history</span>
+            </div>
+
+            {syncMessage && (
+              <div className={styles.syncStatus}>
+                {syncMessage}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.controls}>
+          <div
+            className={styles.range}
+            aria-label="Audience range"
+          >
+            {OPTIONS.map(
+              (option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={
+                    days === option
+                      ? `${styles.rangeButton} ${styles.rangeButtonActive}`
+                      : styles.rangeButton
+                  }
+                  onClick={() =>
+                    setDays(option)
+                  }
+                >
+                  {option}d
+                </button>
+              )
+            )}
+          </div>
+
+          <button
+            type="button"
+            className={styles.actionButton}
+            onClick={refresh}
+            title="Reload stored data without contacting Cloudflare"
+          >
+            <RefreshCw size={12} />
+            Refresh view
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.actionButton} ${styles.syncButton}`}
+            disabled={syncing}
+            onClick={() => void syncNow()}
+          >
+            <RotateCw
+              size={12}
+              className={
+                syncing
+                  ? styles.spinning
+                  : undefined
+              }
+            />
+
+            {syncing
+              ? "Syncing…"
+              : "Sync now"}
+          </button>
+
+          <Link
+            href="/dashboard/settings"
+            className={styles.iconButton}
+            title="Manage integrations"
+          >
+            <Settings2 size={13} />
+          </Link>
+        </div>
+      </div>
+
+      <TrafficOverview
+        websiteId={websiteId}
+        days={days}
+        refreshKey={refreshKey}
+      />
+
+      <AudienceSearchQueries
+        websiteId={websiteId}
+        days={days}
+        refreshKey={refreshKey}
+      />
+    </div>
+  );
+}

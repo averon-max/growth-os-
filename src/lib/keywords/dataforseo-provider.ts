@@ -266,6 +266,99 @@ export async function fetchRelatedKeywords(
     });
 }
 
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
+}
+
+export interface KeywordDifficultyResult {
+  keyword: string;
+  keywordDifficulty: number | null;
+}
+
+async function requestKeywordDifficultyWithRetry(
+  auth: string,
+  locationName: string,
+  languageName: string,
+  keywords: string[]
+): Promise<Response> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DATAFORSEO_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(`${DATAFORSEO_API_BASE}/dataforseo_labs/google/bulk_keyword_difficulty/live`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([{ keywords, location_name: locationName, language_name: languageName }]),
+      });
+
+      if (res.status !== 429 || attempt === MAX_RETRIES) {
+        return res;
+      }
+
+      const retryAfterHeader = res.headers.get("Retry-After");
+      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : BASE_BACKOFF_MS * 2 ** attempt;
+      await sleep(retryAfterMs);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new DataForSEOError("DataForSEO rate limit exceeded after retries");
+}
+
+export async function fetchKeywordDifficulty(
+  keywords: string[],
+  locationName = "United States",
+  languageName = "English"
+): Promise<KeywordDifficultyResult[]> {
+  if (keywords.length === 0) return [];
+
+  const auth = buildAuthHeader();
+  const batches = chunk(keywords, 1000);
+  const output: KeywordDifficultyResult[] = [];
+
+  for (const batch of batches) {
+    const res = await requestKeywordDifficultyWithRetry(auth, locationName, languageName, batch);
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new DataForSEOError(`DataForSEO HTTP error ${res.status}: ${body.slice(0, 300)}`);
+    }
+
+    const data = await res.json();
+
+    if (data.status_code !== 20000) {
+      throw new DataForSEOError(`DataForSEO API error: ${data.status_message}`);
+    }
+
+    const task = data.tasks?.[0];
+    if (!task || task.status_code !== 20000) {
+      throw new DataForSEOError(`DataForSEO task error: ${task?.status_message ?? "no task returned"}`);
+    }
+
+    const rows = task.result?.[0]?.items ?? [];
+
+    for (const item of rows) {
+      output.push({
+        keyword: item.keyword,
+        keywordDifficulty: item.keyword_difficulty ?? null,
+      });
+    }
+  }
+
+  return output;
+}
+
 export async function fetchSearchVolume(
   keywords: string[],
   locationName = "United States",
@@ -300,5 +393,137 @@ export async function fetchSearchVolume(
     searchVolume: r.search_volume,
     competitionIndex: r.competition_index,
     cpc: r.cpc,
+  }));
+}
+
+export interface RankedKeywordResult {
+  keyword: string;
+  searchVolume: number | null;
+  cpc: number | null;
+  keywordDifficulty: number | null;
+  rankGroup: number | null;
+  relativeUrl: string | null;
+}
+
+interface DataForSEORankedSerpItem {
+  type: string;
+  rank_group: number | null;
+  relative_url: string | null;
+}
+
+interface DataForSEORankedSerpElement {
+  serp_item: DataForSEORankedSerpItem | null;
+}
+
+interface DataForSEORankedItem {
+  keyword_data: DataForSEORelatedKeywordData;
+  ranked_serp_element: DataForSEORankedSerpElement | null;
+}
+
+interface DataForSEORankedResult {
+  items: DataForSEORankedItem[] | null;
+}
+
+interface DataForSEORankedTask {
+  status_code: number;
+  status_message: string;
+  result: DataForSEORankedResult[] | null;
+}
+
+interface DataForSEORankedResponse {
+  status_code: number;
+  status_message: string;
+  tasks: DataForSEORankedTask[];
+}
+
+async function requestRankedWithRetry(
+  auth: string,
+  targetDomain: string,
+  locationName: string,
+  languageName: string,
+  limit: number
+): Promise<Response> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DATAFORSEO_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(`${DATAFORSEO_API_BASE}/dataforseo_labs/google/ranked_keywords/live`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([
+          {
+            target: targetDomain,
+            location_name: locationName,
+            language_name: languageName,
+            item_types: ["organic"],
+            filters: [["keyword_data.keyword_info.search_volume", ">", 0]],
+            order_by: ["keyword_data.keyword_info.search_volume,desc"],
+            limit,
+          },
+        ]),
+      });
+
+      if (res.status !== 429 || attempt === MAX_RETRIES) {
+        return res;
+      }
+
+      const retryAfterHeader = res.headers.get("Retry-After");
+      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : BASE_BACKOFF_MS * 2 ** attempt;
+      await sleep(retryAfterMs);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new DataForSEOError("DataForSEO rate limit exceeded after retries");
+}
+
+/**
+ * Fetches the organic keywords a competitor domain currently ranks for,
+ * sorted by search volume. `target` must be a bare domain (no https:///www)
+ * to get whole-domain results rather than a single page -- see DataForSEO
+ * Labs Ranked Keywords docs.
+ */
+export async function fetchRankedKeywords(
+  targetDomain: string,
+  locationName = "United States",
+  languageName = "English",
+  limit = 50
+): Promise<RankedKeywordResult[]> {
+  if (!targetDomain.trim()) return [];
+
+  const auth = buildAuthHeader();
+  const res = await requestRankedWithRetry(auth, targetDomain, locationName, languageName, limit);
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new DataForSEOError(`DataForSEO HTTP error ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as DataForSEORankedResponse;
+
+  if (data.status_code !== 20000) {
+    throw new DataForSEOError(`DataForSEO API error: ${data.status_message}`);
+  }
+
+  const task = data.tasks[0];
+  if (!task || task.status_code !== 20000) {
+    throw new DataForSEOError(`DataForSEO task error: ${task?.status_message ?? "no task returned"}`);
+  }
+
+  const items = task.result?.[0]?.items ?? [];
+
+  return items.map((item) => ({
+    keyword: item.keyword_data.keyword,
+    searchVolume: item.keyword_data.keyword_info?.search_volume ?? null,
+    cpc: item.keyword_data.keyword_info?.cpc ?? null,
+    keywordDifficulty: item.keyword_data.keyword_properties?.keyword_difficulty ?? null,
+    rankGroup: item.ranked_serp_element?.serp_item?.rank_group ?? null,
+    relativeUrl: item.ranked_serp_element?.serp_item?.relative_url ?? null,
   }));
 }

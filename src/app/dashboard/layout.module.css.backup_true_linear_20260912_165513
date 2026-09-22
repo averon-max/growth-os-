@@ -1,0 +1,73 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+
+  color: var(--primary);
+
+  background:
+    radial-gradient(
+      900px 620px at 14% 18%,
+      rgba(94,106,210,.045),
+      transparent 68%
+    ),
+    radial-gradient(
+      800px 600px at 87% 12%,
+      rgba(21,147,161,.022),
+      transparent 72%
+    ),
+    #0c0d0e;
+}
+
+.main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      950px 520px at 43% -190px,
+      rgba(94,106,210,.058),
+      transparent 67%
+    ),
+    #0c0d0e;
+}
+
+.main::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+
+  top: 54px;
+  left: 232px;
+  right: 0;
+
+  height: 340px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.010),
+      transparent 72%
+    );
+}
+
+@media (max-width: 900px) {
+  .shell {
+    display: block;
+    overflow: visible;
+  }
+
+  .main {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .main::before {
+    left: 0;
+  }
+}

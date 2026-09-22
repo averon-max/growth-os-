@@ -1,56 +1,232 @@
-.loading { color: var(--secondary); font-size: 0.85rem; padding: 24px 0; }
+.workspace {
+  position: relative;
 
-.filters { display: flex; gap: 8px; margin-bottom: 16px; }
+  margin-top: 18px;
+
+  overflow: hidden;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background:
+    radial-gradient(
+      580px 200px at 15% -140px,
+      rgba(150,154,171,.042),
+      transparent 70%
+    ),
+    var(--surface);
+}
+
+.workspace > :not(table):not(:last-child) {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.workspace :global(table) {
+  width: 100%;
+
+  margin: 0;
+
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+
+  background: transparent;
+}
+
+.loading {
+  padding: 28px 14px;
+
+  color: var(--secondary);
+
+  font-size: 11px;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+
+  margin-top: 13px;
+  margin-bottom: 13px;
+}
 
 .select {
-  background: var(--surface);
-  color: var(--primary);
+  min-height: 30px;
+
+  padding: 0 9px;
+
+  outline: 0;
+
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
+  border-radius: 5px;
+
+  background: rgba(255,255,255,.016);
+  color: #989ba2;
+
+  font-size: 10px;
 }
 
-.pagination { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.select:hover {
+  border-color: var(--border-hover);
 
-.pageButton {
-  background: transparent;
-  color: var(--primary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 0.76rem;
-  cursor: pointer;
+  background: rgba(255,255,255,.028);
 }
-.pageButton:hover { background: var(--elevated); }
-.pageButton:disabled { color: var(--muted); cursor: not-allowed; background: transparent; }
-
-.pageLabel { font-family: var(--font-mono); font-size: 0.72rem; color: var(--secondary); }
-
-.emptyRow { text-align: center; color: var(--secondary); padding: 32px 0; }
 
 .searchBox {
+  min-height: 30px;
+
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--surface);
+
+  padding: 0 9px;
+
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0 10px;
+  border-radius: 5px;
+
+  background: #0e1011;
 }
 
-.searchIcon { color: var(--secondary); flex-shrink: 0; }
+.searchIcon {
+  color: #686b72;
+}
 
 .searchInput {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--primary);
-  font-size: 0.78rem;
-  padding: 6px 0;
-  width: 200px;
-}
-.searchInput::placeholder { color: var(--muted); }
+  width: 100%;
 
-.clickableRow { cursor: pointer; }
-.clickableRow:hover { background: var(--elevated); }
+  padding: 6px 0;
+
+  outline: 0;
+  border: 0;
+
+  background: transparent;
+  color: var(--primary);
+
+  font-size: 10px;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.pagination {
+  min-height: 43px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  border-top: 1px solid var(--border);
+}
+
+.pageButton {
+  padding: 4px 9px;
+
+  border: 0;
+
+  background: transparent;
+  color: #7d8087;
+
+  font-size: 10px;
+
+  cursor: pointer;
+}
+
+.pageButton:hover {
+  color: #d8d9db;
+}
+
+.pageButton:disabled {
+  color: #4d5056;
+}
+
+.pageLabel {
+  color: #5f6269;
+
+  font-family: var(--font-mono);
+
+  font-size: 9px;
+}
+
+.emptyRow {
+  padding: 34px 0 !important;
+
+  color: var(--secondary) !important;
+
+  text-align: center;
+}
+
+
+/* ===== KEYWORDS DATA SURFACE V5 ===== */
+
+.workspace {
+  position: relative;
+
+  border-color: rgba(255,255,255,.068);
+
+  background:
+    radial-gradient(
+      650px 210px at 16% -130px,
+      rgba(145,151,175,.055),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.012),
+      transparent 130px
+    ),
+    var(--surface);
+
+  box-shadow:
+    0 26px 75px rgba(0,0,0,.075);
+}
+
+.workspace::before {
+  content: "";
+
+  position: absolute;
+  pointer-events: none;
+
+  left: 8%;
+  right: 35%;
+  top: -1px;
+
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(162,166,188,.16),
+      transparent
+    );
+}
+
+.filters {
+  position: relative;
+  z-index: 1;
+}
+
+.select {
+  transition:
+    border-color .12s ease,
+    background .12s ease,
+    color .12s ease;
+}
+
+.select:hover {
+  color: #bfc1c6;
+}
+
+.searchBox:focus-within {
+  border-color: rgba(108,104,217,.28);
+
+  box-shadow:
+    0 0 0 3px rgba(108,104,217,.04);
+}

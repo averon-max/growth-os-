@@ -1,0 +1,36 @@
+.shell {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background: #08090a;
+  color: var(--primary);
+}
+
+.main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      760px 320px at 54% -180px,
+      rgba(255,255,255,.026),
+      transparent 72%
+    ),
+    #101113;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main {
+    min-height: 100vh;
+  }
+}

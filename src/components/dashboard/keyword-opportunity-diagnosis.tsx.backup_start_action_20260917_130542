@@ -1,0 +1,947 @@
+"use client";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import styles from "./keyword-opportunity-diagnosis.module.css";
+
+type Decision =
+  | "CREATE"
+  | "UPDATE"
+  | "SKIP";
+
+type Diagnosis = {
+  keyword: string;
+  market: string;
+  liveRank: number | null;
+
+  ownPage: {
+    url: string;
+    title: string | null;
+    h1: string | null;
+    wordCount: number | null;
+    relevanceScore: number | null;
+    inboundInternalLinks: number | null;
+  } | null;
+
+  competitors: Array<{
+    rank: number;
+    domain: string;
+    url: string;
+    title: string;
+    fetched: boolean;
+    h1: string | null;
+    wordCount: number | null;
+  }>;
+
+  ownPagesInspected: number;
+  competitorPagesFetched: number;
+};
+
+type ActionPlan = {
+  keyword: string;
+  market: string;
+  decision: Decision;
+
+  targetPageUrl:
+    string | null;
+
+  rationale:
+    string;
+
+  evidence:
+    string[];
+
+  evidenceBackedTopics: Array<{
+    topic: string;
+    competitorCoverage: number;
+    evidence: string[];
+  }>;
+
+  steps: Array<{
+    type: string;
+    title: string;
+    explanation: string;
+    evidence: string[];
+  }>;
+
+  measurement: {
+    baselineLiveRank:
+      number | null;
+
+    checkpointsDays:
+      number[];
+
+    metrics:
+      string[];
+
+    rule:
+      string;
+  };
+
+  observations: {
+    competitorPagesFetched:
+      number;
+
+    competitorMedianWordCount:
+      number | null;
+
+    wordCountRule:
+      string;
+  };
+
+  guardrails:
+    string[];
+};
+
+function decisionTitle(
+  decision: Decision
+): string {
+  if (
+    decision ===
+    "CREATE"
+  ) {
+    return "Создать новую страницу";
+  }
+
+  if (
+    decision ===
+    "UPDATE"
+  ) {
+    return "Улучшить существующую страницу";
+  }
+
+  return "Пока ничего не менять";
+}
+
+function decisionLabel(
+  decision: Decision
+): string {
+  if (
+    decision ===
+    "CREATE"
+  ) {
+    return "CREATE";
+  }
+
+  if (
+    decision ===
+    "UPDATE"
+  ) {
+    return "UPDATE";
+  }
+
+  return "SKIP";
+}
+
+export function KeywordOpportunityDiagnosis({
+  websiteId,
+  keyword,
+  market,
+  onClose,
+}: {
+  websiteId: string;
+  keyword: string;
+  market: string;
+  onClose: () => void;
+}) {
+  const [
+    diagnosis,
+    setDiagnosis,
+  ] =
+    useState<Diagnosis | null>(
+      null
+    );
+
+  const [
+    actionPlan,
+    setActionPlan,
+  ] =
+    useState<ActionPlan | null>(
+      null
+    );
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(
+      true
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      const load =
+        async () => {
+          setLoading(
+            true
+          );
+
+          setError(
+            null
+          );
+
+          try {
+            const params =
+              new URLSearchParams({
+                websiteId,
+                keyword,
+                market,
+              });
+
+            const response =
+              await fetch(
+                `/api/keywords/opportunity-diagnosis?${params.toString()}`,
+                {
+                  cache:
+                    "no-store",
+                }
+              );
+
+            const data =
+              await response.json() as {
+                diagnosis?: Diagnosis;
+                actionPlan?: ActionPlan;
+                error?: string;
+              };
+
+            if (
+              !response.ok ||
+              !data.diagnosis ||
+              !data.actionPlan
+            ) {
+              throw new Error(
+                data.error ??
+                  "Не удалось построить план."
+              );
+            }
+
+            if (
+              active
+            ) {
+              setDiagnosis(
+                data.diagnosis
+              );
+
+              setActionPlan(
+                data.actionPlan
+              );
+            }
+          } catch (
+            err
+          ) {
+            if (
+              active
+            ) {
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : "Не удалось построить план."
+              );
+            }
+          } finally {
+            if (
+              active
+            ) {
+              setLoading(
+                false
+              );
+            }
+          }
+        };
+
+      void load();
+
+      return () => {
+        active =
+          false;
+      };
+    },
+    [
+      websiteId,
+      keyword,
+      market,
+    ]
+  );
+
+  return (
+    <div
+      className={
+        styles.panel
+      }
+    >
+      <div
+        className={
+          styles.header
+        }
+      >
+        <div>
+          <p
+            className={
+              styles.eyebrow
+            }
+          >
+            Growth OS decision
+          </p>
+
+          <h3
+            className={
+              styles.title
+            }
+          >
+            Что делать по запросу «{keyword}»
+          </h3>
+
+          <p
+            className={
+              styles.subtitle
+            }
+          >
+            Решение основано на вашем сайте,
+            сохранённой Google-выдаче и реально
+            прочитанных страницах конкурентов.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className={
+            styles.close
+          }
+          onClick={
+            onClose
+          }
+        >
+          Закрыть
+        </button>
+      </div>
+
+      {
+        loading ? (
+          <div
+            className={
+              styles.state
+            }
+          >
+            Анализируем доказательства и строим план…
+          </div>
+        ) : error ? (
+          <div
+            className={`${styles.state} ${styles.error}`}
+          >
+            {error}
+          </div>
+        ) : diagnosis &&
+          actionPlan ? (
+          <>
+            <div
+              className={
+                styles.decision
+              }
+            >
+              <div
+                className={
+                  styles.decisionTop
+                }
+              >
+                <span
+                  className={`${styles.decisionBadge} ${
+                    actionPlan.decision ===
+                    "CREATE"
+                      ? styles.create
+                      : actionPlan.decision ===
+                          "UPDATE"
+                        ? styles.update
+                        : styles.skip
+                  }`}
+                >
+                  {
+                    decisionLabel(
+                      actionPlan.decision
+                    )
+                  }
+                </span>
+
+                <div>
+                  <div
+                    className={
+                      styles.decisionTitle
+                    }
+                  >
+                    {
+                      decisionTitle(
+                        actionPlan.decision
+                      )
+                    }
+                  </div>
+
+                  <div
+                    className={
+                      styles.decisionKeyword
+                    }
+                  >
+                    {actionPlan.keyword}
+                  </div>
+                </div>
+              </div>
+
+              <p
+                className={
+                  styles.rationale
+                }
+              >
+                {
+                  actionPlan.rationale
+                }
+              </p>
+            </div>
+
+            <div
+              className={
+                styles.meta
+              }
+            >
+              <div
+                className={
+                  styles.metaItem
+                }
+              >
+                <strong
+                  className={
+                    styles.metaValue
+                  }
+                >
+                  {
+                    diagnosis.liveRank ===
+                    null
+                      ? "Не в Top 100"
+                      : `#${diagnosis.liveRank}`
+                  }
+                </strong>
+
+                <span
+                  className={
+                    styles.metaLabel
+                  }
+                >
+                  Google сейчас
+                </span>
+              </div>
+
+              <div
+                className={
+                  styles.metaItem
+                }
+              >
+                <strong
+                  className={
+                    styles.metaValue
+                  }
+                >
+                  {
+                    diagnosis.ownPagesInspected
+                  }
+                </strong>
+
+                <span
+                  className={
+                    styles.metaLabel
+                  }
+                >
+                  страниц сайта проверено
+                </span>
+              </div>
+
+              <div
+                className={
+                  styles.metaItem
+                }
+              >
+                <strong
+                  className={
+                    styles.metaValue
+                  }
+                >
+                  {
+                    diagnosis.competitorPagesFetched
+                  }/{diagnosis.competitors.length}
+                </strong>
+
+                <span
+                  className={
+                    styles.metaLabel
+                  }
+                >
+                  конкурентов прочитано
+                </span>
+              </div>
+
+              <div
+                className={
+                  styles.metaItem
+                }
+              >
+                <strong
+                  className={
+                    styles.metaValue
+                  }
+                >
+                  {
+                    actionPlan.evidenceBackedTopics.length
+                  }
+                </strong>
+
+                <span
+                  className={
+                    styles.metaLabel
+                  }
+                >
+                  подтверждённых content gaps
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={
+                styles.grid
+              }
+            >
+              <div
+                className={
+                  styles.column
+                }
+              >
+                <h4
+                  className={
+                    styles.sectionTitle
+                  }
+                >
+                  Почему такое решение
+                </h4>
+
+                <div
+                  className={
+                    styles.evidenceList
+                  }
+                >
+                  {
+                    actionPlan.evidence.map(
+                      (
+                        item
+                      ) => (
+                        <div
+                          key={
+                            item
+                          }
+                          className={
+                            styles.evidenceRow
+                          }
+                        >
+                          <span
+                            className={
+                              styles.evidenceDot
+                            }
+                          />
+
+                          <span>
+                            {item}
+                          </span>
+                        </div>
+                      )
+                    )
+                  }
+                </div>
+
+                {
+                  diagnosis.ownPage && (
+                    <div
+                      className={
+                        styles.contextBlock
+                      }
+                    >
+                      <div
+                        className={
+                          styles.contextLabel
+                        }
+                      >
+                        Ближайшая существующая страница
+                      </div>
+
+                      <div
+                        className={
+                          styles.contextValue
+                        }
+                      >
+                        {
+                          diagnosis.ownPage.url
+                        }
+                      </div>
+
+                      <div
+                        className={
+                          styles.contextSub
+                        }
+                      >
+                        Совпадение с темой:{" "}
+                        {
+                          diagnosis.ownPage.relevanceScore ===
+                          null
+                            ? "—"
+                            : `${Math.round(
+                                diagnosis.ownPage.relevanceScore *
+                                  100
+                              )}%`
+                        }
+                      </div>
+                    </div>
+                  )
+                }
+
+                <h4
+                  className={
+                    styles.sectionTitle
+                  }
+                  style={{
+                    marginTop:
+                      18,
+                  }}
+                >
+                  Что подтверждено конкурентами
+                </h4>
+
+                {
+                  actionPlan.evidenceBackedTopics.length ===
+                  0 ? (
+                    <div
+                      className={
+                        styles.emptyEvidence
+                      }
+                    >
+                      Подтверждённых общих content gaps пока нет.
+                      Growth OS не будет придумывать секции без достаточных доказательств.
+                    </div>
+                  ) : (
+                    actionPlan.evidenceBackedTopics.map(
+                      (
+                        topic
+                      ) => (
+                        <div
+                          key={
+                            topic.topic
+                          }
+                          className={
+                            styles.topic
+                          }
+                        >
+                          <div
+                            className={
+                              styles.itemTitle
+                            }
+                          >
+                            {
+                              topic.topic
+                            }
+                          </div>
+
+                          <div
+                            className={
+                              styles.body
+                            }
+                          >
+                            Подтверждено на{" "}
+                            {
+                              topic.competitorCoverage
+                            } конкурентных страницах.
+                          </div>
+                        </div>
+                      )
+                    )
+                  )
+                }
+
+                <h4
+                  className={
+                    styles.sectionTitle
+                  }
+                  style={{
+                    marginTop:
+                      18,
+                  }}
+                >
+                  Проверенные конкуренты
+                </h4>
+
+                {
+                  diagnosis.competitors.map(
+                    (
+                      competitor
+                    ) => (
+                      <div
+                        key={`${competitor.rank}-${competitor.url}`}
+                        className={
+                          styles.competitor
+                        }
+                      >
+                        <div
+                          className={
+                            styles.competitorTop
+                          }
+                        >
+                          <strong>
+                            #{competitor.rank}{" "}
+                            {competitor.domain}
+                          </strong>
+
+                          <span
+                            className={
+                              competitor.fetched
+                                ? styles.readOk
+                                : styles.readNo
+                            }
+                          >
+                            {
+                              competitor.fetched
+                                ? "прочитано"
+                                : "SERP only"
+                            }
+                          </span>
+                        </div>
+
+                        <div
+                          className={
+                            styles.body
+                          }
+                        >
+                          {
+                            competitor.title
+                          }
+                        </div>
+                      </div>
+                    )
+                  )
+                }
+              </div>
+
+              <div
+                className={
+                  styles.column
+                }
+              >
+                <h4
+                  className={
+                    styles.sectionTitle
+                  }
+                >
+                  План действий
+                </h4>
+
+                {
+                  actionPlan.steps.map(
+                    (
+                      step,
+                      index
+                    ) => (
+                      <div
+                        key={`${step.type}-${index}`}
+                        className={
+                          styles.step
+                        }
+                      >
+                        <div
+                          className={
+                            styles.stepHeader
+                          }
+                        >
+                          <span
+                            className={
+                              styles.stepIndex
+                            }
+                          >
+                            {
+                              index +
+                              1
+                            }
+                          </span>
+
+                          <div>
+                            <div
+                              className={
+                                styles.stepTitle
+                              }
+                            >
+                              {
+                                step.title
+                              }
+                            </div>
+
+                            <div
+                              className={
+                                styles.stepType
+                              }
+                            >
+                              {
+                                step.type
+                              }
+                            </div>
+                          </div>
+                        </div>
+
+                        <p
+                          className={
+                            styles.stepBody
+                          }
+                        >
+                          {
+                            step.explanation
+                          }
+                        </p>
+
+                        {
+                          step.evidence.length >
+                            0 && (
+                            <div
+                              className={
+                                styles.stepEvidence
+                              }
+                            >
+                              {
+                                step.evidence.map(
+                                  (
+                                    item
+                                  ) => (
+                                    <div
+                                      key={
+                                        item
+                                      }
+                                    >
+                                      • {item}
+                                    </div>
+                                  )
+                                )
+                              }
+                            </div>
+                          )
+                        }
+                      </div>
+                    )
+                  )
+                }
+
+                <div
+                  className={
+                    styles.measurement
+                  }
+                >
+                  <div
+                    className={
+                      styles.measurementTitle
+                    }
+                  >
+                    Как проверим результат
+                  </div>
+
+                  <div
+                    className={
+                      styles.checkpoints
+                    }
+                  >
+                    {
+                      actionPlan.measurement.checkpointsDays.map(
+                        (
+                          day
+                        ) => (
+                          <span
+                            key={
+                              day
+                            }
+                            className={
+                              styles.checkpoint
+                            }
+                          >
+                            {day} дней
+                          </span>
+                        )
+                      )
+                    }
+                  </div>
+
+                  <div
+                    className={
+                      styles.body
+                    }
+                  >
+                    Позиция, показы, клики и CTR — когда данные доступны.
+                    Сравниваем с baseline, но не обещаем причинность или конкретный рост.
+                  </div>
+                </div>
+
+                <details
+                  className={
+                    styles.advanced
+                  }
+                >
+                  <summary>
+                    Технические детали
+                  </summary>
+
+                  <div
+                    className={
+                      styles.advancedBody
+                    }
+                  >
+                    <div>
+                      Median competitor word count:{" "}
+                      {
+                        actionPlan.observations.competitorMedianWordCount ??
+                        "—"
+                      }
+                    </div>
+
+                    <div>
+                      Это только наблюдение, не целевой объём текста.
+                    </div>
+
+                    <div
+                      className={
+                        styles.guardrails
+                      }
+                    >
+                      {
+                        actionPlan.guardrails.map(
+                          (
+                            guardrail
+                          ) => (
+                            <div
+                              key={
+                                guardrail
+                              }
+                            >
+                              • {guardrail}
+                            </div>
+                          )
+                        )
+                      }
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </>
+        ) : null
+      }
+    </div>
+  );
+}

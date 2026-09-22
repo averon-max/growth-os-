@@ -1,0 +1,2024 @@
+import "server-only";
+
+import {
+  load,
+} from "cheerio";
+
+import {
+  isSafeUrl,
+} from "@/lib/crawler/security";
+
+import {
+  classifyPageType,
+  type SerpPageType,
+} from "./serp-utils";
+
+export {
+  classifyPageType,
+} from "./serp-utils";
+
+export type {
+  SerpPageType,
+} from "./serp-utils";
+
+
+const DATAFORSEO_BASE =
+  "https://api.dataforseo.com/v3";
+
+const SERP_ENDPOINT =
+  `${DATAFORSEO_BASE}/serp/google/organic/live/advanced`;
+
+const REQUEST_TIMEOUT_MS =
+  20_000;
+
+const PAGE_TIMEOUT_MS =
+  10_000;
+
+const PAGE_MAX_BYTES =
+  2 * 1024 * 1024;
+
+const MAX_REDIRECTS =
+  5;
+
+const PAGE_CONCURRENCY =
+  3;
+
+
+const STOP_WORDS =
+  new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "best",
+    "by",
+    "can",
+    "do",
+    "for",
+    "from",
+    "guide",
+    "how",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "with",
+    "you",
+    "your",
+  ]);
+
+
+export interface SerpOrganicResult {
+  rank: number;
+  absoluteRank: number | null;
+  domain: string;
+  url: string;
+  title: string;
+  description: string | null;
+  featuredSnippet: boolean;
+}
+
+
+export interface CompetitorPageAnalysis {
+  rank: number;
+  domain: string;
+  url: string;
+
+  fetched:
+    boolean;
+
+  statusCode:
+    number | null;
+
+  pageType:
+    SerpPageType;
+
+  title:
+    string | null;
+
+  h1:
+    string | null;
+
+  h2:
+    string[];
+
+  h3:
+    string[];
+
+  wordCount:
+    number | null;
+
+  error:
+    string | null;
+}
+
+
+export interface HeadingCluster {
+  topic: string;
+  pages: number;
+  coveragePct: number;
+  examples: string[];
+}
+
+
+export interface SerpBenchmark {
+  analyzedPages:
+    number;
+
+  medianWordCount:
+    number | null;
+
+  medianH2:
+    number | null;
+
+  medianH3:
+    number | null;
+
+  recommendedH2: {
+    min: number;
+    max: number;
+  };
+
+  recommendedH3PerH2: {
+    max: number;
+  };
+
+  dominantPageType:
+    SerpPageType | null;
+}
+
+
+export interface SerpAiOverview {
+  present:
+    boolean;
+
+  asynchronous:
+    boolean | null;
+
+  references:
+    Array<{
+      domain:
+        string | null;
+
+      url:
+        string | null;
+
+      title:
+        string | null;
+    }>;
+}
+
+
+export interface SerpIntelligence {
+  keyword: string;
+
+  market: {
+    locationName:
+      string;
+
+    languageName:
+      string;
+
+    device:
+      "desktop";
+  };
+
+  collectedAt:
+    string;
+
+  resultCount:
+    number | null;
+
+  serpFeatures:
+    string[];
+
+  organic:
+    SerpOrganicResult[];
+
+  questions:
+    string[];
+
+  aiOverview:
+    SerpAiOverview;
+
+  competitors:
+    CompetitorPageAnalysis[];
+
+  benchmark:
+    SerpBenchmark;
+
+  commonSections:
+    HeadingCluster[];
+
+  commonTerms:
+    Array<{
+      term: string;
+      pages: number;
+      coveragePct: number;
+    }>;
+}
+
+
+export class SerpIntelligenceError
+  extends Error {
+  constructor(
+    message:
+      string
+  ) {
+    super(message);
+
+    this.name =
+      "SerpIntelligenceError";
+  }
+}
+
+
+interface DataForSEOItem {
+  type?:
+    string;
+
+  rank_group?:
+    number;
+
+  rank_absolute?:
+    number;
+
+  domain?:
+    string;
+
+  url?:
+    string;
+
+  title?:
+    string;
+
+  description?:
+    string;
+
+  is_featured_snippet?:
+    boolean;
+
+  asynchronous_ai_overview?:
+    boolean;
+
+  items?:
+    DataForSEOItem[];
+
+  references?:
+    Array<{
+      domain?:
+        string;
+
+      url?:
+        string;
+
+      title?:
+        string;
+    }>;
+}
+
+
+interface DataForSEOResult {
+  se_results_count?:
+    number;
+
+  item_types?:
+    string[];
+
+  items?:
+    DataForSEOItem[];
+}
+
+
+interface DataForSEOTask {
+  status_code?:
+    number;
+
+  status_message?:
+    string;
+
+  result?:
+    DataForSEOResult[];
+}
+
+
+interface DataForSEOResponse {
+  status_code?:
+    number;
+
+  status_message?:
+    string;
+
+  tasks?:
+    DataForSEOTask[];
+}
+
+
+function requireEnv(
+  name:
+    string
+): string {
+  const value =
+    process.env[name]
+      ?.trim();
+
+  if (!value) {
+    throw new SerpIntelligenceError(
+      `${name} is not set`
+    );
+  }
+
+  return value;
+}
+
+
+function authHeader(): string {
+  const login =
+    requireEnv(
+      "DATAFORSEO_LOGIN"
+    );
+
+  const password =
+    requireEnv(
+      "DATAFORSEO_PASSWORD"
+    );
+
+  return Buffer
+    .from(
+      `${login}:${password}`
+    )
+    .toString(
+      "base64"
+    );
+}
+
+
+function normalize(
+  value:
+    string
+): string {
+  return value
+    .toLowerCase()
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .replace(
+      /[^a-z0-9\s]/g,
+      " "
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
+
+function meaningfulTokens(
+  value:
+    string
+): string[] {
+  return normalize(
+    value
+  )
+    .split(" ")
+    .filter(
+      (token) =>
+        token.length >=
+          3 &&
+        !STOP_WORDS.has(
+          token
+        )
+    );
+}
+
+
+function similarity(
+  a:
+    string,
+  b:
+    string
+): number {
+  const left =
+    new Set(
+      meaningfulTokens(
+        a
+      )
+    );
+
+  const right =
+    new Set(
+      meaningfulTokens(
+        b
+      )
+    );
+
+  if (
+    left.size === 0 ||
+    right.size === 0
+  ) {
+    return normalize(a) ===
+      normalize(b)
+      ? 1
+      : 0;
+  }
+
+  let overlap =
+    0;
+
+  for (
+    const token of
+    left
+  ) {
+    if (
+      right.has(
+        token
+      )
+    ) {
+      overlap +=
+        1;
+    }
+  }
+
+  const union =
+    new Set([
+      ...left,
+      ...right,
+    ]).size;
+
+  return union === 0
+    ? 0
+    : overlap /
+        union;
+}
+
+
+function median(
+  numbers:
+    number[]
+): number | null {
+  if (
+    numbers.length === 0
+  ) {
+    return null;
+  }
+
+  const sorted =
+    [...numbers].sort(
+      (a, b) =>
+        a - b
+    );
+
+  const middle =
+    Math.floor(
+      sorted.length /
+        2
+    );
+
+  if (
+    sorted.length %
+      2 ===
+    1
+  ) {
+    return sorted[
+      middle
+    ];
+  }
+
+  return (
+    sorted[
+      middle - 1
+    ] +
+    sorted[
+      middle
+    ]
+  ) / 2;
+}
+
+
+function cleanText(
+  value:
+    string
+): string {
+  return value
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
+
+function safeHostname(
+  url:
+    string
+): string {
+  try {
+    return new URL(
+      url
+    ).hostname
+      .replace(
+        /^www\./,
+        ""
+      );
+  } catch {
+    return "";
+  }
+}
+
+
+function sleep(
+  ms:
+    number
+): Promise<void> {
+  return new Promise(
+    (resolve) =>
+      setTimeout(
+        resolve,
+        ms
+      )
+  );
+}
+
+
+async function requestSerp(
+  keyword:
+    string,
+  locationName:
+    string,
+  languageName:
+    string,
+  depth:
+    number = 10
+): Promise<DataForSEOResult> {
+  const auth =
+    authHeader();
+
+  for (
+    let attempt = 0;
+    attempt < 3;
+    attempt += 1
+  ) {
+    const controller =
+      new AbortController();
+
+    const timeout =
+      setTimeout(
+        () =>
+          controller.abort(),
+        REQUEST_TIMEOUT_MS
+      );
+
+    try {
+      const response =
+        await fetch(
+          SERP_ENDPOINT,
+          {
+            method:
+              "POST",
+
+            signal:
+              controller.signal,
+
+            headers: {
+              Authorization:
+                `Basic ${auth}`,
+
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify([
+                {
+                  keyword,
+
+                  location_name:
+                    locationName,
+
+                  language_name:
+                    languageName,
+
+                  device:
+                    "desktop",
+
+                  depth:
+                    Math.min(
+                      100,
+                      Math.max(
+                        10,
+                        depth
+                      )
+                    ),
+
+                  load_async_ai_overview:
+                    false,
+                },
+              ]),
+
+            cache:
+              "no-store",
+          }
+        );
+
+      const body =
+        await response.text();
+
+      if (
+        response.status ===
+          429 &&
+        attempt < 2
+      ) {
+        const retryAfter =
+          Number(
+            response.headers.get(
+              "retry-after"
+            )
+          );
+
+        await sleep(
+          Number.isFinite(
+            retryAfter
+          ) &&
+          retryAfter > 0
+            ? retryAfter *
+                1000
+            : 1500 *
+                (
+                  attempt +
+                  1
+                )
+        );
+
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new SerpIntelligenceError(
+          `DataForSEO SERP HTTP ${response.status}: ${body.slice(
+            0,
+            250
+          )}`
+        );
+      }
+
+      const data:
+        DataForSEOResponse =
+          JSON.parse(
+            body
+          );
+
+      if (
+        data.status_code !==
+        20000
+      ) {
+        throw new SerpIntelligenceError(
+          `DataForSEO SERP error: ${data.status_message ?? "unknown error"}`
+        );
+      }
+
+      const task =
+        data.tasks?.[0];
+
+      if (
+        !task ||
+        task.status_code !==
+          20000
+      ) {
+        throw new SerpIntelligenceError(
+          `DataForSEO SERP task error: ${task?.status_message ?? "no task returned"}`
+        );
+      }
+
+      const result =
+        task.result?.[0];
+
+      if (!result) {
+        throw new SerpIntelligenceError(
+          "DataForSEO SERP returned no result"
+        );
+      }
+
+      return result;
+    } catch (error) {
+      if (
+        attempt === 2
+      ) {
+        if (
+          error instanceof
+          SerpIntelligenceError
+        ) {
+          throw error;
+        }
+
+        throw new SerpIntelligenceError(
+          error instanceof Error
+            ? error.message
+            : "DataForSEO SERP request failed"
+        );
+      }
+    } finally {
+      clearTimeout(
+        timeout
+      );
+    }
+  }
+
+  throw new SerpIntelligenceError(
+    "DataForSEO SERP request failed"
+  );
+}
+
+
+async function fetchHtmlSafely(
+  inputUrl:
+    string
+): Promise<{
+  html:
+    string;
+
+  finalUrl:
+    string;
+
+  status:
+    number;
+} | null> {
+  let currentUrl =
+    inputUrl;
+
+  for (
+    let redirectCount =
+      0;
+    redirectCount <=
+      MAX_REDIRECTS;
+    redirectCount +=
+      1
+  ) {
+    const safety =
+      await isSafeUrl(
+        currentUrl
+      );
+
+    if (
+      !safety.safe
+    ) {
+      throw new Error(
+        `Blocked URL: ${safety.reason ?? "unsafe destination"}`
+      );
+    }
+
+    const controller =
+      new AbortController();
+
+    const timeout =
+      setTimeout(
+        () =>
+          controller.abort(),
+        PAGE_TIMEOUT_MS
+      );
+
+    try {
+      const response =
+        await fetch(
+          currentUrl,
+          {
+            signal:
+              controller.signal,
+
+            redirect:
+              "manual",
+
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (compatible; GrowthOS/1.0; +https://growth-os.local)",
+
+              Accept:
+                "text/html,application/xhtml+xml",
+            },
+
+            cache:
+              "no-store",
+          }
+        );
+
+      if (
+        response.status >=
+          300 &&
+        response.status <
+          400
+      ) {
+        const location =
+          response.headers.get(
+            "location"
+          );
+
+        if (!location) {
+          return null;
+        }
+
+        currentUrl =
+          new URL(
+            location,
+            currentUrl
+          ).toString();
+
+        continue;
+      }
+
+      const contentType =
+        response.headers.get(
+          "content-type"
+        );
+
+      if (
+        contentType &&
+        !contentType
+          .toLowerCase()
+          .includes(
+            "text/html"
+          ) &&
+        !contentType
+          .toLowerCase()
+          .includes(
+            "application/xhtml+xml"
+          )
+      ) {
+        return null;
+      }
+
+      const contentLength =
+        Number(
+          response.headers.get(
+            "content-length"
+          )
+        );
+
+      if (
+        Number.isFinite(
+          contentLength
+        ) &&
+        contentLength >
+          PAGE_MAX_BYTES
+      ) {
+        return null;
+      }
+
+      const buffer =
+        await response.arrayBuffer();
+
+      if (
+        buffer.byteLength >
+        PAGE_MAX_BYTES
+      ) {
+        return null;
+      }
+
+      return {
+        html:
+          new TextDecoder()
+            .decode(
+              buffer
+            ),
+
+        finalUrl:
+          currentUrl,
+
+        status:
+          response.status,
+      };
+    } finally {
+      clearTimeout(
+        timeout
+      );
+    }
+  }
+
+  return null;
+}
+
+
+function analyzeHtml(
+  html:
+    string,
+  url:
+    string,
+  rank:
+    number,
+  statusCode:
+    number
+): CompetitorPageAnalysis {
+  const $ =
+    load(
+      html
+    );
+
+  $(
+    "script, style, noscript, svg, template"
+  ).remove();
+
+  const title =
+    cleanText(
+      $("title")
+        .first()
+        .text()
+    ) ||
+    null;
+
+  const h1 =
+    cleanText(
+      $("h1")
+        .first()
+        .text()
+    ) ||
+    null;
+
+  const h2 =
+    $("h2")
+      .map(
+        (
+          _,
+          element
+        ) =>
+          cleanText(
+            $(element)
+              .text()
+          )
+      )
+      .get()
+      .filter(Boolean)
+      .slice(
+        0,
+        30
+      );
+
+  const h3 =
+    $("h3")
+      .map(
+        (
+          _,
+          element
+        ) =>
+          cleanText(
+            $(element)
+              .text()
+          )
+      )
+      .get()
+      .filter(Boolean)
+      .slice(
+        0,
+        50
+      );
+
+  const bodyText =
+    cleanText(
+      $("body")
+        .text()
+    );
+
+  const words =
+    bodyText
+      .split(
+        /\s+/
+      )
+      .filter(Boolean)
+      .length;
+
+  return {
+    rank,
+
+    domain:
+      safeHostname(
+        url
+      ),
+
+    url,
+
+    fetched:
+      true,
+
+    statusCode,
+
+    pageType:
+      classifyPageType(
+        url,
+        title ??
+          h1 ??
+          ""
+      ),
+
+    title,
+    h1,
+    h2,
+    h3,
+
+    wordCount:
+      words,
+
+    error:
+      null,
+  };
+}
+
+
+async function analyzeCompetitor(
+  result:
+    SerpOrganicResult
+): Promise<CompetitorPageAnalysis> {
+  try {
+    const fetched =
+      await fetchHtmlSafely(
+        result.url
+      );
+
+    if (!fetched) {
+      return {
+        rank:
+          result.rank,
+
+        domain:
+          result.domain,
+
+        url:
+          result.url,
+
+        fetched:
+          false,
+
+        statusCode:
+          null,
+
+        pageType:
+          classifyPageType(
+            result.url,
+            result.title
+          ),
+
+        title:
+          result.title,
+
+        h1:
+          null,
+
+        h2: [],
+        h3: [],
+
+        wordCount:
+          null,
+
+        error:
+          "HTML unavailable",
+      };
+    }
+
+    return analyzeHtml(
+      fetched.html,
+      fetched.finalUrl,
+      result.rank,
+      fetched.status
+    );
+  } catch (error) {
+    return {
+      rank:
+        result.rank,
+
+      domain:
+        result.domain,
+
+      url:
+        result.url,
+
+      fetched:
+        false,
+
+      statusCode:
+        null,
+
+      pageType:
+        classifyPageType(
+          result.url,
+          result.title
+        ),
+
+      title:
+        result.title,
+
+      h1:
+        null,
+
+      h2: [],
+      h3: [],
+
+      wordCount:
+        null,
+
+      error:
+        error instanceof Error
+          ? error.message
+          : "Page analysis failed",
+    };
+  }
+}
+
+
+async function mapConcurrent<T, R>(
+  items:
+    T[],
+  concurrency:
+    number,
+  worker:
+    (
+      item:
+        T
+    ) =>
+      Promise<R>
+): Promise<R[]> {
+  const output =
+    new Array<R>(
+      items.length
+    );
+
+  let nextIndex =
+    0;
+
+  async function run() {
+    while (
+      nextIndex <
+      items.length
+    ) {
+      const index =
+        nextIndex;
+
+      nextIndex +=
+        1;
+
+      output[index] =
+        await worker(
+          items[index]
+        );
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      {
+        length:
+          Math.min(
+            concurrency,
+            items.length
+          ),
+      },
+      () =>
+        run()
+    )
+  );
+
+  return output;
+}
+
+
+function extractQuestions(
+  items:
+    DataForSEOItem[]
+): string[] {
+  const questions =
+    new Set<string>();
+
+  for (
+    const item of
+    items
+  ) {
+    if (
+      item.type !==
+      "people_also_ask"
+    ) {
+      continue;
+    }
+
+    for (
+      const child of
+      item.items ??
+      []
+    ) {
+      const title =
+        child.title
+          ?.trim();
+
+      if (title) {
+        questions.add(
+          title
+        );
+      }
+    }
+  }
+
+  return Array.from(
+    questions
+  ).slice(
+    0,
+    20
+  );
+}
+
+
+function extractAiOverview(
+  items:
+    DataForSEOItem[]
+): SerpAiOverview {
+  const overview =
+    items.find(
+      (item) =>
+        item.type ===
+        "ai_overview"
+    );
+
+  if (!overview) {
+    return {
+      present:
+        false,
+
+      asynchronous:
+        null,
+
+      references:
+        [],
+    };
+  }
+
+  const references =
+    new Map<
+      string,
+      {
+        domain:
+          string | null;
+
+        url:
+          string | null;
+
+        title:
+          string | null;
+      }
+    >();
+
+  function collect(
+    node:
+      DataForSEOItem
+  ) {
+    for (
+      const reference of
+      node.references ??
+      []
+    ) {
+      const key =
+        reference.url ??
+        reference.domain ??
+        reference.title ??
+        "";
+
+      if (!key) {
+        continue;
+      }
+
+      references.set(
+        key,
+        {
+          domain:
+            reference.domain ??
+            null,
+
+          url:
+            reference.url ??
+            null,
+
+          title:
+            reference.title ??
+            null,
+        }
+      );
+    }
+
+    for (
+      const child of
+      node.items ??
+      []
+    ) {
+      collect(
+        child
+      );
+    }
+  }
+
+  collect(
+    overview
+  );
+
+  return {
+    present:
+      true,
+
+    asynchronous:
+      typeof overview
+        .asynchronous_ai_overview ===
+        "boolean"
+        ? overview
+            .asynchronous_ai_overview
+        : null,
+
+    references:
+      Array.from(
+        references.values()
+      ).slice(
+        0,
+        20
+      ),
+  };
+}
+
+
+function organicResults(
+  items:
+    DataForSEOItem[]
+): SerpOrganicResult[] {
+  return items
+    .filter(
+      (item) =>
+        item.type ===
+          "organic" &&
+        Boolean(
+          item.url
+        )
+    )
+    .map(
+      (item) => ({
+        rank:
+          item.rank_group ??
+          999,
+
+        absoluteRank:
+          item.rank_absolute ??
+          null,
+
+        domain:
+          item.domain ??
+          safeHostname(
+            item.url ??
+            ""
+          ),
+
+        url:
+          item.url ??
+          "",
+
+        title:
+          item.title ??
+          "",
+
+        description:
+          item.description ??
+          null,
+
+        featuredSnippet:
+          item
+            .is_featured_snippet ??
+          false,
+      })
+    )
+    .sort(
+      (a, b) =>
+        a.rank -
+        b.rank
+    )
+    .slice(
+      0,
+      10
+    );
+}
+
+
+function headingClusters(
+  pages:
+    CompetitorPageAnalysis[]
+): HeadingCluster[] {
+  const fetched =
+    pages.filter(
+      (page) =>
+        page.fetched
+    );
+
+  if (
+    fetched.length ===
+    0
+  ) {
+    return [];
+  }
+
+  const clusters:
+    Array<{
+      representative:
+        string;
+
+      examples:
+        Set<string>;
+
+      pageIndexes:
+        Set<number>;
+    }> =
+      [];
+
+  fetched.forEach(
+    (
+      page,
+      pageIndex
+    ) => {
+      const headings =
+        [
+          ...page.h2,
+          ...page.h3,
+        ];
+
+      const pageSeen =
+        new Set<number>();
+
+      for (
+        const heading of
+        headings
+      ) {
+        if (
+          meaningfulTokens(
+            heading
+          ).length ===
+          0
+        ) {
+          continue;
+        }
+
+        let bestIndex =
+          -1;
+
+        let bestScore =
+          0;
+
+        clusters.forEach(
+          (
+            cluster,
+            index
+          ) => {
+            const score =
+              similarity(
+                heading,
+                cluster.representative
+              );
+
+            if (
+              score >
+              bestScore
+            ) {
+              bestScore =
+                score;
+
+              bestIndex =
+                index;
+            }
+          }
+        );
+
+        if (
+          bestIndex >=
+            0 &&
+          bestScore >=
+            0.45
+        ) {
+          if (
+            !pageSeen.has(
+              bestIndex
+            )
+          ) {
+            clusters[
+              bestIndex
+            ].pageIndexes.add(
+              pageIndex
+            );
+
+            pageSeen.add(
+              bestIndex
+            );
+          }
+
+          clusters[
+            bestIndex
+          ].examples.add(
+            heading
+          );
+        } else {
+          clusters.push({
+            representative:
+              heading,
+
+            examples:
+              new Set([
+                heading,
+              ]),
+
+            pageIndexes:
+              new Set([
+                pageIndex,
+              ]),
+          });
+
+          pageSeen.add(
+            clusters.length -
+              1
+          );
+        }
+      }
+    }
+  );
+
+  return clusters
+    .map(
+      (cluster) => ({
+        topic:
+          cluster
+            .representative,
+
+        pages:
+          cluster
+            .pageIndexes
+            .size,
+
+        coveragePct:
+          Math.round(
+            (
+              cluster
+                .pageIndexes
+                .size /
+              fetched.length
+            ) *
+              1000
+          ) /
+          10,
+
+        examples:
+          Array.from(
+            cluster.examples
+          ).slice(
+            0,
+            4
+          ),
+      })
+    )
+    .filter(
+      (cluster) =>
+        cluster.pages >=
+        2
+    )
+    .sort(
+      (a, b) =>
+        b.pages -
+          a.pages ||
+        b.coveragePct -
+          a.coveragePct
+    )
+    .slice(
+      0,
+      20
+    );
+}
+
+
+function commonTerms(
+  pages:
+    CompetitorPageAnalysis[]
+): SerpIntelligence["commonTerms"] {
+  const fetched =
+    pages.filter(
+      (page) =>
+        page.fetched
+    );
+
+  if (
+    fetched.length ===
+    0
+  ) {
+    return [];
+  }
+
+  const counts =
+    new Map<
+      string,
+      number
+    >();
+
+  for (
+    const page of
+    fetched
+  ) {
+    const terms =
+      new Set(
+        [
+          page.title ??
+            "",
+          page.h1 ??
+            "",
+          ...page.h2,
+          ...page.h3,
+        ].flatMap(
+          meaningfulTokens
+        )
+      );
+
+    for (
+      const term of
+      terms
+    ) {
+      counts.set(
+        term,
+        (
+          counts.get(
+            term
+          ) ??
+          0
+        ) +
+          1
+      );
+    }
+  }
+
+  return Array.from(
+    counts.entries()
+  )
+    .filter(
+      (
+        [
+          _,
+          count,
+        ]
+      ) =>
+        count >=
+        2
+    )
+    .map(
+      (
+        [
+          term,
+          count,
+        ]
+      ) => ({
+        term,
+
+        pages:
+          count,
+
+        coveragePct:
+          Math.round(
+            (
+              count /
+              fetched.length
+            ) *
+              1000
+          ) /
+          10,
+      })
+    )
+    .sort(
+      (a, b) =>
+        b.pages -
+          a.pages ||
+        a.term.localeCompare(
+          b.term
+        )
+    )
+    .slice(
+      0,
+      30
+    );
+}
+
+
+function buildBenchmark(
+  pages:
+    CompetitorPageAnalysis[]
+): SerpBenchmark {
+  const fetched =
+    pages.filter(
+      (page) =>
+        page.fetched
+    );
+
+  const wordMedian =
+    median(
+      fetched
+        .map(
+          (page) =>
+            page.wordCount
+        )
+        .filter(
+          (
+            value
+          ): value is number =>
+            value !== null &&
+            value > 0
+        )
+    );
+
+  const h2Median =
+    median(
+      fetched.map(
+        (page) =>
+          page.h2.length
+      )
+    );
+
+  const h3Median =
+    median(
+      fetched.map(
+        (page) =>
+          page.h3.length
+      )
+    );
+
+  const pageTypes =
+    new Map<
+      SerpPageType,
+      number
+    >();
+
+  for (
+    const page of
+    pages
+  ) {
+    pageTypes.set(
+      page.pageType,
+      (
+        pageTypes.get(
+          page.pageType
+        ) ??
+        0
+      ) +
+        1
+    );
+  }
+
+  const dominantPageType =
+    Array.from(
+      pageTypes.entries()
+    )
+      .sort(
+        (a, b) =>
+          b[1] -
+          a[1]
+      )[0]?.[0] ??
+    null;
+
+  const h2Center =
+    h2Median ??
+    5;
+
+  const h3Center =
+    h3Median ??
+    4;
+
+  return {
+    analyzedPages:
+      fetched.length,
+
+    medianWordCount:
+      wordMedian ===
+      null
+        ? null
+        : Math.round(
+            wordMedian
+          ),
+
+    medianH2:
+      h2Median,
+
+    medianH3:
+      h3Median,
+
+    recommendedH2: {
+      min:
+        Math.max(
+          3,
+          Math.floor(
+            h2Center -
+              1
+          )
+        ),
+
+      max:
+        Math.min(
+          10,
+          Math.max(
+            4,
+            Math.ceil(
+              h2Center +
+                2
+            )
+          )
+        ),
+    },
+
+    recommendedH3PerH2: {
+      max:
+        Math.min(
+          4,
+          Math.max(
+            1,
+            Math.ceil(
+              h3Center /
+              Math.max(
+                1,
+                h2Center
+              )
+            ) +
+              1
+          )
+        ),
+    },
+
+    dominantPageType,
+  };
+}
+
+
+export async function buildSerpIntelligence({
+  keyword,
+  locationName =
+    "United States",
+  languageName =
+    "English",
+}: {
+  keyword:
+    string;
+
+  locationName?:
+    string;
+
+  languageName?:
+    string;
+}): Promise<SerpIntelligence> {
+  const cleanKeyword =
+    keyword.trim();
+
+  if (!cleanKeyword) {
+    throw new SerpIntelligenceError(
+      "keyword is required"
+    );
+  }
+
+  const result =
+    await requestSerp(
+      cleanKeyword,
+      locationName,
+      languageName
+    );
+
+  const items =
+    result.items ??
+    [];
+
+  const organic =
+    organicResults(
+      items
+    );
+
+  const competitors =
+    await mapConcurrent(
+      organic,
+      PAGE_CONCURRENCY,
+      analyzeCompetitor
+    );
+
+  return {
+    keyword:
+      cleanKeyword,
+
+    market: {
+      locationName,
+      languageName,
+      device:
+        "desktop",
+    },
+
+    collectedAt:
+      new Date()
+        .toISOString(),
+
+    resultCount:
+      typeof result
+        .se_results_count ===
+        "number"
+        ? result
+            .se_results_count
+        : null,
+
+    serpFeatures:
+      Array.from(
+        new Set(
+          result.item_types ??
+          items
+            .map(
+              (item) =>
+                item.type
+            )
+            .filter(
+              (
+                value
+              ): value is string =>
+                Boolean(
+                  value
+                )
+            )
+        )
+      ),
+
+    organic,
+
+    questions:
+      extractQuestions(
+        items
+      ),
+
+    aiOverview:
+      extractAiOverview(
+        items
+      ),
+
+    competitors,
+
+    benchmark:
+      buildBenchmark(
+        competitors
+      ),
+
+    commonSections:
+      headingClusters(
+        competitors
+      ),
+
+    commonTerms:
+      commonTerms(
+        competitors
+      ),
+  };
+}
+
+
+export async function fetchLiveOrganicSerp({
+  keyword,
+  locationName =
+    "United States",
+  languageName =
+    "English",
+  depth =
+    100,
+}: {
+  keyword:
+    string;
+  locationName?:
+    string;
+  languageName?:
+    string;
+  depth?:
+    number;
+}) {
+  const cleanKeyword =
+    keyword.trim();
+
+  if (!cleanKeyword) {
+    throw new SerpIntelligenceError(
+      "keyword is required"
+    );
+  }
+
+  const result =
+    await requestSerp(
+      cleanKeyword,
+      locationName,
+      languageName,
+      depth
+    );
+
+  return organicResults(
+    result.items ??
+      []
+  );
+}

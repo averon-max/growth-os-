@@ -1,0 +1,688 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  CircleDot,
+  FileText,
+  Gauge,
+  Globe2,
+  Search,
+  Settings,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import styles from "./landing.module.css";
+
+export default function HomePage() {
+  return (
+    <main className={styles.page} data-landing="editorial-product-v3">
+      <div className={styles.globalGrid} />
+
+      <header className={styles.header}>
+        <div className={styles.navbar}>
+          <Link href="/" className={styles.brand}>
+            <Logo />
+            Growth OS
+          </Link>
+
+          <nav className={styles.nav}>
+            <a href="#keywords">Keywords</a>
+            <a href="#audience">Audience</a>
+            <a href="#execution">Execution</a>
+            <Link href="/pricing">Pricing</Link>
+          </nav>
+
+          <div className={styles.account}>
+            <Link href="/login">Log in</Link>
+            <Link href="/signup" className={styles.signup}>
+              Sign up
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className={styles.hero}>
+        <div className={styles.heroMeta}>
+          <div>
+            <span className={styles.liveDot} />
+            Connected growth intelligence
+          </div>
+
+          <span>
+            Search · Website · Audience · Execution
+          </span>
+        </div>
+
+        <div className={styles.app}>
+          <div className={styles.appTopbar}>
+            <div className={styles.appBrand}>
+              <Logo />
+              <span>Growth OS</span>
+              <i />
+              <span className={styles.siteSelect}>
+                Website
+                <ChevronDown size={9} />
+              </span>
+            </div>
+
+            <span className={styles.workspaceName}>
+              Workspace
+            </span>
+
+            <div className={styles.appTools}>
+              <Search size={11} />
+              <span>⌘ K</span>
+              <b>G</b>
+            </div>
+          </div>
+
+          <div className={styles.appBody}>
+            <aside className={styles.sidebar}>
+              <Sidebar icon={<Gauge size={12} />} label="Overview" />
+              <Sidebar icon={<CircleDot size={12} />} label="SEO" />
+              <Sidebar icon={<Search size={12} />} label="Keywords" active />
+              <Sidebar icon={<Users size={12} />} label="Audience" />
+              <Sidebar icon={<FileText size={12} />} label="Content" />
+              <Sidebar icon={<Sparkles size={12} />} label="Opportunities" />
+              <Sidebar icon={<Zap size={12} />} label="Automations" />
+              <Sidebar icon={<BarChart3 size={12} />} label="Reports" />
+
+              <div className={styles.sidebarFooter}>
+                <Sidebar icon={<Settings size={12} />} label="Settings" />
+              </div>
+            </aside>
+
+            <div className={styles.workspace}>
+              <div className={styles.workspaceTop}>
+                <div>
+                  <span>Search intelligence</span>
+                  <strong>Keywords</strong>
+                </div>
+
+                <div className={styles.controls}>
+                  <button>
+                    🇺🇸 United States
+                    <ChevronDown size={9} />
+                  </button>
+
+                  <button className={styles.primaryControl}>
+                    Sync now
+                    <ArrowRight size={10} />
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.presets}>
+                <Preset icon={<Zap size={10} />} text="Quick Wins" />
+                <Preset icon={<BarChart3 size={10} />} text="High Volume" />
+                <Preset icon={<Target size={10} />} text="Low Difficulty" />
+                <Preset icon={<CircleDot size={10} />} text="Commercial" />
+                <Preset icon={<TrendingUp size={10} />} text="Top 10" />
+                <Preset icon={<TrendingUp size={10} />} text="Near Page 1" />
+              </div>
+
+              <div className={styles.productContent}>
+                <div className={styles.signalPane}>
+                  <PanelTitle
+                    eyebrow="Ranking history"
+                    title="Signals"
+                    source="Search Console"
+                  />
+
+                  <Signal
+                    tone="success"
+                    title="Quick wins"
+                    text="Ranking 11–20 with meaningful impressions."
+                  />
+
+                  <Signal
+                    tone="warning"
+                    title="High impressions, low CTR"
+                    text="Visible frequently but rarely clicked."
+                  />
+
+                  <Signal
+                    tone="danger"
+                    title="Declining"
+                    text="Average position is getting worse."
+                  />
+
+                  <Signal
+                    tone="accent"
+                    title="Growing"
+                    text="Average position is improving."
+                  />
+                </div>
+
+                <div className={styles.explorerPane}>
+                  <PanelTitle
+                    eyebrow="Keyword explorer"
+                    title="Market + ranking metrics"
+                    source="GSC · DataForSEO"
+                  />
+
+                  <div className={styles.explorerToolbar}>
+                    <div>
+                      <Search size={10} />
+                      Search keywords
+                    </div>
+
+                    <button>Filters</button>
+                  </div>
+
+                  <div className={styles.tableHead}>
+                    <span>Keyword</span>
+                    <span>Position</span>
+                    <span>Volume</span>
+                    <span>Difficulty</span>
+                  </div>
+
+                  <div className={styles.dataState}>
+                    <div className={styles.dataIcon}>
+                      <Search size={17} />
+                    </div>
+
+                    <strong>
+                      Connected keyword data
+                    </strong>
+
+                    <span>
+                      Search Console rankings and market metrics
+                      populate this workspace after sync.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.heroStrip}>
+          <FeatureIndex n="01" text="Crawler + deterministic SEO" />
+          <FeatureIndex n="02" text="Search intelligence" />
+          <FeatureIndex n="03" text="Audience context" />
+          <FeatureIndex n="04" text="Verified execution" />
+        </div>
+      </section>
+
+      <section className={styles.statement}>
+        <div>
+          <span>THE SYSTEM</span>
+        </div>
+
+        <div>
+          <h2>
+            One product surface.
+            <br />
+            Every growth signal.
+          </h2>
+
+          <p>
+            Growth OS does not create another layer of reporting.
+            It connects website analysis, search demand, audience
+            context and execution into the same operating system.
+          </p>
+        </div>
+      </section>
+
+      <section className={styles.productSection} id="keywords">
+        <SectionLabel
+          n="01"
+          title="Keyword intelligence"
+        />
+
+        <div className={styles.sectionMain}>
+          <div className={styles.sectionCopy}>
+            <h2>
+              Signals backed by
+              ranking history.
+            </h2>
+
+            <p>
+              The same categories used inside the real product:
+              quick wins, low CTR, declining rankings,
+              growing keywords, lost rankings and cannibalization.
+            </p>
+          </div>
+
+          <div className={styles.signalBoard}>
+            <SignalLarge
+              tone="success"
+              title="Quick wins"
+              description="Ranking 11–20 with meaningful impressions."
+            />
+
+            <SignalLarge
+              tone="warning"
+              title="High impressions, low CTR"
+              description="Seen often in search but rarely clicked."
+            />
+
+            <SignalLarge
+              tone="danger"
+              title="Declining"
+              description="Average position deteriorating over time."
+            />
+
+            <SignalLarge
+              tone="accent"
+              title="Growing"
+              description="Average position improving over time."
+            />
+
+            <SignalLarge
+              tone="muted"
+              title="Lost"
+              description="No fresh ranking data for the keyword."
+            />
+
+            <SignalLarge
+              tone="danger"
+              title="Cannibalization"
+              description="Multiple pages competing for one query."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.productSection} id="audience">
+        <SectionLabel
+          n="02"
+          title="Audience intelligence"
+        />
+
+        <div className={styles.sectionMain}>
+          <div className={styles.sectionCopy}>
+            <h2>
+              Traffic without
+              made-up metrics.
+            </h2>
+
+            <p>
+              Connected Cloudflare snapshots power the audience
+              workspace. Periods, countries, devices and bot
+              categories remain attached to the source data.
+            </p>
+          </div>
+
+          <div className={styles.audiencePanel}>
+            <div className={styles.audienceTop}>
+              <div>
+                <Activity size={11} />
+                Traffic overview
+              </div>
+
+              <div className={styles.periods}>
+                <span className={styles.periodActive}>7</span>
+                <span>15</span>
+                <span>30</span>
+              </div>
+            </div>
+
+            <div className={styles.audienceStats}>
+              <AudienceMetric icon={<Activity size={11} />} title="Requests" />
+              <AudienceMetric icon={<Users size={11} />} title="Visitor days" />
+              <AudienceMetric icon={<Bot size={11} />} title="Verified bots" />
+              <AudienceMetric icon={<Globe2 size={11} />} title="Bandwidth" />
+            </div>
+
+            <div className={styles.audienceBody}>
+              <div className={styles.activityPanel}>
+                <div className={styles.activityHeader}>
+                  <div>
+                    <span>Traffic activity</span>
+                    <strong>Requests over time</strong>
+                  </div>
+
+                  <span>Cloudflare</span>
+                </div>
+
+                <div className={styles.activityCanvas}>
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+
+                  <div className={styles.syncedState}>
+                    <span className={styles.liveDot} />
+                    Synced daily snapshots
+                  </div>
+                </div>
+              </div>
+
+              <aside className={styles.audienceAside}>
+                <Breakdown icon={<Globe2 size={11} />} title="Countries" />
+                <Breakdown icon={<Users size={11} />} title="Devices" />
+                <Breakdown icon={<Bot size={11} />} title="Bot activity" />
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.productSection} id="execution">
+        <SectionLabel
+          n="03"
+          title="Execution"
+        />
+
+        <div className={styles.sectionMain}>
+          <div className={styles.sectionCopy}>
+            <h2>
+              Detection is only
+              the beginning.
+            </h2>
+
+            <p>
+              The pipeline keeps review, execution and verification
+              visible instead of hiding changes behind an automation.
+            </p>
+          </div>
+
+          <div className={styles.execution}>
+            <ExecutionStep
+              n="01"
+              icon={<Globe2 size={13} />}
+              title="Connect"
+              text="Website and external data sources."
+              tone="accent"
+            />
+
+            <ExecutionStep
+              n="02"
+              icon={<Search size={13} />}
+              title="Analyze"
+              text="Deterministic rules and search signals."
+              tone="accent"
+            />
+
+            <ExecutionStep
+              n="03"
+              icon={<Sparkles size={13} />}
+              title="Prioritize"
+              text="Opportunity with source context."
+              tone="warning"
+            />
+
+            <ExecutionStep
+              n="04"
+              icon={<Zap size={13} />}
+              title="Apply"
+              text="Approved change through the provider."
+              tone="accent"
+            />
+
+            <ExecutionStep
+              n="05"
+              icon={<CheckCircle2 size={13} />}
+              title="Verify"
+              text="Real re-fetch confirms the result."
+              tone="success"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.closing}>
+        <div>
+          <span>GROWTH OS</span>
+
+          <h2>
+            One visual language
+            from website to product.
+          </h2>
+        </div>
+
+        <div className={styles.closingRight}>
+          <p>
+            Understand the signal. Decide what matters.
+            Execute the work. Verify the outcome.
+          </p>
+
+          <div>
+            <Link href="/signup" className={styles.signup}>
+              Start growing
+            </Link>
+
+            <Link href="/pricing" className={styles.secondaryButton}>
+              Pricing
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className={styles.footer}>
+        <Link href="/" className={styles.brand}>
+          <Logo />
+          Growth OS
+        </Link>
+
+        <span>
+          SEO intelligence + business growth operations
+        </span>
+
+        <div>
+          <Link href="/pricing">Pricing</Link>
+          <Link href="/login">Log in</Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function Logo() {
+  return (
+    <span className={styles.logo}>
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
+function Sidebar({
+  icon,
+  label,
+  active = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <div className={`${styles.sidebarItem} ${active ? styles.sidebarActive : ""}`}>
+      {icon}
+      {label}
+    </div>
+  );
+}
+
+function Preset({
+  icon,
+  text,
+}: {
+  icon: ReactNode;
+  text: string;
+}) {
+  return (
+    <button>
+      {icon}
+      {text}
+    </button>
+  );
+}
+
+function PanelTitle({
+  eyebrow,
+  title,
+  source,
+}: {
+  eyebrow: string;
+  title: string;
+  source: string;
+}) {
+  return (
+    <div className={styles.panelTitle}>
+      <div>
+        <span>{eyebrow}</span>
+        <strong>{title}</strong>
+      </div>
+
+      <span>{source}</span>
+    </div>
+  );
+}
+
+function Signal({
+  tone,
+  title,
+  text,
+}: {
+  tone: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className={styles.signalRow}>
+      <span className={styles.signalDot} data-tone={tone} />
+
+      <div>
+        <strong>{title}</strong>
+        <span>{text}</span>
+      </div>
+
+      <ArrowRight size={10} />
+    </div>
+  );
+}
+
+function FeatureIndex({
+  n,
+  text,
+}: {
+  n: string;
+  text: string;
+}) {
+  return (
+    <div>
+      <span>{n}</span>
+      <strong>{text}</strong>
+    </div>
+  );
+}
+
+function SectionLabel({
+  n,
+  title,
+}: {
+  n: string;
+  title: string;
+}) {
+  return (
+    <div className={styles.sectionLabel}>
+      <span>{n}</span>
+      <strong>{title}</strong>
+    </div>
+  );
+}
+
+function SignalLarge({
+  tone,
+  title,
+  description,
+}: {
+  tone: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className={styles.signalLarge}>
+      <span className={styles.signalDot} data-tone={tone} />
+
+      <div>
+        <strong>{title}</strong>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function AudienceMetric({
+  icon,
+  title,
+}: {
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <div className={styles.audienceMetric}>
+      <div>
+        {icon}
+        <span>{title}</span>
+      </div>
+
+      <strong>Connected</strong>
+    </div>
+  );
+}
+
+function Breakdown({
+  icon,
+  title,
+}: {
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <div className={styles.breakdown}>
+      <div>
+        {icon}
+        <span>{title}</span>
+      </div>
+
+      <i />
+      <i />
+      <i />
+    </div>
+  );
+}
+
+function ExecutionStep({
+  n,
+  icon,
+  title,
+  text,
+  tone,
+}: {
+  n: string;
+  icon: ReactNode;
+  title: string;
+  text: string;
+  tone: string;
+}) {
+  return (
+    <div className={styles.executionStep}>
+      <div>
+        <span>{n}</span>
+        <i data-tone={tone}>
+          {icon}
+        </i>
+      </div>
+
+      <strong>{title}</strong>
+      <p>{text}</p>
+
+      {n !== "05" && (
+        <ArrowRight className={styles.executionArrow} size={12} />
+      )}
+    </div>
+  );
+}

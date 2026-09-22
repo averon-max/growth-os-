@@ -1,47 +1,191 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireUser, requireWorkspaceAccess, authErrorResponse } from "@/lib/auth-helpers";
-import { verifyOAuthState, InvalidStateError } from "@/lib/integrations/google/state";
-import { exchangeCodeForTokens } from "@/lib/integrations/google/oauth-client";
-import { upsertGoogleAnalyticsConnection } from "@/lib/integrations/provider-connection-service";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
-export async function GET(req: NextRequest) {
+import {
+  requireUser,
+  requireWorkspaceAccess,
+  authErrorResponse,
+} from "@/lib/auth-helpers";
+
+import {
+  verifyOAuthState,
+  InvalidStateError,
+} from "@/lib/integrations/google/state";
+
+import {
+  exchangeCodeForTokens,
+} from "@/lib/integrations/google/oauth-client";
+
+import {
+  upsertGoogleAnalyticsConnection,
+} from "@/lib/integrations/provider-connection-service";
+
+function callbackUrl(
+  req: NextRequest
+): string {
+  return (
+    process.env
+      .GOOGLE_GA4_REDIRECT_URI
+      ?.trim() ||
+    new URL(
+      "/api/integrations/google-analytics/callback",
+      req.url
+    ).toString()
+  );
+}
+
+function safeReturnTo(
+  value:
+    string | undefined
+): string {
+  if (
+    value &&
+    value.startsWith("/") &&
+    !value.startsWith("//")
+  ) {
+    return value;
+  }
+
+  return "/dashboard/audience?ga4=connected";
+}
+
+export async function GET(
+  req: NextRequest
+) {
   try {
-    const user = await requireUser();
+    const user =
+      await requireUser();
 
-    const code = req.nextUrl.searchParams.get("code");
-    const state = req.nextUrl.searchParams.get("state");
-    const oauthError = req.nextUrl.searchParams.get("error");
+    const code =
+      req.nextUrl
+        .searchParams
+        .get("code");
+
+    const state =
+      req.nextUrl
+        .searchParams
+        .get("state");
+
+    const oauthError =
+      req.nextUrl
+        .searchParams
+        .get("error");
 
     if (oauthError) {
-      return NextResponse.json({ error: `Google OAuth error: ${oauthError}` }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            `Google OAuth error: ${oauthError}`,
+        },
+        {
+          status: 400,
+        }
+      );
     }
-    if (!code || !state) {
-      return NextResponse.json({ error: "Missing code or state." }, { status: 400 });
+
+    if (
+      !code ||
+      !state
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing code or state.",
+        },
+        {
+          status: 400,
+        }
+      );
     }
 
     let statePayload;
+
     try {
-      statePayload = verifyOAuthState(state);
-    } catch (err) {
-      if (err instanceof InvalidStateError) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
+      statePayload =
+        verifyOAuthState(
+          state
+        );
+    } catch (error) {
+      if (
+        error instanceof
+        InvalidStateError
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              error.message,
+          },
+          {
+            status: 400,
+          }
+        );
       }
-      throw err;
+
+      throw error;
     }
 
-    if (statePayload.userId !== user.id) {
-      return NextResponse.json({ error: "State does not match authenticated user." }, { status: 403 });
+    if (
+      statePayload.userId !==
+      user.id
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "State does not match authenticated user.",
+        },
+        {
+          status: 403,
+        }
+      );
     }
 
-    await requireWorkspaceAccess(user.id, statePayload.workspaceId);
+    await requireWorkspaceAccess(
+      user.id,
+      statePayload.workspaceId
+    );
 
-    const tokens = await exchangeCodeForTokens(code);
-    await upsertGoogleAnalyticsConnection(statePayload.workspaceId, tokens);
+    const tokens =
+      await exchangeCodeForTokens(
+        code,
+        callbackUrl(req)
+      );
 
-    return NextResponse.redirect(new URL("/dashboard?connected=ga4", req.url));
-  } catch (err) {
-    console.error("[GA4 callback error]", err);
-    const { status, body } = authErrorResponse(err);
-    return NextResponse.json(body, { status });
+    await upsertGoogleAnalyticsConnection(
+      statePayload.workspaceId,
+      tokens
+    );
+
+    return NextResponse.redirect(
+      new URL(
+        safeReturnTo(
+          statePayload.returnTo
+        ),
+        req.url
+      )
+    );
+  } catch (error) {
+    console.error(
+      "[GA4 callback error]",
+      error instanceof Error
+        ? error.message
+        : "Unknown error"
+    );
+
+    const {
+      status,
+      body,
+    } =
+      authErrorResponse(
+        error
+      );
+
+    return NextResponse.json(
+      body,
+      {
+        status,
+      }
+    );
   }
 }

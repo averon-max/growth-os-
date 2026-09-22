@@ -1,0 +1,51 @@
+export interface CloudflareDailyGroup {
+  dimensions: {
+    date: string; // YYYY-MM-DD
+    clientCountryName: string;
+    clientDeviceType: string; // "desktop" | "mobile" | "tablet" | "other"
+    verifiedBotCategory: string; // "" means not identified as a known bot
+  };
+  count: number;
+  sum: {
+    visits: number;
+    edgeResponseBytes: number;
+  };
+}
+
+export interface CloudflareGraphQLResponse {
+  data?: {
+    viewer?: {
+      zones?: Array<{
+        groups?: CloudflareDailyGroup[];
+      }>;
+    };
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface TrafficByCountry {
+  country: string;
+  requests: number;
+  visits: number;
+}
+
+export interface TrafficByDevice {
+  device: string;
+  requests: number;
+  visits: number;
+}
+
+export interface TrafficByBotCategory {
+  category: string; // "" = not identified as a known bot (likely human, but not guaranteed)
+  requests: number;
+}
+
+export interface DailyTrafficData {
+  date: string;
+  totalRequests: number;
+  totalVisits: number;
+  bandwidthBytes: number;
+  byCountry: TrafficByCountry[];
+  byDevice: TrafficByDevice[];
+  byBotCategory: TrafficByBotCategory[];
+}

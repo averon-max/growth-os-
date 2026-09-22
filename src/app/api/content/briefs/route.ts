@@ -4,11 +4,44 @@ import { prisma } from "@/lib/prisma";
 import { createContentBrief } from "@/lib/content/service";
 import { geminiGenerator } from "@/lib/content/gemini-generator";
 import { getContentBriefs } from "@/lib/content/repository";
+import {
+  parseOptionalExplicitSearchMissionInput,
+} from "@/lib/content/search-mission-ingress";
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const body = await req.json();
+
+    const missionIngress =
+      parseOptionalExplicitSearchMissionInput(
+        (
+          body as {
+            searchMission?: unknown;
+          }
+        ).searchMission
+      );
+
+    if (
+      !missionIngress.ok
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            missionIngress.error,
+
+          code:
+            missionIngress.code,
+        },
+        {
+          status:
+            400,
+        }
+      );
+    }
+
+    const searchMission =
+      missionIngress.value;
     const { websiteId, opportunityId } = body as { websiteId?: string; opportunityId?: string };
 
     if (!websiteId) {
@@ -56,13 +89,137 @@ export async function POST(req: NextRequest) {
       recommendation,
       businessName: business.name,
       websiteUrl: website.url,
-    });
+
+      searchMission,});
 
     return NextResponse.json({ brief }, { status: 201 });
   } catch (err) {
-    console.error("content/briefs POST error", err);
-    const { status, body: errBody } = authErrorResponse(err);
-    return NextResponse.json(errBody, { status });
+    const providerMessage =
+      err instanceof Error
+        ? err.message
+        : "";
+
+    const providerMatch =
+      /(?:Gemini|Groq) API error (429|500|502|503|504)\b/.exec(
+        providerMessage
+      );
+
+    if (providerMatch) {
+      const providerStatus =
+        Number(
+          providerMatch[1]
+        );
+
+      console.warn(
+        "content/briefs POST error provider failure",
+        {
+          status:
+            providerStatus,
+        }
+      );
+
+      if (
+        providerStatus ===
+        429
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "AI provider rate limit or quota was reached. Check provider quota/billing and try again.",
+
+            code:
+              "CONTENT_PROVIDER_RATE_LIMIT",
+
+            retryable:
+              true,
+          },
+          {
+            status:
+              429,
+
+            headers: {
+              "Retry-After":
+                "30",
+            },
+          }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "AI generation is temporarily unavailable. Please try again.",
+
+          code:
+            "CONTENT_PROVIDER_TEMPORARY",
+
+          retryable:
+            true,
+        },
+        {
+          status:
+            503,
+
+          headers: {
+            "Retry-After":
+              "15",
+          },
+        }
+      );
+    }
+
+    if (
+      /AbortError|aborted|timeout/i.test(
+        providerMessage
+      )
+    ) {
+      console.warn(
+        "content/briefs POST error provider timeout"
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "AI generation timed out. Please try again.",
+
+          code:
+            "CONTENT_PROVIDER_TIMEOUT",
+
+          retryable:
+            true,
+        },
+        {
+          status:
+            504,
+
+          headers: {
+            "Retry-After":
+              "10",
+          },
+        }
+      );
+    }
+
+    console.error(
+      "content/briefs POST error",
+      err
+    );
+
+    const {
+      status,
+      body:
+        errBody,
+    } =
+      authErrorResponse(
+        err
+      );
+
+    return NextResponse.json(
+      errBody,
+      {
+        status,
+      }
+    );
   }
 }
 

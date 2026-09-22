@@ -1,0 +1,327 @@
+.root {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+.hero {
+  position: relative;
+
+  min-height: 132px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  padding: 23px 24px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(255,255,255,.065);
+
+  border-radius: 12px;
+
+  background:
+    radial-gradient(
+      620px 260px at 7% -55%,
+      rgba(103,100,211,.14),
+      transparent 67%
+    ),
+    radial-gradient(
+      560px 240px at 96% -55%,
+      rgba(45,137,154,.09),
+      transparent 68%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.022),
+      rgba(255,255,255,.005)
+    ),
+    #111214;
+}
+
+.hero::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.028);
+}
+
+.heroLeft {
+  position: relative;
+  z-index: 1;
+
+  min-width: 0;
+}
+
+.eyebrow {
+  margin-bottom: 7px;
+
+  color: #757981;
+
+  font-size: 9px;
+  font-weight: 650;
+
+  letter-spacing: .08em;
+
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+
+  color: #e9e9eb;
+
+  font-size: 21px;
+  font-weight: 590;
+
+  letter-spacing: -.035em;
+}
+
+.description {
+  max-width: 650px;
+
+  margin: 7px 0 0;
+
+  color: #82868e;
+
+  font-size: 11px;
+
+  line-height: 1.55;
+}
+
+.sources {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap: 6px;
+
+  margin-top: 14px;
+}
+
+.source,
+.syncStatus {
+  height: 25px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 0 8px;
+
+  border:
+    1px solid rgba(255,255,255,.05);
+
+  border-radius: 6px;
+
+  background:
+    rgba(255,255,255,.015);
+
+  color: #878b93;
+
+  font-size: 8px;
+}
+
+.syncStatus {
+  color: #747880;
+}
+
+.liveDot {
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: #59b777;
+
+  box-shadow:
+    0 0 8px rgba(89,183,119,.32);
+}
+
+.controls {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+}
+
+.range {
+  display: flex;
+
+  gap: 2px;
+
+  padding: 3px;
+
+  border:
+    1px solid rgba(255,255,255,.065);
+
+  border-radius: 7px;
+
+  background: rgba(5,6,7,.45);
+}
+
+.rangeButton {
+  height: 28px;
+
+  min-width: 39px;
+
+  padding: 0 9px;
+
+  border: 0;
+  border-radius: 5px;
+
+  background: transparent;
+
+  color: #676b73;
+
+  font-size: 9px;
+  font-weight: 570;
+
+  cursor: pointer;
+}
+
+.rangeButton:hover {
+  color: #b8bbc0;
+
+  background:
+    rgba(255,255,255,.025);
+}
+
+.rangeButtonActive {
+  color: #e3e4e6;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.09),
+      rgba(255,255,255,.04)
+    );
+
+  box-shadow:
+    inset 0 0 0 1px
+      rgba(255,255,255,.04);
+}
+
+.actionButton,
+.iconButton {
+  height: 34px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  padding: 0 10px;
+
+  border:
+    1px solid rgba(255,255,255,.065);
+
+  border-radius: 7px;
+
+  background:
+    rgba(255,255,255,.018);
+
+  color: #858991;
+
+  font-size: 9px;
+  font-weight: 570;
+
+  text-decoration: none;
+
+  cursor: pointer;
+}
+
+.actionButton:hover,
+.iconButton:hover {
+  color: #ced0d4;
+
+  border-color:
+    rgba(255,255,255,.10);
+
+  background:
+    rgba(255,255,255,.035);
+}
+
+.syncButton {
+  color: #d8d9dc;
+
+  border-color:
+    rgba(111,108,216,.18);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(111,108,216,.19),
+      rgba(111,108,216,.10)
+    );
+}
+
+.syncButton:hover {
+  border-color:
+    rgba(111,108,216,.28);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(111,108,216,.25),
+      rgba(111,108,216,.13)
+    );
+}
+
+.actionButton:disabled {
+  opacity: .5;
+
+  cursor: not-allowed;
+}
+
+.iconButton {
+  width: 34px;
+
+  padding: 0;
+}
+
+.spinning {
+  animation:
+    spin .75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform:
+      rotate(360deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .controls {
+    width: 100%;
+
+    justify-content:
+      flex-start;
+  }
+}

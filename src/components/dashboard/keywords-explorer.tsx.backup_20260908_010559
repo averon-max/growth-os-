@@ -1,0 +1,738 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import {
+  Tags, Search as SearchIcon, ChevronUp, ChevronDown, ChevronsUpDown,
+  SlidersHorizontal, X, Zap, Target, TrendingUp, BarChart2, DollarSign,
+} from "lucide-react";
+import { EmptyState, Badge } from "./ui";
+import uiStyles from "./ui.module.css";
+import styles from "./keywords-explorer.module.css";
+import suggestionStyles from "./keyword-suggestions.module.css";
+import { KeywordTrendDrawer } from "./keyword-trend-drawer";
+import { difficultyTone } from "./keyword-suggestions";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+interface KeywordSnapshotRow {
+  position: string | null;
+  impressions: number | null;
+  clicks: number | null;
+  ctr: string | null;
+}
+interface KeywordMarketMetricRow {
+  market: string;
+  language: string;
+  volume: number | null;
+  difficulty: number | null;
+  cpc: string | number | null;
+  competitionIndex: number | null;
+}
+interface KeywordRow {
+  id: string;
+  text: string;
+  intent: string | null;
+  snapshots: KeywordSnapshotRow[];
+  marketMetrics: KeywordMarketMetricRow[];
+}
+interface KeywordsResponse {
+  items: KeywordRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+type SortField = "text" | "position" | "volume" | "difficulty" | "cpc" | "impressions" | "clicks";
+type SortDir = "asc" | "desc";
+
+const MARKET_OPTIONS = [
+  { code: "US", label: "🇺🇸 US", language: "English" },
+  { code: "CA", label: "🇨🇦 CA", language: "English" },
+  { code: "GB", label: "🇬🇧 GB", language: "English" },
+  { code: "AU", label: "🇦🇺 AU", language: "English" },
+] as const;
+type MarketCode = (typeof MARKET_OPTIONS)[number]["code"];
+
+const INTENT_OPTIONS = ["ALL", "INFORMATIONAL", "COMMERCIAL", "TRANSACTIONAL", "NAVIGATIONAL"] as const;
+type IntentOption = (typeof INTENT_OPTIONS)[number];
+
+const PAGE_SIZE = 25;
+
+// ── Presets ───────────────────────────────────────────────────────────────────
+interface Preset {
+  label: string;
+  icon: React.ReactNode;
+  params: Partial<FiltersState & { intent: IntentOption; sortBy: SortField; sortDir: SortDir }>;
+}
+const PRESETS: Preset[] = [
+  {
+    label: "Quick Wins",
+    icon: <Zap size={12} />,
+    params: { minVolume: "500", maxKd: "40", sortBy: "volume", sortDir: "desc" },
+  },
+  {
+    label: "High Volume",
+    icon: <BarChart2 size={12} />,
+    params: { minVolume: "10000", sortBy: "volume", sortDir: "desc" },
+  },
+  {
+    label: "Low Difficulty",
+    icon: <Target size={12} />,
+    params: { maxKd: "30", sortBy: "difficulty", sortDir: "asc" },
+  },
+  {
+    label: "Commercial",
+    icon: <DollarSign size={12} />,
+    params: { intent: "COMMERCIAL", sortBy: "volume", sortDir: "desc" },
+  },
+  {
+    label: "Top 10",
+    icon: <TrendingUp size={12} />,
+    params: { maxPosition: "10", sortBy: "position", sortDir: "asc" },
+  },
+  {
+    label: "Near Page 1",
+    icon: <TrendingUp size={12} />,
+    params: { minPosition: "11", maxPosition: "20", sortBy: "position", sortDir: "asc" },
+  },
+];
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmtVol(v: number | null): string {
+  if (v === null) return "—";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 10_000) return `${Math.round(v / 1_000)}K`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  return v.toLocaleString();
+}
+function fmtCpc(v: string | number | null): string {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n) || n === 0) return "—";
+  return `$${n.toFixed(2)}`;
+}
+function fmtImpr(v: number | null): string {
+  if (v === null) return "—";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${Math.round(v / 1_000)}K`;
+  return String(v);
+}
+
+// ── Metric context labels ─────────────────────────────────────────────────────
+function kdLabel(kd: number | null): { label: string; desc: string; color: string } {
+  if (kd === null) return { label: "—", desc: "No data", color: "var(--secondary)" };
+  if (kd < 30) return { label: "Easy", desc: "Low competition", color: "var(--success)" };
+  if (kd < 50) return { label: "Possible", desc: "Moderate competition", color: "#60a5fa" };
+  if (kd < 70) return { label: "Difficult", desc: "High competition", color: "var(--warning)" };
+  return { label: "Hard", desc: "Very high competition", color: "var(--danger)" };
+}
+function volLabel(v: number | null): string {
+  if (v === null) return "";
+  if (v >= 100_000) return "Very high demand";
+  if (v >= 10_000) return "High demand";
+  if (v >= 1_000) return "Moderate demand";
+  if (v >= 100) return "Low demand";
+  return "Very low demand";
+}
+function cpcLabel(v: string | number | null): string {
+  if (v === null || v === undefined) return "";
+  const n = Number(v);
+  if (!Number.isFinite(n) || n === 0) return "";
+  if (n >= 10) return "Very high value";
+  if (n >= 4) return "Strong value";
+  if (n >= 1) return "Moderate value";
+  return "Low value";
+}
+function compLabel(ci: number | null): string {
+  if (ci === null) return "—";
+  if (ci >= 80) return "Very High";
+  if (ci >= 50) return "High";
+  if (ci >= 20) return "Medium";
+  return "Low";
+}
+function positionTone(p: number | null): "success" | "warning" | "muted" {
+  if (p === null) return "muted";
+  if (p < 4) return "success";
+  if (p <= 10) return "warning";
+  return "muted";
+}
+
+// ── Opportunity ───────────────────────────────────────────────────────────────
+function oppScore(vol: number | null, kd: number | null): number | null {
+  if (vol === null || kd === null) return null;
+  const v = Math.min(vol / 100_000, 1) * 60;
+  const d = ((100 - Math.min(kd, 100)) / 100) * 40;
+  return Math.round(v + d);
+}
+function oppDecision(vol: number | null, kd: number | null): { action: string; reason: string; color: string } | null {
+  if (vol === null || kd === null) return null;
+  const highVol = vol >= 1_000;
+  const lowKd = kd < 40;
+  const midKd = kd < 70;
+  if (highVol && lowKd) return { action: "Prioritize", reason: "High demand + manageable difficulty", color: "var(--success)" };
+  if (highVol && midKd) return { action: "Long-term", reason: "High demand but competitive", color: "#60a5fa" };
+  if (highVol && !midKd) return { action: "Hard target", reason: "High demand but very difficult", color: "var(--warning)" };
+  if (!highVol && lowKd) return { action: "Niche", reason: "Low volume but easy win", color: "var(--accent)" };
+  return { action: "Low priority", reason: "Low demand and high difficulty", color: "var(--secondary)" };
+}
+
+// ── Sort icon ─────────────────────────────────────────────────────────────────
+function SortIcon({ field, sortBy, sortDir }: { field: SortField; sortBy: SortField; sortDir: SortDir }) {
+  if (sortBy !== field) return <ChevronsUpDown size={11} style={{ opacity: 0.3, marginLeft: 2, verticalAlign: "middle" }} />;
+  return sortDir === "asc"
+    ? <ChevronUp size={11} style={{ marginLeft: 2, color: "var(--accent)", verticalAlign: "middle" }} />
+    : <ChevronDown size={11} style={{ marginLeft: 2, color: "var(--accent)", verticalAlign: "middle" }} />;
+}
+
+// ── Metric cell ───────────────────────────────────────────────────────────────
+function MetricCell({ value, sub, color }: { value: string; sub?: string; color?: string }) {
+  return (
+    <div style={{ lineHeight: 1.2 }}>
+      <div style={{ fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-mono, monospace)", fontSize: "0.82rem", color: color ?? "var(--primary)", fontWeight: 600 }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: "0.65rem", color: "var(--secondary)", marginTop: 1 }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── Filters state ─────────────────────────────────────────────────────────────
+interface FiltersState {
+  minVolume: string;
+  maxVolume: string;
+  minKd: string;
+  maxKd: string;
+  minCpc: string;
+  maxCpc: string;
+  minPosition: string;
+  maxPosition: string;
+  hasVolume: boolean;
+}
+const EMPTY_FILTERS: FiltersState = {
+  minVolume: "", maxVolume: "", minKd: "", maxKd: "",
+  minCpc: "", maxCpc: "", minPosition: "", maxPosition: "", hasVolume: false,
+};
+
+// ── URL helpers ───────────────────────────────────────────────────────────────
+function readUrlParams(sp: URLSearchParams): {
+  market: MarketCode;
+  intent: IntentOption;
+  search: string;
+  sortBy: SortField;
+  sortDir: SortDir;
+  page: number;
+  filters: FiltersState;
+} {
+  const market = (MARKET_OPTIONS.find(m => m.code === sp.get("market"))?.code ?? "US") as MarketCode;
+  const intentRaw = sp.get("intent") ?? "ALL";
+  const intent = (INTENT_OPTIONS.includes(intentRaw as IntentOption) ? intentRaw : "ALL") as IntentOption;
+  const search = sp.get("q") ?? "";
+  const sortByRaw = sp.get("sortBy") ?? "volume";
+  const validSorts: SortField[] = ["text", "position", "volume", "difficulty", "cpc", "impressions", "clicks"];
+  const sortBy = (validSorts.includes(sortByRaw as SortField) ? sortByRaw : "volume") as SortField;
+  const sortDir = (sp.get("sortDir") === "asc" ? "asc" : "desc") as SortDir;
+  const page = Math.max(1, parseInt(sp.get("page") ?? "1", 10) || 1);
+  const filters: FiltersState = {
+    minVolume: sp.get("minVolume") ?? "",
+    maxVolume: sp.get("maxVolume") ?? "",
+    minKd: sp.get("minKd") ?? "",
+    maxKd: sp.get("maxKd") ?? "",
+    minCpc: sp.get("minCpc") ?? "",
+    maxCpc: sp.get("maxCpc") ?? "",
+    minPosition: sp.get("minPosition") ?? "",
+    maxPosition: sp.get("maxPosition") ?? "",
+    hasVolume: sp.get("hasVolume") === "1",
+  };
+  return { market, intent, search, sortBy, sortDir, page, filters };
+}
+
+function buildUrlParams(
+  workspaceId: string,
+  market: MarketCode,
+  intent: IntentOption,
+  search: string,
+  sortBy: SortField,
+  sortDir: SortDir,
+  page: number,
+  filters: FiltersState,
+): URLSearchParams {
+  const p = new URLSearchParams({ workspaceId });
+  if (market !== "US") p.set("market", market);
+  if (intent !== "ALL") p.set("intent", intent);
+  if (search) p.set("q", search);
+  if (sortBy !== "volume") p.set("sortBy", sortBy);
+  if (sortDir !== "desc") p.set("sortDir", sortDir);
+  if (page > 1) p.set("page", String(page));
+  if (filters.minVolume) p.set("minVolume", filters.minVolume);
+  if (filters.maxVolume) p.set("maxVolume", filters.maxVolume);
+  if (filters.minKd) p.set("minKd", filters.minKd);
+  if (filters.maxKd) p.set("maxKd", filters.maxKd);
+  if (filters.minCpc) p.set("minCpc", filters.minCpc);
+  if (filters.maxCpc) p.set("maxCpc", filters.maxCpc);
+  if (filters.minPosition) p.set("minPosition", filters.minPosition);
+  if (filters.maxPosition) p.set("maxPosition", filters.maxPosition);
+  if (filters.hasVolume) p.set("hasVolume", "1");
+  return p;
+}
+
+// ── Active filter chips ───────────────────────────────────────────────────────
+function activeFilterChips(filters: FiltersState, intent: IntentOption, market: MarketCode): string[] {
+  const chips: string[] = [];
+  if (market !== "US") chips.push(`Market: ${market}`);
+  if (intent !== "ALL") chips.push(`Intent: ${intent.charAt(0) + intent.slice(1).toLowerCase()}`);
+  if (filters.minVolume && filters.maxVolume) chips.push(`Vol: ${filters.minVolume}–${filters.maxVolume}`);
+  else if (filters.minVolume) chips.push(`Vol ≥ ${Number(filters.minVolume).toLocaleString()}`);
+  else if (filters.maxVolume) chips.push(`Vol ≤ ${Number(filters.maxVolume).toLocaleString()}`);
+  if (filters.minKd && filters.maxKd) chips.push(`KD: ${filters.minKd}–${filters.maxKd}`);
+  else if (filters.minKd) chips.push(`KD ≥ ${filters.minKd}`);
+  else if (filters.maxKd) chips.push(`KD ≤ ${filters.maxKd}`);
+  if (filters.minCpc && filters.maxCpc) chips.push(`CPC: $${filters.minCpc}–$${filters.maxCpc}`);
+  else if (filters.minCpc) chips.push(`CPC ≥ $${filters.minCpc}`);
+  else if (filters.maxCpc) chips.push(`CPC ≤ $${filters.maxCpc}`);
+  if (filters.minPosition && filters.maxPosition) chips.push(`Pos: ${filters.minPosition}–${filters.maxPosition}`);
+  else if (filters.minPosition) chips.push(`Pos ≥ ${filters.minPosition}`);
+  else if (filters.maxPosition) chips.push(`Pos ≤ ${filters.maxPosition}`);
+  if (filters.hasVolume) chips.push("Has volume data");
+  return chips;
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+export function KeywordsExplorer({ workspaceId }: { workspaceId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Initialize state from URL
+  const initial = readUrlParams(searchParams);
+  const [data, setData] = useState<KeywordsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [market, setMarket] = useState<MarketCode>(initial.market);
+  const [intent, setIntent] = useState<IntentOption>(initial.intent);
+  const [searchInputValue, setSearchInputValue] = useState(initial.search);
+  const [search, setSearch] = useState(initial.search);
+  const [sortBy, setSortBy] = useState<SortField>(initial.sortBy);
+  const [sortDir, setSortDir] = useState<SortDir>(initial.sortDir);
+  const [page, setPage] = useState(initial.page);
+  const [showFilters, setShowFilters] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<FiltersState>(initial.filters);
+  const [appliedFilters, setAppliedFilters] = useState<FiltersState>(initial.filters);
+  const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync URL whenever state changes
+  const syncUrl = useCallback((
+    m: MarketCode, i: IntentOption, s: string,
+    sb: SortField, sd: SortDir, pg: number, f: FiltersState,
+  ) => {
+    const p = buildUrlParams(workspaceId, m, i, s, sb, sd, pg, f);
+    router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+  }, [router, pathname, workspaceId]);
+
+  const activeMarketObj = MARKET_OPTIONS.find(m => m.code === market) ?? MARKET_OPTIONS[0];
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      workspaceId,
+      page: String(page),
+      limit: String(PAGE_SIZE),
+      market: activeMarketObj.code,
+      language: activeMarketObj.language,
+      sortBy,
+      sortDir,
+    });
+    if (intent !== "ALL") params.set("intent", intent);
+    if (search.trim()) params.set("filter", search.trim());
+    if (appliedFilters.minVolume) params.set("minVolume", appliedFilters.minVolume);
+    if (appliedFilters.maxVolume) params.set("maxVolume", appliedFilters.maxVolume);
+    if (appliedFilters.minKd) params.set("minKd", appliedFilters.minKd);
+    if (appliedFilters.maxKd) params.set("maxKd", appliedFilters.maxKd);
+    if (appliedFilters.minPosition) params.set("minPosition", appliedFilters.minPosition);
+    if (appliedFilters.maxPosition) params.set("maxPosition", appliedFilters.maxPosition);
+    if (appliedFilters.hasVolume) params.set("hasVolume", "1");
+    const res = await fetch(`/api/keywords?${params.toString()}`);
+    if (res.ok) setData(await res.json());
+    setLoading(false);
+  }, [workspaceId, page, intent, search, market, sortBy, sortDir, appliedFilters, activeMarketObj]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const h = () => load();
+    window.addEventListener("growth-os:keywords-updated", h);
+    return () => window.removeEventListener("growth-os:keywords-updated", h);
+  }, [load]);
+
+  const handleSearchInput = (v: string) => {
+    setSearchInputValue(v);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearch(v);
+      setPage(1);
+      syncUrl(market, intent, v, sortBy, sortDir, 1, appliedFilters);
+    }, 300);
+  };
+
+  const handleSort = (field: SortField) => {
+    const newDir: SortDir = sortBy === field ? (sortDir === "asc" ? "desc" : "asc") : (["text"].includes(field) ? "asc" : "desc");
+    setSortBy(field);
+    setSortDir(newDir);
+    setPage(1);
+    syncUrl(market, intent, search, field, newDir, 1, appliedFilters);
+  };
+
+  const handleMarketChange = (m: MarketCode) => {
+    setMarket(m);
+    setPage(1);
+    syncUrl(m, intent, search, sortBy, sortDir, 1, appliedFilters);
+  };
+
+  const handleIntentChange = (i: IntentOption) => {
+    setIntent(i);
+    setPage(1);
+    syncUrl(market, i, search, sortBy, sortDir, 1, appliedFilters);
+  };
+
+  const handlePageChange = (p: number) => {
+    setPage(p);
+    syncUrl(market, intent, search, sortBy, sortDir, p, appliedFilters);
+  };
+
+  const applyFilters = () => {
+    setAppliedFilters({ ...draftFilters });
+    setPage(1);
+    syncUrl(market, intent, search, sortBy, sortDir, 1, draftFilters);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+    setPage(1);
+    syncUrl(market, intent, search, sortBy, sortDir, 1, EMPTY_FILTERS);
+  };
+
+  const applyPreset = (preset: Preset) => {
+    const newFilters: FiltersState = { ...EMPTY_FILTERS };
+    let newIntent = intent;
+    let newSortBy = "volume" as SortField;
+    let newSortDir = "desc" as SortDir;
+    const p = preset.params;
+    if (p.minVolume !== undefined) newFilters.minVolume = p.minVolume;
+    if (p.maxVolume !== undefined) newFilters.maxVolume = p.maxVolume;
+    if (p.minKd !== undefined) newFilters.minKd = p.minKd;
+    if (p.maxKd !== undefined) newFilters.maxKd = p.maxKd;
+    if (p.minPosition !== undefined) newFilters.minPosition = p.minPosition;
+    if (p.maxPosition !== undefined) newFilters.maxPosition = p.maxPosition;
+    if (p.intent !== undefined) newIntent = p.intent;
+    if (p.sortBy !== undefined) newSortBy = p.sortBy;
+    if (p.sortDir !== undefined) newSortDir = p.sortDir;
+    setDraftFilters(newFilters);
+    setAppliedFilters(newFilters);
+    setIntent(newIntent);
+    setSortBy(newSortBy);
+    setSortDir(newSortDir);
+    setPage(1);
+    setShowFilters(false);
+    syncUrl(market, newIntent, search, newSortBy, newSortDir, 1, newFilters);
+  };
+
+  const chips = activeFilterChips(appliedFilters, intent, market);
+  const hasActive = chips.length > 0;
+
+  const inputSt: React.CSSProperties = {
+    width: 90, padding: "4px 8px",
+    background: "var(--surface)", border: "1px solid var(--border)",
+    borderRadius: 6, color: "var(--primary)", fontSize: "0.8rem",
+  };
+
+  if (loading && !data) return <p className={styles.loading}>Loading...</p>;
+  if (data && data.total === 0 && !hasActive && !search.trim()) {
+    return <EmptyState icon={Tags} title="No keyword data yet" description="Data imports automatically after connection." />;
+  }
+
+  return (
+    <div>
+      {/* ── Presets ──────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            onClick={() => applyPreset(preset)}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "3px 10px", borderRadius: 20, fontSize: "0.72rem",
+              border: "1px solid var(--border)", background: "var(--surface)",
+              color: "var(--secondary)", cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            {preset.icon} {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Toolbar ─────────────────────────────────────────────── */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 10 }}>
+        <div className={styles.searchBox} style={{ flex: "1 1 180px", minWidth: 140 }}>
+          <SearchIcon size={14} className={styles.searchIcon} />
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Filter keywords…"
+            value={searchInputValue}
+            onChange={(e) => handleSearchInput(e.target.value)}
+          />
+        </div>
+        <select className={styles.select} value={intent} onChange={(e) => handleIntentChange(e.target.value as IntentOption)}>
+          {INTENT_OPTIONS.map((o) => (
+            <option key={o} value={o}>{o === "ALL" ? "All intents" : o.charAt(0) + o.slice(1).toLowerCase()}</option>
+          ))}
+        </select>
+        <select className={styles.select} value={market} onChange={(e) => handleMarketChange(e.target.value as MarketCode)}>
+          {MARKET_OPTIONS.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+        </select>
+        <button
+          className={styles.select}
+          onClick={() => setShowFilters((v) => !v)}
+          style={{
+            display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
+            background: hasActive ? "var(--accent)" : undefined,
+            color: hasActive ? "#fff" : undefined,
+          }}
+        >
+          <SlidersHorizontal size={13} />
+          Filters{hasActive ? ` (${chips.length})` : ""}
+        </button>
+        {hasActive && (
+          <button
+            onClick={clearFilters}
+            style={{ fontSize: "0.72rem", color: "var(--secondary)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
+          >
+            <X size={12} /> Clear all
+          </button>
+        )}
+        <span style={{ fontSize: "0.72rem", color: "var(--secondary)", marginLeft: "auto" }}>
+          {loading ? "Loading…" : data ? `${data.total.toLocaleString()} keywords` : ""}
+        </span>
+      </div>
+
+      {/* ── Active filter chips ──────────────────────────────────── */}
+      {chips.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          {chips.map((chip) => (
+            <span key={chip} style={{ padding: "2px 8px", background: "var(--elevated)", border: "1px solid var(--border)", borderRadius: 12, fontSize: "0.72rem", color: "var(--secondary)" }}>
+              {chip}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Filter panel ────────────────────────────────────────── */}
+      {showFilters && (
+        <div style={{ background: "var(--elevated)", border: "1px solid var(--border)", borderRadius: 8, padding: "16px", marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+            {/* Volume */}
+            <div>
+              <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Volume</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input type="number" placeholder="Min" value={draftFilters.minVolume}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, minVolume: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+                <input type="number" placeholder="Max" value={draftFilters.maxVolume}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, maxVolume: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+              </div>
+            </div>
+            {/* KD */}
+            <div>
+              <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>KD (0–100)</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input type="number" placeholder="Min" min={0} max={100} value={draftFilters.minKd}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, minKd: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+                <input type="number" placeholder="Max" min={0} max={100} value={draftFilters.maxKd}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, maxKd: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+              </div>
+            </div>
+            {/* CPC */}
+            <div>
+              <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>CPC ($)</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input type="number" placeholder="Min" step="0.01" value={draftFilters.minCpc}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, minCpc: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+                <input type="number" placeholder="Max" step="0.01" value={draftFilters.maxCpc}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, maxCpc: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+              </div>
+            </div>
+            {/* Position */}
+            <div>
+              <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Position</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input type="number" placeholder="Min" min={1} value={draftFilters.minPosition}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, minPosition: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+                <input type="number" placeholder="Max" min={1} value={draftFilters.maxPosition}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, maxPosition: e.target.value }))}
+                  style={{ ...inputSt, width: 70 }} />
+              </div>
+            </div>
+            {/* Has volume */}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--primary)", cursor: "pointer" }}>
+                <input type="checkbox" checked={draftFilters.hasVolume}
+                  onChange={(e) => setDraftFilters(f => ({ ...f, hasVolume: e.target.checked }))}
+                  style={{ width: 15, height: 15 }} />
+                Has volume data
+              </label>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={applyFilters} style={{ padding: "5px 20px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}>
+              Apply filters
+            </button>
+            <button onClick={() => { setDraftFilters(EMPTY_FILTERS); }} style={{ padding: "5px 14px", background: "var(--surface)", color: "var(--secondary)", border: "1px solid var(--border)", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}>
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Table ───────────────────────────────────────────────── */}
+      <table className={uiStyles.table}>
+        <thead>
+          <tr>
+            {(["text", "position", "impressions", "volume", "difficulty", "cpc"] as const).map((field) => {
+              const labels: Record<string, string> = {
+                text: "Keyword", position: "Pos", impressions: "Impr",
+                volume: "Volume", difficulty: "KD", cpc: "CPC",
+              };
+              return (
+                <th key={field} onClick={() => handleSort(field as SortField)}
+                  style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap", fontSize: "0.72rem" }}>
+                  {labels[field]} <SortIcon field={field as SortField} sortBy={sortBy} sortDir={sortDir} />
+                </th>
+              );
+            })}
+            <th style={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>Intent</th>
+            <th style={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>Comp.</th>
+            <th style={{ fontSize: "0.72rem", whiteSpace: "nowrap" }}>Opportunity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data && data.items.length === 0 ? (
+            <tr><td colSpan={9} className={styles.emptyRow}>No keywords match this filter.</td></tr>
+          ) : (
+            data?.items.map((kw) => {
+              const snap = kw.snapshots[0];
+              // CRITICAL: select metric for current market+language, not [0]
+              const m = kw.marketMetrics.find(
+                mm => mm.market === activeMarketObj.code && mm.language === activeMarketObj.language
+              ) ?? null;
+              const position = snap?.position != null ? Number(snap.position) : null;
+              const vol = m?.volume ?? null;
+              const kd = m?.difficulty ?? null;
+              const cpc = m?.cpc ?? null;
+              const ci = m?.competitionIndex ?? null;
+              const score = oppScore(vol, kd);
+              const dec = oppDecision(vol, kd);
+              const kdInfo = kdLabel(kd);
+              return (
+                <tr key={kw.id} onClick={() => setSelectedKeywordId(kw.id)} className={styles.clickableRow}>
+                  {/* Keyword */}
+                  <td style={{ maxWidth: 200 }}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.82rem", fontWeight: 500 }} title={kw.text}>
+                      {kw.text}
+                    </div>
+                  </td>
+                  {/* Position */}
+                  <td>
+                    <div style={{ lineHeight: 1.2 }}>
+                      {position !== null
+                        ? <Badge tone={positionTone(position)}>{position.toFixed(1)}</Badge>
+                        : <span style={{ color: "var(--secondary)", fontSize: "0.75rem" }}>—</span>}
+                      {snap?.impressions != null && (
+                        <div style={{ fontSize: "0.62rem", color: "var(--secondary)", marginTop: 2 }}>{fmtImpr(snap.impressions)} impr</div>
+                      )}
+                    </div>
+                  </td>
+                  {/* Impressions (folded into position col above) */}
+                  <td style={{ display: "none" }} />
+                  {/* Volume */}
+                  <td>
+                    <MetricCell
+                      value={fmtVol(vol)}
+                      sub={vol !== null ? volLabel(vol) : undefined}
+                      color={vol !== null && vol >= 1000 ? "var(--primary)" : "var(--secondary)"}
+                    />
+                  </td>
+                  {/* KD */}
+                  <td>
+                    {kd !== null ? (
+                      <div style={{ lineHeight: 1.2 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span className={suggestionStyles.difficultyBadge} data-tone={difficultyTone(kd)} title={`KD ${kd}/100 — organic SEO difficulty`}>{kd}</span>
+                        </div>
+                        <div style={{ fontSize: "0.65rem", color: kdInfo.color, marginTop: 2 }}>{kdInfo.label}</div>
+                      </div>
+                    ) : <span style={{ color: "var(--secondary)" }}>—</span>}
+                  </td>
+                  {/* CPC */}
+                  <td>
+                    <MetricCell
+                      value={fmtCpc(cpc)}
+                      sub={cpcLabel(cpc) || undefined}
+                      color={Number(cpc) >= 4 ? "var(--success)" : undefined}
+                    />
+                  </td>
+                  {/* Intent */}
+                  <td>
+                    {kw.intent
+                      ? <Badge tone="muted">{kw.intent.charAt(0).toUpperCase()}</Badge>
+                      : <span style={{ color: "var(--secondary)" }}>—</span>}
+                  </td>
+                  {/* Competition (paid ads — NOT organic KD) */}
+                  <td>
+                    <div style={{ fontSize: "0.78rem", color: "var(--primary)" }}>{compLabel(ci)}</div>
+                    {ci !== null && <div style={{ fontSize: "0.62rem", color: "var(--secondary)" }}>Paid ads</div>}
+                  </td>
+                  {/* Opportunity */}
+                  <td style={{ minWidth: 120 }}>
+                    {dec ? (
+                      <div style={{ lineHeight: 1.25 }}>
+                        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: dec.color }}>{dec.action}</div>
+                        <div style={{ fontSize: "0.62rem", color: "var(--secondary)", marginTop: 2, maxWidth: 140 }}>{dec.reason}</div>
+                        {score !== null && (
+                          <div style={{ marginTop: 4, height: 3, borderRadius: 2, background: "var(--border)", width: 80 }}>
+                            <div style={{ height: 3, borderRadius: 2, background: dec.color, width: `${score}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color: "var(--secondary)", fontSize: "0.75rem" }}>
+                        {m === null ? "No market data" : "—"}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+
+      {/* ── Pagination ──────────────────────────────────────────── */}
+      {data && (
+        <div className={styles.pagination}>
+          <button className={styles.pageButton} disabled={page <= 1} onClick={() => handlePageChange(Math.max(1, page - 1))}>← Prev</button>
+          <span className={styles.pageLabel}>Page {data.page} of {Math.max(1, data.totalPages)}</span>
+          <button className={styles.pageButton} disabled={page >= data.totalPages} onClick={() => handlePageChange(page + 1)}>Next →</button>
+        </div>
+      )}
+
+      {selectedKeywordId && (
+        <KeywordTrendDrawer keywordId={selectedKeywordId} workspaceId={workspaceId} onClose={() => setSelectedKeywordId(null)} />
+      )}
+    </div>
+  );
+}

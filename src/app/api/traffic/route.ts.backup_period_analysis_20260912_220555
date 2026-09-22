@@ -1,0 +1,153 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  requireUser,
+  requireWebsiteAccess,
+  authErrorResponse,
+} from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
+import { syncCloudflareTraffic } from "@/lib/integrations/cloudflare/sync";
+
+const ALLOWED_DAYS = new Set([7, 14, 30]);
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await requireUser();
+
+    const websiteId =
+      req.nextUrl.searchParams.get("websiteId");
+
+    const days = Number(
+      req.nextUrl.searchParams.get("days") ?? "7"
+    );
+
+    if (!websiteId) {
+      return NextResponse.json(
+        { error: "websiteId is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_DAYS.has(days)) {
+      return NextResponse.json(
+        { error: "days must be 7, 14, or 30" },
+        { status: 400 }
+      );
+    }
+
+    await requireWebsiteAccess(user.id, websiteId);
+
+    const connection =
+      await prisma.cloudflareConnection.findUnique({
+        where: { websiteId },
+      });
+
+    if (!connection) {
+      return NextResponse.json({
+        connected: false,
+        source: "CLOUDFLARE",
+        snapshots: [],
+      });
+    }
+
+    const now = new Date();
+
+    const until = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
+      )
+    );
+
+    const since = new Date(until);
+    since.setUTCDate(
+      since.getUTCDate() - (days - 1)
+    );
+
+    await syncCloudflareTraffic({
+      websiteId,
+      since: since.toISOString().slice(0, 10),
+      until: until.toISOString().slice(0, 10),
+    });
+
+    const snapshots =
+      await prisma.trafficSnapshot.findMany({
+        where: {
+          connectionId: connection.id,
+          date: {
+            gte: since,
+            lte: until,
+          },
+        },
+        orderBy: {
+          date: "asc",
+        },
+      });
+
+    return NextResponse.json({
+      connected: true,
+      source: "CLOUDFLARE",
+      days,
+      range: {
+        start: since.toISOString().slice(0, 10),
+        end: until.toISOString().slice(0, 10),
+      },
+      snapshots: snapshots.map((snapshot) => ({
+        date:
+          snapshot.date.toISOString().slice(0, 10),
+
+        totalRequests:
+          snapshot.totalRequests,
+
+        unclassifiedRequests:
+          snapshot.unclassifiedRequests,
+
+        verifiedBotRequests:
+          snapshot.verifiedBotRequests,
+
+        unverifiedBotRequests:
+          snapshot.unverifiedBotRequests,
+
+        threatsBlocked:
+          snapshot.threatsBlocked,
+
+        uniqueVisitors:
+          snapshot.uniqueVisitors,
+
+        bandwidthBytes:
+          snapshot.bandwidthBytes.toString(),
+
+        countryBreakdown:
+          snapshot.countryBreakdown,
+
+        deviceBreakdown:
+          snapshot.deviceBreakdown,
+
+        botCategoryBreakdown:
+          snapshot.botCategoryBreakdown,
+      })),
+    });
+  } catch (error) {
+    const { status, body } =
+      authErrorResponse(error);
+
+    if (status !== 500) {
+      return NextResponse.json(body, { status });
+    }
+
+    console.error(
+      "[traffic]",
+      error instanceof Error
+        ? error.message
+        : "Unknown error"
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Could not load Cloudflare traffic data.",
+      },
+      { status: 502 }
+    );
+  }
+}

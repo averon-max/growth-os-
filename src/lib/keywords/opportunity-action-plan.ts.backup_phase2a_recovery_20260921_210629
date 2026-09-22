@@ -1,0 +1,501 @@
+import type {
+  OpportunityDiagnosis,
+} from "./opportunity-diagnosis";
+
+const CREATE_PAGE_THRESHOLD =
+  0.35;
+
+const UPDATE_PAGE_THRESHOLD =
+  0.7;
+
+export type OpportunityDecision =
+  | "CREATE"
+  | "UPDATE"
+  | "SKIP";
+
+export type ActionPlanStepType =
+  | "CREATE_PAGE"
+  | "UPDATE_PAGE"
+  | "ALIGN_TOPIC"
+  | "ADD_EVIDENCE_BACKED_TOPIC"
+  | "STRENGTHEN_INTERNAL_LINKS"
+  | "MEASURE_OUTCOME";
+
+export interface ActionPlanStep {
+  type: ActionPlanStepType;
+  title: string;
+  explanation: string;
+  evidence: string[];
+}
+
+export interface OpportunityActionPlan {
+  keyword: string;
+  market: string;
+  decision: OpportunityDecision;
+
+  targetPageUrl:
+    string | null;
+
+  rationale: string;
+
+  evidence: string[];
+
+  evidenceBackedTopics: Array<{
+    topic: string;
+    competitorCoverage: number;
+    evidence: string[];
+  }>;
+
+  steps: ActionPlanStep[];
+
+  measurement: {
+    baselineLiveRank:
+      number | null;
+
+    checkpointsDays:
+      number[];
+
+    metrics:
+      string[];
+
+    rule:
+      string;
+  };
+
+  observations: {
+    competitorPagesFetched:
+      number;
+
+    competitorMedianWordCount:
+      number | null;
+
+    wordCountRule:
+      string;
+  };
+
+  guardrails: string[];
+}
+
+function hasFinding(
+  diagnosis: OpportunityDiagnosis,
+  code: string
+): boolean {
+  return diagnosis.findings.some(
+    (
+      finding
+    ) =>
+      finding.code ===
+      code
+  );
+}
+
+function rankEvidence(
+  diagnosis: OpportunityDiagnosis
+): string {
+  return diagnosis.liveRank ===
+    null
+    ? "Сайт не найден в первых 100 органических результатах последней live-проверки."
+    : `Текущая live-позиция: #${diagnosis.liveRank}.`;
+}
+
+export function decideOpportunityAction(
+  diagnosis: OpportunityDiagnosis
+): OpportunityDecision {
+  const relevance =
+    diagnosis.ownPage
+      ?.relevanceScore ??
+    null;
+
+  if (
+    relevance ===
+      null ||
+    relevance <
+      CREATE_PAGE_THRESHOLD
+  ) {
+    return "CREATE";
+  }
+
+  if (
+    relevance <
+      UPDATE_PAGE_THRESHOLD ||
+    hasFinding(
+      diagnosis,
+      "WEAK_QUERY_ALIGNMENT"
+    ) ||
+    hasFinding(
+      diagnosis,
+      "CONSENSUS_TOPIC_GAPS"
+    ) ||
+    hasFinding(
+      diagnosis,
+      "LOW_INTERNAL_SUPPORT"
+    )
+  ) {
+    return "UPDATE";
+  }
+
+  return "SKIP";
+}
+
+export function buildOpportunityActionPlan(
+  diagnosis: OpportunityDiagnosis
+): OpportunityActionPlan {
+  const decision =
+    decideOpportunityAction(
+      diagnosis
+    );
+
+  const relevance =
+    diagnosis.ownPage
+      ?.relevanceScore ??
+    null;
+
+  const evidence:
+    string[] =
+    [
+      rankEvidence(
+        diagnosis
+      ),
+    ];
+
+  if (
+    diagnosis.ownPage
+  ) {
+    evidence.push(
+      `Лучшая найденная страница: ${diagnosis.ownPage.url}.`
+    );
+
+    if (
+      relevance !==
+      null
+    ) {
+      evidence.push(
+        `Совпадение страницы с темой поиска: ${Math.round(
+          relevance *
+            100
+        )}%.`
+      );
+    }
+
+    evidence.push(
+      `Title: ${diagnosis.ownPage.title ?? "отсутствует"}.`
+    );
+
+    evidence.push(
+      `H1: ${diagnosis.ownPage.h1 ?? "отсутствует"}.`
+    );
+  } else {
+    evidence.push(
+      "Подходящая страница на сайте не найдена."
+    );
+  }
+
+  evidence.push(
+    `Прочитано страниц конкурентов: ${diagnosis.competitorPagesFetched}.`
+  );
+
+  const evidenceBackedTopics =
+    diagnosis.topicGaps.map(
+      (
+        gap
+      ) => ({
+        topic:
+          gap.topic,
+
+        competitorCoverage:
+          gap.competitorCoverage,
+
+        evidence:
+          gap.evidence,
+      })
+    );
+
+  const steps:
+    ActionPlanStep[] =
+    [];
+
+  let rationale:
+    string;
+
+  let targetPageUrl:
+    string | null =
+    diagnosis.ownPage
+      ?.url ??
+    null;
+
+  if (
+    decision ===
+    "CREATE"
+  ) {
+    targetPageUrl =
+      null;
+
+    rationale =
+      diagnosis.ownPage
+        ? `Текущая наиболее близкая страница совпадает с темой только на ${Math.round(
+            (
+              diagnosis.ownPage
+                .relevanceScore ??
+              0
+            ) *
+              100
+          )}%. Сильное изменение этой страницы может изменить её существующую цель, поэтому безопаснее создать отдельную страницу под этот поиск.`
+        : "На сайте не найдено страницы, которая достаточно ясно отвечает этому поиску.";
+
+    steps.push({
+      type:
+        "CREATE_PAGE",
+
+      title:
+        `Создать отдельную страницу под «${diagnosis.keyword}»`,
+
+      explanation:
+        "Страница должна иметь одну ясную задачу и действительно отвечать на этот поиск. Не нужно превращать другую, слабо связанную страницу в универсальную SEO-страницу.",
+
+      evidence:
+        diagnosis.ownPage
+          ? [
+              `Текущая лучшая страница: ${diagnosis.ownPage.url}`,
+              `Совпадение: ${Math.round(
+                (
+                  diagnosis.ownPage
+                    .relevanceScore ??
+                  0
+                ) *
+                  100
+              )}%`,
+            ]
+          : [
+              "Подходящая существующая страница не найдена.",
+            ],
+    });
+
+    steps.push({
+      type:
+        "ALIGN_TOPIC",
+
+      title:
+        "Сделать тему страницы понятной в Title и H1",
+
+      explanation:
+        `Title и H1 должны естественно объяснять, что страница посвящена теме «${diagnosis.keyword}». Не повторяй keyword искусственно и не делай keyword stuffing.`,
+
+      evidence: [
+        `Основной поиск: ${diagnosis.keyword}`,
+        diagnosis.serpPattern,
+      ],
+    });
+  } else if (
+    decision ===
+    "UPDATE"
+  ) {
+    rationale =
+      "Существующая страница уже связана с поиском, поэтому отдельную новую страницу создавать без необходимости не нужно. Улучшаем существующую страницу только по наблюдаемым пробелам.";
+
+    steps.push({
+      type:
+        "UPDATE_PAGE",
+
+      title:
+        "Улучшить существующую страницу",
+
+      explanation:
+        `Работаем с ${diagnosis.ownPage?.url ?? "существующей страницей"} вместо создания второй страницы с похожей целью.`,
+
+      evidence:
+        diagnosis.ownPage
+          ? [
+              `Совпадение с темой: ${Math.round(
+                (
+                  diagnosis.ownPage
+                    .relevanceScore ??
+                  0
+                ) *
+                  100
+              )}%`,
+            ]
+          : [],
+    });
+
+    if (
+      hasFinding(
+        diagnosis,
+        "WEAK_QUERY_ALIGNMENT"
+      )
+    ) {
+      steps.push({
+        type:
+          "ALIGN_TOPIC",
+
+        title:
+          "Сделать тему страницы яснее",
+
+        explanation:
+          "Уточнить Title и H1 только там, где это правдиво описывает содержание страницы.",
+
+        evidence:
+          diagnosis.ownPage
+            ? [
+                `Title: ${diagnosis.ownPage.title ?? "отсутствует"}`,
+                `H1: ${diagnosis.ownPage.h1 ?? "отсутствует"}`,
+              ]
+            : [],
+      });
+    }
+  } else {
+    rationale =
+      "Существующая страница уже достаточно хорошо соответствует теме, а текущие данные не показывают детерминированного изменения, которое стоит делать только ради SEO. Сохраняем страницу и продолжаем измерение.";
+
+    steps.push({
+      type:
+        "MEASURE_OUTCOME",
+
+      title:
+        "Не делать крупное изменение без новых доказательств",
+
+      explanation:
+        "Низкая позиция сама по себе не доказывает, что страницу нужно переписывать. Сначала собираем дополнительную историю позиций и Search Console.",
+
+      evidence: [
+        rankEvidence(
+          diagnosis
+        ),
+      ],
+    });
+  }
+
+  for (
+    const gap of
+    evidenceBackedTopics
+  ) {
+    steps.push({
+      type:
+        "ADD_EVIDENCE_BACKED_TOPIC",
+
+      title:
+        `Проверить, нужна ли тема «${gap.topic}»`,
+
+      explanation:
+        "Добавляй эту тему только если она действительно помогает посетителю. Она появилась в нескольких прочитанных конкурентных страницах, поэтому это evidence-backed возможность, а не обязательный SEO-блок.",
+
+      evidence: [
+        `Тема встретилась на ${gap.competitorCoverage} конкурентных страницах.`,
+        ...gap.evidence,
+      ],
+    });
+  }
+
+  if (
+    hasFinding(
+      diagnosis,
+      "LOW_INTERNAL_SUPPORT"
+    )
+  ) {
+    steps.push({
+      type:
+        "STRENGTHEN_INTERNAL_LINKS",
+
+      title:
+        "Добавить естественные внутренние ссылки",
+
+      explanation:
+        "Связать релевантные страницы с целевой страницей, если ссылка действительно полезна посетителю.",
+
+      evidence:
+        diagnosis.ownPage
+          ? [
+              `Найдено внутренних ссылок на страницу среди проверенных страниц: ${diagnosis.ownPage.inboundInternalLinks ?? 0}.`,
+            ]
+          : [],
+    });
+  }
+
+  if (
+    !steps.some(
+      (
+        step
+      ) =>
+        step.type ===
+        "MEASURE_OUTCOME"
+    )
+  ) {
+    steps.push({
+      type:
+        "MEASURE_OUTCOME",
+
+      title:
+        "Измерить результат после изменения",
+
+      explanation:
+        "Сохраняем baseline до изменения и сравниваем реальные результаты через 7, 14 и 28 дней. Это наблюдение результата, а не обещание роста.",
+
+      evidence: [
+        rankEvidence(
+          diagnosis
+        ),
+      ],
+    });
+  }
+
+  return {
+    keyword:
+      diagnosis.keyword,
+
+    market:
+      diagnosis.market,
+
+    decision,
+
+    targetPageUrl,
+
+    rationale,
+
+    evidence,
+
+    evidenceBackedTopics,
+
+    steps,
+
+    measurement: {
+      baselineLiveRank:
+        diagnosis.liveRank,
+
+      checkpointsDays: [
+        7,
+        14,
+        28,
+      ],
+
+      metrics: [
+        "Live organic rank",
+        "GSC impressions when available",
+        "GSC clicks when available",
+        "GSC CTR when available",
+        "GSC average position when available",
+      ],
+
+      rule:
+        "Record before → action → 7/14/28 day observations. Do not claim causation from one change without enough evidence.",
+    },
+
+    observations: {
+      competitorPagesFetched:
+        diagnosis.competitorPagesFetched,
+
+      competitorMedianWordCount:
+        diagnosis.observedCompetitorMedianWordCount,
+
+      wordCountRule:
+        "Competitor word count is descriptive evidence only. Never use it as a required article length.",
+    },
+
+    guardrails: [
+      "Не обещать Top 1 или конкретный рост позиции.",
+      "Не создавать новую страницу, если существующая уже ясно выполняет ту же поисковую задачу.",
+      "Не добавлять секции только потому, что они есть у одного конкурента.",
+      "Consensus topic требует подтверждения минимум несколькими прочитанными конкурентными страницами.",
+      "Не использовать количество слов или H2/H3 как SEO-цель.",
+      "SKIP — допустимое решение, если доказательств для изменения недостаточно.",
+    ],
+  };
+}

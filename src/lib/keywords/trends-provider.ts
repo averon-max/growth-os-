@@ -41,9 +41,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  */
 export async function fetchTrendingQueries(seed: string, geo = "US"): Promise<TrendsResult | null> {
   const normalized = normalizeKeyword(seed);
+  const cacheKey = `${normalized}:${geo.toUpperCase()}`;
 
   const cached = await prisma.keywordSuggestionCache.findUnique({
-    where: { normalized_source: { normalized, source: SOURCE } },
+    where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
   });
 
   if (cached && isFresh(cached.fetchedAt, TRENDS_CACHE_TTL_DAYS)) {
@@ -64,8 +65,8 @@ export async function fetchTrendingQueries(seed: string, geo = "US"): Promise<Tr
     };
 
     await prisma.keywordSuggestionCache.upsert({
-      where: { normalized_source: { normalized, source: SOURCE } },
-      create: { normalized, source: SOURCE, payload: result as unknown as Prisma.InputJsonValue },
+      where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
+      create: { normalized: cacheKey, source: SOURCE, payload: result as unknown as Prisma.InputJsonValue },
       update: { payload: result as unknown as Prisma.InputJsonValue, fetchedAt: new Date() },
     });
 

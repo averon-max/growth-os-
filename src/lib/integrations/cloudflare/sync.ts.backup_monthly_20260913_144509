@@ -1,0 +1,102 @@
+import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+import { fetchCloudflareTraffic, type SkippedDay } from "./client";
+import { getCloudflareConnectionWithToken } from "./connection-service";
+
+interface SyncParams {
+  websiteId: string;
+  since: string;
+  until: string;
+}
+
+export interface SyncResult {
+  connectionId: string;
+  requestedDays: number;
+  syncedDays: number;
+  skippedDays: SkippedDay[];
+  availableFrom: string | null;
+  availableTo: string | null;
+}
+
+export async function syncCloudflareTraffic({
+  websiteId,
+  since,
+  until,
+}: SyncParams): Promise<SyncResult> {
+  const connection = await getCloudflareConnectionWithToken(websiteId);
+
+  if (!connection) {
+    throw new Error("NO_CONNECTION: Cloudflare is not connected for this website");
+  }
+
+  const { days: dailyTraffic, skippedDays } = await fetchCloudflareTraffic({
+    zoneId: connection.zoneId,
+    apiToken: connection.apiToken,
+    since,
+    until,
+  });
+
+  for (const day of dailyTraffic) {
+    const totalUniqueVisitors = day.byCountry.reduce(
+      (sum: number, c: { visits: number }) => sum + c.visits,
+      0
+    );
+
+    const sortedCountries = [...day.byCountry].sort((a, b) => b.requests - a.requests);
+    const sortedDevices = [...day.byDevice].sort((a, b) => b.requests - a.requests);
+    const sortedBotCategories = [...day.byBotCategory].sort((a, b) => b.requests - a.requests);
+
+    const verifiedBotRequests = day.byBotCategory
+      .filter((b: { category: string }) => b.category !== "")
+      .reduce((sum: number, b: { requests: number }) => sum + b.requests, 0);
+    const unclassifiedRequests = day.totalRequests - verifiedBotRequests;
+
+    await prisma.trafficSnapshot.upsert({
+      where: {
+        connectionId_date: {
+          connectionId: connection.id,
+          date: new Date(day.date),
+        },
+      },
+      create: {
+        connectionId: connection.id,
+        date: new Date(day.date),
+        totalRequests: day.totalRequests,
+        unclassifiedRequests,
+        verifiedBotRequests,
+        unverifiedBotRequests: null,
+        threatsBlocked: null,
+        bandwidthBytes: BigInt(day.bandwidthBytes),
+        uniqueVisitors: totalUniqueVisitors,
+        countryBreakdown: sortedCountries as unknown as Prisma.InputJsonValue,
+        deviceBreakdown: sortedDevices as unknown as Prisma.InputJsonValue,
+        botCategoryBreakdown: sortedBotCategories as unknown as Prisma.InputJsonValue,
+      },
+      update: {
+        totalRequests: day.totalRequests,
+        unclassifiedRequests,
+        verifiedBotRequests,
+        unverifiedBotRequests: null,
+        threatsBlocked: null,
+        bandwidthBytes: BigInt(day.bandwidthBytes),
+        uniqueVisitors: totalUniqueVisitors,
+        countryBreakdown: sortedCountries as unknown as Prisma.InputJsonValue,
+        deviceBreakdown: sortedDevices as unknown as Prisma.InputJsonValue,
+        botCategoryBreakdown: sortedBotCategories as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  const syncedDates = dailyTraffic.map((d) => d.date).sort();
+
+  return {
+    connectionId: connection.id,
+    requestedDays: Math.round(
+      (new Date(until).getTime() - new Date(since).getTime()) / 86_400_000
+    ) + 1,
+    syncedDays: dailyTraffic.length,
+    skippedDays,
+    availableFrom: syncedDates[0] ?? null,
+    availableTo: syncedDates[syncedDates.length - 1] ?? null,
+  };
+}

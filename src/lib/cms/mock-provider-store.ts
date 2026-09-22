@@ -4,7 +4,29 @@
 // end before privacy-shield implements the real /api/growth-os/* routes.
 // Safe to delete once a real CUSTOM_API integration exists.
 
-export const MOCK_API_KEY = "growth-os-test-key";
+const MOCK_PROVIDER_ENABLED =
+  process.env.NODE_ENV !== "production" &&
+  process.env.ENABLE_MOCK_CMS_PROVIDER === "true";
+
+export const MOCK_API_KEY =
+  process.env.MOCK_CMS_PROVIDER_KEY ?? "growth-os-test-key";
+
+export class MockProviderDisabledError extends Error {
+  constructor() {
+    super("Mock CMS provider is disabled.");
+    this.name = "MockProviderDisabledError";
+  }
+}
+
+export function assertMockProviderEnabled(): void {
+  if (!MOCK_PROVIDER_ENABLED) {
+    throw new MockProviderDisabledError();
+  }
+}
+
+export function checkAuth(authHeader: string | null): boolean {
+  return authHeader === `Bearer ${MOCK_API_KEY}`;
+}
 
 interface MockPage {
   id: string;
@@ -24,10 +46,6 @@ const pages: MockPage[] = [
     h1: "Protect your identity today",
   },
 ];
-
-export function checkAuth(authHeader: string | null): boolean {
-  return authHeader === `Bearer ${MOCK_API_KEY}`;
-}
 
 export function listPages(): MockPage[] {
   return pages;

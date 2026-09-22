@@ -1,0 +1,1805 @@
+import "server-only";
+
+import type {
+  Prisma,
+} from "@prisma/client";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+import {
+  fetchSinglePage,
+} from "@/lib/crawler/crawler";
+
+import {
+  normalizeSiteDomain,
+} from "@/lib/keywords/live-rank-service";
+
+const LIVE_RANK_SOURCE =
+  "DATAFORSEO_LIVE_RANK_V1";
+
+const DIAGNOSIS_SOURCE =
+  "KEYWORD_OPPORTUNITY_DIAGNOSIS_V1";
+
+const DIAGNOSIS_TTL_MS =
+  6 * 60 * 60 * 1000;
+
+const OWN_PAGE_LIMIT =
+  10;
+
+const COMPETITOR_LIMIT =
+  3;
+
+const STOP_WORDS =
+  new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "how",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "our",
+    "that",
+    "the",
+    "their",
+    "this",
+    "to",
+    "what",
+    "when",
+    "with",
+    "your",
+    "you",
+  ]);
+
+const GENERIC_HEADINGS =
+  new Set([
+    "learn more",
+    "read more",
+    "related articles",
+    "related content",
+    "resources",
+    "contact us",
+    "about us",
+    "get started",
+    "sign up",
+    "login",
+    "log in",
+    "footer",
+    "navigation",
+  ]);
+
+export type DiagnosisSeverity =
+  | "HIGH"
+  | "MEDIUM"
+  | "INFO";
+
+export type DiagnosisActionType =
+  | "CREATE_OR_RETARGET_PAGE"
+  | "ALIGN_PAGE"
+  | "EXPAND_CONTENT"
+  | "STRENGTHEN_INTERNAL_LINKS"
+  | "KEEP_MONITORING";
+
+export interface DiagnosisFinding {
+  code: string;
+  severity: DiagnosisSeverity;
+  title: string;
+  explanation: string;
+  evidence: string[];
+}
+
+export interface DiagnosisAction {
+  type: DiagnosisActionType;
+  title: string;
+  explanation: string;
+  evidence: string[];
+}
+
+export interface DiagnosisPageEvidence {
+  url: string;
+  title: string | null;
+  h1: string | null;
+  wordCount: number | null;
+  relevanceScore: number | null;
+  inboundInternalLinks: number | null;
+}
+
+export interface DiagnosisCompetitorEvidence {
+  rank: number;
+  domain: string;
+  url: string;
+  title: string;
+  fetched: boolean;
+  h1: string | null;
+  wordCount: number | null;
+}
+
+export interface DiagnosisTopicGap {
+  topic: string;
+  competitorCoverage: number;
+  evidence: string[];
+}
+
+export interface OpportunityDiagnosis {
+  keyword: string;
+  market: string;
+  domain: string;
+  liveRank: number | null;
+  rankingStatus:
+    | "RANKING"
+    | "NOT_TOP_100";
+  ownPage: DiagnosisPageEvidence | null;
+  competitors: DiagnosisCompetitorEvidence[];
+  serpPattern: string;
+  topicGaps: DiagnosisTopicGap[];
+  observedCompetitorMedianWordCount: number | null;
+  findings: DiagnosisFinding[];
+  actions: DiagnosisAction[];
+  ownPagesInspected: number;
+  competitorPagesFetched: number;
+  observedAt: string;
+  limitations: string[];
+}
+
+interface CachedCompetitor {
+  rank: number;
+  domain: string;
+  url: string;
+  title: string;
+}
+
+interface CachedLiveKeyword {
+  keyword: string;
+  rank: number | null;
+  rankingUrl: string | null;
+  searchVolume: number | null;
+  difficulty: number | null;
+  competitors: CachedCompetitor[];
+}
+
+interface CachedLiveReport {
+  domain: string;
+  market: string;
+  seed: string;
+  checkedAt: string;
+  keywords: CachedLiveKeyword[];
+}
+
+interface WorkingPage {
+  url: string;
+  title: string | null;
+  metaDescription: string | null;
+  h1: string | null;
+  h2s: string[];
+  h3s: string[];
+  bodyText: string;
+  wordCount: number;
+  internalLinks: string[];
+  relevanceScore: number;
+}
+
+export class OpportunityDiagnosisError extends Error {
+  readonly status: number;
+
+  constructor(
+    message: string,
+    status = 400
+  ) {
+    super(
+      message
+    );
+
+    this.name =
+      "OpportunityDiagnosisError";
+
+    this.status =
+      status;
+  }
+}
+
+function normalizedText(
+  input: string
+): string {
+  return input
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9\s-]/g,
+      " "
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
+function tokens(
+  input: string
+): string[] {
+  return normalizedText(
+    input
+  )
+    .split(
+      " "
+    )
+    .filter(
+      (
+        token
+      ) =>
+        token.length >
+          1 &&
+        !STOP_WORDS.has(
+          token
+        )
+    );
+}
+
+function tokenCoverage(
+  query: string,
+  target: string | null
+): number {
+  if (
+    !target
+  ) {
+    return 0;
+  }
+
+  const queryTokens =
+    Array.from(
+      new Set(
+        tokens(
+          query
+        )
+      )
+    );
+
+  if (
+    queryTokens.length ===
+    0
+  ) {
+    return 0;
+  }
+
+  const targetTokens =
+    new Set(
+      tokens(
+        target
+      )
+    );
+
+  const matches =
+    queryTokens.filter(
+      (
+        token
+      ) =>
+        targetTokens.has(
+          token
+        )
+    ).length;
+
+  return (
+    matches /
+    queryTokens.length
+  );
+}
+
+function jaccardSimilarity(
+  left: string,
+  right: string
+): number {
+  const a =
+    new Set(
+      tokens(
+        left
+      )
+    );
+
+  const b =
+    new Set(
+      tokens(
+        right
+      )
+    );
+
+  if (
+    a.size ===
+      0 ||
+    b.size ===
+      0
+  ) {
+    return 0;
+  }
+
+  let intersection =
+    0;
+
+  for (
+    const token of
+    a
+  ) {
+    if (
+      b.has(
+        token
+      )
+    ) {
+      intersection +=
+        1;
+    }
+  }
+
+  const union =
+    new Set([
+      ...a,
+      ...b,
+    ]).size;
+
+  return union >
+    0
+    ? intersection /
+        union
+    : 0;
+}
+
+export function scorePageRelevance(
+  keyword: string,
+  page: {
+    title: string | null;
+    h1: string | null;
+    h2s: string[];
+    h3s: string[];
+    bodyText: string;
+  }
+): number {
+  const titleScore =
+    tokenCoverage(
+      keyword,
+      page.title
+    );
+
+  const h1Score =
+    tokenCoverage(
+      keyword,
+      page.h1
+    );
+
+  const headingScore =
+    Math.max(
+      0,
+      ...[
+        ...page.h2s,
+        ...page.h3s,
+      ].map(
+        (
+          heading
+        ) =>
+          tokenCoverage(
+            keyword,
+            heading
+          )
+      )
+    );
+
+  const bodyScore =
+    tokenCoverage(
+      keyword,
+      page.bodyText
+    );
+
+  const score =
+    titleScore *
+      0.38 +
+    h1Score *
+      0.32 +
+    headingScore *
+      0.2 +
+    bodyScore *
+      0.1;
+
+  return Math.round(
+    score *
+      100
+  ) /
+    100;
+}
+
+function canonicalUrl(
+  input: string
+): string {
+  try {
+    const url =
+      new URL(
+        input
+      );
+
+    url.hash =
+      "";
+
+    url.search =
+      "";
+
+    let value =
+      url.toString();
+
+    if (
+      url.pathname !==
+        "/" &&
+      value.endsWith(
+        "/"
+      )
+    ) {
+      value =
+        value.slice(
+          0,
+          -1
+        );
+    }
+
+    return value;
+  } catch {
+    return input;
+  }
+}
+
+function isUtilityPage(
+  input: string
+): boolean {
+  try {
+    const pathname =
+      new URL(
+        input
+      ).pathname.toLowerCase();
+
+    return [
+      "/login",
+      "/signup",
+      "/sign-up",
+      "/register",
+      "/privacy",
+      "/terms",
+      "/cookies",
+      "/account",
+      "/dashboard",
+      "/api/",
+    ].some(
+      (
+        part
+      ) =>
+        pathname ===
+          part ||
+        pathname.startsWith(
+          part
+        )
+    );
+  } catch {
+    return true;
+  }
+}
+
+async function mapWithConcurrency<
+  T,
+  R
+>(
+  items: T[],
+  concurrency: number,
+  worker: (
+    item: T
+  ) => Promise<R>
+): Promise<R[]> {
+  const output =
+    new Array<R>(
+      items.length
+    );
+
+  let next =
+    0;
+
+  async function run() {
+    for (;;) {
+      const index =
+        next;
+
+      next +=
+        1;
+
+      if (
+        index >=
+        items.length
+      ) {
+        return;
+      }
+
+      output[index] =
+        await worker(
+          items[index]
+        );
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      {
+        length:
+          Math.min(
+            concurrency,
+            items.length
+          ),
+      },
+      () =>
+        run()
+    )
+  );
+
+  return output;
+}
+
+async function fetchWorkingPage(
+  url: string,
+  keyword: string
+): Promise<WorkingPage | null> {
+  try {
+    const page =
+      await fetchSinglePage(
+        url,
+        {
+          timeoutMs:
+            10000,
+          maxResponseSize:
+            2 *
+            1024 *
+            1024,
+        }
+      );
+
+    if (
+      !page.parsed ||
+      page.statusCode <
+        200 ||
+      page.statusCode >=
+        400
+    ) {
+      return null;
+    }
+
+    return {
+      url:
+        page.url,
+
+      title:
+        page.parsed.title,
+
+      metaDescription:
+        page.parsed.metaDescription,
+
+      h1:
+        page.parsed.h1,
+
+      h2s:
+        page.parsed.h2s,
+
+      h3s:
+        page.parsed.h3s,
+
+      bodyText:
+        page.parsed.bodyText,
+
+      wordCount:
+        page.parsed.wordCount,
+
+      internalLinks:
+        page.parsed.internalLinks,
+
+      relevanceScore:
+        scorePageRelevance(
+          keyword,
+          page.parsed
+        ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function crawlOwnCandidatePages(
+  siteUrl: string,
+  keyword: string
+): Promise<WorkingPage[]> {
+  const homepage =
+    await fetchWorkingPage(
+      siteUrl,
+      keyword
+    );
+
+  if (
+    !homepage
+  ) {
+    return [];
+  }
+
+  const domain =
+    normalizeSiteDomain(
+      siteUrl
+    );
+
+  const seen =
+    new Set<string>([
+      canonicalUrl(
+        homepage.url
+      ),
+    ]);
+
+  const candidates:
+    string[] =
+    [];
+
+  for (
+    const link of
+    homepage.internalLinks
+  ) {
+    const canonical =
+      canonicalUrl(
+        link
+      );
+
+    if (
+      seen.has(
+        canonical
+      ) ||
+      normalizeSiteDomain(
+        canonical
+      ) !==
+        domain ||
+      isUtilityPage(
+        canonical
+      )
+    ) {
+      continue;
+    }
+
+    seen.add(
+      canonical
+    );
+
+    candidates.push(
+      canonical
+    );
+
+    if (
+      candidates.length >=
+      OWN_PAGE_LIMIT -
+        1
+    ) {
+      break;
+    }
+  }
+
+  const additional =
+    await mapWithConcurrency(
+      candidates,
+      3,
+      async (
+        candidate
+      ) =>
+        fetchWorkingPage(
+          candidate,
+          keyword
+        )
+    );
+
+  return [
+    homepage,
+    ...additional.filter(
+      (
+        page
+      ): page is WorkingPage =>
+        Boolean(
+          page
+        )
+    ),
+  ];
+}
+
+function cleanHeading(
+  input: string
+): string | null {
+  const clean =
+    input
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+
+  if (
+    !clean ||
+    clean.length <
+      5 ||
+    clean.length >
+      120
+  ) {
+    return null;
+  }
+
+  const normalized =
+    normalizedText(
+      clean
+    );
+
+  if (
+    GENERIC_HEADINGS.has(
+      normalized
+    )
+  ) {
+    return null;
+  }
+
+  const meaningful =
+    tokens(
+      clean
+    );
+
+  if (
+    meaningful.length <
+      2 ||
+    meaningful.length >
+      12
+  ) {
+    return null;
+  }
+
+  return clean;
+}
+
+export function findConsensusTopicGaps(
+  ownPage: {
+    title: string | null;
+    h1: string | null;
+    h2s: string[];
+    h3s: string[];
+    bodyText: string;
+  } | null,
+  competitorPages: Array<{
+    title: string | null;
+    h1: string | null;
+    h2s: string[];
+    h3s: string[];
+    bodyText: string;
+  }>
+): DiagnosisTopicGap[] {
+  if (
+    competitorPages.length <
+    2
+  ) {
+    return [];
+  }
+
+  const clusters:
+    Array<{
+      topic: string;
+      pages: Set<number>;
+      evidence: string[];
+    }> =
+    [];
+
+  competitorPages.forEach(
+    (
+      page,
+      pageIndex
+    ) => {
+      const headings =
+        Array.from(
+          new Set(
+            [
+              ...page.h2s,
+              ...page.h3s,
+            ]
+              .map(
+                cleanHeading
+              )
+              .filter(
+                (
+                  value
+                ): value is string =>
+                  Boolean(
+                    value
+                  )
+              )
+          )
+        );
+
+      for (
+        const heading of
+        headings
+      ) {
+        let bestCluster:
+          typeof clusters[number] | null =
+          null;
+
+        let bestScore =
+          0;
+
+        for (
+          const cluster of
+          clusters
+        ) {
+          const score =
+            jaccardSimilarity(
+              heading,
+              cluster.topic
+            );
+
+          if (
+            score >
+            bestScore
+          ) {
+            bestScore =
+              score;
+
+            bestCluster =
+              cluster;
+          }
+        }
+
+        if (
+          bestCluster &&
+          bestScore >=
+            0.45
+        ) {
+          bestCluster.pages.add(
+            pageIndex
+          );
+
+          if (
+            bestCluster.evidence.length <
+            4
+          ) {
+            bestCluster.evidence.push(
+              heading
+            );
+          }
+        } else {
+          clusters.push({
+            topic:
+              heading,
+
+            pages:
+              new Set([
+                pageIndex,
+              ]),
+
+            evidence: [
+              heading,
+            ],
+          });
+        }
+      }
+    }
+  );
+
+  const ownText =
+    ownPage
+      ? [
+          ownPage.title ??
+            "",
+          ownPage.h1 ??
+            "",
+          ...ownPage.h2s,
+          ...ownPage.h3s,
+          ownPage.bodyText,
+        ].join(
+          " "
+        )
+      : "";
+
+  return clusters
+    .filter(
+      (
+        cluster
+      ) =>
+        cluster.pages.size >=
+        2
+    )
+    .filter(
+      (
+        cluster
+      ) => {
+        if (
+          !ownPage
+        ) {
+          return true;
+        }
+
+        const directCoverage =
+          tokenCoverage(
+            cluster.topic,
+            ownText
+          );
+
+        const headingSimilarity =
+          Math.max(
+            0,
+            ...[
+              ownPage.title ??
+                "",
+              ownPage.h1 ??
+                "",
+              ...ownPage.h2s,
+              ...ownPage.h3s,
+            ].map(
+              (
+                value
+              ) =>
+                jaccardSimilarity(
+                  cluster.topic,
+                  value
+                )
+            )
+          );
+
+        return (
+          directCoverage <
+            0.75 &&
+          headingSimilarity <
+            0.6
+        );
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        b.pages.size -
+          a.pages.size ||
+        a.topic.length -
+          b.topic.length
+    )
+    .slice(
+      0,
+      5
+    )
+    .map(
+      (
+        cluster
+      ) => ({
+        topic:
+          cluster.topic,
+
+        competitorCoverage:
+          cluster.pages.size,
+
+        evidence:
+          cluster.evidence.slice(
+            0,
+            3
+          ),
+      })
+    );
+}
+
+function inferSerpPattern(
+  competitors: CachedCompetitor[]
+): string {
+  const titles =
+    competitors
+      .map(
+        (
+          competitor
+        ) =>
+          competitor.title.toLowerCase()
+      )
+      .join(
+        " "
+      );
+
+  const commercialMatches =
+    [
+      "best",
+      "service",
+      "services",
+      "review",
+      "reviews",
+      "protection",
+      "monitoring",
+      "company",
+      "companies",
+    ].filter(
+      (
+        token
+      ) =>
+        titles.includes(
+          token
+        )
+    ).length;
+
+  const informationalMatches =
+    [
+      "what is",
+      "how to",
+      "how does",
+      "guide",
+      "learn",
+      "explained",
+    ].filter(
+      (
+        token
+      ) =>
+        titles.includes(
+          token
+        )
+    ).length;
+
+  if (
+    commercialMatches >=
+      3 &&
+    informationalMatches ===
+      0
+  ) {
+    return "Google mainly shows service or commercial pages for this search.";
+  }
+
+  if (
+    informationalMatches >=
+    2
+  ) {
+    return "Google shows strong informational intent for this search.";
+  }
+
+  return "Google shows a mix of service and informational pages for this search.";
+}
+
+function median(
+  values: number[]
+): number | null {
+  if (
+    values.length ===
+    0
+  ) {
+    return null;
+  }
+
+  const sorted =
+    [...values].sort(
+      (
+        a,
+        b
+      ) =>
+        a -
+        b
+    );
+
+  const middle =
+    Math.floor(
+      sorted.length /
+      2
+    );
+
+  if (
+    sorted.length %
+      2 ===
+    1
+  ) {
+    return sorted[
+      middle
+    ];
+  }
+
+  return Math.round(
+    (
+      sorted[
+        middle -
+          1
+      ] +
+      sorted[
+        middle
+      ]
+    ) /
+      2
+  );
+}
+
+function cacheKey(
+  domain: string,
+  market: string,
+  keyword: string
+): string {
+  return [
+    domain,
+    market.toUpperCase(),
+    normalizedText(
+      keyword
+    ),
+  ].join(
+    ":"
+  );
+}
+
+async function loadCachedLiveKeyword(
+  domain: string,
+  market: string,
+  keyword: string
+): Promise<{
+  report: CachedLiveReport;
+  keyword: CachedLiveKeyword;
+}> {
+  const cached =
+    await prisma.keywordSuggestionCache.findFirst({
+      where: {
+        source:
+          LIVE_RANK_SOURCE,
+
+        normalized: {
+          startsWith:
+            `${domain}:${market.toUpperCase()}:`,
+        },
+      },
+
+      orderBy: {
+        fetchedAt:
+          "desc",
+      },
+    });
+
+  if (
+    !cached
+  ) {
+    throw new OpportunityDiagnosisError(
+      "Run the live Google position check first.",
+      409
+    );
+  }
+
+  const report =
+    cached.payload as unknown as CachedLiveReport;
+
+  const keywordResult =
+    report.keywords.find(
+      (
+        item
+      ) =>
+        normalizedText(
+          item.keyword
+        ) ===
+        normalizedText(
+          keyword
+        )
+    );
+
+  if (
+    !keywordResult
+  ) {
+    throw new OpportunityDiagnosisError(
+      "This search is not in the current live ranking report.",
+      404
+    );
+  }
+
+  return {
+    report,
+    keyword:
+      keywordResult,
+  };
+}
+
+async function buildOpportunityDiagnosis({
+  siteUrl,
+  keyword,
+  market,
+}: {
+  siteUrl: string;
+  keyword: string;
+  market: string;
+}): Promise<OpportunityDiagnosis> {
+  const domain =
+    normalizeSiteDomain(
+      siteUrl
+    );
+
+  const live =
+    await loadCachedLiveKeyword(
+      domain,
+      market,
+      keyword
+    );
+
+  const ownPages =
+    await crawlOwnCandidatePages(
+      siteUrl,
+      keyword
+    );
+
+  const ownPage =
+    ownPages
+      .slice()
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.relevanceScore -
+          a.relevanceScore
+      )[0] ??
+    null;
+
+  const competitorTargets =
+    live.keyword.competitors.slice(
+      0,
+      COMPETITOR_LIMIT
+    );
+
+  const fetchedCompetitors =
+    await mapWithConcurrency(
+      competitorTargets,
+      3,
+      async (
+        competitor
+      ) => ({
+        competitor,
+        page:
+          await fetchWorkingPage(
+            competitor.url,
+            keyword
+          ),
+      })
+    );
+
+  const parsedCompetitors =
+    fetchedCompetitors
+      .map(
+        (
+          item
+        ) =>
+          item.page
+      )
+      .filter(
+        (
+          page
+        ): page is WorkingPage =>
+          Boolean(
+            page
+          )
+      );
+
+  const topicGaps =
+    findConsensusTopicGaps(
+      ownPage,
+      parsedCompetitors
+    );
+
+  const targetUrl =
+    ownPage
+      ? canonicalUrl(
+          ownPage.url
+        )
+      : null;
+
+  const inboundInternalLinks =
+    targetUrl
+      ? ownPages.filter(
+          (
+            page
+          ) =>
+            canonicalUrl(
+              page.url
+            ) !==
+              targetUrl &&
+            page.internalLinks.some(
+              (
+                link
+              ) =>
+                canonicalUrl(
+                  link
+                ) ===
+                targetUrl
+            )
+        ).length
+      : 0;
+
+  const competitorEvidence:
+    DiagnosisCompetitorEvidence[] =
+    fetchedCompetitors.map(
+      (
+        item
+      ) => ({
+        rank:
+          item.competitor.rank,
+
+        domain:
+          item.competitor.domain,
+
+        url:
+          item.competitor.url,
+
+        title:
+          item.competitor.title,
+
+        fetched:
+          Boolean(
+            item.page
+          ),
+
+        h1:
+          item.page?.h1 ??
+          null,
+
+        wordCount:
+          item.page?.wordCount ??
+          null,
+      })
+    );
+
+  const findings:
+    DiagnosisFinding[] =
+    [];
+
+  if (
+    live.keyword.rank ===
+    null
+  ) {
+    findings.push({
+      code:
+        "NOT_VISIBLE_TOP_100",
+
+      severity:
+        "HIGH",
+
+      title:
+        "Your site is not yet visible near the top",
+
+      explanation:
+        "The latest live Google check did not find your site in the first 100 organic results for this search.",
+
+      evidence: [
+        `Search: ${keyword}`,
+        `Market: ${market}`,
+        "Live rank: not found in the first 100 organic results",
+      ],
+    });
+  }
+
+  if (
+    !ownPage ||
+    ownPage.relevanceScore <
+      0.55
+  ) {
+    findings.push({
+      code:
+        "WEAK_TARGET_PAGE",
+
+      severity:
+        "HIGH",
+
+      title:
+        "No page clearly targets this search yet",
+
+      explanation:
+        "Among the pages we inspected, none is strongly aligned with the words and topic people are searching for.",
+
+      evidence:
+        ownPage
+          ? [
+              `Best matching page: ${ownPage.url}`,
+              `Title: ${ownPage.title ?? "missing"}`,
+              `H1: ${ownPage.h1 ?? "missing"}`,
+              `Topic match: ${Math.round(
+                ownPage.relevanceScore *
+                  100
+              )}%`,
+            ]
+          : [
+              "No usable page could be identified on the site.",
+            ],
+    });
+  }
+
+  if (
+    ownPage &&
+    ownPage.relevanceScore >=
+      0.55
+  ) {
+    const titleMatch =
+      tokenCoverage(
+        keyword,
+        ownPage.title
+      );
+
+    const h1Match =
+      tokenCoverage(
+        keyword,
+        ownPage.h1
+      );
+
+    if (
+      titleMatch <
+        0.75 &&
+      h1Match <
+        0.75
+    ) {
+      findings.push({
+        code:
+          "WEAK_QUERY_ALIGNMENT",
+
+        severity:
+          "MEDIUM",
+
+        title:
+          "The page does not clearly describe this search topic",
+
+        explanation:
+          "The strongest page we found does not make the search topic clear in its main title or H1.",
+
+        evidence: [
+          `Page: ${ownPage.url}`,
+          `Title: ${ownPage.title ?? "missing"}`,
+          `H1: ${ownPage.h1 ?? "missing"}`,
+        ],
+      });
+    }
+  }
+
+  if (
+    topicGaps.length >
+    0
+  ) {
+    findings.push({
+      code:
+        "CONSENSUS_TOPIC_GAPS",
+
+      severity:
+        "MEDIUM",
+
+      title:
+        "Top results consistently cover topics your page does not",
+
+      explanation:
+        "At least two competitor pages cover the same subtopics, while we could not find equivalent coverage on your best matching page.",
+
+      evidence:
+        topicGaps.map(
+          (
+            gap
+          ) =>
+            `${gap.topic} — seen across ${gap.competitorCoverage} competitor pages`
+        ),
+    });
+  }
+
+  if (
+    ownPage &&
+    ownPages.length >=
+      3 &&
+    inboundInternalLinks <=
+      1
+  ) {
+    findings.push({
+      code:
+        "LOW_INTERNAL_SUPPORT",
+
+      severity:
+        "MEDIUM",
+
+      title:
+        "Very few pages on your site support this page",
+
+      explanation:
+        "Relevant internal links help users and search engines understand which page is important for a topic.",
+
+      evidence: [
+        `Best matching page: ${ownPage.url}`,
+        `Internal links found from inspected pages: ${inboundInternalLinks}`,
+        `Site pages inspected: ${ownPages.length}`,
+      ],
+    });
+  }
+
+  const actions:
+    DiagnosisAction[] =
+    [];
+
+  if (
+    !ownPage ||
+    ownPage.relevanceScore <
+      0.55
+  ) {
+    actions.push({
+      type:
+        "CREATE_OR_RETARGET_PAGE",
+
+      title:
+        "Create or retarget one page for this search",
+
+      explanation:
+        "Give Google one clear page whose purpose matches what people are searching for instead of spreading the topic across unrelated pages.",
+
+      evidence:
+        ownPage
+          ? [
+              `Current best match is only ${Math.round(
+                ownPage.relevanceScore *
+                  100
+              )}% aligned.`,
+            ]
+          : [
+              "No clear target page was found.",
+            ],
+    });
+  } else {
+    const titleMatch =
+      tokenCoverage(
+        keyword,
+        ownPage.title
+      );
+
+    const h1Match =
+      tokenCoverage(
+        keyword,
+        ownPage.h1
+      );
+
+    if (
+      titleMatch <
+        0.75 &&
+      h1Match <
+        0.75
+    ) {
+      actions.push({
+        type:
+          "ALIGN_PAGE",
+
+        title:
+          "Make the page topic clearer",
+
+        explanation:
+          "Update the page title and main heading only where it accurately describes the page. Do not stuff the keyword.",
+
+        evidence: [
+          `Current title: ${ownPage.title ?? "missing"}`,
+          `Current H1: ${ownPage.h1 ?? "missing"}`,
+        ],
+      });
+    }
+  }
+
+  if (
+    topicGaps.length >
+    0
+  ) {
+    actions.push({
+      type:
+        "EXPAND_CONTENT",
+
+      title:
+        "Answer the important topics competitors consistently cover",
+
+      explanation:
+        "Add only the missing sections that genuinely help the visitor understand or choose the service. There is no target word count or heading count.",
+
+      evidence:
+        topicGaps.map(
+          (
+            gap
+          ) =>
+            gap.topic
+        ),
+    });
+  }
+
+  if (
+    ownPage &&
+    ownPages.length >=
+      3 &&
+    inboundInternalLinks <=
+      1
+  ) {
+    actions.push({
+      type:
+        "STRENGTHEN_INTERNAL_LINKS",
+
+      title:
+        "Link relevant pages to this page",
+
+      explanation:
+        "Add natural internal links from pages that discuss closely related subjects so the important page is easier to discover.",
+
+      evidence: [
+        `Observed inbound links among inspected pages: ${inboundInternalLinks}`,
+      ],
+    });
+  }
+
+  if (
+    actions.length ===
+    0
+  ) {
+    actions.push({
+      type:
+        "KEEP_MONITORING",
+
+      title:
+        "Keep monitoring before making a major change",
+
+      explanation:
+        "We did not find a strong deterministic gap from the available evidence. More ranking and Search Console history is needed before recommending a larger change.",
+
+      evidence: [
+        "No high-confidence deterministic content or page-structure gap was detected.",
+      ],
+    });
+  }
+
+  const competitorWordCounts =
+    parsedCompetitors.map(
+      (
+        page
+      ) =>
+        page.wordCount
+    );
+
+  return {
+    keyword,
+    market:
+      market.toUpperCase(),
+    domain,
+    liveRank:
+      live.keyword.rank,
+    rankingStatus:
+      live.keyword.rank ===
+        null
+        ? "NOT_TOP_100"
+        : "RANKING",
+
+    ownPage:
+      ownPage
+        ? {
+            url:
+              ownPage.url,
+            title:
+              ownPage.title,
+            h1:
+              ownPage.h1,
+            wordCount:
+              ownPage.wordCount,
+            relevanceScore:
+              ownPage.relevanceScore,
+            inboundInternalLinks,
+          }
+        : null,
+
+    competitors:
+      competitorEvidence,
+
+    serpPattern:
+      inferSerpPattern(
+        competitorTargets
+      ),
+
+    topicGaps,
+
+    observedCompetitorMedianWordCount:
+      median(
+        competitorWordCounts
+      ),
+
+    findings,
+
+    actions,
+
+    ownPagesInspected:
+      ownPages.length,
+
+    competitorPagesFetched:
+      parsedCompetitors.length,
+
+    observedAt:
+      new Date().toISOString(),
+
+    limitations: [
+      "Observed differences between pages are evidence, not proof that any single difference causes a ranking.",
+      "Competitor word count is descriptive only and is never treated as a target.",
+      "This diagnosis uses the cached live SERP from the latest rank check and does not spend another SERP request.",
+      "Search results can vary by market, device, time, and Google personalization.",
+    ],
+  };
+}
+
+export async function getOpportunityDiagnosis({
+  siteUrl,
+  keyword,
+  market,
+}: {
+  siteUrl: string;
+  keyword: string;
+  market: string;
+}): Promise<{
+  diagnosis: OpportunityDiagnosis;
+  fromCache: boolean;
+}> {
+  const domain =
+    normalizeSiteDomain(
+      siteUrl
+    );
+
+  const key =
+    cacheKey(
+      domain,
+      market,
+      keyword
+    );
+
+  const cached =
+    await prisma.keywordSuggestionCache.findUnique({
+      where: {
+        normalized_source: {
+          normalized:
+            key,
+          source:
+            DIAGNOSIS_SOURCE,
+        },
+      },
+    });
+
+  if (
+    cached &&
+    Date.now() -
+      cached.fetchedAt.getTime() <
+      DIAGNOSIS_TTL_MS
+  ) {
+    return {
+      diagnosis:
+        cached.payload as unknown as OpportunityDiagnosis,
+      fromCache:
+        true,
+    };
+  }
+
+  const diagnosis =
+    await buildOpportunityDiagnosis({
+      siteUrl,
+      keyword,
+      market,
+    });
+
+  await prisma.keywordSuggestionCache.upsert({
+    where: {
+      normalized_source: {
+        normalized:
+          key,
+        source:
+          DIAGNOSIS_SOURCE,
+      },
+    },
+
+    create: {
+      normalized:
+        key,
+      source:
+        DIAGNOSIS_SOURCE,
+      payload:
+        diagnosis as unknown as Prisma.InputJsonValue,
+    },
+
+    update: {
+      payload:
+        diagnosis as unknown as Prisma.InputJsonValue,
+      fetchedAt:
+        new Date(),
+    },
+  });
+
+  return {
+    diagnosis,
+    fromCache:
+      false,
+  };
+}

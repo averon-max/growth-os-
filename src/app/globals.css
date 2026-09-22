@@ -1,87 +1,138 @@
 @import "tailwindcss";
 
 :root {
-  /* Core surface/text tokens -- single source of truth */
-  --background: #08090A;
-  --surface: #0F1011;
-  --elevated: #17181A;
-  --border: #2A2E33;
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --primary: #F7F8F8;
-  --secondary: #9CA0A8;
-  --muted: #64646A;
-  --accent: #5E6AD2;
-  --accent-soft: rgba(94, 106, 210, 0.14);
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --danger: #EF4444;
+  --background: #090a0b;
+  --sidebar: #0d0f10;
+  --workspace: #101214;
 
-  /* Fonts */
-  --font-display: var(--font-inter), -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-inter), -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "SF Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --surface: #141618;
+  --surface-2: #181a1d;
+  --surface-3: #1c1e21;
+  --elevated: #1c1e21;
 
-  /* Legacy aliases -- kept so any older component still referencing the
-     original token names keeps working without a separate migration pass. */
+  --border: rgba(255,255,255,.065);
+  --border-hover: rgba(255,255,255,.11);
+  --border-strong: rgba(255,255,255,.15);
+
+  --primary: #e6e6e8;
+  --secondary: #9699a0;
+  --muted: #62666e;
+  --faint: #43464d;
+
+  --accent: #6c68d9;
+  --accent-soft: rgba(108,104,217,.11);
+
+  --cyan: #2599a8;
+  --blue: #5b8fd8;
+
+  --success: #4daf6d;
+  --warning: #c9a644;
+  --danger: #d46670;
+
+  --font-body: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font-body);
+  --font-mono: "SF Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+
   --bg: var(--background);
-  --bg-elevated: var(--elevated);
-  --surface-2: var(--elevated);
+  --bg-elevated: var(--surface-2);
   --text: var(--primary);
   --text-dim: var(--secondary);
   --text-faint: var(--muted);
   --positive: var(--success);
-  --positive-soft: rgba(34, 197, 94, 0.12);
+  --positive-soft: rgba(77,175,109,.10);
   --negative: var(--danger);
 }
 
-* { border-color: var(--border); }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--primary);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-}
-
-.font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
-.font-mono-num { font-family: var(--font-mono); font-feature-settings: "tnum" 1; letter-spacing: -0.01em; }
-
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.signal-line {
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-  animation: draw 2.4s ease-out forwards;
-}
-
-@keyframes draw { to { stroke-dashoffset: 0; } }
-
-::selection { background: var(--accent); color: var(--background); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.dashboard,
-.dashboard * {
+* {
   box-sizing: border-box;
 }
 
-.dashboard {
-  background: var(--background) !important;
-  color: var(--primary);
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--background);
 }
 
-.dashboard > div {
-  background: var(--background) !important;
+body {
+  color: var(--primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(108,104,217,.34);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 1px solid rgba(118,113,229,.7);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.115) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255,255,255,.115);
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+:root {
+  --background: #08090a;
+  --surface: #0f1011;
+  --elevated: #17181a;
+  --primary: #f7f8f8;
+  --secondary: #9ca0a8;
+  --border: #2a2e33;
+  --accent: #5e6ad2;
+}
+
+html,
+body {
+  background: #08090a;
+  color: #f7f8f8;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }

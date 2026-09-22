@@ -1,0 +1,462 @@
+ M package-lock.json
+ M package.json
+ M prisma.config.ts
+ M prisma/schema.prisma
+ M skills-lock.json
+ M src/app/api/cms/apply-fix/route.ts
+ M src/app/api/content/articles/[id]/approve/route.ts
+ M src/app/api/content/articles/[id]/publish/route.ts
+ M src/app/api/content/articles/[id]/route.ts
+ M src/app/api/content/briefs/[id]/generate-article/route.ts
+ M src/app/api/content/briefs/route.ts
+ M src/app/api/integrations/google-analytics/callback/route.ts
+ M src/app/api/integrations/google-analytics/connect/route.ts
+ M src/app/api/integrations/google/callback/route.ts
+ M src/app/api/integrations/google/connect/route.ts
+ M src/app/api/keywords/explore/route.ts
+ M src/app/api/keywords/route.ts
+ M src/app/api/keywords/volume-sync/route.ts
+ M src/app/dashboard/audience/page.tsx
+ M src/app/dashboard/cms/page.tsx
+ M src/app/dashboard/content/page.tsx
+ M src/app/dashboard/fix-history/page.tsx
+ M src/app/dashboard/issues/page.tsx
+ M src/app/dashboard/keywords/page.tsx
+ M src/app/dashboard/layout.module.css
+ M src/app/dashboard/opportunities/page.tsx
+ M src/app/dashboard/page.tsx
+ M src/app/dashboard/seo/page.tsx
+ M src/app/dashboard/settings/page.tsx
+ M src/app/dashboard/websites/page.tsx
+ M src/app/globals.css
+ M src/app/page.tsx
+ M src/components/dashboard/content-explorer.tsx
+ M src/components/dashboard/drawer.module.css
+ M src/components/dashboard/enrich-volume-button.tsx
+ M src/components/dashboard/industry-top-keywords.tsx
+ M src/components/dashboard/keyword-suggestions.module.css
+ M src/components/dashboard/keyword-suggestions.tsx
+ M src/components/dashboard/keyword-trend-drawer.module.css
+ M src/components/dashboard/keywords-explorer.module.css
+ M src/components/dashboard/keywords-explorer.tsx
+ M src/components/dashboard/sidebar.module.css
+ M src/components/dashboard/sidebar.tsx
+ M src/components/dashboard/suggestion-trend-drawer.tsx
+ M src/components/dashboard/topbar.module.css
+ M src/components/dashboard/topbar.tsx
+ M src/components/dashboard/ui.module.css
+ M src/components/dashboard/ui.tsx
+ M src/lib/content/gemini-generator.ts
+ M src/lib/content/service.ts
+ M src/lib/content/types.ts
+ M src/lib/crawler/crawler.ts
+ M src/lib/crawler/parser.ts
+ M src/lib/crawler/security.ts
+ M src/lib/integrations/google/oauth-client.ts
+ M src/lib/integrations/google/state.ts
+ M src/lib/keywords/dataforseo-provider.test.ts
+ M src/lib/keywords/dataforseo-provider.ts
+ M src/lib/keywords/repository.ts
+ M src/lib/keywords/suggestion-cache.ts
+ M src/lib/keywords/trends-provider.ts
+ M src/lib/keywords/volume-service.ts
+ M src/lib/prisma.ts
+?? .agents/skills/neon-postgres/
+?? .agents/skills/neon/
+?? .article-workspace-backup-20260919_152258/
+?? .claude/skills/neon
+?? .claude/skills/neon-postgres
+?? .growth-os-backups/
+?? .growth-os-checkpoints/
+?? .ui-backup-billion-20260918_135414/
+?? "1\321\215="
+?? cloudflare-audit.txt
+?? package.json.backup_prisma_vercel_20260918_125356
+?? prisma.config.ts.backup_database_env_20260917_191210
+?? prisma.config.ts.backup_database_env_20260918_124008
+?? prisma/migrations/20260907222835_add_competitor_models/
+?? prisma/migrations/20260908014712_keyword_market_metrics/
+?? prisma/migrations/20260910062559_cloudflare_traffic/
+?? prisma/migrations/20260911044804_traffic_breakdown_fields/
+?? prisma/migrations/20260911055223_bot_category_breakdown/
+?? prisma/migrations/20260911160939_nullable_unverified_bots_threats/
+?? prisma/migrations/20260911162730_cloudflare_security_fixes/
+?? prisma/migrations/20260915053828_content_fact_registry_evidence/
+?? prisma/migrations/20260915213224_business_fact_evidence_freshness/
+?? prisma/migrations/20260917061214_keyword_outcome_database_v1/
+?? prisma/migrations/20260917174539_outcome_business_compatibility/
+?? prisma/migrations/20260917191326_content_brief_outcome_link_v1/
+?? prisma/migrations/20260918002021_content_brief_outcome_unique_v1/
+?? prisma/migrations/20260918002910_outcome_action_revision_v1/
+?? prisma/migrations/20260918005300_outcome_checkpoint_no_data_source/
+?? prisma/migrations/20260919232855_page_traffic_snapshot_v1/
+?? prisma/schema.prisma.backup_checkpoint_scheduler_20260917_185249
+?? prisma/schema.prisma.backup_compatibility_20260917_114418
+?? prisma/schema.prisma.backup_content_outcome_link_20260917_131312
+?? prisma/schema.prisma.backup_fix_outcome_relation_20260917_182001
+?? prisma/schema.prisma.backup_outcome_db_20260917_001201
+?? prisma/schema.prisma.backup_outcome_db_20260917_104738
+?? prisma/schema.prisma.backup_outcome_resume_20260917_182858
+?? prisma/schema.prisma.backup_page_traffic_20260919_172404
+?? prisma/schema.prisma.backup_page_traffic_20260919_172850
+?? prisma/schema.prisma.backup_stage2a_20260914_233820
+?? prisma/schema.prisma.backup_stage3d1_20260915_213224
+?? prisma/schema.prisma.backup_supported_create_20260917_132237
+?? public/world-110m.json
+?? scripts-test-cloudflare.ts
+?? scripts/
+?? src/app/api/audience/ga4/
+?? src/app/api/audience/search-queries/
+?? src/app/api/cms/apply-fix/route.ts.backup_execution_guard_v2_20260917_115257
+?? src/app/api/cms/apply-fix/route.ts.backup_execution_link_20260917_113800
+?? src/app/api/competitors/
+?? src/app/api/content/articles/[id]/analytics/
+?? src/app/api/content/articles/[id]/approve/route.ts.backup_content_gate_20260914_232336
+?? src/app/api/content/articles/[id]/publish/route.ts.backup_content_gate_20260914_232336
+?? src/app/api/content/articles/[id]/publish/route.ts.backup_content_outcome_link_20260917_131312
+?? src/app/api/content/articles/[id]/publish/route.ts.backup_execution_guard_v2_20260917_115257
+?? src/app/api/content/articles/[id]/publish/route.ts.backup_execution_link_20260917_113800
+?? src/app/api/content/articles/[id]/publish/route.ts.backup_supported_create_20260917_132237
+?? src/app/api/content/articles/[id]/route.ts.backup_article_repair_20260919_152623
+?? src/app/api/content/briefs/[id]/evidence/
+?? src/app/api/content/briefs/[id]/generate-article/route.ts.backup_provider_20260919_164552
+?? src/app/api/content/briefs/[id]/generate-article/route.ts.backup_transient_20260919_164812
+?? src/app/api/content/briefs/route.ts.backup_dev_error_20260914_230553
+?? src/app/api/content/facts/
+?? src/app/api/content/plan/
+?? src/app/api/content/serp/
+?? src/app/api/content/strategy/
+?? src/app/api/integrations/cloudflare/
+?? src/app/api/integrations/google-analytics/callback/route.ts.backup_ga4_20260913_161059
+?? src/app/api/integrations/google-analytics/callback/route.ts.backup_return_20260913_161927
+?? src/app/api/integrations/google-analytics/connect/route.ts.backup_ga4_20260913_161059
+?? src/app/api/integrations/google-analytics/connect/route.ts.backup_return_20260913_161927
+?? src/app/api/integrations/google/callback/route.ts.backup_gsc_20260913_163347
+?? src/app/api/integrations/google/connect/route.ts.backup_dense_20260913_172747
+?? src/app/api/integrations/google/connect/route.ts.backup_gsc_20260913_163347
+?? src/app/api/internal/
+?? src/app/api/keywords/analytics/
+?? src/app/api/keywords/explore/route.ts.backup_audience_search_20260912_213244
+?? src/app/api/keywords/live-rank/
+?? src/app/api/keywords/market-breakdown/
+?? src/app/api/keywords/opportunity-diagnosis/
+?? src/app/api/keywords/outcome-actions/
+?? src/app/api/keywords/overview/
+?? src/app/api/keywords/route.ts.backup_20260908_010559
+?? src/app/api/traffic/
+?? src/app/dashboard/audience/page.tsx.backup_audience_search_20260912_213244
+?? src/app/dashboard/audience/page.tsx.backup_dense_20260913_172747
+?? src/app/dashboard/audience/page.tsx.backup_real_audience_20260912_215207
+?? src/app/dashboard/content/articles/
+?? src/app/dashboard/content/page.tsx.backup_article_repair_20260919_152623
+?? src/app/dashboard/content/page.tsx.backup_button_fix_20260919_153150
+?? src/app/dashboard/content/page.tsx.backup_content_tabs_20260918_135729
+?? src/app/dashboard/content/page.tsx.backup_final_wire_20260919_152812
+?? src/app/dashboard/content/page.tsx.backup_governance_20260914_235131
+?? src/app/dashboard/content/page.tsx.backup_outcome_resume_20260917_182858
+?? src/app/dashboard/content/page.tsx.backup_safe_wire_20260919_153541
+?? src/app/dashboard/content/page.tsx.backup_stage3a_fix_20260914_235435
+?? src/app/dashboard/keywords/page.tsx.backup_live_rank_20260916_231240
+?? src/app/dashboard/keywords/page.tsx.backup_rank_intelligence_20260916_214255
+?? src/app/dashboard/layout.module.css.backup_depth_20260912_212115
+?? src/app/dashboard/layout.module.css.backup_linear_20260912_164901
+?? src/app/dashboard/layout.module.css.backup_linear_final_20260912_172133
+?? src/app/dashboard/layout.module.css.backup_linear_scene_20260912_171339
+?? src/app/dashboard/layout.module.css.backup_polish_20260912_211636
+?? src/app/dashboard/layout.module.css.backup_true_linear_20260912_165513
+?? src/app/dashboard/layout.module.css.backup_unified_linear_20260912_170449
+?? src/app/globals.css.backup_linear_20260912_164901
+?? src/app/globals.css.backup_linear_final_20260912_172133
+?? src/app/globals.css.backup_linear_scene_20260912_171339
+?? src/app/globals.css.backup_polish_20260912_211636
+?? src/app/globals.css.backup_true_linear_20260912_165513
+?? src/app/globals.css.backup_unified_linear_20260912_170449
+?? src/app/landing.module.css
+?? src/app/landing.module.css.backup_editorial_20260913_123703
+?? src/app/landing.module.css.backup_linear_20260913_141004
+?? src/app/landing.module.css.backup_premium_20260913_140334
+?? src/app/landing.module.css.backup_real_product_20260913_123133
+?? src/app/page.tsx.backup_20260912_225210
+?? src/app/page.tsx.backup_atlas_20260913_003247
+?? src/app/page.tsx.backup_best_of_20260913_121900
+?? src/app/page.tsx.backup_editorial_20260913_123703
+?? src/app/page.tsx.backup_linear_20260913_141004
+?? src/app/page.tsx.backup_linear_atlas_20260913_120011
+?? src/app/page.tsx.backup_linear_ui_20260913_000736
+?? src/app/page.tsx.backup_premium_20260913_140334
+?? src/app/page.tsx.backup_real_product_20260913_123133
+?? src/app/page.tsx.backup_white_linear_20260913_120606
+?? src/components/dashboard/article-workspace.module.css
+?? src/components/dashboard/article-workspace.tsx
+?? src/components/dashboard/article-workspace.tsx.backup_keyword_ui_20260919_171259
+?? src/components/dashboard/article-workspace.tsx.backup_keyword_v2_20260919_170838
+?? src/components/dashboard/article-workspace.tsx.backup_planned_keywords_20260919_171558
+?? src/components/dashboard/audience-geo-intelligence.module.css
+?? src/components/dashboard/audience-geo-intelligence.module.css.backup_mapfix_20260913_161431
+?? src/components/dashboard/audience-geo-intelligence.tsx
+?? src/components/dashboard/audience-geo-intelligence.tsx.backup_mapfix_20260913_161431
+?? src/components/dashboard/audience-intelligence.module.css
+?? src/components/dashboard/audience-intelligence.module.css.backup_traffic_period_fix_20260912_221857
+?? src/components/dashboard/audience-intelligence.tsx
+?? src/components/dashboard/audience-intelligence.tsx.backup_intelligence_20260913_152834
+?? src/components/dashboard/audience-intelligence.tsx.backup_period_analysis_20260912_220555
+?? src/components/dashboard/audience-intelligence.tsx.backup_traffic_period_fix_20260912_221857
+?? src/components/dashboard/audience-search-queries.module.css
+?? src/components/dashboard/audience-search-queries.module.css.backup_dense_20260913_172747
+?? src/components/dashboard/audience-search-queries.module.css.backup_real_audience_20260912_215207
+?? src/components/dashboard/audience-search-queries.tsx
+?? src/components/dashboard/audience-search-queries.tsx.backup_dense_20260913_172747
+?? src/components/dashboard/audience-search-queries.tsx.backup_real_audience_20260912_215207
+?? src/components/dashboard/content-create-button.module.css
+?? src/components/dashboard/content-create-button.tsx
+?? src/components/dashboard/content-explorer.tsx.backup_intelligence_ui_20260914_191754
+?? src/components/dashboard/content-explorer.tsx.backup_linear_final_20260912_172133
+?? src/components/dashboard/content-explorer.tsx.backup_linear_scene_20260912_171339
+?? src/components/dashboard/content-explorer.tsx.backup_unified_linear_20260912_170449
+?? src/components/dashboard/content-governance-panel.tsx
+?? src/components/dashboard/content-governance-panel.tsx.backup_evidence_trace_20260916_212229
+?? src/components/dashboard/content-governance-panel.tsx.backup_evidence_ui_20260916_211347
+?? src/components/dashboard/content-governance-panel.tsx.backup_fact_discovery_ui_20260915_084947
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3a_fix_20260914_235435
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3c_20260915_132016
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3c_v2_20260915_132417
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3c_v2_20260915_132742
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3c_v2_20260915_132932
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3d2_20260915_214536
+?? src/components/dashboard/content-governance-panel.tsx.backup_stage3d2_v2_20260915_215336
+?? src/components/dashboard/content-governance.module.css
+?? src/components/dashboard/content-governance.module.css.backup_evidence_trace_20260916_212229
+?? src/components/dashboard/content-governance.module.css.backup_fact_discovery_ui_20260915_084947
+?? src/components/dashboard/content-governance.module.css.backup_stage3c_20260915_132016
+?? src/components/dashboard/content-governance.module.css.backup_stage3c_v2_20260915_132417
+?? src/components/dashboard/content-governance.module.css.backup_stage3c_v2_20260915_132742
+?? src/components/dashboard/content-governance.module.css.backup_stage3c_v2_20260915_132932
+?? src/components/dashboard/content-governance.module.css.backup_stage3d2_20260915_214536
+?? src/components/dashboard/content-governance.module.css.backup_stage3d2_v2_20260915_215336
+?? src/components/dashboard/content-intelligence.module.css
+?? src/components/dashboard/drawer.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/drawer.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/industry-top-keywords.tsx.backup_audience_search_20260912_213244
+?? src/components/dashboard/keyword-opportunity-diagnosis.module.css
+?? src/components/dashboard/keyword-opportunity-diagnosis.module.css.backup_action_plan_ui_20260917_000118
+?? src/components/dashboard/keyword-opportunity-diagnosis.module.css.backup_content_outcome_link_20260917_131312
+?? src/components/dashboard/keyword-opportunity-diagnosis.module.css.backup_start_action_20260917_130542
+?? src/components/dashboard/keyword-opportunity-diagnosis.module.css.backup_supported_create_ui_20260917_182522
+?? src/components/dashboard/keyword-opportunity-diagnosis.tsx
+?? src/components/dashboard/keyword-opportunity-diagnosis.tsx.backup_action_plan_ui_20260917_000118
+?? src/components/dashboard/keyword-opportunity-diagnosis.tsx.backup_content_outcome_link_20260917_131312
+?? src/components/dashboard/keyword-opportunity-diagnosis.tsx.backup_outcome_resume_20260917_182858
+?? src/components/dashboard/keyword-opportunity-diagnosis.tsx.backup_start_action_20260917_130542
+?? src/components/dashboard/keyword-opportunity-diagnosis.tsx.backup_supported_create_ui_20260917_182522
+?? src/components/dashboard/keyword-overview-drawer.tsx
+?? src/components/dashboard/keyword-rank-intelligence.module.css
+?? src/components/dashboard/keyword-rank-intelligence.tsx
+?? src/components/dashboard/keyword-suggestions.module.css.backup_depth_20260912_212115
+?? src/components/dashboard/keyword-suggestions.module.css.backup_linear_final_20260912_172133
+?? src/components/dashboard/keyword-suggestions.module.css.backup_linear_scene_20260912_171339
+?? src/components/dashboard/keyword-suggestions.module.css.backup_polish_20260912_211636
+?? src/components/dashboard/keyword-suggestions.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/keyword-suggestions.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/keyword-suggestions.tsx.backup_20260908_010559
+?? src/components/dashboard/keyword-suggestions.tsx.backup_audience_search_20260912_213244
+?? src/components/dashboard/keyword-suggestions.tsx.backup_linear_final_20260912_172133
+?? src/components/dashboard/keyword-suggestions.tsx.backup_polish_20260912_211636
+?? src/components/dashboard/keyword-trend-drawer.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/keywords-explorer.module.css.backup_depth_20260912_212115
+?? src/components/dashboard/keywords-explorer.module.css.backup_linear_final_20260912_172133
+?? src/components/dashboard/keywords-explorer.module.css.backup_linear_scene_20260912_171339
+?? src/components/dashboard/keywords-explorer.module.css.backup_polish_20260912_211636
+?? src/components/dashboard/keywords-explorer.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/keywords-explorer.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/keywords-explorer.tsx.backup_20260908_010559
+?? src/components/dashboard/keywords-explorer.tsx.backup_linear_final_20260912_172133
+?? src/components/dashboard/keywords-explorer.tsx.backup_linear_scene_20260912_171339
+?? src/components/dashboard/keywords-explorer.tsx.backup_polish_20260912_211636
+?? src/components/dashboard/keywords-explorer.tsx.backup_unified_linear_20260912_170449
+?? src/components/dashboard/keywords-page-client.tsx
+?? src/components/dashboard/keywords-page-client.tsx.backup_live_rank_20260916_231240
+?? src/components/dashboard/live-rank-intelligence.module.css
+?? src/components/dashboard/live-rank-intelligence.module.css.backup_diagnosis_20260916_233830
+?? src/components/dashboard/live-rank-intelligence.tsx
+?? src/components/dashboard/live-rank-intelligence.tsx.backup_diagnosis_20260916_233830
+?? src/components/dashboard/outcome-action-resume-panel.module.css
+?? src/components/dashboard/outcome-action-resume-panel.tsx
+?? src/components/dashboard/sidebar.module.css.backup_linear_20260912_164901
+?? src/components/dashboard/sidebar.module.css.backup_linear_final_20260912_172133
+?? src/components/dashboard/sidebar.module.css.backup_linear_scene_20260912_171339
+?? src/components/dashboard/sidebar.module.css.backup_polish_20260912_211636
+?? src/components/dashboard/sidebar.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/sidebar.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/skeleton.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/suggestion-filters.tsx
+?? src/components/dashboard/topbar.module.css.backup_linear_20260912_164901
+?? src/components/dashboard/topbar.module.css.backup_linear_final_20260912_172133
+?? src/components/dashboard/topbar.module.css.backup_linear_scene_20260912_171339
+?? src/components/dashboard/topbar.module.css.backup_polish_20260912_211636
+?? src/components/dashboard/topbar.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/topbar.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/topbar.tsx.backup_linear_scene_20260912_171339
+?? src/components/dashboard/topbar.tsx.backup_true_linear_20260912_165513
+?? src/components/dashboard/traffic-intelligence.module.css
+?? src/components/dashboard/traffic-intelligence.module.css.backup_dense_20260913_155249
+?? src/components/dashboard/traffic-intelligence.module.css.backup_ga4_20260913_161059
+?? src/components/dashboard/traffic-intelligence.tsx
+?? src/components/dashboard/traffic-intelligence.tsx.backup_dense_20260913_155249
+?? src/components/dashboard/traffic-intelligence.tsx.backup_ga4_20260913_161059
+?? src/components/dashboard/traffic-overview.module.css
+?? src/components/dashboard/traffic-overview.module.css.backup_depth_20260912_212115
+?? src/components/dashboard/traffic-overview.module.css.backup_linear_final_20260912_172133
+?? src/components/dashboard/traffic-overview.module.css.backup_linear_scene_20260912_171339
+?? src/components/dashboard/traffic-overview.module.css.backup_period_analysis_20260912_220555
+?? src/components/dashboard/traffic-overview.module.css.backup_polish_20260912_211636
+?? src/components/dashboard/traffic-overview.module.css.backup_real_audience_20260912_215207
+?? src/components/dashboard/traffic-overview.module.css.backup_traffic_period_fix_20260912_221857
+?? src/components/dashboard/traffic-overview.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/traffic-overview.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/traffic-overview.tsx
+?? src/components/dashboard/traffic-overview.tsx.backup_period_analysis_20260912_220555
+?? src/components/dashboard/traffic-overview.tsx.backup_real_audience_20260912_215207
+?? src/components/dashboard/traffic-overview.tsx.backup_traffic_period_fix_20260912_221857
+?? src/components/dashboard/ui.module.css.backup_content_tabs_20260918_135729
+?? src/components/dashboard/ui.module.css.backup_depth_20260912_212115
+?? src/components/dashboard/ui.module.css.backup_linear_20260912_164901
+?? src/components/dashboard/ui.module.css.backup_linear_final_20260912_172133
+?? src/components/dashboard/ui.module.css.backup_linear_scene_20260912_171339
+?? src/components/dashboard/ui.module.css.backup_polish_20260912_211636
+?? src/components/dashboard/ui.module.css.backup_true_linear_20260912_165513
+?? src/components/dashboard/ui.module.css.backup_unified_linear_20260912_170449
+?? src/components/dashboard/ui.tsx.backup_linear_scene_20260912_171339
+?? src/components/dashboard/ui.tsx.backup_true_linear_20260912_165513
+?? src/components/marketing/landing-reveal.tsx
+?? src/data/
+?? src/lib/audience/ga4-intelligence.ts
+?? src/lib/competitors/
+?? src/lib/content/article-analyzer.test.ts
+?? src/lib/content/article-analyzer.ts
+?? src/lib/content/business-fact-repository.ts
+?? src/lib/content/business-fact-repository.ts.backup_finish_stage3d1_20260915_213529
+?? src/lib/content/business-fact-repository.ts.backup_stage3d1_20260915_213224
+?? src/lib/content/business-facts.ts
+?? src/lib/content/business-facts.ts.backup_stage2a_20260914_233820
+?? src/lib/content/content-gate.test.ts
+?? src/lib/content/content-gate.ts
+?? src/lib/content/content-plan-analysis.test.ts
+?? src/lib/content/content-plan-analysis.ts
+?? src/lib/content/content-quality.test.ts
+?? src/lib/content/content-quality.ts
+?? src/lib/content/content-quality.ts.backup_content_gate_20260914_232336
+?? src/lib/content/content-quality.ts.backup_dynamic_final_20260914_191150
+?? src/lib/content/evidence-drift.test.ts
+?? src/lib/content/evidence-drift.ts
+?? src/lib/content/evidence-snapshot.ts
+?? src/lib/content/evidence-snapshot.ts.backup_stage2b_20260914_234511
+?? src/lib/content/fact-discovery-batch.test.ts
+?? src/lib/content/fact-discovery-batch.test.ts.backup_atomic_20260915_131308
+?? src/lib/content/fact-discovery.test.ts
+?? src/lib/content/fact-discovery.ts
+?? src/lib/content/fact-discovery.ts.backup_503_20260915_125840
+?? src/lib/content/fact-discovery.ts.backup_atomic_20260915_131308
+?? src/lib/content/fact-discovery.ts.backup_batch_20260915_130516
+?? src/lib/content/fact-discovery.ts.backup_stage3c_20260915_132016
+?? src/lib/content/fact-discovery.ts.backup_stage3c_v2_20260915_132417
+?? src/lib/content/fact-discovery.ts.backup_stage3c_v2_20260915_132742
+?? src/lib/content/fact-discovery.ts.backup_stage3c_v2_20260915_132932
+?? src/lib/content/final-content-plan-utils.ts
+?? src/lib/content/final-content-plan.test.ts
+?? src/lib/content/final-content-plan.test.ts.backup_testfix2_20260914_190609
+?? src/lib/content/final-content-plan.ts
+?? src/lib/content/final-content-plan.ts.backup_dynamic_headings_20260914_191005
+?? src/lib/content/final-content-plan.ts.backup_intelligence_ui_20260914_191754
+?? src/lib/content/final-content-plan.ts.backup_testfix2_20260914_190609
+?? src/lib/content/gemini-generator.ts.backup_content_gate_20260914_232336
+?? src/lib/content/gemini-generator.ts.backup_dynamic_final_20260914_191150
+?? src/lib/content/gemini-generator.ts.backup_provider_20260919_164552
+?? src/lib/content/gemini-generator.ts.backup_transient_20260919_164812
+?? src/lib/content/seo-strategy.test.ts
+?? src/lib/content/seo-strategy.test.ts.backup_dynamic_headings_20260914_191005
+?? src/lib/content/seo-strategy.ts
+?? src/lib/content/seo-strategy.ts.backup_dynamic_headings_20260914_191005
+?? src/lib/content/serp-intelligence.test.ts
+?? src/lib/content/serp-intelligence.test.ts.backup_testfix_20260914_085124
+?? src/lib/content/serp-intelligence.ts
+?? src/lib/content/serp-intelligence.ts.backup_live_rank_20260916_231240
+?? src/lib/content/serp-intelligence.ts.backup_testfix_20260914_085124
+?? src/lib/content/serp-utils.ts
+?? src/lib/content/serp-utils.ts.backup_finalplan_20260914_190207
+?? src/lib/content/serp-utils.ts.backup_testfix2_20260914_190609
+?? src/lib/content/service.ts.backup_content_gate_20260914_232336
+?? src/lib/content/service.ts.backup_content_v2_20260913_235410
+?? src/lib/content/service.ts.backup_dynamic_headings_20260914_191005
+?? src/lib/content/service.ts.backup_finalplan_20260914_190207
+?? src/lib/content/service.ts.backup_provider_20260919_164552
+?? src/lib/content/service.ts.backup_seov2_20260913_234518
+?? src/lib/content/service.ts.backup_stage2b_20260914_234511
+?? src/lib/content/service.ts.backup_supported_create_20260917_132237
+?? src/lib/content/service.ts.backup_transient_20260919_164812
+?? src/lib/content/types.ts.backup_content_v2_20260913_235410
+?? src/lib/content/types.ts.backup_dynamic_headings_20260914_191005
+?? src/lib/content/types.ts.backup_seov2_20260913_234518
+?? src/lib/crawler/crawler.ts.backup_competitor_fetch_v2_20260916_234530
+?? src/lib/crawler/crawler.ts.backup_diagnosis_20260916_233830
+?? src/lib/crawler/crawler.ts.backup_safe_redirect_20260915_191144
+?? src/lib/crawler/parser.ts.backup_fact_discovery_20260915_084723
+?? src/lib/crawler/redirect-security.test.ts
+?? src/lib/crawler/redirect-target.test.ts
+?? src/lib/crawler/security.test.ts
+?? src/lib/crawler/security.ts.backup_www_domain_20260915_124901
+?? src/lib/integrations/cloudflare/
+?? src/lib/integrations/google/oauth-client.ts.backup_ga4_20260913_161059
+?? src/lib/integrations/google/state.ts.backup_return_20260913_161927
+?? src/lib/keywords/advanced-filters.ts
+?? src/lib/keywords/business-compatibility.test.ts
+?? src/lib/keywords/business-compatibility.ts
+?? src/lib/keywords/competitor-cache.ts
+?? src/lib/keywords/live-rank-service.test.ts
+?? src/lib/keywords/live-rank-service.test.ts.backup_discovery_20260916_231957
+?? src/lib/keywords/live-rank-service.test.ts.backup_fit_gate_20260916_232250
+?? src/lib/keywords/live-rank-service.test.ts.backup_fit_selection_20260916_232753
+?? src/lib/keywords/live-rank-service.ts
+?? src/lib/keywords/live-rank-service.ts.backup_discovery_20260916_231957
+?? src/lib/keywords/live-rank-service.ts.backup_fit_gap_20260916_232518
+?? src/lib/keywords/live-rank-service.ts.backup_fit_gate_20260916_232250
+?? src/lib/keywords/live-rank-service.ts.backup_fit_selection_20260916_232753
+?? src/lib/keywords/market-breakdown.ts
+?? src/lib/keywords/market-options.ts
+?? src/lib/keywords/markets.ts
+?? src/lib/keywords/opportunity-action-plan.test.ts
+?? src/lib/keywords/opportunity-action-plan.ts
+?? src/lib/keywords/opportunity-diagnosis.test.ts
+?? src/lib/keywords/opportunity-diagnosis.test.ts.backup_subtopic_consensus_20260916_234837
+?? src/lib/keywords/opportunity-diagnosis.test.ts.backup_subtopic_coverage_20260916_235217
+?? src/lib/keywords/opportunity-diagnosis.test.ts.backup_topic_gap_20260916_234052
+?? src/lib/keywords/opportunity-diagnosis.ts
+?? src/lib/keywords/opportunity-diagnosis.ts.backup_competitor_fetch_v2_20260916_234530
+?? src/lib/keywords/opportunity-diagnosis.ts.backup_subtopic_consensus_20260916_234837
+?? src/lib/keywords/opportunity-diagnosis.ts.backup_subtopic_coverage_20260916_235217
+?? src/lib/keywords/opportunity-diagnosis.ts.backup_topic_gap_20260916_234052
+?? src/lib/keywords/outcome-checkpoint-engine.test.ts
+?? src/lib/keywords/outcome-checkpoint-engine.ts
+?? src/lib/keywords/outcome-checkpoint-engine.ts.backup_checkpoint_scheduler_20260917_185249
+?? src/lib/keywords/outcome-create-brief.test.ts
+?? src/lib/keywords/outcome-create-brief.ts
+?? src/lib/keywords/outcome-execution-permission.test.ts
+?? src/lib/keywords/outcome-repository.ts
+?? src/lib/keywords/outcome-revalidation.test.ts
+?? src/lib/keywords/outcome-revalidation.ts
+?? src/lib/keywords/outcome-service.test.ts
+?? src/lib/keywords/outcome-service.ts
+?? src/lib/keywords/outcome-service.ts.backup_checkpoint_scheduler_20260917_185249
+?? src/lib/keywords/outcome-service.ts.backup_execution_guard_v2_20260917_115257
+?? src/lib/keywords/outcome-service.ts.backup_execution_link_20260917_113800
+?? src/lib/keywords/outcome-service.ts.backup_persist_compatibility_20260917_114741
+?? src/lib/keywords/outcome-start.test.ts
+?? src/lib/keywords/outcome-start.ts
+?? src/lib/keywords/rank-intelligence.test.ts
+?? src/lib/keywords/rank-intelligence.ts
+?? src/lib/keywords/repository.ts.backup_20260908_010559
+?? src/lib/keywords/repository.ts.backup_audience_search_20260912_213244
+?? src/lib/keywords/topic-authority.test.ts
+?? src/lib/keywords/topic-authority.ts
+?? src/lib/prisma.ts.backup_database_env_20260917_191210
+?? src/lib/prisma.ts.backup_database_env_20260918_124008
+?? vercel.json

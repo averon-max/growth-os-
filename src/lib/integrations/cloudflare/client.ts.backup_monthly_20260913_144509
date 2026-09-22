@@ -1,0 +1,173 @@
+import type {
+  CloudflareGraphQLResponse,
+  CloudflareDailyGroup,
+  DailyTrafficData,
+  TrafficByCountry,
+  TrafficByDevice,
+  TrafficByBotCategory,
+} from "./types";
+
+const CLOUDFLARE_GRAPHQL_ENDPOINT = "https://api.cloudflare.com/client/v4/graphql";
+
+interface FetchTrafficParams {
+  zoneId: string;
+  apiToken: string;
+  since: string;
+  until: string;
+}
+
+export interface SkippedDay {
+  date: string;
+  reason: string;
+}
+
+export interface FetchTrafficResult {
+  days: DailyTrafficData[];
+  skippedDays: SkippedDay[];
+}
+
+const QUERY = `
+  query GetTraffic($zoneTag: String!, $day: Date!) {
+    viewer {
+      zones(filter: { zoneTag: $zoneTag }) {
+        groups: httpRequestsAdaptiveGroups(
+          limit: 10000
+          filter: { date: $day }
+          orderBy: [date_ASC]
+        ) {
+          count
+          dimensions {
+            date
+            clientCountryName
+            clientDeviceType
+            verifiedBotCategory
+          }
+          sum {
+            visits
+            edgeResponseBytes
+          }
+        }
+      }
+    }
+  }
+`;
+
+function enumerateDates(since: string, until: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(since + "T00:00:00Z");
+  const end = new Date(until + "T00:00:00Z");
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+async function fetchOneDay(
+  zoneId: string,
+  apiToken: string,
+  day: string
+): Promise<CloudflareDailyGroup[]> {
+  const response = await fetch(CLOUDFLARE_GRAPHQL_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: QUERY,
+      variables: { zoneTag: zoneId, day },
+    }),
+  });
+
+  const json: CloudflareGraphQLResponse = await response.json();
+
+  if (json.errors?.length) {
+    throw new Error(json.errors.map((e) => e.message).join("; "));
+  }
+
+  return json.data?.viewer?.zones?.[0]?.groups ?? [];
+}
+
+export async function fetchCloudflareTraffic({
+  zoneId,
+  apiToken,
+  since,
+  until,
+}: FetchTrafficParams): Promise<FetchTrafficResult> {
+  const days = enumerateDates(since, until);
+  const allGroups: CloudflareDailyGroup[] = [];
+  const skippedDays: SkippedDay[] = [];
+
+  for (const day of days) {
+    try {
+      const groups = await fetchOneDay(zoneId, apiToken, day);
+      allGroups.push(...groups);
+    } catch (err) {
+      skippedDays.push({
+        date: day,
+        reason: err instanceof Error ? err.message : "Unknown Cloudflare error",
+      });
+    }
+  }
+
+  return { days: aggregateByDate(allGroups), skippedDays };
+}
+
+function aggregateByDate(groups: CloudflareDailyGroup[]): DailyTrafficData[] {
+  const byDate = new Map<string, DailyTrafficData>();
+
+  for (const g of groups) {
+    const date = g.dimensions.date;
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        date,
+        totalRequests: 0,
+        totalVisits: 0,
+        bandwidthBytes: 0,
+        byCountry: [],
+        byDevice: [],
+        byBotCategory: [],
+      });
+    }
+    const entry = byDate.get(date)!;
+    entry.totalRequests += g.count;
+    entry.totalVisits += g.sum.visits;
+    entry.bandwidthBytes += g.sum.edgeResponseBytes;
+
+    upsertCountry(entry.byCountry, g.dimensions.clientCountryName, g.count, g.sum.visits);
+    upsertDevice(entry.byDevice, g.dimensions.clientDeviceType, g.count, g.sum.visits);
+    upsertBotCategory(entry.byBotCategory, g.dimensions.verifiedBotCategory, g.count);
+  }
+
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function upsertCountry(list: TrafficByCountry[], country: string, requests: number, visits: number) {
+  const existing = list.find((c) => c.country === country);
+  if (existing) {
+    existing.requests += requests;
+    existing.visits += visits;
+  } else {
+    list.push({ country, requests, visits });
+  }
+}
+
+function upsertDevice(list: TrafficByDevice[], device: string, requests: number, visits: number) {
+  const existing = list.find((d) => d.device === device);
+  if (existing) {
+    existing.requests += requests;
+    existing.visits += visits;
+  } else {
+    list.push({ device, requests, visits });
+  }
+}
+
+function upsertBotCategory(list: TrafficByBotCategory[], category: string, requests: number) {
+  const existing = list.find((b) => b.category === category);
+  if (existing) {
+    existing.requests += requests;
+  } else {
+    list.push({ category, requests });
+  }
+}

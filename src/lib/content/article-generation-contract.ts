@@ -1,0 +1,378 @@
+import type {
+  MasterRuntimeSnapshotV1,
+} from "./master-runtime-adapter";
+
+
+/**
+ * The writer MUST consume the validated Master Runtime.
+ *
+ * It must not rebuild Search Intelligence from:
+ *
+ * - ContentBriefInput
+ * - keyword strings
+ * - finalPlan
+ * - generated outlines
+ * - SERP snippets
+ * - legacy strategy snapshots
+ *
+ * This contract is the boundary between the deterministic
+ * Search Intelligence pipeline and generative writing.
+ */
+export type MasterSectionBlueprint =
+  MasterRuntimeSnapshotV1["sectionBlueprints"]["sections"] extends
+    ReadonlyArray<infer Section>
+    ? Section
+    : never;
+
+
+export interface SectionGenerationHardRulesV1 {
+  /**
+   * The page-level H1 belongs to the final article shell.
+   *
+   * Individual generated sections may contain H2/H3 structure
+   * but must never emit another H1.
+   */
+  canonicalH1OwnedByArticle:
+    true;
+
+  bodyMayContainH1:
+    false;
+
+  /**
+   * Writer output may only use metrics/facts that already
+   * exist in the authoritative research/evidence chain.
+   */
+  mayInventMetrics:
+    false;
+
+  mayInventEvidence:
+    false;
+
+  mayInventClaims:
+    false;
+
+  /**
+   * Search structure comes from upstream intelligence.
+   * The writer cannot create headings merely to hit a count.
+   */
+  mayInventHeadingTargets:
+    false;
+
+  preserveSectionOrder:
+    true;
+}
+
+
+export interface SectionGenerationContractV1 {
+  version:
+    "SECTION_GENERATION_CONTRACT_V1";
+
+  sectionIndex:
+    number;
+
+  sectionNumber:
+    number;
+
+  totalSections:
+    number;
+
+  blueprint:
+    MasterSectionBlueprint;
+
+  /**
+   * Keep authoritative artifacts structured.
+   *
+   * Do NOT flatten these into one researchContext string
+   * at the contract boundary.
+   */
+  mission:
+    MasterRuntimeSnapshotV1["mission"];
+
+  queryGraph:
+    MasterRuntimeSnapshotV1["queryGraph"];
+
+  serpResearch:
+    MasterRuntimeSnapshotV1["serpResearch"];
+
+  expectedCoverage:
+    MasterRuntimeSnapshotV1["expectedCoverage"];
+
+  gaps:
+    MasterRuntimeSnapshotV1["gaps"];
+
+  originalValue:
+    MasterRuntimeSnapshotV1["originalValue"];
+
+  evidenceGraph:
+    MasterRuntimeSnapshotV1["evidenceGraph"];
+
+  claimLedger:
+    MasterRuntimeSnapshotV1["claimLedger"];
+
+  searchBlueprint:
+    MasterRuntimeSnapshotV1["searchBlueprint"];
+
+  internalLinkPlan:
+    MasterRuntimeSnapshotV1["internalLinkPlan"];
+
+  styleRules:
+    MasterRuntimeSnapshotV1["styleRules"];
+
+  hardRules:
+    Readonly<SectionGenerationHardRulesV1>;
+}
+
+
+export interface ArticleGenerationContractV1 {
+  version:
+    "ARTICLE_GENERATION_CONTRACT_V1";
+
+  sourceRuntimeVersion:
+    "MASTER_RUNTIME_SNAPSHOT_V1";
+
+  /**
+   * Article-level authoritative artifacts.
+   */
+  mission:
+    MasterRuntimeSnapshotV1["mission"];
+
+  queryGraph:
+    MasterRuntimeSnapshotV1["queryGraph"];
+
+  serpResearch:
+    MasterRuntimeSnapshotV1["serpResearch"];
+
+  expectedCoverage:
+    MasterRuntimeSnapshotV1["expectedCoverage"];
+
+  gaps:
+    MasterRuntimeSnapshotV1["gaps"];
+
+  originalValue:
+    MasterRuntimeSnapshotV1["originalValue"];
+
+  evidenceGraph:
+    MasterRuntimeSnapshotV1["evidenceGraph"];
+
+  claimLedger:
+    MasterRuntimeSnapshotV1["claimLedger"];
+
+  searchBlueprint:
+    MasterRuntimeSnapshotV1["searchBlueprint"];
+
+  /**
+   * Canonical page-level H1 mission inherited directly
+   * from the validated SectionBlueprintSet.
+   *
+   * The shell writer may phrase the H1, but it may not
+   * invent a different page mission.
+   */
+  h1Mission:
+    MasterRuntimeSnapshotV1["sectionBlueprints"]["h1Mission"];
+
+  sectionBlueprints:
+    readonly MasterSectionBlueprint[];
+
+  internalLinkPlan:
+    MasterRuntimeSnapshotV1["internalLinkPlan"];
+
+  styleRules:
+    MasterRuntimeSnapshotV1["styleRules"];
+
+  /**
+   * Deterministic section execution plan.
+   *
+   * Order is inherited exactly from masterRuntime.sectionBlueprints.
+   */
+  sectionContracts:
+    readonly Readonly<SectionGenerationContractV1>[];
+
+  provenance: Readonly<{
+    source:
+      "MASTER_RUNTIME_SNAPSHOT_V1";
+
+    sectionCount:
+      number;
+  }>;
+}
+
+
+function buildHardRules():
+Readonly<SectionGenerationHardRulesV1> {
+  return Object.freeze({
+    canonicalH1OwnedByArticle:
+      true,
+
+    bodyMayContainH1:
+      false,
+
+    mayInventMetrics:
+      false,
+
+    mayInventEvidence:
+      false,
+
+    mayInventClaims:
+      false,
+
+    mayInventHeadingTargets:
+      false,
+
+    preserveSectionOrder:
+      true,
+  });
+}
+
+
+export function buildArticleGenerationContractV1(
+  runtime:
+    Readonly<MasterRuntimeSnapshotV1>
+): Readonly<ArticleGenerationContractV1> {
+  if (
+    runtime.version !==
+    "MASTER_RUNTIME_SNAPSHOT_V1"
+  ) {
+    throw new Error(
+      "ARTICLE_GENERATION_CONTRACT_BLOCKED:INVALID_MASTER_RUNTIME_VERSION"
+    );
+  }
+
+  const sectionBlueprints:
+    MasterSectionBlueprint[] =
+      [
+        ...runtime.sectionBlueprints.sections,
+      ];
+
+  if (
+    sectionBlueprints.length ===
+    0
+  ) {
+    throw new Error(
+      "ARTICLE_GENERATION_CONTRACT_BLOCKED:NO_SECTION_BLUEPRINTS"
+    );
+  }
+
+  const totalSections =
+    sectionBlueprints.length;
+
+  const sectionContracts =
+    sectionBlueprints.map(
+      (
+        blueprint,
+        sectionIndex
+      ): Readonly<SectionGenerationContractV1> =>
+        Object.freeze({
+          version:
+            "SECTION_GENERATION_CONTRACT_V1" as const,
+
+          sectionIndex,
+
+          sectionNumber:
+            sectionIndex +
+            1,
+
+          totalSections,
+
+          blueprint,
+
+          mission:
+            runtime.mission,
+
+          queryGraph:
+            runtime.queryGraph,
+
+          serpResearch:
+            runtime.serpResearch,
+
+          expectedCoverage:
+            runtime.expectedCoverage,
+
+          gaps:
+            runtime.gaps,
+
+          originalValue:
+            runtime.originalValue,
+
+          evidenceGraph:
+            runtime.evidenceGraph,
+
+          claimLedger:
+            runtime.claimLedger,
+
+          searchBlueprint:
+            runtime.searchBlueprint,
+
+          internalLinkPlan:
+            runtime.internalLinkPlan,
+
+          styleRules:
+            runtime.styleRules,
+
+          hardRules:
+            buildHardRules(),
+        })
+    );
+
+  return Object.freeze({
+    version:
+      "ARTICLE_GENERATION_CONTRACT_V1" as const,
+
+    sourceRuntimeVersion:
+      runtime.version,
+
+    mission:
+      runtime.mission,
+
+    queryGraph:
+      runtime.queryGraph,
+
+    serpResearch:
+      runtime.serpResearch,
+
+    expectedCoverage:
+      runtime.expectedCoverage,
+
+    gaps:
+      runtime.gaps,
+
+    originalValue:
+      runtime.originalValue,
+
+    evidenceGraph:
+      runtime.evidenceGraph,
+
+    claimLedger:
+      runtime.claimLedger,
+
+    searchBlueprint:
+      runtime.searchBlueprint,
+
+    h1Mission:
+      runtime.sectionBlueprints.h1Mission,
+
+    sectionBlueprints:
+      Object.freeze(
+        sectionBlueprints
+      ),
+
+    internalLinkPlan:
+      runtime.internalLinkPlan,
+
+    styleRules:
+      runtime.styleRules,
+
+    sectionContracts:
+      Object.freeze(
+        sectionContracts
+      ),
+
+    provenance:
+      Object.freeze({
+        source:
+          "MASTER_RUNTIME_SNAPSHOT_V1" as const,
+
+        sectionCount:
+          totalSections,
+      }),
+  });
+}

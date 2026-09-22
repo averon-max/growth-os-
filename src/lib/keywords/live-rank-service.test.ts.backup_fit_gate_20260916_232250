@@ -1,0 +1,138 @@
+import {
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+vi.mock(
+  "server-only",
+  () => ({})
+);
+
+import {
+  buildDiscoverySeeds,
+  classifyLiveRank,
+  classifyPriority,
+  isDomainMatch,
+  normalizeSiteDomain,
+} from "./live-rank-service";
+
+describe(
+  "live rank helpers",
+  () => {
+    it(
+      "splits a broad business topic into useful search seeds",
+      () => {
+        expect(
+          buildDiscoverySeeds(
+            "credit monitoring and identity protection"
+          )
+        ).toEqual(
+          [
+            "credit monitoring and identity protection",
+            "credit monitoring",
+            "identity protection",
+          ]
+        );
+      }
+    );
+
+    it(
+      "normalizes website domains",
+      () => {
+        expect(
+          normalizeSiteDomain(
+            "https://www.ScanMyCreds.com/pricing"
+          )
+        ).toBe(
+          "scanmycreds.com"
+        );
+      }
+    );
+
+    it(
+      "matches www and subdomains safely",
+      () => {
+        expect(
+          isDomainMatch(
+            "www.scanmycreds.com",
+            "scanmycreds.com"
+          )
+        ).toBe(
+          true
+        );
+
+        expect(
+          isDomainMatch(
+            "blog.scanmycreds.com",
+            "scanmycreds.com"
+          )
+        ).toBe(
+          true
+        );
+
+        expect(
+          isDomainMatch(
+            "notscanmycreds.com",
+            "scanmycreds.com"
+          )
+        ).toBe(
+          false
+        );
+      }
+    );
+
+    it(
+      "classifies ranking zones",
+      () => {
+        expect(
+          classifyLiveRank(
+            2
+          )
+        ).toBe(
+          "TOP_3"
+        );
+
+        expect(
+          classifyLiveRank(
+            8
+          )
+        ).toBe(
+          "FIRST_PAGE"
+        );
+
+        expect(
+          classifyLiveRank(
+            14
+          )
+        ).toBe(
+          "NEAR_FIRST_PAGE"
+        );
+
+        expect(
+          classifyLiveRank(
+            null
+          )
+        ).toBe(
+          "NOT_TOP_100"
+        );
+      }
+    );
+
+    it(
+      "marks realistic positions 4 through 20 as high priority",
+      () => {
+        expect(
+          classifyPriority(
+            14,
+            1000,
+            45
+          )
+        ).toBe(
+          "HIGH"
+        );
+      }
+    );
+  }
+);

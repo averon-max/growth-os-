@@ -1,0 +1,113 @@
+export interface BusinessFactRegistry {
+  version:
+    "BOOTSTRAP_V1";
+
+  businessName:
+    string;
+
+  websiteUrl:
+    string;
+
+  industry:
+    string | null;
+
+  verifiedClaims:
+    string[];
+
+  prohibitedClaimCategories:
+    string[];
+}
+
+
+export function buildBootstrapBusinessFactRegistry({
+  businessName,
+  websiteUrl,
+  industry,
+}: {
+  businessName:
+    string;
+
+  websiteUrl:
+    string;
+
+  industry?:
+    string | null;
+}): BusinessFactRegistry {
+  return {
+    version:
+      "BOOTSTRAP_V1",
+
+    businessName:
+      businessName.trim(),
+
+    websiteUrl:
+      websiteUrl.trim(),
+
+    industry:
+      industry?.trim() ||
+      null,
+
+    /*
+     * IMPORTANT:
+     *
+     * Bootstrap registry intentionally contains NO inferred
+     * product capabilities.
+     *
+     * Stage 2 will replace this with persisted, auditable facts.
+     */
+    verifiedClaims:
+      [],
+
+    prohibitedClaimCategories: [
+      "dataset size",
+      "customer or user counts",
+      "dark-web monitoring",
+      "stealer-log coverage",
+      "breach-database coverage",
+      "real-time monitoring",
+      "guarantees",
+      "awards",
+      "superlatives",
+      "unsupported product capabilities",
+    ],
+  };
+}
+
+
+export function businessFactPrompt(
+  registry:
+    BusinessFactRegistry
+): string {
+  const verified =
+    registry.verifiedClaims
+      .length > 0
+      ? registry
+          .verifiedClaims
+          .map(
+            (claim) =>
+              `- ${claim}`
+          )
+          .join("\n")
+      : "- No product capability, metric, dataset-size, monitoring, coverage, customer-count, guarantee, award, or superlative claim is currently verified.";
+
+  return [
+    `BUSINESS FACT REGISTRY: ${registry.version}`,
+    `Business: ${registry.businessName}`,
+    `Website: ${registry.websiteUrl}`,
+    registry.industry
+      ? `Industry context: ${registry.industry}`
+      : "",
+    "",
+    "VERIFIED CLAIMS:",
+    verified,
+    "",
+    "FACTUAL POLICY:",
+    "- The business name and website URL may be mentioned.",
+    "- Do not infer a product capability from the business name, industry, URL, topic, competitor pages, SERP results, or common market behavior.",
+    "- Do not state dataset size, customer count, monitoring capability, breach-data source, dark-web coverage, stealer-log coverage, guarantee, award, or superlative unless it appears in VERIFIED CLAIMS.",
+    "- If a product-specific statement is not verified, omit it instead of guessing, hedging, or fabricating it.",
+    "- Competitor claims are evidence about competitors, not evidence about this business.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}

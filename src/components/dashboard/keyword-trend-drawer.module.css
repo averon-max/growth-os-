@@ -37,3 +37,30 @@
 
 .chartBlock { margin-bottom: 24px; }
 .chartLabel { font-size: 0.72rem; color: var(--secondary); margin-bottom: 8px; font-weight: 500; }
+
+/* LINEAR_DRAWER_V2 */
+
+.drawer,
+.panel {
+  background:
+    radial-gradient(
+      480px 240px at 20% -80px,
+      rgba(122,128,154,.065),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.018),
+      rgba(255,255,255,.003)
+    ),
+    var(--surface) !important;
+
+  border-color: var(--border) !important;
+
+  box-shadow:
+    -26px 0 80px rgba(0,0,0,.34),
+    inset 1px 0 0 rgba(255,255,255,.015) !important;
+}
+
+/* GLOBAL_DEPTH_V5 */
+.panel { border-color: rgba(255,255,255,.062) !important; box-shadow: 0 20px 62px rgba(0,0,0,.07) !important; }

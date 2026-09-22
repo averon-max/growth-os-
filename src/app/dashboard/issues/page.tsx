@@ -1,132 +1,315 @@
-import { Search } from "lucide-react";
-import { requireUser } from "@/lib/auth-helpers";
-import { prisma } from "@/lib/prisma";
-import { Topbar } from "@/components/dashboard/topbar";
-import { EmptyState } from "@/components/dashboard/ui";
-import { ApplyFixControl } from "@/components/dashboard/apply-fix-control";
+import {
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
+
+import {
+  requireUser,
+} from "@/lib/auth-helpers";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+import {
+  Topbar,
+} from "@/components/dashboard/topbar";
+
+import {
+  EmptyState,
+} from "@/components/dashboard/ui";
+
+import {
+  ApplyFixControl,
+} from "@/components/dashboard/apply-fix-control";
+
 import styles from "@/components/dashboard/ui.module.css";
 
-const SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
-const SEVERITY_TONE: Record<string, string> = { CRITICAL: "danger", HIGH: "warning", MEDIUM: "accent", LOW: "muted" };
-const ISSUES_FETCH_CAP = 500;
-const FIXABLE_TYPES = new Set(["MISSING_TITLE", "TITLE_TOO_LONG", "TITLE_TOO_SHORT"]);
+const SEVERITY_ORDER = [
+  "CRITICAL",
+  "HIGH",
+  "MEDIUM",
+  "LOW",
+] as const;
 
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
+const SEVERITY_TONE:
+  Record<
+    string,
+    string
+  > = {
+    CRITICAL:
+      "danger",
+    HIGH:
+      "warning",
+    MEDIUM:
+      "accent",
+    LOW:
+      "muted",
+  };
+
+const FIXABLE_TYPES =
+  new Set([
+    "MISSING_TITLE",
+    "TITLE_TOO_LONG",
+    "TITLE_TOO_SHORT",
+  ]);
+
+function titleCase(
+  value:
+    string
+) {
+  return (
+    value.charAt(0) +
+    value
+      .slice(1)
+      .toLowerCase()
+  );
 }
 
-export default async function IssuesPage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
-  const user = await requireUser();
-  const { websiteId } = await searchParams;
+export default async function IssuesPage({
+  searchParams,
+}: {
+  searchParams:
+    Promise<{
+      websiteId?: string;
+    }>;
+}) {
+  const user =
+    await requireUser();
 
-  const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
-  const website = membership
-    ? websiteId
-      ? await prisma.website.findFirst({
-          where: { id: websiteId, business: { workspaceId: membership.workspaceId } },
-          include: { cmsConnection: true },
+  const {
+    websiteId,
+  } =
+    await searchParams;
+
+  const membership =
+    await prisma.workspaceMember.findFirst({
+      where: {
+        userId:
+          user.id,
+      },
+      select: {
+        workspaceId:
+          true,
+      },
+    });
+
+  const website =
+    membership
+      ? websiteId
+        ? await prisma.website.findFirst({
+            where: {
+              id:
+                websiteId,
+              business: {
+                workspaceId:
+                  membership.workspaceId,
+              },
+            },
+            include: {
+              cmsConnection:
+                true,
+            },
+          })
+        : await prisma.website.findFirst({
+            where: {
+              business: {
+                workspaceId:
+                  membership.workspaceId,
+              },
+            },
+            include: {
+              cmsConnection:
+                true,
+            },
+            orderBy: {
+              createdAt:
+                "asc",
+            },
+          })
+      : null;
+
+  const analysis =
+    website
+      ? await prisma.analysis.findFirst({
+          where: {
+            websiteId:
+              website.id,
+          },
+          orderBy: {
+            createdAt:
+              "desc",
+          },
         })
-      : await prisma.website.findFirst({
-          where: { business: { workspaceId: membership.workspaceId } },
-          include: { cmsConnection: true },
-          orderBy: { createdAt: "asc" },
-        })
-    : null;
-  const analysis = website
-    ? await prisma.analysis.findFirst({ where: { websiteId: website.id }, orderBy: { createdAt: "desc" } })
-    : null;
+      : null;
 
   if (!analysis) {
     return (
       <>
         <Topbar title="Issues" />
+
         <div className={styles.pageBody}>
           <EmptyState
             icon={Search}
-            title="Run an analysis to see SEO issues"
-            description={website ? "This website hasn't been analyzed yet." : "Add a website to get started."}
-            actionLabel={website ? undefined : "Add Website"}
-            actionHref={website ? undefined : "/dashboard/add-website"}
+            title="No analysis"
+            description={
+              website
+                ? "Run an SEO analysis first."
+                : "Add a website first."
+            }
+            actionLabel={
+              website
+                ? undefined
+                : "Add website"
+            }
+            actionHref={
+              website
+                ? undefined
+                : "/dashboard/add-website"
+            }
           />
         </div>
       </>
     );
   }
 
-  const issues = await prisma.sEOIssue.findMany({
-    where: { analysisId: analysis.id },
-    orderBy: { createdAt: "desc" },
-    take: ISSUES_FETCH_CAP,
-  });
+  const issues =
+    await prisma.sEOIssue.findMany({
+      where: {
+        analysisId:
+          analysis.id,
+      },
+      orderBy: {
+        createdAt:
+          "desc",
+      },
+      take:
+        500,
+    });
 
-  const cmsConnected = website?.cmsConnection?.status === "CONNECTED";
+  const cmsConnected =
+    website
+      ?.cmsConnection
+      ?.status ===
+    "CONNECTED";
 
-  const knownSeverities = new Set<string>(SEVERITY_ORDER);
-  const grouped = SEVERITY_ORDER.map((severity) => ({ severity, items: issues.filter((i) => i.severity === severity) })).filter(
-    (g) => g.items.length > 0
-  );
-  const otherItems = issues.filter((i) => !knownSeverities.has(i.severity));
-
-  function renderIssueRow(issue: (typeof issues)[number]) {
-    return (
-      <div key={issue.id} className={styles.issueRow}>
-        <div className={styles.issueMain}>
-          <span className={styles.issueDot} data-tone={SEVERITY_TONE[issue.severity] ?? "muted"} />
-          <div style={{ minWidth: 0 }}>
-            <div className={styles.issueTitle}>{issue.type}</div>
-            <div className={styles.issueDesc}>{issue.description}</div>
-            <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {issue.recommendation}</div>
-          </div>
-        </div>
-        <div className={styles.issueMeta} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-          {issue.pageUrl && (
-            <span className={`${styles.mono} ${styles.truncate}`} title={issue.pageUrl}>{issue.pageUrl}</span>
-          )}
-          {FIXABLE_TYPES.has(issue.type) && issue.pageUrl && website && (
-            <ApplyFixControl
-              issueId={issue.id}
-              issueType={issue.type}
-              pageUrl={issue.pageUrl}
-              websiteId={website.id}
-              cmsConnected={cmsConnected}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
+  const critical =
+    issues.filter(
+      (issue) =>
+        issue.severity ===
+        "CRITICAL"
+    ).length;
 
   return (
     <>
       <Topbar
         title="Issues"
-        subtitle={`${issues.length} issue${issues.length === 1 ? "" : "s"}`}
-        websiteSwitcher={membership && website ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined}
+        subtitle={`${issues.length} issues`}
+        websiteSwitcher={
+          membership &&
+          website
+            ? {
+                workspaceId:
+                  membership.workspaceId,
+                currentWebsiteId:
+                  website.id,
+              }
+            : undefined
+        }
       />
+
       <div className={styles.pageBody}>
-        {issues.length === 0 ? (
-          <EmptyState icon={Search} title="No issues found" description="This analysis didn't surface any SEO issues." />
+        <div className={styles.workspaceToolbar}>
+          <div className={styles.filterControl}>
+            <SlidersHorizontal size={12} />
+            All issues
+          </div>
+
+          <div className={styles.toolbarMeta}>
+            {critical} critical
+          </div>
+        </div>
+
+        {!issues.length ? (
+          <EmptyState
+            icon={Search}
+            title="No issues"
+            description="Latest analysis is clean."
+          />
         ) : (
-          <>
-            {grouped.map((group) => (
-              <div key={group.severity} className={styles.group}>
-                <div className={styles.groupHeader}>
-                  <span className={styles.groupLabel}>{titleCase(group.severity)}</span>
-                  <span className={styles.groupCount}>{group.items.length}</span>
-                </div>
-                {group.items.map(renderIssueRow)}
-              </div>
-            ))}
-            {otherItems.length > 0 && (
-              <div className={styles.group}>
-                <div className={styles.groupHeader}>
-                  <span className={styles.groupLabel}>Other</span>
-                  <span className={styles.groupCount}>{otherItems.length}</span>
-                </div>
-                {otherItems.map(renderIssueRow)}
-              </div>
-            )}
-          </>
+          <div className={styles.issueTable}>
+            <div className={styles.issueTableHead}>
+              <span>Issue</span>
+              <span>Severity</span>
+              <span>Page / action</span>
+            </div>
+
+            {SEVERITY_ORDER
+              .flatMap(
+                (severity) =>
+                  issues.filter(
+                    (issue) =>
+                      issue.severity ===
+                      severity
+                  )
+              )
+              .map(
+                (issue) => (
+                  <div
+                    key={issue.id}
+                    className={styles.issueTableRow}
+                  >
+                    <div className={styles.issueIdentity}>
+                      <span
+                        className={`${styles.statusMark} ${styles[`status${SEVERITY_TONE[issue.severity]}`]}`}
+                      />
+
+                      <div>
+                        <div className={styles.dataTitle}>
+                          {issue.type}
+                        </div>
+
+                        <div className={styles.dataSecondary}>
+                          {issue.description}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span
+                        className={`${styles.severityLabel} ${styles[`severity${SEVERITY_TONE[issue.severity]}`]}`}
+                      >
+                        {titleCase(
+                          issue.severity
+                        )}
+                      </span>
+                    </div>
+
+                    <div className={styles.issueAction}>
+                      {issue.pageUrl ? (
+                        <span className={styles.pageUrl}>
+                          {issue.pageUrl}
+                        </span>
+                      ) : null}
+
+                      {FIXABLE_TYPES.has(
+                        issue.type
+                      ) &&
+                      issue.pageUrl &&
+                      website ? (
+                        <ApplyFixControl
+                          issueId={issue.id}
+                          issueType={issue.type}
+                          pageUrl={issue.pageUrl}
+                          websiteId={website.id}
+                          cmsConnected={cmsConnected}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              )}
+          </div>
         )}
       </div>
     </>

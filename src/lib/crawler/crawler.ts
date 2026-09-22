@@ -1,5 +1,14 @@
-import { isSafeUrl, isSameDomain, normalizeUrl } from "./security";
-import { parsePage, ParsedPage } from "./parser";
+import {
+  isSafeUrl,
+  isSameDomain,
+  normalizeUrl,
+} from "./security";
+
+import {
+  parsePage,
+  type ParsedPage,
+} from "./parser";
+
 
 export interface CrawledPage {
   url: string;
@@ -12,13 +21,21 @@ export interface CrawledPage {
   redirectedFrom?: string;
 }
 
-interface CrawlerOptions {
+
+export interface CrawlerOptions {
   maxPages?: number;
   maxDepth?: number;
   timeoutMs?: number;
   maxResponseSize?: number;
   concurrency?: number;
 }
+
+
+export interface SinglePageFetchOptions {
+  timeoutMs?: number;
+  maxResponseSize?: number;
+}
+
 
 const DEFAULT_OPTIONS: Required<CrawlerOptions> = {
   maxPages: 25,
@@ -28,185 +45,763 @@ const DEFAULT_OPTIONS: Required<CrawlerOptions> = {
   concurrency: 3,
 };
 
+
+const MAX_REDIRECTS =
+  5;
+
+
+const REDIRECT_STATUSES =
+  new Set([
+    301,
+    302,
+    303,
+    307,
+    308,
+  ]);
+
+
+function errorPage({
+  url,
+  start,
+  statusCode = 0,
+  contentType = "",
+  error,
+  redirectedFrom,
+}: {
+  url: string;
+  start: number;
+  statusCode?: number;
+  contentType?: string;
+  error: string;
+  redirectedFrom?: string;
+}): CrawledPage {
+  return {
+    url,
+    statusCode,
+    contentType,
+    responseTime:
+      Date.now() -
+      start,
+    depth: 0,
+    parsed: null,
+    error,
+    redirectedFrom,
+  };
+}
+
+
+async function closeResponseBody(
+  response: Response
+): Promise<void> {
+  if (!response.body) {
+    return;
+  }
+
+  try {
+    await response.body.cancel();
+  } catch {
+    return;
+  }
+}
+
+
+export function normalizeRedirectTarget(
+  input: string
+): string | null {
+  try {
+    const url =
+      new URL(
+        input
+      );
+
+    if (
+      ![
+        "http:",
+        "https:",
+      ].includes(
+        url.protocol
+      )
+    ) {
+      return null;
+    }
+
+    url.hash =
+      "";
+
+    const trackingParams =
+      [
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_term",
+        "utm_content",
+        "fbclid",
+        "gclid",
+        "mc_eid",
+        "ref",
+        "_ga",
+      ];
+
+    for (
+      const param of
+      trackingParams
+    ) {
+      url.searchParams.delete(
+        param
+      );
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPage(
   url: string,
   timeoutMs: number,
   maxResponseSize: number,
   startUrl: string
 ): Promise<CrawledPage> {
-  const start = Date.now();
+  const start =
+    Date.now();
+
+  const initialUrl =
+    url;
+
+  const controller =
+    new AbortController();
+
+  const timer =
+    setTimeout(
+      () =>
+        controller.abort(),
+      timeoutMs
+    );
 
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let currentUrl =
+      url;
 
-    let finalUrl = url;
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "SignalBot/1.0 (SEO Analysis; +https://signal.app)",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-      },
-      redirect: "follow",
-    });
+    const visitedUrls =
+      new Set<string>();
 
-    clearTimeout(timer);
+    for (
+      let redirectCount = 0;
+      redirectCount <=
+        MAX_REDIRECTS;
+      redirectCount++
+    ) {
+      if (
+        visitedUrls.has(
+          currentUrl
+        )
+      ) {
+        return errorPage({
+          url:
+            currentUrl,
+          start,
+          error:
+            "Redirect loop detected",
+          redirectedFrom:
+            initialUrl,
+        });
+      }
 
-    finalUrl = response.url || url;
+      visitedUrls.add(
+        currentUrl
+      );
 
-    // Validate redirect target is safe and same domain
-    if (finalUrl !== url) {
-      const safeCheck = await isSafeUrl(finalUrl);
+      const safeCheck =
+        await isSafeUrl(
+          currentUrl
+        );
+
       if (!safeCheck.safe) {
+        return errorPage({
+          url:
+            currentUrl,
+          start,
+          error:
+            currentUrl ===
+            initialUrl
+              ? `Unsafe URL: ${safeCheck.reason}`
+              : `Redirect to unsafe URL: ${safeCheck.reason}`,
+          redirectedFrom:
+            currentUrl !==
+            initialUrl
+              ? initialUrl
+              : undefined,
+        });
+      }
+
+      if (
+        !isSameDomain(
+          startUrl,
+          currentUrl
+        )
+      ) {
+        return errorPage({
+          url:
+            currentUrl,
+          start,
+          error:
+            "Redirect left domain",
+          redirectedFrom:
+            initialUrl,
+        });
+      }
+
+      const response =
+        await fetch(
+          currentUrl,
+          {
+            signal:
+              controller.signal,
+
+            headers: {
+              "User-Agent":
+                "GrowthOSBot/1.0 (SEO Analysis)",
+
+              Accept:
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+
+              "Accept-Language":
+                "en-US,en;q=0.5",
+            },
+
+            redirect:
+              "manual",
+          }
+        );
+
+      const statusCode =
+        response.status;
+
+      const contentType =
+        response.headers.get(
+          "content-type"
+        ) ?? "";
+
+      if (
+        REDIRECT_STATUSES.has(
+          statusCode
+        )
+      ) {
+        const location =
+          response.headers.get(
+            "location"
+          );
+
+        await closeResponseBody(
+          response
+        );
+
+        if (!location) {
+          return errorPage({
+            url:
+              currentUrl,
+            start,
+            statusCode,
+            contentType,
+            error:
+              "Redirect missing Location header",
+            redirectedFrom:
+              currentUrl !==
+              initialUrl
+                ? initialUrl
+                : undefined,
+          });
+        }
+
+        if (
+          redirectCount >=
+          MAX_REDIRECTS
+        ) {
+          return errorPage({
+            url:
+              currentUrl,
+            start,
+            statusCode,
+            contentType,
+            error:
+              "Too many redirects",
+            redirectedFrom:
+              initialUrl,
+          });
+        }
+
+        let resolved:
+          string;
+
+        try {
+          resolved =
+            new URL(
+              location,
+              currentUrl
+            ).toString();
+        } catch {
+          return errorPage({
+            url:
+              currentUrl,
+            start,
+            statusCode,
+            contentType,
+            error:
+              "Invalid redirect URL",
+            redirectedFrom:
+              initialUrl,
+          });
+        }
+
+        const nextUrl =
+          normalizeRedirectTarget(
+            resolved
+          );
+
+        if (!nextUrl) {
+          return errorPage({
+            url:
+              currentUrl,
+            start,
+            statusCode,
+            contentType,
+            error:
+              "Invalid redirect URL",
+            redirectedFrom:
+              initialUrl,
+          });
+        }
+
+        const nextSafeCheck =
+          await isSafeUrl(
+            nextUrl
+          );
+
+        if (!nextSafeCheck.safe) {
+          return errorPage({
+            url:
+              currentUrl,
+            start,
+            statusCode,
+            contentType,
+            error:
+              `Redirect to unsafe URL: ${nextSafeCheck.reason}`,
+            redirectedFrom:
+              initialUrl,
+          });
+        }
+
+        if (
+          !isSameDomain(
+            startUrl,
+            nextUrl
+          )
+        ) {
+          return errorPage({
+            url:
+              currentUrl,
+            start,
+            statusCode,
+            contentType,
+            error:
+              "Redirect left domain",
+            redirectedFrom:
+              initialUrl,
+          });
+        }
+
+        currentUrl =
+          nextUrl;
+
+        continue;
+      }
+
+      if (!response.ok) {
+        await closeResponseBody(
+          response
+        );
+
+        return errorPage({
+          url:
+            currentUrl,
+          start,
+          statusCode,
+          contentType,
+          error:
+            `HTTP ${statusCode}`,
+          redirectedFrom:
+            currentUrl !==
+            initialUrl
+              ? initialUrl
+              : undefined,
+        });
+      }
+
+      if (
+        !contentType.includes(
+          "text/html"
+        )
+      ) {
+        await closeResponseBody(
+          response
+        );
+
         return {
-          url,
-          statusCode: 0,
-          contentType: "",
-          responseTime: Date.now() - start,
-          depth: 0,
-          parsed: null,
-          error: `Redirect to unsafe URL: ${safeCheck.reason}`,
-          redirectedFrom: url,
+          url:
+            currentUrl,
+
+          statusCode,
+
+          contentType,
+
+          responseTime:
+            Date.now() -
+            start,
+
+          depth:
+            0,
+
+          parsed:
+            null,
+
+          redirectedFrom:
+            currentUrl !==
+            initialUrl
+              ? initialUrl
+              : undefined,
         };
       }
-      if (!isSameDomain(startUrl, finalUrl)) {
-        return {
-          url,
-          statusCode: response.status,
-          contentType: "",
-          responseTime: Date.now() - start,
-          depth: 0,
-          parsed: null,
-          error: "Redirect left domain",
-          redirectedFrom: url,
-        };
+
+      const buffer =
+        await response.arrayBuffer();
+
+      if (
+        buffer.byteLength >
+        maxResponseSize
+      ) {
+        return errorPage({
+          url:
+            currentUrl,
+          start,
+          statusCode,
+          contentType,
+          error:
+            "Response too large",
+          redirectedFrom:
+            currentUrl !==
+            initialUrl
+              ? initialUrl
+              : undefined,
+        });
       }
-    }
 
-    const statusCode = response.status;
-    const contentType = response.headers.get("content-type") || "";
+      const html =
+        new TextDecoder()
+          .decode(
+            buffer
+          );
 
-    if (!response.ok) {
+      const parsed =
+        parsePage(
+          html,
+          currentUrl
+        );
+
       return {
-        url: finalUrl,
+        url:
+          currentUrl,
+
         statusCode,
+
         contentType,
-        responseTime: Date.now() - start,
-        depth: 0,
-        parsed: null,
-        error: `HTTP ${statusCode}`,
-        redirectedFrom: finalUrl !== url ? url : undefined,
+
+        responseTime:
+          Date.now() -
+          start,
+
+        depth:
+          0,
+
+        parsed,
+
+        redirectedFrom:
+          currentUrl !==
+          initialUrl
+            ? initialUrl
+            : undefined,
       };
     }
 
-    if (!contentType.includes("text/html")) {
-      return {
-        url: finalUrl,
-        statusCode,
-        contentType,
-        responseTime: Date.now() - start,
-        depth: 0,
-        parsed: null,
-        redirectedFrom: finalUrl !== url ? url : undefined,
-      };
-    }
+    return errorPage({
+      url:
+        initialUrl,
+      start,
+      error:
+        "Too many redirects",
+    });
+  } catch (
+    err:
+      unknown
+  ) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Unknown error";
 
-    const buffer = await response.arrayBuffer();
-    if (buffer.byteLength > maxResponseSize) {
-      return {
-        url: finalUrl,
-        statusCode,
-        contentType,
-        responseTime: Date.now() - start,
-        depth: 0,
-        parsed: null,
-        error: "Response too large",
-        redirectedFrom: finalUrl !== url ? url : undefined,
-      };
-    }
+    const isTimeout =
+      message.includes(
+        "abort"
+      ) ||
+      message.includes(
+        "AbortError"
+      );
 
-    const html = new TextDecoder().decode(buffer);
-    const parsed = parsePage(html, finalUrl);
-
-    return {
-      url: finalUrl,
-      statusCode,
-      contentType,
-      responseTime: Date.now() - start,
-      depth: 0,
-      parsed,
-      redirectedFrom: finalUrl !== url ? url : undefined,
-    };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const isTimeout = message.includes("abort") || message.includes("AbortError");
-    return {
-      url,
-      statusCode: 0,
-      contentType: "",
-      responseTime: Date.now() - start,
-      depth: 0,
-      parsed: null,
-      error: isTimeout ? "Timeout" : message,
-    };
+    return errorPage({
+      url:
+        initialUrl,
+      start,
+      error:
+        isTimeout
+          ? "Timeout"
+          : message,
+    });
+  } finally {
+    clearTimeout(
+      timer
+    );
   }
 }
+
+
+export async function fetchSinglePage(
+  url: string,
+  options: SinglePageFetchOptions = {}
+): Promise<CrawledPage> {
+  const normalized =
+    normalizeUrl(
+      url
+    );
+
+  if (!normalized) {
+    throw new Error(
+      "Invalid URL"
+    );
+  }
+
+  const safeCheck =
+    await isSafeUrl(
+      normalized
+    );
+
+  if (!safeCheck.safe) {
+    throw new Error(
+      `URL failed security check: ${safeCheck.reason}`
+    );
+  }
+
+  return fetchPage(
+    normalized,
+    options.timeoutMs ??
+      DEFAULT_OPTIONS.timeoutMs,
+    options.maxResponseSize ??
+      DEFAULT_OPTIONS.maxResponseSize,
+    normalized
+  );
+}
+
 
 export async function crawlWebsite(
   startUrl: string,
   options: CrawlerOptions = {}
 ): Promise<CrawledPage[]> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
-  const { maxPages, maxDepth, timeoutMs, maxResponseSize, concurrency } = opts;
+  const opts = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
 
-  // Validate and normalize start URL
-  const normalizedStart = normalizeUrl(startUrl);
-  if (!normalizedStart) throw new Error("Invalid start URL");
+  const {
+    maxPages,
+    maxDepth,
+    timeoutMs,
+    maxResponseSize,
+    concurrency,
+  } =
+    opts;
 
-  const safeCheck = await isSafeUrl(normalizedStart);
-  if (!safeCheck.safe) throw new Error(`URL failed security check: ${safeCheck.reason}`);
-
-  const visited = new Set<string>();
-  const queue: Array<{ url: string; depth: number }> = [{ url: normalizedStart, depth: 0 }];
-  visited.add(normalizedStart);
-
-  const results: CrawledPage[] = [];
-
-  console.log(`[crawler] Starting crawl: ${normalizedStart}`);
-
-  while (queue.length > 0 && results.length < maxPages) {
-    // Take up to `concurrency` items from queue
-    const batch = queue.splice(0, Math.min(concurrency, maxPages - results.length));
-
-    const batchResults = await Promise.all(
-      batch.map(async ({ url, depth }) => {
-        console.log(`[crawler] Fetching (depth=${depth}): ${url}`);
-        const page = await fetchPage(url, timeoutMs, maxResponseSize, normalizedStart);
-        page.depth = depth;
-        return { page, depth };
-      })
+  const normalizedStart =
+    normalizeUrl(
+      startUrl
     );
 
-    for (const { page, depth } of batchResults) {
-      results.push(page);
+  if (!normalizedStart) {
+    throw new Error(
+      "Invalid start URL"
+    );
+  }
 
-      if (!page.parsed || depth >= maxDepth) continue;
+  const safeCheck =
+    await isSafeUrl(
+      normalizedStart
+    );
 
-      for (const link of page.parsed.internalLinks) {
-        const normalized = normalizeUrl(link);
-        if (!normalized) continue;
-        if (visited.has(normalized)) continue;
-        if (!isSameDomain(normalizedStart, normalized)) continue;
-        if (results.length + queue.length >= maxPages) break;
+  if (!safeCheck.safe) {
+    throw new Error(
+      `URL failed security check: ${safeCheck.reason}`
+    );
+  }
 
-        // Quick safety check without full DNS (already on same domain)
-        visited.add(normalized);
-        queue.push({ url: normalized, depth: depth + 1 });
+  const visited =
+    new Set<string>();
+
+  const queue:
+    Array<{
+      url: string;
+      depth: number;
+    }> = [
+      {
+        url:
+          normalizedStart,
+
+        depth:
+          0,
+      },
+    ];
+
+  visited.add(
+    normalizedStart
+  );
+
+  const results:
+    CrawledPage[] =
+      [];
+
+  console.log(
+    `[crawler] Starting crawl: ${normalizedStart}`
+  );
+
+  while (
+    queue.length >
+      0 &&
+    results.length <
+      maxPages
+  ) {
+    const batch =
+      queue.splice(
+        0,
+        Math.min(
+          concurrency,
+          maxPages -
+            results.length
+        )
+      );
+
+    const batchResults =
+      await Promise.all(
+        batch.map(
+          async ({
+            url,
+            depth,
+          }) => {
+            console.log(
+              `[crawler] Fetching (depth=${depth}): ${url}`
+            );
+
+            const page =
+              await fetchPage(
+                url,
+                timeoutMs,
+                maxResponseSize,
+                normalizedStart
+              );
+
+            page.depth =
+              depth;
+
+            return {
+              page,
+              depth,
+            };
+          }
+        )
+      );
+
+    for (
+      const {
+        page,
+        depth,
+      } of batchResults
+    ) {
+      results.push(
+        page
+      );
+
+      if (
+        !page.parsed ||
+        depth >=
+          maxDepth
+      ) {
+        continue;
+      }
+
+      for (
+        const link of
+        page.parsed
+          .internalLinks
+      ) {
+        const normalized =
+          normalizeUrl(
+            link
+          );
+
+        if (!normalized) {
+          continue;
+        }
+
+        if (
+          visited.has(
+            normalized
+          )
+        ) {
+          continue;
+        }
+
+        if (
+          !isSameDomain(
+            normalizedStart,
+            normalized
+          )
+        ) {
+          continue;
+        }
+
+        if (
+          results.length +
+            queue.length >=
+          maxPages
+        ) {
+          break;
+        }
+
+        visited.add(
+          normalized
+        );
+
+        queue.push({
+          url:
+            normalized,
+
+          depth:
+            depth +
+            1,
+        });
       }
     }
   }
 
-  console.log(`[crawler] Completed: ${results.length} pages crawled`);
+  console.log(
+    `[crawler] Completed: ${results.length} pages crawled`
+  );
+
   return results;
 }

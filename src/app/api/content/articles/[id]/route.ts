@@ -1,23 +1,296 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
-import { getContentArticleById } from "@/lib/content/repository";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+import {
+  authErrorResponse,
+  requireUser,
+  requireWebsiteAccess,
+} from "@/lib/auth-helpers";
+
+import {
+  getContentArticleById,
+} from "@/lib/content/repository";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+export async function GET(
+  _req: NextRequest,
+  {
+    params,
+  }: {
+    params:
+      Promise<{
+        id: string;
+      }>;
+  }
+) {
   try {
-    const { id } = await params;
-    const user = await requireUser();
+    const {
+      id,
+    } =
+      await params;
 
-    const article = await getContentArticleById(id);
+    const user =
+      await requireUser();
+
+    const article =
+      await getContentArticleById(
+        id
+      );
+
     if (!article) {
-      return NextResponse.json({ error: "Article not found." }, { status: 404 });
+      return NextResponse.json(
+        {
+          error:
+            "Article not found.",
+        },
+        {
+          status:
+            404,
+        }
+      );
     }
 
-    await requireWebsiteAccess(user.id, article.brief.websiteId);
+    await requireWebsiteAccess(
+      user.id,
+      article.brief
+        .websiteId
+    );
 
-    return NextResponse.json({ article });
-  } catch (err) {
-    console.error("content/articles/[id] GET error", err);
-    const { status, body: errBody } = authErrorResponse(err);
-    return NextResponse.json(errBody, { status });
+    return NextResponse.json({
+      article,
+    });
+  } catch (
+    error
+  ) {
+    const {
+      status,
+      body,
+    } =
+      authErrorResponse(
+        error
+      );
+
+    return NextResponse.json(
+      body,
+      {
+        status,
+      }
+    );
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  {
+    params,
+  }: {
+    params:
+      Promise<{
+        id: string;
+      }>;
+  }
+) {
+  try {
+    const {
+      id,
+    } =
+      await params;
+
+    const user =
+      await requireUser();
+
+    const article =
+      await getContentArticleById(
+        id
+      );
+
+    if (!article) {
+      return NextResponse.json(
+        {
+          error:
+            "Article not found.",
+        },
+        {
+          status:
+            404,
+        }
+      );
+    }
+
+    await requireWebsiteAccess(
+      user.id,
+      article.brief
+        .websiteId
+    );
+
+    if (
+      article.status ===
+      "PUBLISHED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Published articles cannot be edited here. Create a new revision instead.",
+        },
+        {
+          status:
+            409,
+        }
+      );
+    }
+
+    if (
+      article.status ===
+      "GENERATING"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This article is still being generated.",
+        },
+        {
+          status:
+            409,
+        }
+      );
+    }
+
+    const body =
+      await req.json();
+
+    const data: {
+      title?: string;
+      metaDescription?: string;
+      h1?: string;
+      bodyMarkdown?: string;
+      status?: "DRAFT";
+    } = {};
+
+    if (
+      typeof body.title ===
+      "string"
+    ) {
+      const value =
+        body.title.trim();
+
+      if (!value) {
+        return NextResponse.json(
+          {
+            error:
+              "Title cannot be empty.",
+          },
+          {
+            status:
+              400,
+          }
+        );
+      }
+
+      data.title =
+        value;
+    }
+
+    if (
+      typeof body.metaDescription ===
+      "string"
+    ) {
+      data.metaDescription =
+        body.metaDescription.trim();
+    }
+
+    if (
+      typeof body.h1 ===
+      "string"
+    ) {
+      const value =
+        body.h1.trim();
+
+      if (!value) {
+        return NextResponse.json(
+          {
+            error:
+              "H1 cannot be empty.",
+          },
+          {
+            status:
+              400,
+          }
+        );
+      }
+
+      data.h1 =
+        value;
+    }
+
+    if (
+      typeof body.bodyMarkdown ===
+      "string"
+    ) {
+      data.bodyMarkdown =
+        body.bodyMarkdown;
+    }
+
+    const hasChanges =
+      Object.keys(
+        data
+      ).length >
+      0;
+
+    if (!hasChanges) {
+      return NextResponse.json(
+        {
+          error:
+            "No article changes were supplied.",
+        },
+        {
+          status:
+            400,
+        }
+      );
+    }
+
+    data.status =
+      "DRAFT";
+
+    const updated =
+      await prisma.contentArticle.update({
+        where: {
+          id,
+        },
+
+        data,
+      });
+
+    return NextResponse.json({
+      article:
+        updated,
+    });
+  } catch (
+    error
+  ) {
+    console.error(
+      "content/articles/[id] PATCH error",
+      error
+    );
+
+    const {
+      status,
+      body,
+    } =
+      authErrorResponse(
+        error
+      );
+
+    return NextResponse.json(
+      body,
+      {
+        status,
+      }
+    );
   }
 }

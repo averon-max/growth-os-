@@ -1,0 +1,733 @@
+import {
+  describe,
+  expect,
+  it,
+} from "vitest";
+
+import type {
+  ArticleGenerationContractV1,
+} from "./article-generation-contract";
+
+import {
+  MASTER_ARTICLE_SEMANTIC_REVIEW_IDS,
+  finalizeMasterArticleSemanticCriticRunV1,
+  supportsMasterArticleSemanticCriticGenerator,
+} from "./master-article-semantic-critics";
+
+
+function contract():
+ArticleGenerationContractV1 {
+  return {
+    version:
+      "ARTICLE_GENERATION_CONTRACT_V1",
+
+    sourceRuntimeVersion:
+      "MASTER_RUNTIME_SNAPSHOT_V1",
+
+    h1Mission:
+      "Explain credit monitoring accurately.",
+
+    sectionContracts: [
+      {
+        sectionIndex:
+          0,
+
+        sectionNumber:
+          1,
+
+        totalSections:
+          1,
+
+        blueprint: {
+          heading:
+            "What Credit Monitoring Does",
+
+          mission:
+            "Explain detection without claiming prevention.",
+
+          expectedOutcome:
+            "Reader understands detection.",
+
+          queryNodeIds: [
+            "query-1",
+          ],
+
+          requiredClaims: [
+            "claim-1",
+          ],
+
+          forbiddenClaims:
+            [],
+
+          evidenceIds: [
+            "ev-1",
+          ],
+        },
+
+        claimLedger: {
+          claims: [
+            {
+              id:
+                "claim-1",
+            },
+          ],
+        },
+
+        evidenceGraph: {
+          claimEvidence: [
+            {
+              id:
+                "ev-1",
+
+              sourceId:
+                "source-1",
+            },
+          ],
+
+          sources: [
+            {
+              id:
+                "source-1",
+            },
+          ],
+        },
+      },
+    ],
+  } as unknown as
+    ArticleGenerationContractV1;
+}
+
+
+function emptyCandidate() {
+  return {
+    reviews:
+      MASTER_ARTICLE_SEMANTIC_REVIEW_IDS
+        .map(
+          (
+            reviewId
+          ) => ({
+            reviewId,
+
+            findings:
+              [],
+          })
+        ),
+  };
+}
+
+
+function fullContext() {
+  return {
+    originalityReferences: [
+      {
+        id:
+          "reference-1",
+
+        label:
+          "Competitor reference",
+
+        text:
+          "Competitor content.",
+      },
+    ],
+
+    cannibalizationCandidates: [
+      {
+        id:
+          "page-1",
+
+        url:
+          "/existing-page",
+
+        title:
+          "Existing Page",
+
+        h1:
+          "Existing Page",
+
+        queryNodeIds: [
+          "query-1",
+        ],
+
+        summary:
+          "Existing page summary.",
+      },
+    ],
+  };
+}
+
+
+describe(
+  "Master Article Semantic Critics V1",
+  () => {
+    it(
+      "has the exact five semantic review dimensions",
+      () => {
+        expect(
+          MASTER_ARTICLE_SEMANTIC_REVIEW_IDS
+        ).toEqual([
+          "DEEP_INTENT",
+          "ORIGINALITY",
+          "EDITORIAL",
+          "SEMANTIC_DRIFT",
+          "CANNIBALIZATION",
+        ]);
+      }
+    );
+
+
+    it(
+      "derives PASS when all five reviews have sufficient context and no findings",
+      () => {
+        const result =
+          finalizeMasterArticleSemanticCriticRunV1({
+            contract:
+              contract(),
+
+            context:
+              fullContext(),
+
+            modelName:
+              "critic-model",
+
+            candidate:
+              emptyCandidate(),
+          });
+
+
+        expect(
+          result.reviews.map(
+            (review) => [
+              review.reviewId,
+              review.status,
+            ]
+          )
+        ).toEqual([
+          [
+            "DEEP_INTENT",
+            "PASS",
+          ],
+
+          [
+            "ORIGINALITY",
+            "PASS",
+          ],
+
+          [
+            "EDITORIAL",
+            "PASS",
+          ],
+
+          [
+            "SEMANTIC_DRIFT",
+            "PASS",
+          ],
+
+          [
+            "CANNIBALIZATION",
+            "PASS",
+          ],
+        ]);
+      }
+    );
+
+
+    it(
+      "does not fake originality or cannibalization conclusions without comparison context",
+      () => {
+        const result =
+          finalizeMasterArticleSemanticCriticRunV1({
+            contract:
+              contract(),
+
+            context: {
+              originalityReferences:
+                [],
+
+              cannibalizationCandidates:
+                [],
+            },
+
+            modelName:
+              "critic-model",
+
+            candidate:
+              emptyCandidate(),
+          });
+
+
+        expect(
+          result.reviews.find(
+            (review) =>
+              review.reviewId ===
+              "ORIGINALITY"
+          )?.status
+        ).toBe(
+          "INSUFFICIENT_CONTEXT"
+        );
+
+        expect(
+          result.reviews.find(
+            (review) =>
+              review.reviewId ===
+              "CANNIBALIZATION"
+          )?.status
+        ).toBe(
+          "INSUFFICIENT_CONTEXT"
+        );
+      }
+    );
+
+
+    it(
+      "rejects model findings when required external context does not exist",
+      () => {
+        const candidate =
+          emptyCandidate();
+
+        candidate.reviews[
+          1
+        ]!.findings.push({
+          code:
+            "FAKE_ORIGINALITY_FINDING",
+
+          severity:
+            "WARN",
+
+          location: {
+            scope:
+              "ARTICLE",
+          },
+
+          message:
+            "Pretended comparison.",
+
+          recommendation:
+            "Pretended recommendation.",
+
+          repairScope:
+            "NONE",
+
+          claimIds:
+            [],
+
+          evidenceIds:
+            [],
+
+          queryNodeIds:
+            [],
+
+          sourceIds:
+            [],
+        });
+
+
+        expect(
+          () =>
+            finalizeMasterArticleSemanticCriticRunV1({
+              contract:
+                contract(),
+
+              context: {
+                originalityReferences:
+                  [],
+
+                cannibalizationCandidates:
+                  [],
+              },
+
+              modelName:
+                "critic-model",
+
+              candidate,
+            })
+        ).toThrow(
+          "MASTER_SEMANTIC_CRITIC_FINDINGS_WITHOUT_CONTEXT:ORIGINALITY"
+        );
+      }
+    );
+
+
+    it(
+      "derives BLOCK from a blocking deep-intent finding",
+      () => {
+        const candidate =
+          emptyCandidate();
+
+        candidate.reviews[
+          0
+        ]!.findings.push({
+          code:
+            "MISSION_NOT_FULFILLED",
+
+          severity:
+            "BLOCK",
+
+          location: {
+            scope:
+              "SECTION",
+
+            sectionIndex:
+              0,
+
+            sectionNumber:
+              1,
+
+            heading:
+              "What Credit Monitoring Does",
+          },
+
+          message:
+            "Section does not fulfill its approved mission.",
+
+          recommendation:
+            "Repair only this section to answer its approved intent.",
+
+          repairScope:
+            "SECTION",
+
+          claimIds: [
+            "claim-1",
+          ],
+
+          evidenceIds: [
+            "ev-1",
+          ],
+
+          queryNodeIds: [
+            "query-1",
+          ],
+
+          sourceIds: [
+            "source-1",
+          ],
+        });
+
+
+        const result =
+          finalizeMasterArticleSemanticCriticRunV1({
+            contract:
+              contract(),
+
+            context:
+              fullContext(),
+
+            modelName:
+              "critic-model",
+
+            candidate,
+          });
+
+
+        expect(
+          result.reviews[
+            0
+          ]?.status
+        ).toBe(
+          "BLOCK"
+        );
+      }
+    );
+
+
+    it(
+      "derives WARN instead of accepting a model-supplied score",
+      () => {
+        const candidate =
+          emptyCandidate();
+
+        candidate.reviews[
+          2
+        ]!.findings.push({
+          code:
+            "REDUNDANT_PARAGRAPH",
+
+          severity:
+            "WARN",
+
+          location: {
+            scope:
+              "SECTION",
+
+            sectionIndex:
+              0,
+
+            sectionNumber:
+              1,
+
+            heading:
+              "What Credit Monitoring Does",
+          },
+
+          message:
+            "The section repeats the same explanation.",
+
+          recommendation:
+            "Remove redundant prose without changing verified claims.",
+
+          repairScope:
+            "SECTION",
+
+          claimIds:
+            [],
+
+          evidenceIds:
+            [],
+
+          queryNodeIds:
+            [],
+
+          sourceIds:
+            [],
+        });
+
+
+        const result =
+          finalizeMasterArticleSemanticCriticRunV1({
+            contract:
+              contract(),
+
+            context:
+              fullContext(),
+
+            modelName:
+              "critic-model",
+
+            candidate,
+          });
+
+
+        expect(
+          result.reviews[
+            2
+          ]?.status
+        ).toBe(
+          "WARN"
+        );
+
+        expect(
+          "score" in result.reviews[
+            2
+          ]!
+        ).toBe(
+          false
+        );
+      }
+    );
+
+
+    it(
+      "rejects invented claim IDs",
+      () => {
+        const candidate =
+          emptyCandidate();
+
+        candidate.reviews[
+          3
+        ]!.findings.push({
+          code:
+            "DRIFT",
+
+          severity:
+            "WARN",
+
+          location: {
+            scope:
+              "SECTION",
+
+            sectionIndex:
+              0,
+
+            sectionNumber:
+              1,
+
+            heading:
+              "What Credit Monitoring Does",
+          },
+
+          message:
+            "Semantic drift.",
+
+          recommendation:
+            "Narrow the statement.",
+
+          repairScope:
+            "SECTION",
+
+          claimIds: [
+            "invented-claim",
+          ],
+
+          evidenceIds:
+            [],
+
+          queryNodeIds:
+            [],
+
+          sourceIds:
+            [],
+        });
+
+
+        expect(
+          () =>
+            finalizeMasterArticleSemanticCriticRunV1({
+              contract:
+                contract(),
+
+              context:
+                fullContext(),
+
+              modelName:
+                "critic-model",
+
+              candidate,
+            })
+        ).toThrow(
+          "MASTER_SEMANTIC_CRITIC_UNKNOWN_CLAIM:invented-claim"
+        );
+      }
+    );
+
+
+    it(
+      "rejects wrong section localization",
+      () => {
+        const candidate =
+          emptyCandidate();
+
+        candidate.reviews[
+          2
+        ]!.findings.push({
+          code:
+            "EDITORIAL",
+
+          severity:
+            "WARN",
+
+          location: {
+            scope:
+              "SECTION",
+
+            sectionIndex:
+              0,
+
+            sectionNumber:
+              99,
+
+            heading:
+              "Wrong",
+          },
+
+          message:
+            "Issue.",
+
+          recommendation:
+            "Fix.",
+
+          repairScope:
+            "SECTION",
+
+          claimIds:
+            [],
+
+          evidenceIds:
+            [],
+
+          queryNodeIds:
+            [],
+
+          sourceIds:
+            [],
+        });
+
+
+        expect(
+          () =>
+            finalizeMasterArticleSemanticCriticRunV1({
+              contract:
+                contract(),
+
+              context:
+                fullContext(),
+
+              modelName:
+                "critic-model",
+
+              candidate,
+            })
+        ).toThrow(
+          "MASTER_SEMANTIC_CRITIC_SECTION_NUMBER_MISMATCH:0"
+        );
+      }
+    );
+
+
+    it(
+      "rejects duplicate semantic reviews",
+      () => {
+        const candidate =
+          emptyCandidate();
+
+        candidate.reviews[
+          4
+        ] = {
+          reviewId:
+            "DEEP_INTENT",
+
+          findings:
+            [],
+        };
+
+
+        expect(
+          () =>
+            finalizeMasterArticleSemanticCriticRunV1({
+              contract:
+                contract(),
+
+              context:
+                fullContext(),
+
+              modelName:
+                "critic-model",
+
+              candidate,
+            })
+        ).toThrow(
+          "MASTER_SEMANTIC_CRITIC_DUPLICATE_REVIEW:DEEP_INTENT"
+        );
+      }
+    );
+
+
+    it(
+      "exposes semantic critic generator capability",
+      () => {
+        expect(
+          supportsMasterArticleSemanticCriticGenerator({
+            modelName:
+              "model",
+
+            async reviewMasterArticleSemantics() {
+              throw new Error(
+                "not called"
+              );
+            },
+          })
+        ).toBe(
+          true
+        );
+
+        expect(
+          supportsMasterArticleSemanticCriticGenerator({
+            modelName:
+              "model",
+          })
+        ).toBe(
+          false
+        );
+      }
+    );
+  }
+);
