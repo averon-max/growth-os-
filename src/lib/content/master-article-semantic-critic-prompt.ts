@@ -11,6 +11,11 @@ import type {
 } from "./master-article-semantic-critics";
 
 
+
+import {
+  serializeMasterArticleSemanticCriticBudgetV1,
+} from "./master-article-semantic-critic-budget";
+
 export function buildMasterArticleSemanticCriticPrompt({
   contract,
   run,
@@ -26,112 +31,11 @@ export function buildMasterArticleSemanticCriticPrompt({
     Readonly<MasterArticleSemanticCriticContextV1>;
 }): string {
   const authoritative =
-    JSON.stringify(
-      {
-        articleMission:
-          contract.h1Mission,
-
-        sections:
-          contract.sectionContracts
-            .map(
-              (section) => ({
-                sectionIndex:
-                  section.sectionIndex,
-
-                sectionNumber:
-                  section.sectionNumber,
-
-                heading:
-                  section.blueprint
-                    .heading,
-
-                mission:
-                  section.blueprint
-                    .mission,
-
-                expectedOutcome:
-                  section.blueprint
-                    .expectedOutcome,
-
-                queryNodeIds:
-                  section.blueprint
-                    .queryNodeIds ??
-                  [],
-
-                requiredClaims:
-                  section.blueprint
-                    .requiredClaims ??
-                  [],
-
-                forbiddenClaims:
-                  section.blueprint
-                    .forbiddenClaims ??
-                  [],
-
-                claimLedger:
-                  section.claimLedger,
-
-                evidenceGraph:
-                  section.evidenceGraph,
-              })
-            ),
-
-        article: {
-          title:
-            run.article.title,
-
-          metaDescription:
-            run.article
-              .metaDescription,
-
-          h1:
-            run.article.h1,
-
-          bodyMarkdown:
-            run.article
-              .bodyMarkdown,
-        },
-
-        generatedSections:
-          run.sections.map(
-            (
-              section,
-              index
-            ) => ({
-              sectionIndex:
-                index,
-
-              heading:
-                section.heading,
-
-              bodyMarkdown:
-                section.bodyMarkdown,
-
-              coveredQueryNodeIds:
-                section
-                  .coveredQueryNodeIds,
-
-              referencedClaimIds:
-                section
-                  .referencedClaimIds,
-
-              referencedEvidenceIds:
-                section
-                  .referencedEvidenceIds,
-            })
-          ),
-
-        originalityReferences:
-          context
-            .originalityReferences,
-
-        cannibalizationCandidates:
-          context
-            .cannibalizationCandidates,
-      },
-      null,
-      2
-    );
+    serializeMasterArticleSemanticCriticBudgetV1({
+      contract,
+      run,
+      context,
+    });
 
 
   return [
@@ -174,6 +78,8 @@ export function buildMasterArticleSemanticCriticPrompt({
     "",
     "CANNIBALIZATION:",
     "- Compare ONLY against supplied cannibalizationCandidates.",
+    "- A null cannibalization metric means NOT OBSERVED / UNKNOWN. Never reinterpret null as 0, false, weak, or absent.",
+    "- Crawl-only candidates may contain URL/title/H1/summary without GSC ownership metrics. Use only those observed fields and do not invent query ownership.",
     "- Candidates originate from persisted URL Ownership evidence.",
     "- matchedQueries are literal observed query strings, NOT query-node IDs.",
     "- queryNodeIds may legitimately be empty; never manufacture IDs from query text.",

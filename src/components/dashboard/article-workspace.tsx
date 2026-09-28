@@ -157,8 +157,149 @@ type Analytics = {
     }>;
   };
 
+  queryOutcome: {
+    version: string;
+    status: string;
+    reason: string | null;
+
+    skippedCheckpoints?: Array<{
+      checkpoint: string;
+      reason: string;
+    }>;
+
+    result: {
+      checkpoints: Array<{
+        checkpoint: string;
+        gscSnapshotDate: string;
+        mappedQueryCount: number;
+        unmappedQueryCount: number;
+      }>;
+
+      diagnosis: {
+        version: string;
+        latestCheckpoint: string | null;
+        previousCheckpoint: string | null;
+
+        counts: {
+          WINNING: number;
+          EMERGING: number;
+          STRIKING_DISTANCE: number;
+          DECAYING: number;
+          LOST: number;
+        };
+
+        groups: Array<{
+          groupId: string;
+
+          status:
+            | "WINNING"
+            | "EMERGING"
+            | "STRIKING_DISTANCE"
+            | "DECAYING"
+            | "LOST";
+
+          checkpoint: string;
+          intent: string;
+          cluster: string;
+          subIntent: string;
+          queries: string[];
+          queryNodeIds: string[];
+          sectionHeadings: string[];
+          position: number | null;
+          previousPosition: number | null;
+          impressions: number | null;
+          clicks: number | null;
+          reason: string;
+        }>;
+
+        provenance: {
+          observedEvidenceOnly: boolean;
+          noCausalInference: boolean;
+          noSeoScore: boolean;
+          noRankingProbability: boolean;
+        };
+      };
+    } | null;
+  };
+
   outcome: {
     hasData: boolean;
+
+    learningDecision: {
+      version: string;
+
+      primaryBottleneck:
+        | "INSUFFICIENT_EVIDENCE"
+        | "EARLY_OBSERVATION"
+        | "SERP_PRESENTATION"
+        | "QUERY_GROUP_LOSS"
+        | "QUERY_GROUP_DECAY"
+        | "SECTION_GAP"
+        | "SEARCH_VISIBILITY"
+        | "MIXED_SIGNALS"
+        | "NONE";
+
+      nextBestAction: string;
+
+      actionScope:
+        | "OBSERVATION"
+        | "PAGE"
+        | "QUERY_GROUP"
+        | "SECTION";
+
+      affectedGroupId:
+        string | null;
+
+      affectedCluster:
+        string | null;
+
+      affectedSubIntent:
+        string | null;
+
+      affectedSectionHeadings:
+        string[];
+
+      reason:
+        string;
+
+      provenance: {
+        deterministic: boolean;
+        observedEvidenceOnly: boolean;
+        noCausalInference: boolean;
+        noSeoScore: boolean;
+        noRankingProbability: boolean;
+        noAutoApply: boolean;
+        noNewArticleByDefault: boolean;
+      };
+    };
+
+    diagnosis: {
+      version: string;
+      phase: string;
+      status: string;
+      bottleneck: string;
+      nextAction: string;
+      latestCheckpoint: string | null;
+      observationCount: number;
+
+      trends: {
+        rankFromBaseline: string;
+        rankSincePrevious: string;
+        impressionsFromBaseline: string;
+        impressionsSincePrevious: string;
+        clicksFromBaseline: string;
+        clicksSincePrevious: string;
+        ctrFromBaseline: string;
+        ctrSincePrevious: string;
+        averagePositionFromBaseline: string;
+        averagePositionSincePrevious: string;
+      };
+
+      provenance: {
+        noCausalInference: boolean;
+        noSeoScore: boolean;
+      };
+    } | null;
 
     observations: Array<{
       checkpoint: string;
@@ -3258,6 +3399,561 @@ ${article.bodyMarkdown}`
         </div>
 
         {analytics?.outcome
+          ?.learningDecision ? (
+          <div
+            className={
+              styles.outcomeGrid
+            }
+          >
+            <div
+              className={
+                styles.outcomeCard
+              }
+            >
+              <span>
+                Primary bottleneck
+              </span>
+
+              <strong>
+                {statusLabel(
+                  analytics
+                    .outcome
+                    .learningDecision
+                    .primaryBottleneck
+                )}
+              </strong>
+
+              <div>
+                Scope:{" "}
+                {statusLabel(
+                  analytics
+                    .outcome
+                    .learningDecision
+                    .actionScope
+                )}
+              </div>
+
+              {analytics
+                .outcome
+                .learningDecision
+                .affectedCluster ? (
+                <div>
+                  Cluster:{" "}
+                  {
+                    analytics
+                      .outcome
+                      .learningDecision
+                      .affectedCluster
+                  }
+                </div>
+              ) : null}
+
+              {analytics
+                .outcome
+                .learningDecision
+                .affectedSectionHeadings
+                .length >
+              0 ? (
+                <div>
+                  Section:{" "}
+                  {analytics
+                    .outcome
+                    .learningDecision
+                    .affectedSectionHeadings
+                    .join(
+                      ", "
+                    )}
+                </div>
+              ) : null}
+            </div>
+
+            <div
+              className={
+                styles.outcomeCard
+              }
+            >
+              <span>
+                Next best action
+              </span>
+
+              <strong>
+                {statusLabel(
+                  analytics
+                    .outcome
+                    .learningDecision
+                    .nextBestAction
+                )}
+              </strong>
+
+              <div>
+                {
+                  analytics
+                    .outcome
+                    .learningDecision
+                    .reason
+                    .replaceAll(
+                      "_",
+                      " "
+                    )
+                    .toLowerCase()
+                }
+              </div>
+
+              <div>
+                Observed evidence only.
+                No causal inference.
+                No automatic changes.
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {analytics?.queryOutcome
+          ?.result
+          ?.diagnosis
+          ?.latestCheckpoint ? (
+          <>
+            <div
+              className={
+                styles.outcomeGrid
+              }
+            >
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Query outcome groups
+                </span>
+
+                <strong>
+                  {analytics
+                    .queryOutcome
+                    .result
+                    .diagnosis
+                    .latestCheckpoint
+                    ?.replaceAll(
+                      "_",
+                      " "
+                    )}
+                </strong>
+
+                <div>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .diagnosis
+                      .groups
+                      .length
+                  }{" "}
+                  observed groups
+                </div>
+
+                <div>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .checkpoints
+                      .at(-1)
+                      ?.mappedQueryCount ??
+                    0
+                  }{" "}
+                  mapped queries ·{" "}
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .checkpoints
+                      .at(-1)
+                      ?.unmappedQueryCount ??
+                    0
+                  }{" "}
+                  unmapped
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Winning
+                </span>
+
+                <strong>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .diagnosis
+                      .counts
+                      .WINNING
+                  }
+                </strong>
+
+                <div>
+                  Observed Top 10
+                  query groups
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Striking distance
+                </span>
+
+                <strong>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .diagnosis
+                      .counts
+                      .STRIKING_DISTANCE
+                  }
+                </strong>
+
+                <div>
+                  Observed positions
+                  11–20
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Emerging
+                </span>
+
+                <strong>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .diagnosis
+                      .counts
+                      .EMERGING
+                  }
+                </strong>
+
+                <div>
+                  New or earlier-stage
+                  observed groups
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Decaying
+                </span>
+
+                <strong>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .diagnosis
+                      .counts
+                      .DECAYING
+                  }
+                </strong>
+
+                <div>
+                  Worsened observed
+                  position bucket
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Lost
+                </span>
+
+                <strong>
+                  {
+                    analytics
+                      .queryOutcome
+                      .result
+                      .diagnosis
+                      .counts
+                      .LOST
+                  }
+                </strong>
+
+                <div>
+                  Present previously,
+                  not observed now
+                </div>
+              </div>
+            </div>
+
+            {analytics
+              .queryOutcome
+              .result
+              .diagnosis
+              .groups
+              .slice(
+                0,
+                12
+              )
+              .map(
+                (
+                  group
+                ) => (
+                  <div
+                    key={
+                      `${group.status}:${group.groupId}`
+                    }
+                    className={
+                      styles.outcomeCard
+                    }
+                  >
+                    <span>
+                      {statusLabel(
+                        group.status
+                      )}
+                    </span>
+
+                    <strong>
+                      {statusLabel(
+                        group.subIntent
+                      )}
+                    </strong>
+
+                    <div>
+                      Position{" "}
+                      {formatNumber(
+                        group.position
+                      )}
+                      {group
+                        .previousPosition !==
+                      null
+                        ? ` · previous ${formatNumber(
+                            group
+                              .previousPosition
+                          )}`
+                        : ""}
+                    </div>
+
+                    <div>
+                      Impressions{" "}
+                      {formatNumber(
+                        group.impressions
+                      )}{" "}
+                      · Clicks{" "}
+                      {formatNumber(
+                        group.clicks
+                      )}
+                    </div>
+
+                    {group
+                      .sectionHeadings
+                      .length >
+                    0 ? (
+                      <div>
+                        Section:{" "}
+                        {group
+                          .sectionHeadings
+                          .join(
+                            ", "
+                          )}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              )}
+
+            <div>
+              Query-group labels describe
+              observed search evidence only.
+              They do not prove that the
+              publication caused the change.
+            </div>
+          </>
+        ) : null}
+
+        {analytics?.outcome
+          .diagnosis ? (
+          <>
+            <div
+              className={
+                styles.outcomeGrid
+              }
+            >
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Observed diagnosis
+                </span>
+
+                <strong>
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .status
+                  )}
+                </strong>
+
+                <div>
+                  Phase{" "}
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .phase
+                  )}
+                </div>
+
+                <div>
+                  Latest{" "}
+                  {analytics
+                    .outcome
+                    .diagnosis
+                    .latestCheckpoint
+                    ? analytics
+                        .outcome
+                        .diagnosis
+                        .latestCheckpoint
+                        .replaceAll(
+                          "_",
+                          " "
+                        )
+                    : "—"}
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Bottleneck
+                </span>
+
+                <strong>
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .bottleneck
+                  )}
+                </strong>
+
+                <div>
+                  Based on observed
+                  checkpoint evidence
+                </div>
+
+                <div>
+                  No causal inference
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Next action
+                </span>
+
+                <strong>
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .nextAction
+                  )}
+                </strong>
+
+                <div>
+                  Evidence checkpoints{" "}
+                  {
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .observationCount
+                  }
+                </div>
+
+                <div>
+                  No SEO score or
+                  ranking probability
+                </div>
+              </div>
+
+              <div
+                className={
+                  styles.outcomeCard
+                }
+              >
+                <span>
+                  Search trend
+                </span>
+
+                <strong>
+                  Rank{" "}
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .trends
+                      .rankFromBaseline
+                  )}
+                </strong>
+
+                <div>
+                  Impressions{" "}
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .trends
+                      .impressionsFromBaseline
+                  )}
+                </div>
+
+                <div>
+                  Clicks{" "}
+                  {statusLabel(
+                    analytics
+                      .outcome
+                      .diagnosis
+                      .trends
+                      .clicksFromBaseline
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {analytics?.outcome
           .hasData ? (
           <div
             className={
@@ -3344,7 +4040,7 @@ ${article.bodyMarkdown}`
                 Growth OS
                 action,
                 baseline and
-                7 / 14 / 28
+                7 / 14 / 28 / 60 / 90
                 day
                 observations
                 appear here.

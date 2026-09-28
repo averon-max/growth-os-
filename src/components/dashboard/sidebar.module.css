@@ -84,15 +84,15 @@
 
 .navItem {
   position: relative;
-  min-height: 30px;
-  padding: 0 8px;
+  min-height: 38px;
+  padding: 0 11px;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 11px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 6px;
   color: #8d929a;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 450;
   text-decoration: none;
   transition:
@@ -128,11 +128,11 @@
   width: 2px;
   height: 15px;
   border-radius: 0 2px 2px 0;
-  background: #5e6ad2;
+  background: #3b82f6;
 }
 
 .navItem[data-active="true"] svg {
-  color: #a6adf4;
+  color: #93c5fd;
 }
 
 .footer {

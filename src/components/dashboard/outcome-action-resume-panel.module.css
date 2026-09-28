@@ -51,9 +51,9 @@
 .button {
   min-height: 29px;
   padding: 0 10px;
-  border: 1px solid rgba(94, 106, 210, .65);
+  border: 1px solid rgba(59, 130, 246, .65);
   border-radius: 4px;
-  background: rgba(94, 106, 210, .12);
+  background: rgba(59, 130, 246, .12);
   color: var(--primary);
   font: inherit;
   font-size: 9px;
@@ -62,7 +62,7 @@
 }
 
 .button:hover {
-  background: rgba(94, 106, 210, .2);
+  background: rgba(59, 130, 246, .2);
 }
 
 .button:disabled {

@@ -1522,7 +1522,7 @@ describe(
 
 
     it(
-      "fails before any later section after one targeted repair when semantic verification still blocks",
+      "fails before any later section when deterministic semantic repair would empty the section",
       async () => {
         const generatedIndexes:
           number[] =
@@ -1609,7 +1609,7 @@ describe(
             generator,
           })
         ).rejects.toThrow(
-          "MASTER_WRITER_SECTION_VERIFICATION_FAILED:0:SECTION_TARGETED_REPAIR_EXHAUSTED:SEMANTIC"
+          "MASTER_WRITER_SECTION_VERIFICATION_FAILED:0:SECTION_TARGETED_REPAIR_FAILED:SEMANTIC:SECTION_DETERMINISTIC_SEMANTIC_REPAIR_EMPTIED_SECTION"
         );
 
         expect(

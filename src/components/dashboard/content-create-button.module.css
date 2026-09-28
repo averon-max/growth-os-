@@ -6,7 +6,7 @@
   gap: 6px;
   border: 1px solid #727be0;
   border-radius: 5px;
-  background: #5e6ad2;
+  background: #3b82f6;
   color: #fff;
   font: inherit;
   font-size: 11px;
@@ -108,7 +108,7 @@
 
 .input:focus {
   border-color: #5862b7;
-  box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.12);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
 }
 
 .input::placeholder {
@@ -167,7 +167,7 @@
 
 .primary {
   border: 1px solid #727be0;
-  background: #5e6ad2;
+  background: #3b82f6;
   color: #fff;
 }
 

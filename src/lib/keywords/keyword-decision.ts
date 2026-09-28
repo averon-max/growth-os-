@@ -1038,26 +1038,137 @@ export function buildKeywordDecisionShadow({
     };
   }
 
-  const secondary =
-    eligible
+  /*
+   * MINIMAL_SECONDARY_COVERAGE_SET_V1
+   *
+   * No fixed keyword count.
+   * No arbitrary "8 secondary keywords".
+   * No arbitrary secondary score >= 50.
+   *
+   * Start with eligible, same-intent, topically-related observed
+   * queries. Add a secondary only when it contributes a distinct
+   * search concept not already represented by the primary or by
+   * an earlier selected secondary.
+   */
+  const secondaryCoverageStopWords =
+    new Set([
+      "a",
+      "an",
+      "and",
+      "are",
+      "for",
+      "from",
+      "how",
+      "in",
+      "is",
+      "of",
+      "on",
+      "or",
+      "the",
+      "to",
+      "what",
+      "when",
+      "where",
+      "which",
+      "with",
+      "your",
+    ]);
+
+
+  const coverageTerms = (
+    value:
+      string
+  ): string[] =>
+    (
+      value
+        .toLowerCase()
+        .match(
+          /[a-z0-9]+/g
+        ) ??
+      []
+    )
       .filter(
-        (item) =>
-          item.keyword !==
-            best.keyword &&
-          item.intent ===
-            best.intent &&
-          item.decisionScore >=
-            50 &&
-          topicAffinity(
-            best.keyword,
-            item.keyword
-          ) >=
-            0.34
-      )
-      .slice(
-        0,
-        8
+        (
+          token
+        ) =>
+          token.length >=
+            2 &&
+          !secondaryCoverageStopWords.has(
+            token
+          )
       );
+
+
+  const representedTerms =
+    new Set(
+      coverageTerms(
+        best.keyword
+      )
+    );
+
+
+  const secondary:
+    typeof eligible =
+      [];
+
+
+  for (
+    const item
+    of eligible
+  ) {
+    if (
+      item.keyword ===
+        best.keyword ||
+      item.intent !==
+        best.intent ||
+      topicAffinity(
+        best.keyword,
+        item.keyword
+      ) <
+        0.34
+    ) {
+      continue;
+    }
+
+
+    const terms =
+      coverageTerms(
+        item.keyword
+      );
+
+
+    const addsDistinctCoverage =
+      terms.some(
+        (
+          term
+        ) =>
+          !representedTerms.has(
+            term
+          )
+      );
+
+
+    if (
+      !addsDistinctCoverage
+    ) {
+      continue;
+    }
+
+
+    secondary.push(
+      item
+    );
+
+
+    for (
+      const term
+      of terms
+    ) {
+      representedTerms.add(
+        term
+      );
+    }
+  }
 
   return {
     status:

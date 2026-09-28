@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         : "";
 
     const providerMatch =
-      /(?:Gemini|Groq) API error (429|500|502|503|504)\b/.exec(
+      /(?:Gemini|Groq) API error (413|429|500|502|503|504)\b/.exec(
         providerMessage
       );
 
@@ -42,6 +42,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             providerStatus,
         }
       );
+
+      if (
+        providerStatus ===
+        413
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The AI request exceeded the provider token budget. Growth OS did not save a rejected article.",
+
+            code:
+              "CONTENT_PROVIDER_REQUEST_TOO_LARGE",
+
+            retryable:
+              false,
+          },
+          {
+            status:
+              413,
+          }
+        );
+      }
+
 
       if (
         providerStatus ===

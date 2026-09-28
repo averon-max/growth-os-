@@ -1431,3 +1431,22 @@ export function buildQueryGraph({
       ),
   });
 }
+
+
+/*
+ * Public normalization boundary for post-publish outcome
+ * attribution.
+ *
+ * IMPORTANT:
+ * Outcome learning must use the exact same normalization
+ * semantics as QueryGraph construction.
+ *
+ * This function performs zero semantic inference.
+ */
+export function normalizeQueryGraphObservedQueryV1(
+  value: string
+): string {
+  return normalize(
+    value
+  );
+}

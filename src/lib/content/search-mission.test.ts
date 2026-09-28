@@ -44,6 +44,9 @@ describe(
       riskClass:
         "YMYL_FINANCE" as const,
 
+      missionIntent:
+        "INFORMATIONAL" as const,
+
       createdAt:
         new Date(
           "2026-09-21T00:00:00.000Z"

@@ -2,11 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { createContentBrief } from "@/lib/content/service";
+import {
+  ProductionMasterBriefBlockedError,
+} from "@/lib/content/production-master-brief-required";
 import { geminiGenerator } from "@/lib/content/gemini-generator";
 import { getContentBriefs } from "@/lib/content/repository";
 import {
   parseOptionalExplicitSearchMissionInput,
 } from "@/lib/content/search-mission-ingress";
+
+import {
+  resolveAutomaticSearchMission,
+} from "@/lib/content/automatic-search-mission";
+
+import {
+  ProductionMasterLiveStagePlanError,
+} from "@/lib/content/production-master-live-stage-planner";
+
+import {
+  ProductionMasterLiveSourceError,
+} from "@/lib/content/production-master-live-source-adapter";
+
+import {
+  ProductionMasterLiveResearchAssemblyError,
+} from "@/lib/content/production-master-live-research-assembler";
 
 export async function POST(req: NextRequest) {
   try {
@@ -81,6 +100,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Business not found for this website." }, { status: 500 });
     }
 
+
+    /*
+     * AUTO_SEARCH_MISSION_V1
+     *
+     * Manual SearchMission remains a supported override.
+     * Normal article creation only needs a topic.
+     */
+    const effectiveSearchMission =
+      searchMission ??
+      resolveAutomaticSearchMission({
+        topic,
+
+        industry:
+          business.industry,
+
+        businessLocation:
+          business.location,
+      });
+
     const brief = await createContentBrief(geminiGenerator, {
       websiteId,
       opportunityId,
@@ -89,11 +127,103 @@ export async function POST(req: NextRequest) {
       recommendation,
       businessName: business.name,
       websiteUrl: website.url,
-
-      searchMission,});
+      searchMission:
+        effectiveSearchMission,
+    });
 
     return NextResponse.json({ brief }, { status: 201 });
   } catch (err) {
+    /*
+     * CONTENT_BRIEF_ASSEMBLY_ERROR_SURFACE_V1
+     */
+    if (
+      err instanceof
+        ProductionMasterLiveResearchAssemblyError
+    ) {
+      console.warn(
+        "content/briefs POST live research assembly blocked",
+        {
+          code:
+            err.code,
+        }
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            err.message,
+
+          code:
+            err.code,
+        },
+        {
+          status:
+            422,
+        }
+      );
+    }
+
+    /*
+     * PRODUCTION_MASTER_RESEARCH_ERROR_SURFACE_V1
+     *
+     * These are deliberate fail-closed production research
+     * errors, not anonymous HTTP 500s. Surface their stable
+     * codes so the UI can explain the real blocker.
+     */
+    if (
+      err instanceof
+        ProductionMasterLiveStagePlanError ||
+      err instanceof
+        ProductionMasterLiveSourceError
+    ) {
+      console.warn(
+        "content/briefs POST production research blocked",
+        {
+          code:
+            err.code,
+        }
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            err.message,
+
+          code:
+            err.code,
+        },
+        {
+          status:
+            422,
+        }
+      );
+    }
+
+    if (
+      err instanceof
+        ProductionMasterBriefBlockedError
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The production SEO research pipeline is not ready for this brief. Growth OS will not create a legacy article without a validated Stage 1-8 Master Runtime.",
+
+          code:
+            err.code,
+
+          blockers:
+            err.blockers,
+
+          adapterBlockers:
+            err.adapterBlockers,
+        },
+        {
+          status:
+            409,
+        }
+      );
+    }
+
     const providerMessage =
       err instanceof Error
         ? err.message

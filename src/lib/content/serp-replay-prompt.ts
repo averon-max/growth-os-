@@ -476,6 +476,16 @@ export function buildSerpReplayPairwisePrompt(
     >
 ): string {
   return [
+    /* SERP_REPLAY_DIRECTIONAL_EVIDENCE_RULE_V2 */
+    "STRICT DIRECTIONAL EVIDENCE RULE:",
+    "- ARTICLE_STRONGER or COMPETITOR_STRONGER is allowed only when supplied evidence directly establishes that direction.",
+    "- Directional judgments must use the supplied articleEvidenceIds and competitorEvidenceIds.",
+    "- If direction cannot be justified from supplied evidence, return INSUFFICIENT_EVIDENCE for that dimension.",
+    "- For INSUFFICIENT_EVIDENCE, state exactly what information is missing in missingData.",
+    "- Never invent evidence IDs, metrics, observations, rankings, facts, source authority, or comparative advantages.",
+    "- Missing evidence is not evidence that either side is stronger.",
+    "",
+
     "You are the pairwise SERP replay judge for a high-stakes SEO publishing system.",
     "",
     "Your job is NOT to predict Google rankings.",

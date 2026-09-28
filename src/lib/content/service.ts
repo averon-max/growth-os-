@@ -19,6 +19,10 @@ import {
 } from "./master-article-semantic-critic-context";
 
 import {
+  buildCrawlCannibalizationCandidatesV1,
+} from "./crawl-cannibalization-context";
+
+import {
   executeMasterArticleCriticsV1,
 } from "./master-article-critic-fusion";
 
@@ -26,9 +30,13 @@ import {
   executeMasterArticleCriticRepairReplayV1,
 } from "./master-article-critic-repair-execution";
 
-import {
-  executeSerpReplayV1,
+import type {
+  SerpReplayV1,
 } from "./serp-replay";
+
+import {
+  executeCompetitiveSerpReplayRepairV2,
+} from "./competitive-serp-replay-execution-v2";
 
 import {
   createSerpReplayArtifactV1,
@@ -36,9 +44,22 @@ import {
 } from "./serp-replay-artifact";
 
 import {
+  planProductionMasterArtifactsFromLiveSources,
+  ProductionMasterLiveStagePlanError,
+} from "./production-master-live-stage-planner";
+
+import {
+  parseOptionalExplicitSearchMissionInput,
+} from "./search-mission-ingress";
+
+import {
   prepareProductionMasterBriefRuntime,
   type ProductionMasterBriefArtifactInput,
 } from "./production-master-brief-ingress";
+
+import {
+  assertProductionMasterBriefReady,
+} from "./production-master-brief-required";
 
 import {
   assertArticleCriticsPassed,
@@ -163,7 +184,7 @@ function isTransientContentProviderFailure(
       : "";
 
   return (
-    /(?:Gemini|Groq) API error (429|500|502|503|504)\b/.test(
+    /(?:Gemini|Groq) API error (413|429|500|502|503|504)\b/.test(
       message
     ) ||
     /AbortError|aborted|timeout/i.test(
@@ -560,6 +581,142 @@ export async function createContentBrief(
     }
   );
 
+  /*
+   * STAGE 9N-B4
+   * -----------
+   *
+   * Production brief creation must construct Stage 1-8 from
+   * current live research when a caller has not supplied an
+   * already-validated artifact bundle.
+   *
+   * IMPORTANT:
+   * - no finalPlan -> masterRuntime reconstruction
+   * - no searchBlueprintShadow -> masterRuntime reconstruction
+   * - no fake numeric metrics
+   * - no implicit SearchMission synthesis
+   * - no legacy article fallback
+   */
+  const missionIngress =
+    parseOptionalExplicitSearchMissionInput(
+      input.searchMission ??
+      null
+    );
+
+  if (
+    !missionIngress.ok
+  ) {
+    throw new ProductionMasterLiveStagePlanError(
+      missionIngress.code,
+      missionIngress.error
+    );
+  }
+
+  const explicitSearchMission =
+    missionIngress.value;
+
+  if (
+    !input.masterArtifacts &&
+    !explicitSearchMission
+  ) {
+    throw new ProductionMasterLiveStagePlanError(
+      "LIVE_STAGE_PLAN_SEARCH_MISSION_REQUIRED",
+      "A validated SearchMission is required before live Stage 1-8 research can run."
+    );
+  }
+
+  const liveMaster =
+    input.masterArtifacts
+      ? null
+      : await planProductionMasterArtifactsFromLiveSources({
+          liveSourceInput: {
+            websiteId:
+              input.websiteId,
+
+            /*
+             * Topic is the acquisition seed only.
+             * The Stage planner decides the semantic query graph
+             * from live research; this does not reconstruct the
+             * Master Runtime from finalPlan.
+             */
+            keyword:
+              input.topic,
+
+            ...(
+              explicitSearchMission
+                ? {
+                    locationName:
+                      explicitSearchMission.location,
+
+                    ...(
+                      explicitSearchMission.jurisdiction
+                        ? {
+                            countryCode:
+                              explicitSearchMission.jurisdiction,
+                          }
+                        : {}
+                    ),
+
+                    languageCode:
+                      explicitSearchMission.language,
+                  }
+                : {}
+            ),
+          },
+
+          mission: {
+            websiteId:
+              input.websiteId,
+
+            topic:
+              input.topic,
+
+            audience:
+              explicitSearchMission!.audience,
+
+            readerGoal:
+              explicitSearchMission!.readerGoal,
+
+            businessRelationship:
+              explicitSearchMission!
+                .businessRelationship,
+
+            jurisdiction:
+              explicitSearchMission!
+                .jurisdiction,
+
+            language:
+              explicitSearchMission!.language,
+
+            location:
+              explicitSearchMission!.location,
+
+            riskClass:
+              explicitSearchMission!.riskClass,
+
+            /*
+             * Query intent is already a constrained production
+             * enum in ContentStrategy. The cast is expressed
+             * through the planner contract so contract drift
+             * becomes a TypeScript failure.
+             */
+            missionIntent:
+              strategy.searchIntent as
+                Parameters<
+                  typeof planProductionMasterArtifactsFromLiveSources
+                >[0]["mission"]["missionIntent"],
+          },
+        });
+
+  const effectiveSearchMission =
+    liveMaster
+      ?.searchMissionInput ??
+    explicitSearchMission;
+
+  const effectiveMasterArtifacts =
+    liveMaster
+      ?.masterArtifacts ??
+    input.masterArtifacts;
+
   const productionMaster =
     prepareProductionMasterBriefRuntime({
       websiteId:
@@ -569,11 +726,11 @@ export async function createContentBrief(
         input.topic,
 
       searchMissionInput:
-        input.searchMission ??
+        effectiveSearchMission ??
         null,
 
       masterArtifacts:
-        input.masterArtifacts,
+        effectiveMasterArtifacts,
     });
 
   console.info(
@@ -599,6 +756,24 @@ export async function createContentBrief(
           .masterRuntime !==
         null,
     }
+  );
+
+
+  /*
+   * Production invariant:
+   *
+   * Never create another ContentBrief from legacy planning
+   * artifacts alone.
+   *
+   * SearchBlueprintShadow/finalPlan may remain persisted as
+   * historical evidence, but article production requires the
+   * explicit Stage 1-8 MasterRuntime.
+   *
+   * This assertion intentionally runs BEFORE generateBrief()
+   * and BEFORE prisma.contentBrief.create().
+   */
+  assertProductionMasterBriefReady(
+    productionMaster
   );
 
 
@@ -1099,11 +1274,76 @@ export async function generateArticleFromBrief(
      * No late URL ownership derivation.
      * No synthetic comparison arrays.
      */
-    const masterCriticContext =
+    const persistedMasterCriticContext =
       buildMasterArticleSemanticCriticContextV1(
         masterRuntimeInspection
           .runtime
       );
+
+
+    /*
+     * REAL_CRAWL_CANNIBALIZATION_FALLBACK_V1
+     *
+     * Stage-3 persisted URL ownership remains authoritative when present.
+     *
+     * Historical / incomplete runtimes may not yet contain urlOwnership.
+     * In that case the critic receives REAL existing-page crawl context.
+     *
+     * Missing GSC ownership metrics remain null.
+     */
+    const crawlCannibalizationCandidates =
+      persistedMasterCriticContext
+        .cannibalizationCandidates
+        .length >
+      0
+        ? Object.freeze([])
+        : await buildCrawlCannibalizationCandidatesV1({
+            websiteId:
+              brief.websiteId,
+          });
+
+
+    const masterCriticContext =
+      Object.freeze({
+        ...persistedMasterCriticContext,
+
+        cannibalizationCandidates:
+          persistedMasterCriticContext
+            .cannibalizationCandidates
+            .length >
+          0
+            ? persistedMasterCriticContext
+                .cannibalizationCandidates
+            : crawlCannibalizationCandidates,
+      });
+
+
+    console.info(
+      "[content critic real context]",
+      {
+        briefId:
+          brief.id,
+
+        originalityReferences:
+          masterCriticContext
+            .originalityReferences
+            .length,
+
+        persistedCannibalizationCandidates:
+          persistedMasterCriticContext
+            .cannibalizationCandidates
+            .length,
+
+        crawlCannibalizationCandidates:
+          crawlCannibalizationCandidates
+            .length,
+
+        effectiveCannibalizationCandidates:
+          masterCriticContext
+            .cannibalizationCandidates
+            .length,
+      }
+    );
 
 
     const masterCriticExecution =
@@ -1163,12 +1403,12 @@ export async function generateArticleFromBrief(
      * This is now the ONLY master-article version allowed to
      * enter downstream deterministic gates or persistence.
      */
-    const acceptedMasterWriterRun =
+    let acceptedMasterWriterRun =
       masterCriticRepairExecution
         .run;
 
 
-    const finalMasterCriticExecution =
+    let finalMasterCriticExecution =
       masterCriticRepairExecution
         .finalCritics;
 
@@ -1292,11 +1532,7 @@ export async function generateArticleFromBrief(
      * that proceeds into downstream gates.
      */
     let masterSerpReplay:
-      Awaited<
-        ReturnType<
-          typeof executeSerpReplayV1
-        >
-      > |
+      Readonly<SerpReplayV1> |
       null =
         null;
 
@@ -1329,8 +1565,11 @@ export async function generateArticleFromBrief(
 
 
     try {
-      masterSerpReplay =
-        await executeSerpReplayV1({
+      const competitiveReplayExecution =
+        await executeCompetitiveSerpReplayRepairV2({
+          contract:
+            articleGenerationContract,
+
           runtime:
             masterRuntimeInspection
               .runtime,
@@ -1340,9 +1579,106 @@ export async function generateArticleFromBrief(
 
           generator,
 
+          context:
+            masterCriticContext,
+
           siteDomain:
             serpReplaySiteDomain,
+
+          alreadyRepairedSectionIndexes:
+            masterCriticRepairExecution
+              .repairs
+              .map(
+                (
+                  repair
+                ) =>
+                  repair.sectionIndex
+              ),
         });
+
+
+      /*
+       * From this point onward acceptedMasterWriterRun means the
+       * FINAL production article version:
+       *
+       * original post-critic run when no competitive repair ran,
+       * OR repaired + section-verified + critic-replayed run.
+       */
+      acceptedMasterWriterRun =
+        competitiveReplayExecution
+          .run;
+
+
+      if (
+        competitiveReplayExecution
+          .postRepairCritics
+      ) {
+        finalMasterCriticExecution =
+          competitiveReplayExecution
+            .postRepairCritics;
+      }
+
+
+      masterSerpReplay =
+        competitiveReplayExecution
+          .finalReplay;
+
+
+      console.info(
+        "[content competitive replay repair]",
+        {
+          briefId:
+            brief.id,
+
+          articleId:
+            pendingArticle.id,
+
+          disposition:
+            competitiveReplayExecution
+              .repairPlan
+              .disposition,
+
+          initialReplayStatus:
+            competitiveReplayExecution
+              .initialReplay
+              .status,
+
+          finalReplayStatus:
+            competitiveReplayExecution
+              .finalReplay
+              .status,
+
+          repairedSectionCount:
+            competitiveReplayExecution
+              .provenance
+              .repairedSectionCount,
+
+          repairAttemptCount:
+            competitiveReplayExecution
+              .provenance
+              .repairAttemptCount,
+
+          replayExecutionCount:
+            competitiveReplayExecution
+              .provenance
+              .replayExecutionCount,
+
+          postRepairCriticReplayCount:
+            competitiveReplayExecution
+              .provenance
+              .postRepairCriticReplayCount,
+
+          repairSuppressedByPriorRepair:
+            competitiveReplayExecution
+              .provenance
+              .repairSuppressedByPriorRepair,
+
+          wholeArticleRewriteCount:
+            competitiveReplayExecution
+              .provenance
+              .wholeArticleRewriteCount,
+        }
+      );
 
 
       /*
@@ -2196,7 +2532,7 @@ export async function generateArticleFromBrief(
         : "";
 
     const transientProviderFailure =
-      /(?:Gemini|Groq) API error (429|500|502|503|504)\b/.test(
+      /(?:Gemini|Groq) API error (413|429|500|502|503|504)\b/.test(
         rawMessage
       ) ||
       /AbortError|aborted|timeout/i.test(

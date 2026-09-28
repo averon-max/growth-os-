@@ -20,80 +20,34 @@ export type SearchBusinessRelationship =
 
 
 export interface SearchMission {
-  id:
-    string;
-
-  websiteId:
-    string;
-
-  topic:
-    string;
-
-  audience:
-    string;
-
-  readerGoal:
-    string;
-
-  businessRelationship:
-    SearchBusinessRelationship;
-
-  jurisdiction?:
-    string;
-
-  language:
-    string;
-
-  location:
-    string;
-
-  riskClass:
-    SearchRiskClass;
-
-  createdAt:
-    Date;
-
-  version:
-    number;
+  id: string;
+  websiteId: string;
+  topic: string;
+  audience: string;
+  readerGoal: string;
+  businessRelationship: SearchBusinessRelationship;
+  jurisdiction?: string;
+  language: string;
+  location: string;
+  riskClass: SearchRiskClass;
+  createdAt: Date;
+  version: number;
 }
 
 
 export interface CreateSearchMissionInput {
-  id?:
-    string;
-
-  websiteId:
-    string;
-
-  topic:
-    string;
-
-  audience:
-    string;
-
-  readerGoal:
-    string;
-
-  businessRelationship:
-    SearchBusinessRelationship;
-
-  jurisdiction?:
-    string;
-
-  language:
-    string;
-
-  location:
-    string;
-
-  riskClass:
-    SearchRiskClass;
-
-  createdAt?:
-    Date;
-
-  version?:
-    number;
+  id?: string;
+  websiteId: string;
+  topic: string;
+  audience: string;
+  readerGoal: string;
+  businessRelationship: SearchBusinessRelationship;
+  jurisdiction?: string;
+  language: string;
+  location: string;
+  riskClass: SearchRiskClass;
+  createdAt?: Date;
+  version?: number;
 }
 
 
@@ -104,65 +58,32 @@ function requiredText({
   value: string;
   field: string;
 }): string {
-  const normalized =
-    value.trim();
+  const normalized = value.trim();
 
-  if (
-    normalized.length ===
-    0
-  ) {
-    throw new Error(
-      `SEARCH_MISSION_${field}_REQUIRED`
-    );
+  if (normalized.length === 0) {
+    throw new Error(`SEARCH_MISSION_${field}_REQUIRED`);
   }
 
   return normalized;
 }
 
 
-function optionalText(
-  value:
-    string |
-    undefined
-): string | undefined {
-  if (
-    value ===
-    undefined
-  ) {
+function optionalText(value: string | undefined): string | undefined {
+  if (value === undefined) {
     return undefined;
   }
 
-  const normalized =
-    value.trim();
+  const normalized = value.trim();
 
-  return (
-    normalized.length >
-    0
-      ? normalized
-      : undefined
-  );
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 
-function validVersion(
-  value:
-    number |
-    undefined
-): number {
-  const version =
-    value ??
-    1;
+function validVersion(value: number | undefined): number {
+  const version = value ?? 1;
 
-  if (
-    !Number.isInteger(
-      version
-    ) ||
-    version <
-      1
-  ) {
-    throw new Error(
-      "SEARCH_MISSION_VERSION_INVALID"
-    );
+  if (!Number.isInteger(version) || version < 1) {
+    throw new Error("SEARCH_MISSION_VERSION_INVALID");
   }
 
   return version;
@@ -170,92 +91,51 @@ function validVersion(
 
 
 export function createSearchMission(
-  input:
-    CreateSearchMissionInput
+  input: CreateSearchMissionInput
 ): Readonly<SearchMission> {
   const mission: SearchMission = {
-    id:
-      optionalText(
-        input.id
-      ) ??
-      randomUUID(),
+    id: optionalText(input.id) ?? randomUUID(),
 
-    websiteId:
-      requiredText({
-        value:
-          input.websiteId,
+    websiteId: requiredText({
+      value: input.websiteId,
+      field: "WEBSITE_ID",
+    }),
 
-        field:
-          "WEBSITE_ID",
-      }),
+    topic: requiredText({
+      value: input.topic,
+      field: "TOPIC",
+    }),
 
-    topic:
-      requiredText({
-        value:
-          input.topic,
+    audience: requiredText({
+      value: input.audience,
+      field: "AUDIENCE",
+    }),
 
-        field:
-          "TOPIC",
-      }),
+    readerGoal: requiredText({
+      value: input.readerGoal,
+      field: "READER_GOAL",
+    }),
 
-    audience:
-      requiredText({
-        value:
-          input.audience,
+    businessRelationship: input.businessRelationship,
 
-        field:
-          "AUDIENCE",
-      }),
+    jurisdiction: optionalText(input.jurisdiction),
 
-    readerGoal:
-      requiredText({
-        value:
-          input.readerGoal,
+    language: requiredText({
+      value: input.language,
+      field: "LANGUAGE",
+    }),
 
-        field:
-          "READER_GOAL",
-      }),
+    location: requiredText({
+      value: input.location,
+      field: "LOCATION",
+    }),
 
-    businessRelationship:
-      input.businessRelationship,
+    riskClass: input.riskClass,
 
-    jurisdiction:
-      optionalText(
-        input.jurisdiction
-      ),
 
-    language:
-      requiredText({
-        value:
-          input.language,
+    createdAt: input.createdAt ? new Date(input.createdAt) : new Date(),
 
-        field:
-          "LANGUAGE",
-      }),
-
-    location:
-      requiredText({
-        value:
-          input.location,
-
-        field:
-          "LOCATION",
-      }),
-
-    riskClass:
-      input.riskClass,
-
-    createdAt:
-      input.createdAt
-        ? new Date(
-            input.createdAt
-          )
-        : new Date(),
-
-    version:
-      validVersion(
-        input.version
-      ),
+    version: validVersion(input.version),
   };
 
   /*
@@ -266,9 +146,7 @@ export function createSearchMission(
    *
    * A changed mission must create a new mission version.
    */
-  return Object.freeze(
-    mission
-  );
+  return Object.freeze(mission);
 }
 
 
@@ -278,68 +156,26 @@ export function reviseSearchMission({
   id,
   createdAt,
 }: {
-  previous:
-    Readonly<SearchMission>;
-
-  changes:
-    Partial<
-      Omit<
-        CreateSearchMissionInput,
-        | "id"
-        | "websiteId"
-        | "version"
-        | "createdAt"
-      >
-    >;
-
-  id?:
-    string;
-
-  createdAt?:
-    Date;
+  previous: Readonly<SearchMission>;
+  changes: Partial<
+    Omit<CreateSearchMissionInput, "id" | "websiteId" | "version" | "createdAt">
+  >;
+  id?: string;
+  createdAt?: Date;
 }): Readonly<SearchMission> {
   return createSearchMission({
     id,
-
-    websiteId:
-      previous.websiteId,
-
-    topic:
-      changes.topic ??
-      previous.topic,
-
-    audience:
-      changes.audience ??
-      previous.audience,
-
-    readerGoal:
-      changes.readerGoal ??
-      previous.readerGoal,
-
+    websiteId: previous.websiteId,
+    topic: changes.topic ?? previous.topic,
+    audience: changes.audience ?? previous.audience,
+    readerGoal: changes.readerGoal ?? previous.readerGoal,
     businessRelationship:
-      changes.businessRelationship ??
-      previous.businessRelationship,
-
-    jurisdiction:
-      changes.jurisdiction ??
-      previous.jurisdiction,
-
-    language:
-      changes.language ??
-      previous.language,
-
-    location:
-      changes.location ??
-      previous.location,
-
-    riskClass:
-      changes.riskClass ??
-      previous.riskClass,
-
+      changes.businessRelationship ?? previous.businessRelationship,
+    jurisdiction: changes.jurisdiction ?? previous.jurisdiction,
+    language: changes.language ?? previous.language,
+    location: changes.location ?? previous.location,
+    riskClass: changes.riskClass ?? previous.riskClass,
     createdAt,
-
-    version:
-      previous.version +
-      1,
+    version: previous.version + 1,
   });
 }

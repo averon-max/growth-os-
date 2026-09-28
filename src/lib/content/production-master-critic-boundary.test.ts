@@ -162,7 +162,7 @@ describe(
 
         const acceptedRun =
           service.indexOf(
-            "const acceptedMasterWriterRun ="
+            "let acceptedMasterWriterRun ="
           );
 
         const generated =

@@ -121,6 +121,24 @@ export default async function SettingsPage() {
       "GOOGLE_SEARCH_CONSOLE"
     );
 
+  const gscConnectHref =
+    websites[0]
+      ? `/api/integrations/google/connect?websiteId=${encodeURIComponent(
+          websites[0].id
+        )}`
+      : `/api/integrations/google/connect?workspaceId=${encodeURIComponent(
+          workspace.id
+        )}`;
+
+  const gscActionLabel =
+    gscConnection?.status ===
+    "CONNECTED"
+      ? "Reconnect"
+      : gscConnection?.status ===
+          "ERROR"
+        ? "Reconnect"
+        : "Connect";
+
   return (
     <>
       <Topbar
@@ -182,17 +200,26 @@ export default async function SettingsPage() {
                 </div>
               </div>
 
-              <Badge
-                tone={
-                  gscConnection?.status ===
-                  "CONNECTED"
-                    ? "success"
-                    : "muted"
-                }
-              >
-                {gscConnection?.status ??
-                  "DISCONNECTED"}
-              </Badge>
+              <div className={styles.issueMeta}>
+                <Badge
+                  tone={
+                    CMS_STATUS_TONE[
+                      gscConnection?.status ??
+                        "DISCONNECTED"
+                    ]
+                  }
+                >
+                  {gscConnection?.status ??
+                    "DISCONNECTED"}
+                </Badge>
+
+                <Link
+                  href={gscConnectHref}
+                  className={styles.link}
+                >
+                  {gscActionLabel} →
+                </Link>
+              </div>
             </div>
           </div>
 

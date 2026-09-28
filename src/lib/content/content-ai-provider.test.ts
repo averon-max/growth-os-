@@ -6,7 +6,8 @@ import {
 
 import {
   resolveContentAiProvider,
-  resolveGroqContentModel,
+  resolveOpenAiContentModel,
+  resolveOpenAiReasoningEffort,
 } from "./gemini-generator";
 
 
@@ -14,12 +15,42 @@ describe(
   "content AI provider selection",
   () => {
     it(
-      "defaults to Gemini",
+      "defaults to OpenAI",
       () => {
         expect(
           resolveContentAiProvider(
             {}
           )
+        ).toBe(
+          "openai"
+        );
+      }
+    );
+
+
+    it(
+      "normalizes OpenAI configuration",
+      () => {
+        expect(
+          resolveContentAiProvider({
+            CONTENT_AI_PROVIDER:
+              " OPENAI ",
+          })
+        ).toBe(
+          "openai"
+        );
+      }
+    );
+
+
+    it(
+      "retains Gemini as fallback provider",
+      () => {
+        expect(
+          resolveContentAiProvider({
+            CONTENT_AI_PROVIDER:
+              "gemini",
+          })
         ).toBe(
           "gemini"
         );
@@ -28,43 +59,13 @@ describe(
 
 
     it(
-      "selects Groq explicitly",
-      () => {
-        expect(
-          resolveContentAiProvider({
-            CONTENT_AI_PROVIDER:
-              "groq",
-          })
-        ).toBe(
-          "groq"
-        );
-      }
-    );
-
-
-    it(
-      "normalizes provider casing",
-      () => {
-        expect(
-          resolveContentAiProvider({
-            CONTENT_AI_PROVIDER:
-              " GROQ ",
-          })
-        ).toBe(
-          "groq"
-        );
-      }
-    );
-
-
-    it(
-      "fails closed for unknown providers",
+      "does not allow Groq in production selection",
       () => {
         expect(
           () =>
             resolveContentAiProvider({
               CONTENT_AI_PROVIDER:
-                "unknown",
+                "groq",
             })
         ).toThrow(
           /Unsupported CONTENT_AI_PROVIDER/
@@ -74,29 +75,43 @@ describe(
 
 
     it(
-      "defaults Groq to GPT OSS 120B",
+      "defaults to Luna",
       () => {
         expect(
-          resolveGroqContentModel(
+          resolveOpenAiContentModel(
             {}
           )
         ).toBe(
-          "openai/gpt-oss-120b"
+          "gpt-5.6-luna"
         );
       }
     );
 
 
     it(
-      "supports explicit Groq model configuration",
+      "defaults reasoning to low",
       () => {
         expect(
-          resolveGroqContentModel({
-            GROQ_CONTENT_MODEL:
-              "custom/model",
+          resolveOpenAiReasoningEffort(
+            {}
+          )
+        ).toBe(
+          "low"
+        );
+      }
+    );
+
+
+    it(
+      "supports none for cheap classifiers",
+      () => {
+        expect(
+          resolveOpenAiReasoningEffort({
+            OPENAI_CONTENT_REASONING:
+              "none",
           })
         ).toBe(
-          "custom/model"
+          "none"
         );
       }
     );

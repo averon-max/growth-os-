@@ -22,7 +22,7 @@ export type OutcomeCheckpoint =
   | "DAY_7"
   | "DAY_14"
   | "DAY_28"
-  | "DAY_56"
+  | "DAY_60"
   | "DAY_90";
 
 export type OutcomeLiveRankState =

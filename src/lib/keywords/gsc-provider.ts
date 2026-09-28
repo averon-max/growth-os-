@@ -22,6 +22,73 @@ export class ProviderNotConnectedError extends Error {
   }
 }
 
+
+function isInvalidGrantError(
+  error: unknown
+): boolean {
+  if (
+    !error ||
+    typeof error !==
+      "object"
+  ) {
+    return false;
+  }
+
+  const candidate =
+    error as {
+      message?: unknown;
+
+      response?: {
+        data?: {
+          error?: unknown;
+          error_description?: unknown;
+        };
+      };
+    };
+
+  return (
+    candidate.message ===
+      "invalid_grant" ||
+    candidate.response
+      ?.data
+      ?.error ===
+      "invalid_grant"
+  );
+}
+
+
+async function markGscReconnectRequired(
+  workspaceId: string
+) {
+  await prisma.providerConnection.update({
+    where: {
+      workspaceId_provider: {
+        workspaceId,
+        provider:
+          "GOOGLE_SEARCH_CONSOLE",
+      },
+    },
+
+    data: {
+      status:
+        "ERROR",
+    },
+  });
+}
+
+
+async function throwReconnectRequired(
+  workspaceId: string
+): Promise<never> {
+  await markGscReconnectRequired(
+    workspaceId
+  );
+
+  throw new ProviderNotConnectedError(
+    "Google Search Console authorization expired or was revoked. Reconnect Google Search Console."
+  );
+}
+
 async function persistRefreshedTokens(
   workspaceId: string,
   accessToken?: string | null,
@@ -64,16 +131,57 @@ async function getAuthorizedClient(workspaceId: string) {
     void persistRefreshedTokens(workspaceId, tokens.access_token, tokens.refresh_token, tokens.expiry_date);
   });
 
-  const isExpired = connection.expiresAt ? connection.expiresAt.getTime() <= Date.now() : false;
-  if (isExpired && refreshToken) {
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    await persistRefreshedTokens(
-      workspaceId,
-      credentials.access_token,
-      credentials.refresh_token,
-      credentials.expiry_date
+  const isExpired =
+    connection.expiresAt
+      ? connection.expiresAt.getTime() <=
+        Date.now()
+      : false;
+
+  if (
+    isExpired &&
+    !refreshToken
+  ) {
+    await throwReconnectRequired(
+      workspaceId
     );
-    oauth2Client.setCredentials(credentials);
+  }
+
+  if (
+    isExpired &&
+    refreshToken
+  ) {
+    try {
+      const {
+        credentials,
+      } =
+        await oauth2Client
+          .refreshAccessToken();
+
+      await persistRefreshedTokens(
+        workspaceId,
+        credentials.access_token,
+        credentials.refresh_token,
+        credentials.expiry_date
+      );
+
+      oauth2Client.setCredentials(
+        credentials
+      );
+    } catch (
+      error
+    ) {
+      if (
+        isInvalidGrantError(
+          error
+        )
+      ) {
+        await throwReconnectRequired(
+          workspaceId
+        );
+      }
+
+      throw error;
+    }
   }
 
   return oauth2Client;

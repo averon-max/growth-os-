@@ -575,7 +575,7 @@ export function KeywordsExplorer({ workspaceId, market: marketProp = "US" }: { w
             display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
             background: hasActive ? "var(--accent-soft)" : undefined,
             color: hasActive ? "#aaa6f2" : undefined,
-            borderColor: hasActive ? "rgba(94,106,210,.22)" : undefined,
+            borderColor: hasActive ? "rgba(59,130,246,.22)" : undefined,
           }}
         >
           <SlidersHorizontal size={13} />

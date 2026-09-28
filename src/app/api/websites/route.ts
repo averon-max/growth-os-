@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireWorkspaceAccess, authErrorResponse } from "@/lib/auth-helpers";
 
@@ -16,25 +17,23 @@ function normalizeUrl(input: string): string | null {
   }
 }
 
+const CreateWebsiteSchema = z.object({
+  businessName: z.string().trim().min(1).max(200),
+  industry: z.string().trim().max(200).optional(),
+  location: z.string().trim().max(200).optional(),
+  websiteUrl: z.string().trim().min(1),
+  workspaceId: z.string().trim().min(1),
+});
+
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
 
-    const body = await req.json();
-    const { businessName, industry, location, websiteUrl, workspaceId } = body as {
-      businessName?: string;
-      industry?: string;
-      location?: string;
-      websiteUrl?: string;
-      workspaceId?: string;
-    };
-
-    if (!businessName || !websiteUrl || !workspaceId) {
-      return NextResponse.json(
-        { error: "Business name, website URL, and workspace are required." },
-        { status: 400 }
-      );
+    const parsed = CreateWebsiteSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
+    const { businessName, industry, location, websiteUrl, workspaceId } = parsed.data;
 
     await requireWorkspaceAccess(user.id, workspaceId);
 

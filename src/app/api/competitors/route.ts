@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { DataForSEOError } from "@/lib/keywords/dataforseo-provider";
 import { RateLimitError } from "@/lib/keywords/competitor-cache";
 import { listCompetitors } from "@/lib/competitors/repository";
 import { analyzeCompetitor } from "@/lib/competitors/service";
+
+const CreateCompetitorSchema = z.object({
+  websiteId: z.string().trim().min(1),
+  domain: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(200).optional(),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,12 +34,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
-    const body = await req.json();
-    const { websiteId, domain, name } = body as { websiteId?: string; domain?: string; name?: string };
-
-    if (!websiteId || !domain || !domain.trim()) {
-      return NextResponse.json({ error: "websiteId and domain are required." }, { status: 400 });
+    const parsed = CreateCompetitorSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
+    const { websiteId, domain, name } = parsed.data;
 
     const website = await requireWebsiteAccess(user.id, websiteId);
 

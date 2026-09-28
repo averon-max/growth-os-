@@ -86,8 +86,8 @@
 
 .create {
   color: #9aa5ff;
-  border-color: rgba(94, 106, 210, .6);
-  background: rgba(94, 106, 210, .1);
+  border-color: rgba(59, 130, 246, .6);
+  background: rgba(59, 130, 246, .1);
 }
 
 .update {
@@ -404,9 +404,9 @@
 .startButton {
   min-height: 30px;
   padding: 0 12px;
-  border: 1px solid rgba(94, 106, 210, .65);
+  border: 1px solid rgba(59, 130, 246, .65);
   border-radius: 4px;
-  background: rgba(94, 106, 210, .14);
+  background: rgba(59, 130, 246, .14);
   color: var(--primary);
   font: inherit;
   font-size: 9px;
@@ -415,7 +415,7 @@
 }
 
 .startButton:hover {
-  background: rgba(94, 106, 210, .22);
+  background: rgba(59, 130, 246, .22);
 }
 
 .startButton:disabled {
@@ -481,8 +481,8 @@
 }
 
 .startLink:hover {
-  border-color: rgba(94, 106, 210, .65);
-  background: rgba(94, 106, 210, .08);
+  border-color: rgba(59, 130, 246, .65);
+  background: rgba(59, 130, 246, .08);
 }
 
 

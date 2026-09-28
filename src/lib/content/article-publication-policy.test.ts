@@ -115,7 +115,7 @@ describe(
     );
 
     it(
-      "blocks genuinely missing planned questions",
+      "keeps lexical planned-question misses as warnings",
       () => {
         const result =
           evaluateArticlePublicationPolicy({
@@ -132,8 +132,19 @@ describe(
 
         expect(
           result.blockingIssues
-        ).toContain(
+        ).not.toContain(
           "PLANNED_QUESTION_COVERAGE_MISSING"
+        );
+
+        expect(
+          result.planWarnings.some(
+            (warning) =>
+              warning.startsWith(
+                "PLANNED_QUESTION_NOT_LEXICALLY_COVERED:"
+              )
+          )
+        ).toBe(
+          true
         );
       }
     );

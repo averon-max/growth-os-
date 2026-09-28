@@ -72,31 +72,24 @@ export function evaluateArticlePublicationPolicy({
           )
       );
 
-  if (
-    planWarnings.some(
-      (warning) =>
-        warning.startsWith(
-          "REQUIRED_TOPIC_NOT_LEXICALLY_COVERED:"
-        )
-    )
-  ) {
-    blockingIssues.push(
-      "REQUIRED_TOPIC_COVERAGE_MISSING"
-    );
-  }
+  /*
+   * SEMANTIC_COVERAGE_AUTHORITY_V2
+   *
+   * content-plan-analysis coverage() is explicitly lexical.
+   *
+   * Lexical mismatch remains useful observability, but it cannot
+   * be publication authority because:
+   * - query variants need not be repeated verbatim;
+   * - the Master Writer owns approved section missions;
+   * - section semantic verification owns material factual safety;
+   * - final critics own semantic completeness/originality;
+   * - evidence policy remains a hard publication gate.
+   *
+   * Therefore REQUIRED_TOPIC_NOT_LEXICALLY_COVERED and
+   * PLANNED_QUESTION_NOT_LEXICALLY_COVERED stay in planWarnings
+   * but do NOT become hard blockers by themselves.
+   */
 
-  if (
-    planWarnings.some(
-      (warning) =>
-        warning.startsWith(
-          "PLANNED_QUESTION_NOT_LEXICALLY_COVERED:"
-        )
-    )
-  ) {
-    blockingIssues.push(
-      "PLANNED_QUESTION_COVERAGE_MISSING"
-    );
-  }
 
   const evidenceFindings =
     auditExternalEvidenceClaims(

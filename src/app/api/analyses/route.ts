@@ -41,6 +41,7 @@ async function runAnalysis(analysisId: string, url: string) {
     const crawledPages = await crawlWebsite(url, { maxPages: 25, concurrency: 3 });
     console.log(`[analysis] Crawled ${crawledPages.length} pages`);
 
+    let pageFailures = 0;
     for (const page of crawledPages) {
       try {
         await prisma.page.create({
@@ -65,6 +66,7 @@ async function runAnalysis(analysisId: string, url: string) {
           },
         });
       } catch (err) {
+        pageFailures++;
         console.error(`[analysis] Failed to store page ${page.url}:`, err);
       }
     }
@@ -78,6 +80,7 @@ async function runAnalysis(analysisId: string, url: string) {
     console.log(`[analysis] Score: ${score.overallScore}`);
     console.log(`[analysis] Opportunities: ${opportunities.length}`);
 
+    let issueFailures = 0;
     for (const issue of issues) {
       try {
         await prisma.sEOIssue.create({
@@ -92,10 +95,12 @@ async function runAnalysis(analysisId: string, url: string) {
           },
         });
       } catch (err) {
+        issueFailures++;
         console.error(`[analysis] Failed to store issue:`, err);
       }
     }
 
+    let oppFailures = 0;
     for (const opp of opportunities) {
       try {
         await prisma.opportunity.create({
@@ -111,21 +116,28 @@ async function runAnalysis(analysisId: string, url: string) {
           },
         });
       } catch (err) {
+        oppFailures++;
         console.error(`[analysis] Failed to store opportunity:`, err);
       }
     }
 
+    const allFailed = crawledPages.length > 0 && pageFailures === crawledPages.length;
+    const totalFailures = pageFailures + issueFailures + oppFailures;
+
     await prisma.analysis.update({
       where: { id: analysisId },
       data: {
-        status: "COMPLETED",
+        status: allFailed ? "FAILED" : "COMPLETED",
         completedAt: new Date(),
         overallScore: score.overallScore,
         technicalScore: score.technicalScore,
         contentScore: score.contentScore,
         structureScore: score.structureScore,
         indexabilityScore: score.indexabilityScore,
-        pagesCount: crawledPages.length,
+        pagesCount: crawledPages.length - pageFailures,
+        ...(totalFailures > 0
+          ? { errorMessage: `Partial failure: ${totalFailures} write(s) failed (pages:${pageFailures} issues:${issueFailures} opportunities:${oppFailures})` }
+          : {}),
       },
     });
 

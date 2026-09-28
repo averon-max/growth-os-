@@ -1,21 +1,14 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Bot,
   CheckCircle2,
-  ChevronDown,
-  CircleDot,
-  FileText,
-  Gauge,
   Globe2,
   Search,
-  Settings,
   Sparkles,
-  Target,
-  TrendingUp,
   Users,
   Zap,
 } from "lucide-react";
@@ -23,45 +16,12 @@ import {
 import { LandingReveal } from "@/components/marketing/landing-reveal";
 import styles from "./landing.module.css";
 
-const presets = [
-  ["Quick Wins", Zap],
-  ["High Volume", BarChart3],
-  ["Low Difficulty", Target],
-  ["Commercial", CircleDot],
-  ["Top 10", TrendingUp],
-  ["Near Page 1", TrendingUp],
-] as const;
-
-const signals = [
-  {
-    tone: "success",
-    name: "Quick wins",
-    description: "Ranking 11–20 with meaningful impressions.",
-  },
-  {
-    tone: "warning",
-    name: "High impressions, low CTR",
-    description: "Visible often in search but clicked less than expected.",
-  },
-  {
-    tone: "danger",
-    name: "Declining",
-    description: "Average position is getting worse over time.",
-  },
-  {
-    tone: "accent",
-    name: "Growing",
-    description: "Average position is improving from ranking history.",
-  },
-] as const;
-
 export default function HomePage() {
   return (
     <main className={styles.page} data-landing="linear-growth-v6">
       <LandingReveal />
 
       <div className={styles.gridBackground} />
-      <div className={styles.ambientTop} />
 
       <header className={styles.header}>
         <div className={styles.navbar}>
@@ -120,153 +80,17 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={styles.productFrame} data-reveal>
-          <div className={styles.appTopbar}>
-            <div className={styles.appBrand}>
-              <Logo />
-              <span>Growth OS</span>
-
-              <i />
-
-              <span className={styles.websitePicker}>
-                Website
-                <ChevronDown size={9} />
-              </span>
-            </div>
-
-            <span className={styles.workspaceName}>
-              Workspace
-            </span>
-
-            <div className={styles.appTools}>
-              <Search size={11} />
-              <span>⌘ K</span>
-              <b>G</b>
-            </div>
+          <div className={styles.productFrame} data-reveal>
+            <Image
+              src="/landing/hero-keywords.png"
+              alt="Growth OS keyword intelligence workspace"
+              fill
+              priority
+              className={styles.productFrameImage}
+            />
           </div>
 
-          <div className={styles.appBody}>
-            <aside className={styles.sidebar}>
-              <Sidebar icon={<Gauge size={12} />} label="Overview" />
-              <Sidebar icon={<CircleDot size={12} />} label="SEO" />
-              <Sidebar icon={<Search size={12} />} label="Keywords" active />
-              <Sidebar icon={<Users size={12} />} label="Audience" />
-              <Sidebar icon={<FileText size={12} />} label="Content" />
-              <Sidebar icon={<Sparkles size={12} />} label="Opportunities" />
-              <Sidebar icon={<Zap size={12} />} label="Automations" />
-              <Sidebar icon={<BarChart3 size={12} />} label="Reports" />
-
-              <div className={styles.sidebarFooter}>
-                <Sidebar
-                  icon={<Settings size={12} />}
-                  label="Settings"
-                />
-              </div>
-            </aside>
-
-            <div className={styles.workspace}>
-              <div className={styles.workspaceHeader}>
-                <div>
-                  <span>Search intelligence</span>
-                  <strong>Keywords</strong>
-                </div>
-
-                <div className={styles.headerActions}>
-                  <button type="button">
-                    🇺🇸 United States
-                    <ChevronDown size={9} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={styles.syncButton}
-                  >
-                    Sync now
-                    <ArrowRight size={10} />
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.presetRow}>
-                {presets.map(([label, Icon]) => (
-                  <button key={label} type="button">
-                    <Icon size={10} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div className={styles.workspaceContent}>
-                <section className={styles.signalPanel}>
-                  <PanelHeader
-                    kicker="Ranking history"
-                    title="Signals"
-                    source="Search Console"
-                  />
-
-                  <div>
-                    {signals.map((signal) => (
-                      <SignalRow
-                        key={signal.name}
-                        tone={signal.tone}
-                        name={signal.name}
-                        description={signal.description}
-                      />
-                    ))}
-                  </div>
-                </section>
-
-                <section className={styles.explorerPanel}>
-                  <PanelHeader
-                    kicker="Keyword explorer"
-                    title="Market + ranking metrics"
-                    source="GSC · DataForSEO"
-                  />
-
-                  <div className={styles.explorerToolbar}>
-                    <div>
-                      <Search size={10} />
-                      Search keywords
-                    </div>
-
-                    <button type="button">
-                      Filters
-                    </button>
-                  </div>
-
-                  <div className={styles.tableHeader}>
-                    <span>Keyword</span>
-                    <span>Position</span>
-                    <span>Volume</span>
-                    <span>Difficulty</span>
-                  </div>
-
-                  <div className={styles.connectedState}>
-                    <div className={styles.connectedIcon}>
-                      <Search size={16} />
-                    </div>
-
-                    <strong>
-                      Connected keyword intelligence
-                    </strong>
-
-                    <p>
-                      Rankings come from Search Console.
-                      Market metrics are enriched independently.
-                    </p>
-
-                    <div className={styles.sourceTags}>
-                      <span>Search Console</span>
-                      <span>DataForSEO</span>
-                    </div>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.integrationStrip}>
+          <div className={styles.integrationStrip}>
           <span>Connected system</span>
 
           <div>
@@ -324,52 +148,13 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className={styles.issueView}>
-          <div className={styles.issueTopbar}>
-            <div>
-              <Zap size={11} />
-              <span>Keyword signals</span>
-            </div>
-
-            <span>
-              Ranking history
-            </span>
-          </div>
-
-          <SignalGroup
-            tone="success"
-            title="Quick wins"
-            description="Ranking 11–20 with meaningful impressions."
-          />
-
-          <SignalGroup
-            tone="warning"
-            title="High impressions, low CTR"
-            description="Frequently visible in search but under-clicked."
-          />
-
-          <SignalGroup
-            tone="danger"
-            title="Declining"
-            description="Average position has started moving down."
-          />
-
-          <SignalGroup
-            tone="accent"
-            title="Growing"
-            description="Ranking history is moving in the right direction."
-          />
-
-          <SignalGroup
-            tone="muted"
-            title="Lost"
-            description="Fresh ranking data is no longer available."
-          />
-
-          <SignalGroup
-            tone="danger"
-            title="Cannibalization"
-            description="Multiple pages compete for the same keyword."
+        <div className={styles.featureShot}>
+          <Image
+            src="/landing/feature-keywords.png"
+            alt="Growth OS keyword detail panel with volume, difficulty and trend data"
+            width={2300}
+            height={872}
+            className={styles.featureShotImage}
           />
         </div>
       </section>
@@ -602,76 +387,6 @@ function Logo() {
       <i />
       <i />
     </span>
-  );
-}
-
-function Sidebar({
-  icon,
-  label,
-  active = false,
-}: {
-  icon: ReactNode;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <div
-      className={
-        active
-          ? `${styles.sidebarItem} ${styles.sidebarActive}`
-          : styles.sidebarItem
-      }
-    >
-      {icon}
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function PanelHeader({
-  kicker,
-  title,
-  source,
-}: {
-  kicker: string;
-  title: string;
-  source: string;
-}) {
-  return (
-    <div className={styles.panelHeader}>
-      <div>
-        <span>{kicker}</span>
-        <strong>{title}</strong>
-      </div>
-
-      <span>{source}</span>
-    </div>
-  );
-}
-
-function SignalRow({
-  tone,
-  name,
-  description,
-}: {
-  tone: string;
-  name: string;
-  description: string;
-}) {
-  return (
-    <div className={styles.signalRow}>
-      <span
-        className={styles.statusDot}
-        data-tone={tone}
-      />
-
-      <div>
-        <strong>{name}</strong>
-        <span>{description}</span>
-      </div>
-
-      <ArrowRight size={10} />
-    </div>
   );
 }
 

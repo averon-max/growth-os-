@@ -1938,32 +1938,60 @@ export async function buildContentStrategy({
       ],
     };
 
-  const secondary =
-    primaryOwnershipPool
-      .filter(
-        (item) =>
+  /*
+   * DECISION_SECONDARY_PRODUCTION_PROJECTION_V1
+   *
+   * Keyword Decision owns the semantic secondary-query set.
+   *
+   * There is NO fixed target number of secondary keywords.
+   * Production does not independently re-score that set.
+   *
+   * Fail closed if decision-primary and production-primary diverge:
+   * secondaries then remain empty instead of leaking into the wrong URL.
+   */
+  const decisionPrimaryMatchesProduction =
+    Boolean(
+      keywordDecisionShadow.primary &&
+      normalize(
+        keywordDecisionShadow
+          .primary
+          .keyword
+      ) ===
+        normalize(
+          primary.keyword
+        )
+    );
+
+
+  const decisionSecondarySet =
+    new Set(
+      (
+        decisionPrimaryMatchesProduction
+          ? keywordDecisionShadow.secondary
+          : []
+      ).map(
+        (
+          item
+        ) =>
           normalize(
             item.keyword
-          ) !==
-            normalize(
-              primary.keyword
-            ) &&
-          item.score >=
-            42 &&
-          (
-            item.intent ===
-              primary.intent ||
-            keywordSimilarity(
-              item.keyword,
-              primary.keyword
-            ) >=
-              0.25
           )
       )
-      .slice(
-        0,
-        8
-      );
+    );
+
+
+  const secondary =
+    scored.filter(
+      (
+        item
+      ) =>
+        decisionSecondarySet.has(
+          normalize(
+            item.keyword
+          )
+        )
+    );
+
 
   const secondarySet =
     new Set(

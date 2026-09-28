@@ -539,10 +539,41 @@ function buildCannibalizationCandidates(
 
 export function buildMasterArticleSemanticCriticContextV1(
   runtime:
-    Readonly<MasterRuntimeSnapshotV1>
+    Readonly<MasterRuntimeSnapshotV1>,
+
+  options?:
+    Readonly<{
+      evidenceDeferredSections?:
+        readonly Readonly<{
+          heading:
+            string;
+
+          sourceDeferredHeading:
+            string;
+
+          summary:
+            string | null;
+
+          reason:
+            "MISSING_PUBLICATION_GRADE_EVIDENCE";
+        }>[];
+    }>
 ): Readonly<
   MasterArticleSemanticCriticContextV1
 > {
+  /*
+   * EVIDENCE_DEFERRED_CONTEXT_BUILDER_V1
+   *
+   * This metadata does not authorize any factual claim.
+   * It only records topics the evidence planner intentionally
+   * removed from the publishable article scope.
+   */
+  const evidenceDeferredSections =
+    options
+      ?.evidenceDeferredSections ??
+    [];
+
+
   return Object.freeze({
     originalityReferences:
       buildOriginalityReferences(
@@ -553,5 +584,35 @@ export function buildMasterArticleSemanticCriticContextV1(
       buildCannibalizationCandidates(
         runtime
       ),
+
+    ...(
+      evidenceDeferredSections.length >
+      0
+        ? {
+            evidenceDeferredSections:
+              Object.freeze(
+                evidenceDeferredSections.map(
+                  (
+                    section
+                  ) =>
+                    Object.freeze({
+                      heading:
+                        section.heading,
+
+                      sourceDeferredHeading:
+                        section
+                          .sourceDeferredHeading,
+
+                      summary:
+                        section.summary,
+
+                      reason:
+                        section.reason,
+                    })
+                )
+              ),
+          }
+        : {}
+    ),
   });
 }

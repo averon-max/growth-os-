@@ -1,4 +1,12 @@
 import {
+  buildOutcomeBottleneckDecisionV1,
+} from "@/lib/keywords/outcome-bottleneck-engine";
+
+import {
+  buildArticleQueryOutcomeSeriesV1,
+} from "@/lib/keywords/outcome-query-series-service";
+
+import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -16,6 +24,10 @@ import {
 import {
   prisma,
 } from "@/lib/prisma";
+
+import {
+  buildLongitudinalOutcomeDiagnosisV1,
+} from "@/lib/keywords/outcome-longitudinal-learning";
 
 const DAY_MS =
   24 *
@@ -1273,6 +1285,38 @@ export async function GET(
         },
       });
 
+    const outcomeActionBaseline =
+      briefLink
+        ?.outcomeActionId
+        ? await prisma.keywordOutcomeAction.findFirst({
+            where: {
+              id:
+                briefLink.outcomeActionId,
+            },
+
+            select: {
+              baselineLiveRank:
+                true,
+
+              baselineLiveRankState:
+                true,
+
+              baselineImpressions:
+                true,
+
+              baselineClicks:
+                true,
+
+              baselineCtr:
+                true,
+
+              baselineAveragePosition:
+                true,
+            },
+          })
+        : null;
+
+
     const observations =
       briefLink
         ?.outcomeActionId
@@ -1322,6 +1366,111 @@ export async function GET(
         : [];
 
           // PLANNED_KEYWORDS_V1
+      const longitudinalDiagnosis =
+        outcomeActionBaseline
+          ? buildLongitudinalOutcomeDiagnosisV1({
+              baseline: {
+                liveRank:
+                  outcomeActionBaseline
+                    .baselineLiveRank,
+
+                liveRankState:
+                  outcomeActionBaseline
+                    .baselineLiveRankState,
+
+                impressions:
+                  outcomeActionBaseline
+                    .baselineImpressions,
+
+                clicks:
+                  outcomeActionBaseline
+                    .baselineClicks,
+
+                ctr:
+                  numberOrNull(
+                    outcomeActionBaseline
+                      .baselineCtr
+                  ),
+
+                averagePosition:
+                  numberOrNull(
+                    outcomeActionBaseline
+                      .baselineAveragePosition
+                  ),
+              },
+
+              observations:
+                observations
+                  // OUTCOME_POST_ACTION_FLATMAP_V1
+                  .flatMap(
+                    (
+                      observation
+                    ) => {
+                      const checkpoint =
+                        observation
+                          .checkpoint;
+
+                      if (
+                        checkpoint ===
+                        "BASELINE"
+                      ) {
+                        return [];
+                      }
+
+                      const source =
+                        observation
+                          .source;
+
+                      if (
+                        source ===
+                        "ACTION_BASELINE"
+                      ) {
+                        throw new Error(
+                          "POST_ACTION_OUTCOME_HAS_BASELINE_SOURCE"
+                        );
+                      }
+
+                      return [
+                        {
+                          checkpoint,
+
+                          source,
+
+                          liveRank:
+                            observation
+                              .liveRank,
+
+                          liveRankState:
+                            observation
+                              .liveRankState,
+
+                          impressions:
+                            observation
+                              .impressions,
+
+                          clicks:
+                            observation
+                              .clicks,
+
+                          ctr:
+                            numberOrNull(
+                              observation
+                                .ctr
+                            ),
+
+                          averagePosition:
+                            numberOrNull(
+                              observation
+                                .averagePosition
+                            ),
+                        },
+                      ];
+                    }
+                  ),
+            })
+          : null;
+
+
       const plannedBrief =
         await prisma.contentBrief.findUnique({
           where: {
@@ -1351,10 +1500,36 @@ export async function GET(
       };
 
 
-return NextResponse.json({
+const queryOutcome =
+      await buildArticleQueryOutcomeSeriesV1({
+        briefId:
+          article.briefId,
+
+        publishedUrl:
+          targetUrl,
+      });
+
+
+    const learningDecision =
+      buildOutcomeBottleneckDecisionV1({
+        longitudinal:
+          longitudinalDiagnosis,
+
+        queryOutcome:
+          queryOutcome
+            .result
+            ?.diagnosis ??
+          null,
+      });
+
+
+
+    return NextResponse.json({
       search,
 
       plannedKeywords,
+
+      queryOutcome,
 
       traffic,
 
@@ -1362,6 +1537,11 @@ return NextResponse.json({
         hasData:
           observations.length >
           0,
+
+        diagnosis:
+          longitudinalDiagnosis,
+
+        learningDecision,
 
         observations:
           observations.map(

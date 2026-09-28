@@ -427,7 +427,7 @@ export function buildOpportunityActionPlan(
         "Измерить результат после изменения",
 
       explanation:
-        "Сохраняем baseline до изменения и сравниваем реальные результаты через 7, 14, 28, 56 и 90 дней. Это наблюдение результата, а не обещание роста.",
+        "Сохраняем baseline до изменения и сравниваем реальные результаты через 7, 14, 28, 60 и 90 дней. Это наблюдение результата, а не обещание роста.",
 
       evidence: [
         rankEvidence(
@@ -464,7 +464,7 @@ export function buildOpportunityActionPlan(
         7,
         14,
         28,
-        56,
+        60,
         90,
       ],
 
@@ -477,7 +477,7 @@ export function buildOpportunityActionPlan(
       ],
 
       rule:
-        "Record before → action → 7/14/28/56/90 day observations. Do not claim causation from one change without enough evidence.",
+        "Record before → action → 7/14/28/60/90 day observations. Do not claim causation from one change without enough evidence.",
     },
 
     observations: {

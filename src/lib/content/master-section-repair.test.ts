@@ -391,19 +391,29 @@ describe(
 
 
     it(
-      "repairs only a semantically blocked section exactly once",
+      "repairs a semantically blocked section deterministically without model rewrite",
       async () => {
-        let verificationCalls =
+        let semanticCalls =
           0;
 
-        let repairs =
+        let repairCalls =
           0;
+
 
         const bad =
           generated({
             body:
-              "Credit monitoring always improves your credit score.",
+              "Credit monitoring detects changes. Unsupported invented detail.",
+
+            claims: [
+              "claim-1",
+            ],
+
+            evidence: [
+              "ev-1",
+            ],
           });
+
 
         const result =
           await verifyAndRepairGeneratedSectionV1({
@@ -417,81 +427,258 @@ describe(
               modelName:
                 "test-model",
 
+
               async verifySectionClaims({
                 section:
                   candidate,
               }) {
-                verificationCalls +=
+                semanticCalls +=
                   1;
 
-                return semantic({
-                  section:
-                    candidate,
 
-                  classification:
-                    verificationCalls ===
-                      1
-                      ? "UNSUPPORTED"
-                      : "SUPPORTED",
-                });
+                if (
+                  semanticCalls ===
+                  1
+                ) {
+                  return {
+                    version:
+                      "SECTION_SEMANTIC_VERIFICATION_V1",
+
+                    status:
+                      "BLOCK",
+
+                    sectionIndex:
+                      0,
+
+                    sectionNumber:
+                      1,
+
+                    unitCount:
+                      2,
+
+                    units: [
+                      {
+                        unitId:
+                          "section-0-unit-0",
+
+                        ordinal:
+                          0,
+
+                        text:
+                          "Credit monitoring detects changes.",
+
+                        classification:
+                          "SUPPORTED",
+
+                        matchedClaimId:
+                          "claim-1",
+
+                        evidenceIds: [
+                          "ev-1",
+                        ],
+
+                        rationale:
+                          "Required claim survives with assigned evidence.",
+                      },
+
+                      {
+                        unitId:
+                          "section-0-unit-1",
+
+                        ordinal:
+                          1,
+
+                        text:
+                          "Unsupported invented detail.",
+
+                        classification:
+                          "UNSUPPORTED",
+
+                        matchedClaimId:
+                          null,
+
+                        evidenceIds:
+                          [],
+
+                        rationale:
+                          "Invented material detail has no authority.",
+                      },
+                    ],
+
+                    counts: {
+                      notAFact:
+                        0,
+
+                      supported:
+                        1,
+
+                      narrower:
+                        0,
+
+                      unsupported:
+                        1,
+
+                      contradicted:
+                        0,
+                    },
+
+                    provenance: {
+                      sourceContractVersion:
+                        "SECTION_GENERATION_CONTRACT_V1",
+
+                      generatedSectionVersion:
+                        "GENERATED_SECTION_V1",
+
+                      modelName:
+                        "test-model",
+                    },
+                  } as any;
+                }
+
+
+                expect(
+                  candidate.bodyMarkdown
+                ).toBe(
+                  "Credit monitoring detects changes."
+                );
+
+
+                return {
+                  version:
+                    "SECTION_SEMANTIC_VERIFICATION_V1",
+
+                  status:
+                    "PASS",
+
+                  sectionIndex:
+                    0,
+
+                  sectionNumber:
+                    1,
+
+                  unitCount:
+                    1,
+
+                  units: [
+                    {
+                      unitId:
+                        "section-0-unit-0",
+
+                      ordinal:
+                        0,
+
+                      text:
+                        "Credit monitoring detects changes.",
+
+                      classification:
+                        "SUPPORTED",
+
+                      matchedClaimId:
+                        "claim-1",
+
+                      evidenceIds: [
+                        "ev-1",
+                      ],
+
+                      rationale:
+                        "Required claim remains supported.",
+                    },
+                  ],
+
+                  counts: {
+                    notAFact:
+                      0,
+
+                    supported:
+                      1,
+
+                    narrower:
+                      0,
+
+                    unsupported:
+                      0,
+
+                    contradicted:
+                      0,
+                  },
+
+                  provenance: {
+                    sourceContractVersion:
+                      "SECTION_GENERATION_CONTRACT_V1",
+
+                    generatedSectionVersion:
+                      "GENERATED_SECTION_V1",
+
+                    modelName:
+                      "test-model",
+                  },
+                } as any;
               },
 
-              async repairSection(
-                input
-              ) {
-                repairs +=
+
+              async repairSection() {
+                repairCalls +=
                   1;
 
-                expect(
-                  input.attempt
-                ).toBe(
-                  1
+                throw new Error(
+                  "SEMANTIC_REPAIR_MUST_NOT_CALL_MODEL"
                 );
-
-                expect(
-                  input.semanticVerification
-                    ?.status
-                ).toBe(
-                  "BLOCK"
-                );
-
-                return generated({
-                  body:
-                    "Credit monitoring can detect changes in a credit report.",
-                });
               },
             },
           });
 
-        expect(
-          repairs
-        ).toBe(
-          1
-        );
 
         expect(
-          verificationCalls
+          semanticCalls
         ).toBe(
           2
         );
 
-        expect(
-          result.repair.attempted
-        ).toBe(
-          true
-        );
 
         expect(
-          result.repair.trigger
+          repairCalls
+        ).toBe(
+          0
+        );
+
+
+        expect(
+          result.section
+            .bodyMarkdown
+        ).toBe(
+          "Credit monitoring detects changes."
+        );
+
+
+        expect(
+          result.repair
+            .trigger
         ).toBe(
           "SEMANTIC"
         );
 
+
         expect(
-          result.repair.attemptCount
+          result.repair
+            .attempted
+        ).toBe(
+          true
+        );
+
+
+        expect(
+          result.repair
+            .attemptCount
         ).toBe(
           1
         );
+
+
+        expect(
+          result.repair
+            .modelName
+        ).toBeNull();
+
 
         expect(
           result.semanticVerification
@@ -501,7 +688,6 @@ describe(
         );
       }
     );
-
 
     it(
       "repairs deterministic reconciliation failure before semantic verification",
@@ -607,16 +793,29 @@ describe(
 
 
     it(
-      "fails closed when the repaired section still fails semantic verification",
+      "fails closed when deterministic semantic repair still fails re-verification",
       async () => {
-        let repairs =
+        let semanticCalls =
           0;
+
+        let repairCalls =
+          0;
+
 
         const bad =
           generated({
             body:
-              "Credit monitoring always improves your credit score.",
+              "Credit monitoring detects changes. Unsupported invented detail.",
+
+            claims: [
+              "claim-1",
+            ],
+
+            evidence: [
+              "ev-1",
+            ],
           });
+
 
         await expect(
           verifyAndRepairGeneratedSectionV1({
@@ -630,27 +829,207 @@ describe(
               modelName:
                 "test-model",
 
+
               async verifySectionClaims({
                 section:
                   candidate,
               }) {
-                return semantic({
-                  section:
-                    candidate,
-
-                  classification:
-                    "UNSUPPORTED",
-                });
-              },
-
-              async repairSection() {
-                repairs +=
+                semanticCalls +=
                   1;
 
-                return generated({
-                  body:
-                    "Credit monitoring always improves your credit score.",
-                });
+
+                if (
+                  semanticCalls ===
+                  1
+                ) {
+                  return {
+                    version:
+                      "SECTION_SEMANTIC_VERIFICATION_V1",
+
+                    status:
+                      "BLOCK",
+
+                    sectionIndex:
+                      0,
+
+                    sectionNumber:
+                      1,
+
+                    unitCount:
+                      2,
+
+                    units: [
+                      {
+                        unitId:
+                          "section-0-unit-0",
+
+                        ordinal:
+                          0,
+
+                        text:
+                          "Credit monitoring detects changes.",
+
+                        classification:
+                          "SUPPORTED",
+
+                        matchedClaimId:
+                          "claim-1",
+
+                        evidenceIds: [
+                          "ev-1",
+                        ],
+
+                        rationale:
+                          "Required claim initially survives.",
+                      },
+
+                      {
+                        unitId:
+                          "section-0-unit-1",
+
+                        ordinal:
+                          1,
+
+                        text:
+                          "Unsupported invented detail.",
+
+                        classification:
+                          "UNSUPPORTED",
+
+                        matchedClaimId:
+                          null,
+
+                        evidenceIds:
+                          [],
+
+                        rationale:
+                          "Unsupported detail must be deleted.",
+                      },
+                    ],
+
+                    counts: {
+                      notAFact:
+                        0,
+
+                      supported:
+                        1,
+
+                      narrower:
+                        0,
+
+                      unsupported:
+                        1,
+
+                      contradicted:
+                        0,
+                    },
+
+                    provenance: {
+                      sourceContractVersion:
+                        "SECTION_GENERATION_CONTRACT_V1",
+
+                      generatedSectionVersion:
+                        "GENERATED_SECTION_V1",
+
+                      modelName:
+                        "test-model",
+                    },
+                  } as any;
+                }
+
+
+                expect(
+                  candidate.bodyMarkdown
+                ).toBe(
+                  "Credit monitoring detects changes."
+                );
+
+
+                /*
+                 * Simulate an independent verifier disagreeing
+                 * after deterministic deletion.
+                 *
+                 * The pipeline must still fail closed.
+                 */
+                return {
+                  version:
+                    "SECTION_SEMANTIC_VERIFICATION_V1",
+
+                  status:
+                    "BLOCK",
+
+                  sectionIndex:
+                    0,
+
+                  sectionNumber:
+                    1,
+
+                  unitCount:
+                    1,
+
+                  units: [
+                    {
+                      unitId:
+                        "section-0-unit-0",
+
+                      ordinal:
+                        0,
+
+                      text:
+                        "Credit monitoring detects changes.",
+
+                      classification:
+                        "UNSUPPORTED",
+
+                      matchedClaimId:
+                        null,
+
+                      evidenceIds:
+                        [],
+
+                      rationale:
+                        "Final independent verifier still blocks the surviving prose.",
+                    },
+                  ],
+
+                  counts: {
+                    notAFact:
+                      0,
+
+                    supported:
+                      0,
+
+                    narrower:
+                      0,
+
+                    unsupported:
+                      1,
+
+                    contradicted:
+                      0,
+                  },
+
+                  provenance: {
+                    sourceContractVersion:
+                      "SECTION_GENERATION_CONTRACT_V1",
+
+                    generatedSectionVersion:
+                      "GENERATED_SECTION_V1",
+
+                    modelName:
+                      "test-model",
+                  },
+                } as any;
+              },
+
+
+              async repairSection() {
+                repairCalls +=
+                  1;
+
+                throw new Error(
+                  "SEMANTIC_REPAIR_MUST_NOT_CALL_MODEL"
+                );
               },
             },
           })
@@ -658,14 +1037,21 @@ describe(
           "SECTION_TARGETED_REPAIR_EXHAUSTED:SEMANTIC"
         );
 
+
         expect(
-          repairs
+          semanticCalls
         ).toBe(
-          1
+          2
+        );
+
+
+        expect(
+          repairCalls
+        ).toBe(
+          0
         );
       }
     );
-
 
     it(
       "fails closed when repair does not restore deterministic claim provenance",

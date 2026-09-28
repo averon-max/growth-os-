@@ -41,6 +41,34 @@ import {
 } from "./master-runtime-orchestrator";
 
 
+import {
+  buildUniversalSeoDecisionV2,
+} from "./universal-seo-decision";
+
+import {
+  buildSerpConsensusV2,
+} from "./serp-consensus-v2";
+
+import {
+  buildCompetitiveGapV2,
+} from "./competitive-gap-v2";
+
+import {
+  applyCompetitiveSeoToMasterBlueprintV2,
+} from "./competitive-seo-blueprint-wiring";
+
+import type {
+  CannibalizationMode,
+} from "./cannibalization-policy";
+
+import {
+  applyUniversalSeoDecisionToMasterBlueprintV2,
+  applyUniversalSeoDecisionToSectionsV2,
+  buildUniversalSeoWriterRulesV2,
+} from "./universal-seo-blueprint-wiring";
+
+
+
 /*
  * IMPORTANT
  * ---------
@@ -185,6 +213,15 @@ export interface ProductionMasterArtifactPipelineInput {
 
   sectionBlueprints:
     ProductionSectionBlueprintInput;
+
+  /*
+   * Universal SEO V2.
+   *
+   * SMART is the default. API/UI may override this with:
+   * PREVENT / ALLOW / IGNORE.
+   */
+  cannibalizationMode?:
+    CannibalizationMode;
 
   internalLinkPlan:
     MasterRuntimeArtifacts[
@@ -534,6 +571,50 @@ export function buildProductionMasterArtifacts(
         input.queryGraph,
     });
 
+  /*
+   * UNIVERSAL_SEO_V2
+   *
+   * This is the production decision point.
+   *
+   * Inputs:
+   * - immutable mission
+   * - live SERP snapshot
+   * - real Stage-3 URL ownership when available
+   * - explicit cannibalization policy
+   *
+   * It does not invent ranking metrics.
+   */
+  const universalSeoDecision =
+    buildUniversalSeoDecisionV2({
+      topic:
+        mission.topic,
+
+      readerGoal:
+        mission.readerGoal,
+
+      /*
+       * SearchMission intentionally does not own intent.
+       * Canonical intent lives on QueryGraph.
+       */
+      missionIntent:
+        queryGraph.missionIntent,
+
+      riskClass:
+        mission.riskClass,
+
+      serpResearch:
+        input.serpResearch,
+
+      urlOwnership:
+        input.urlOwnership ??
+        null,
+
+      cannibalizationMode:
+        input.cannibalizationMode ??
+        "SMART",
+    });
+
+
   const expectedCoverage =
     buildProductionExpectedCoverage({
       mission,
@@ -576,6 +657,50 @@ export function buildProductionMasterArtifacts(
         input.claimLedger,
     });
 
+  /*
+   * COMPETITIVE_SEO_V2
+   *
+   * SERP consensus is deterministic observation.
+   * It does not override Search Mission.
+   * It does not turn competitor word/H2 counts into targets.
+   */
+  const serpConsensus =
+    buildSerpConsensusV2(
+      input.serpResearch
+    );
+
+
+  const competitiveGap =
+    buildCompetitiveGapV2({
+      consensus:
+        serpConsensus,
+
+      expectedCoverage,
+    });
+
+
+  const universalMasterBlueprintInput =
+    applyUniversalSeoDecisionToMasterBlueprintV2({
+      input:
+        input.masterBlueprint,
+
+      decision:
+        universalSeoDecision,
+    });
+
+
+  const competitiveMasterBlueprintInput =
+    applyCompetitiveSeoToMasterBlueprintV2({
+      input:
+        universalMasterBlueprintInput,
+
+      consensus:
+        serpConsensus,
+
+      competitiveGap,
+    });
+
+
   const searchBlueprint =
     buildProductionMasterBlueprint({
       mission,
@@ -593,8 +718,18 @@ export function buildProductionMasterArtifacts(
       claimLedger,
 
       input:
-        input.masterBlueprint,
+        competitiveMasterBlueprintInput,
     });
+
+  const universalSectionBlueprintInput =
+    applyUniversalSeoDecisionToSectionsV2({
+      input:
+        input.sectionBlueprints,
+
+      decision:
+        universalSeoDecision,
+    });
+
 
   const sectionBlueprints =
     buildProductionSectionBlueprints({
@@ -610,7 +745,7 @@ export function buildProductionMasterArtifacts(
       originalValue,
 
       input:
-        input.sectionBlueprints,
+        universalSectionBlueprintInput,
     });
 
   const artifacts:
@@ -644,7 +779,13 @@ export function buildProductionMasterArtifacts(
         input.internalLinkPlan,
 
       styleRules:
-        input.styleRules,
+        Object.freeze([
+          ...input.styleRules,
+
+          ...buildUniversalSeoWriterRulesV2(
+            universalSeoDecision
+          ),
+        ]),
     };
 
   const persistence =

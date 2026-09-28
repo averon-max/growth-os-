@@ -10,18 +10,33 @@ import {
   extractSectionSemanticProseUnitsV1,
 } from "./master-section-semantic-verifier";
 
+import {
+  materialClaimPolicyPromptV2,
+  materialClaimPolicySummaryV2,
+} from "./material-claim-policy";
+
 
 export function buildMasterSectionSemanticVerificationPrompt({
   contract,
   section,
+  unitIds,
 }: {
   contract:
     Readonly<SectionGenerationContractV1>;
 
   section:
     Readonly<GeneratedSectionV1>;
+
+  /*
+   * Optional deterministic continuation boundary.
+   *
+   * When supplied, the verifier sees ONLY these already-extracted
+   * unit IDs. It cannot create, renumber, or silently omit units.
+   */
+  unitIds?:
+    readonly string[];
 }): string {
-  const units =
+  const allUnits =
     extractSectionSemanticProseUnitsV1({
       sectionIndex:
         contract.sectionIndex,
@@ -29,6 +44,40 @@ export function buildMasterSectionSemanticVerificationPrompt({
       bodyMarkdown:
         section.bodyMarkdown,
     });
+
+
+  const requestedUnitIds =
+    unitIds
+      ? new Set(
+          unitIds
+        )
+      : null;
+
+
+  const units =
+    requestedUnitIds ===
+      null
+      ? allUnits
+      : allUnits.filter(
+          (
+            unit
+          ) =>
+            requestedUnitIds.has(
+              unit.id
+            )
+        );
+
+
+  if (
+    requestedUnitIds !==
+      null &&
+    units.length !==
+      requestedUnitIds.size
+  ) {
+    throw new Error(
+      "SECTION_SEMANTIC_PROMPT_UNKNOWN_UNIT_ID"
+    );
+  }
 
 
   const allowedClaimIds =
@@ -97,9 +146,15 @@ export function buildMasterSectionSemanticVerificationPrompt({
       );
 
 
+  const materialClaimPolicy =
+    materialClaimPolicySummaryV2();
+
+
   const context =
     JSON.stringify(
       {
+        materialClaimPolicy,
+
         section: {
           index:
             contract.sectionIndex,
@@ -152,6 +207,8 @@ export function buildMasterSectionSemanticVerificationPrompt({
     "Do NOT repair or rewrite the prose.",
     "Do NOT invent facts, claims, sources, evidence, IDs, or citations.",
     "",
+    ...materialClaimPolicyPromptV2(),
+    "",
     "Your task is to classify EVERY supplied prose unit.",
     "You may not omit a prose unit.",
     "You may not merge prose units.",
@@ -163,7 +220,9 @@ export function buildMasterSectionSemanticVerificationPrompt({
     "CLASSIFICATIONS:",
     "",
     "NOT_A_FACT",
-    "- Pure transition, navigation, framing, question, instruction, opinion, or non-factual connective language.",
+    "- Legacy classification name used for NON-MATERIAL prose.",
+    "- Includes transition, navigation, framing, question, instruction, opinion, reader guidance, and ordinary grounded explanation that introduces no material externally verifiable proposition.",
+    "- A definition or explanatory sentence may use NOT_A_FACT only when it does not add a material factual assertion beyond the supplied authoritative context.",
     "- matchedClaimId must be null.",
     "- evidenceIds must be empty.",
     "",
@@ -179,7 +238,7 @@ export function buildMasterSectionSemanticVerificationPrompt({
     "- Include only assigned supporting evidence.",
     "",
     "UNSUPPORTED",
-    "- The prose unit makes a factual assertion that cannot be justified by an approved required claim and its assigned evidence.",
+    "- The prose unit makes a MATERIAL factual assertion that cannot be justified by an approved required claim and its assigned evidence.",
     "- Do not rescue it using general knowledge.",
     "- Do not infer missing evidence.",
     "- matchedClaimId may be null, or may identify the closest approved/forbidden claim when useful.",
@@ -190,7 +249,13 @@ export function buildMasterSectionSemanticVerificationPrompt({
     "",
     "CRITICAL RULES:",
     "1. Evaluate the exact meaning of the prose, not keyword overlap.",
-    "2. Numbers, percentages, dates, prices, legal statements, rankings, guarantees, product capabilities, comparisons, named third-party capabilities, dataset claims, security claims, and superlatives require explicit support.",
+    "2. Numbers, percentages, dates, prices, legal statements, medical or health assertions, financial assertions, rankings, guarantees, product capabilities, comparisons, named third-party capabilities, dataset claims, security claims, and superlatives require explicit support.",
+    "2A. Ordinary grounded explanatory prose does not require a claim ID merely because it explains a concept.",
+    "2A1. Declarative wording alone does not make a prose unit material. A unit may be NOT_A_FACT when it only explains, organizes, connects, or cautiously synthesizes the supplied authoritative section context without adding a new material externally verifiable proposition.",
+    "2A2. Do not require a claim ID merely because a sentence explains the generic concept represented by the supplied section mission. The section mission may ground ordinary explanation, but it is NOT evidence for a material factual assertion.",
+    "2A3. Do not classify useful explanatory prose as UNSUPPORTED solely because no claim ID exists. UNSUPPORTED is reserved for a MATERIAL factual assertion that exceeds the supplied claim/evidence authority.",
+    "2B. Never classify a material factual assertion as NOT_A_FACT merely because it is written in explanatory language.",
+    "2C. If a prose unit combines explanation and a material fact, the material fact controls classification.",
     "3. Do not call a claim SUPPORTED merely because it sounds plausible.",
     "4. SEARCH_SNIPPET or REFERENCE_ONLY evidence is not publication-grade support.",
     "5. Only SUPPORTS + VERIFIED_EXCERPT may authorize SUPPORTED/NARROWER.",

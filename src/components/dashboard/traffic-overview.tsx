@@ -932,7 +932,7 @@ export function TrafficOverview({
                       dataKey="unclassified"
                       name="Unclassified"
                       stackId="traffic"
-                      fill="#6668d8"
+                      fill="#7ab3f5"
                       isAnimationActive={
                         false
                       }

@@ -240,13 +240,13 @@ describe(
         expect(
           approve
         ).not.toContain(
-          "executeSerpReplayV1("
+          "executeCompetitiveSerpReplayRepairV2("
         );
 
         expect(
           publish
         ).not.toContain(
-          "executeSerpReplayV1("
+          "executeCompetitiveSerpReplayRepairV2("
         );
       }
     );

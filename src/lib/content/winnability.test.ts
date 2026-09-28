@@ -62,6 +62,7 @@ const mission =
     riskClass:
       "YMYL_FINANCE",
 
+
     createdAt:
       new Date(
         "2026-09-21T00:00:00.000Z"

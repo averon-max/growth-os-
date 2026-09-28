@@ -120,9 +120,22 @@ export function ContentCreateButton({
       if (
         !briefResponse.ok
       ) {
+        const message =
+          typeof briefJson
+            ?.error ===
+            "string"
+            ? briefJson.error
+            : "Growth OS could not build the content plan.";
+
+        const code =
+          typeof briefJson
+            ?.code ===
+            "string"
+            ? ` [${briefJson.code}]`
+            : "";
+
         throw new Error(
-          briefJson.error ??
-            "Growth OS could not build the content plan."
+          `${message}${code}`
         );
       }
 

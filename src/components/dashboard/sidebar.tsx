@@ -163,7 +163,7 @@ export function Sidebar() {
                     }
                   >
                     <Icon
-                      size={14}
+                      size={17}
                       strokeWidth={1.65}
                     />
 
@@ -191,7 +191,7 @@ export function Sidebar() {
           }
         >
           <Settings
-            size={14}
+            size={17}
             strokeWidth={1.65}
           />
           <span>Settings</span>

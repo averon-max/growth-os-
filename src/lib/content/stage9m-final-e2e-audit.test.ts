@@ -174,8 +174,8 @@ describe(
             "await executeMasterWriterV1({",
             "await executeMasterArticleCriticsV1({",
             "await executeMasterArticleCriticRepairReplayV1({",
-            "const acceptedMasterWriterRun =",
-            "await executeSerpReplayV1({",
+            "let acceptedMasterWriterRun =",
+            "await executeCompetitiveSerpReplayRepairV2({",
             "await createSerpReplayArtifactV1({",
             "const generated = {",
           ]
@@ -198,7 +198,7 @@ describe(
         expect(
           generation
         ).toMatch(
-          /await executeSerpReplayV1\(\{[\s\S]*?run:\s*acceptedMasterWriterRun/
+          /await executeCompetitiveSerpReplayRepairV2\(\{[\s\S]*?run:\s*acceptedMasterWriterRun/
         );
       }
     );
@@ -217,7 +217,7 @@ describe(
 
         const replay =
           generation.indexOf(
-            "await executeSerpReplayV1({"
+            "await executeCompetitiveSerpReplayRepairV2({"
           );
 
         const persistence =
@@ -445,7 +445,7 @@ describe(
         expect(
           approve
         ).not.toContain(
-          "executeSerpReplayV1("
+          "executeCompetitiveSerpReplayRepairV2("
         );
       }
     );
@@ -477,7 +477,7 @@ describe(
         expect(
           publish
         ).not.toContain(
-          "executeSerpReplayV1("
+          "executeCompetitiveSerpReplayRepairV2("
         );
       }
     );

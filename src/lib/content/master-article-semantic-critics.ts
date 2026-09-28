@@ -85,16 +85,16 @@ export interface MasterArticleCannibalizationCandidateV1 {
     readonly string[];
 
   intentMatch:
-    boolean;
+    boolean | null;
 
   queryOverlap:
-    number;
+    number | null;
 
   matchedImpressions:
-    number;
+    number | null;
 
   missionAffinity:
-    number;
+    number | null;
 
   summary:
     string | null;
@@ -111,6 +111,28 @@ export interface MasterArticleSemanticCriticContextV1 {
     readonly Readonly<
       MasterArticleCannibalizationCandidateV1
     >[];
+
+  /*
+   * EVIDENCE_DEFERRED_SEMANTIC_CONTEXT_V1
+   *
+   * Topics intentionally removed by the evidence-aware planner.
+   * Their absence alone is not an intent failure.
+   */
+  evidenceDeferredSections?:
+    readonly Readonly<{
+      heading:
+        string;
+
+      sourceDeferredHeading:
+        string;
+
+      summary:
+        string | null;
+
+      reason:
+        "MISSING_PUBLICATION_GRADE_EVIDENCE";
+    }>[];
+
 }
 
 

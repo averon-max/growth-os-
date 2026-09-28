@@ -54,7 +54,7 @@ describe(
   "Production SERP Replay boundary",
   () => {
     it(
-      "executes SERP Replay exactly once",
+      "executes Competitive SERP Replay orchestration exactly once",
       () => {
         const source =
           generationFunctionSource();
@@ -62,7 +62,7 @@ describe(
 
         expect(
           source.match(
-            /await executeSerpReplayV1\(\{/g
+            /await executeCompetitiveSerpReplayRepairV2\(\{/g
           ) ??
           []
         ).toHaveLength(
@@ -96,12 +96,12 @@ describe(
 
         const acceptedRun =
           source.indexOf(
-            "const acceptedMasterWriterRun ="
+            "let acceptedMasterWriterRun ="
           );
 
         const serpReplay =
           source.indexOf(
-            "await executeSerpReplayV1({"
+            "await executeCompetitiveSerpReplayRepairV2({"
           );
 
         const generated =
@@ -159,7 +159,7 @@ describe(
         expect(
           source
         ).toMatch(
-          /await executeSerpReplayV1\(\{[\s\S]*runtime:\s*masterRuntimeInspection[\s\S]*\.runtime,[\s\S]*run:\s*acceptedMasterWriterRun,[\s\S]*generator,[\s\S]*siteDomain:\s*serpReplaySiteDomain/
+          /await executeCompetitiveSerpReplayRepairV2\(\{[\s\S]*runtime:\s*masterRuntimeInspection[\s\S]*\.runtime,[\s\S]*run:\s*acceptedMasterWriterRun,[\s\S]*generator,[\s\S]*siteDomain:\s*serpReplaySiteDomain/
         );
       }
     );
@@ -408,7 +408,7 @@ describe(
 
         const replay =
           source.indexOf(
-            "await executeSerpReplayV1({"
+            "await executeCompetitiveSerpReplayRepairV2({"
           );
 
         const draft =

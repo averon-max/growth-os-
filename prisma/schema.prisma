@@ -73,6 +73,8 @@ model Website {
   contentEvidenceSnapshots ContentEvidenceSnapshot[]
   keywordOutcomeActions    KeywordOutcomeAction[]
 
+  backlinkTargets BacklinkTarget[]
+
   @@index([businessId])
 }
 
@@ -534,6 +536,8 @@ model ContentArticle {
   updatedAt           DateTime             @updatedAt
   serpReplayArtifacts SerpReplayArtifact[]
 
+  backlinkTarget BacklinkTarget?
+
   @@index([briefId])
   @@index([status])
 }
@@ -688,7 +692,7 @@ enum KeywordOutcomeCheckpoint {
   DAY_7
   DAY_14
   DAY_28
-  DAY_56
+  DAY_60
   DAY_90
 }
 
@@ -789,4 +793,91 @@ enum KeywordOutcomeCompatibilityStatus {
   EDUCATIONAL_ONLY
   UNVERIFIED
   CONFLICT
+}
+
+enum BacklinkSnapshotSource {
+  DATAFORSEO
+  MANUAL
+}
+
+enum BacklinkSnapshotExecutionStatus {
+  SUCCEEDED
+  PARTIAL
+  FAILED
+}
+
+model BacklinkTarget {
+  id               String         @id @default(cuid())
+  websiteId        String
+  website          Website        @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  contentArticleId String         @unique
+  contentArticle   ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
+
+  publishedUrl           String
+  normalizedPublishedUrl String
+
+  createdAt DateTime @default(now())
+
+  snapshots BacklinkSnapshot[]
+
+  @@index([websiteId])
+  @@index([normalizedPublishedUrl])
+}
+
+model BacklinkSnapshot {
+  id       String         @id @default(cuid())
+  targetId String
+  target   BacklinkTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  source          BacklinkSnapshotSource
+  executionStatus BacklinkSnapshotExecutionStatus
+
+  capturedAt          DateTime
+  snapshotFingerprint String
+
+  providerTotalCount Int?
+  itemsFetched       Int     @default(0)
+  scanComplete       Boolean @default(false)
+
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  observations BacklinkObservation[]
+
+  @@unique([targetId, snapshotFingerprint])
+  @@index([targetId, capturedAt])
+  @@index([executionStatus, capturedAt])
+}
+
+model BacklinkObservation {
+  id         String           @id @default(cuid())
+  snapshotId String
+  snapshot   BacklinkSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  sourceUrl           String
+  normalizedSourceUrl String
+  sourceDomain        String
+
+  targetUrl           String
+  normalizedTargetUrl String
+
+  anchorText String?
+
+  nofollow  Boolean?
+  sponsored Boolean?
+  ugc       Boolean?
+
+  providerFirstSeenAt DateTime?
+  providerLastSeenAt  DateTime?
+
+  providerRef  String?
+  providerData Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([snapshotId, normalizedSourceUrl, normalizedTargetUrl])
+  @@index([snapshotId])
+  @@index([sourceDomain])
+  @@index([normalizedTargetUrl])
 }

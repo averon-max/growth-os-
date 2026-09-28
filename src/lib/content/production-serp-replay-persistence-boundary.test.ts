@@ -114,7 +114,7 @@ describe(
 
         const replay =
           source.indexOf(
-            "await executeSerpReplayV1({"
+            "await executeCompetitiveSerpReplayRepairV2({"
           );
 
         const persist =
@@ -179,7 +179,7 @@ describe(
 
         const start =
           source.indexOf(
-            "await executeSerpReplayV1({"
+            "await executeCompetitiveSerpReplayRepairV2({"
           );
 
         const end =

@@ -2,68 +2,54 @@ import type {
   SectionGenerationContractV1,
 } from "./article-generation-contract";
 
+import {
+  serializeSectionScopedAuthorityContextV1,
+} from "./master-section-context";
+
 
 function authoritativeContext(
   contract:
     Readonly<SectionGenerationContractV1>
 ): string {
-  /**
-   * Stage 9C deliberately keeps the authoritative objects
-   * structured all the way to the provider boundary.
+  /*
+   * SECTION_SCOPED_PROMPT_CONTEXT_V1
    *
-   * A later optimization may slice large graphs to only
-   * section-relevant nodes, but it must preserve the same
-   * evidence/claim/query authority boundaries.
+   * The immutable runtime stays complete.
+   * Only provider context is projected to this section.
    */
-  return JSON.stringify(
-    {
-      section:
-        contract.blueprint,
-
-      mission:
-        contract.mission,
-
-      searchBlueprint:
-        contract.searchBlueprint,
-
-      queryGraph:
-        contract.queryGraph,
-
-      expectedCoverage:
-        contract.expectedCoverage,
-
-      gaps:
-        contract.gaps,
-
-      originalValue:
-        contract.originalValue,
-
-      evidenceGraph:
-        contract.evidenceGraph,
-
-      claimLedger:
-        contract.claimLedger,
-
-      internalLinkPlan:
-        contract.internalLinkPlan,
-
-      styleRules:
-        contract.styleRules,
-
-      hardRules:
-        contract.hardRules,
-    },
-    null,
-    2
+  return serializeSectionScopedAuthorityContextV1(
+    contract
   );
 }
-
 
 export function buildMasterSectionPrompt(
   contract:
     Readonly<SectionGenerationContractV1>
 ): string {
+  /*
+   * NO_EVIDENCE_SECTION_MODE_V1
+   *
+   * When the deterministic contract assigns no claims/evidence,
+   * the writer must stay inside safe explanatory prose instead
+   * of inventing material external facts.
+   */
+  const noEvidenceSectionMode =
+    [
+      "NO-EVIDENCE SECTION MODE V1:",
+      "- Apply these rules when requiredClaims and evidenceIds are both empty.",
+      "- Write only high-level definitional framing, ordinary explanation, transitions, and reader guidance.",
+      "- Do NOT add named companies, named credit bureaus, numbers, statistics, studies, rankings, specific alert-type lists, timing/frequency claims, coverage claims, product capabilities, price claims, guarantees, legal conclusions, financial outcomes, security outcomes, or free-vs-paid comparisons.",
+      "- Do not turn a high-level definition into a detailed mechanism claim unless the exact claim and publication-grade evidence are assigned.",
+      "- If useful detail would require unassigned factual authority, omit that detail rather than inventing, assuming, extrapolating, or generalizing it.",
+      "- Reader guidance may explain what a reader should consider without asserting unsupported external facts.",
+      "- A direct answer may be concise. Never add unsupported specifics merely to increase length.",
+    ].join(
+      "\\n"
+    );
+
+
   return [
+    noEvidenceSectionMode,
     "You are the section writer inside a high-integrity search publishing system.",
     "",
     "You are writing EXACTLY ONE approved article section.",
@@ -101,12 +87,40 @@ export function buildMasterSectionPrompt(
     "14. Do not write an introduction or conclusion for the whole article unless this section contract specifically requires that information job.",
     "15. Do not mention this contract, IDs, SEO instructions, or internal system concepts in reader-facing prose.",
     "",
+    "MASTER WRITER V3 ADAPTIVE SEO RULES:",
+    "- There is no arbitrary word-count target. Write only the depth needed to fully satisfy this section mission.",
+    "- There is no keyword-density target. Never repeat an exact query phrase merely to increase its frequency.",
+    "- Use assigned search terminology explicitly where it improves reader clarity, but never force exact-match wording.",
+    "- Closely overlapping query variants represent one semantic information need and must be answered once.",
+    "- Do not create additional sections, paragraphs, or headings merely to cover keyword variants.",
+    "- Live competitor word counts are descriptive context only and never become minimums, maximums, quotas, or publication gates.",
+    "- A shorter section is correct when it completely satisfies its information job.",
+    "- Additional depth is justified only by distinct reader needs, verified evidence, useful examples, necessary distinctions, or assigned original value.",
+    "",
+    "SEMANTIC_COMPLETION_STOP_RULE_V3:",
+    "- Every paragraph must add distinct reader utility.",
+    "- Continue only while an assigned information job remains materially incomplete.",
+    "- Cover assigned query needs substantively rather than merely repeating their wording.",
+    "- Represent every assigned required claim accurately when publication-grade evidence authorizes it.",
+    "- Integrate assigned original-value assets and internal links only where they genuinely improve the section.",
+    "- STOP writing the section when the section mission, expected outcome, assigned query needs, required claims, and required assets are satisfied.",
+    "- After semantic completion, do not add filler, repeated definitions, redundant examples, generic summaries, repeated keyword variants, or decorative headings.",
+    "- Prefer the shortest complete version that preserves clarity, evidence, usefulness, and necessary distinctions.",
+    "",
+    "DYNAMIC WRITER V2 MATERIAL CLAIM RULES:",
+    "- Required blueprint claims are material claims and must still be represented accurately when assigned.",
+    "- Ordinary explanation, transitions, framing, reader guidance, and non-material synthesis do NOT need artificial claim IDs.",
+    "- Never invent a claim ID or evidence ID for explanatory prose.",
+    "- Never add a new material factual assertion unless it is authorized by an assigned claim and publication-grade assigned evidence.",
+    "- Numbers, prices, statistics, dates or current facts, financial, medical, legal, security, product-capability, comparison, ranking, study, guarantee, and superlative claims are material.",
+    "- When uncertain whether a factual proposition is material, omit it or stay within the exact supported claim.",
+    "",
     "OUTPUT CONTRACT:",
     "Return JSON only with exactly this shape:",
     "{",
     '  "bodyMarkdown": "markdown body for this one section; no H1 or H2",',
     '  "coveredQueryNodeIds": ["only assigned query node IDs actually covered"],',
-    '  "referencedClaimIds": ["every assigned required claim ID actually represented"],',
+    '  "referencedClaimIds": ["every assigned required claim ID actually represented; never invent claim IDs for ordinary explanatory prose"],',
     '  "referencedEvidenceIds": ["only assigned evidence IDs actually relied upon"],',
     '  "usedInternalLinks": ["only assigned internal-link targets actually used"],',
     '  "assetUsed": "assigned asset ID if actually used, otherwise null"',

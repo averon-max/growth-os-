@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import type {
   SerpReplayPairwiseGeneratorV1,
 } from "./serp-replay";
@@ -35,6 +36,7 @@ import type {
 } from "./master-section-semantic-verifier";
 
 import {
+  extractSectionSemanticProseUnitsV1,
   finalizeSectionSemanticVerificationV1,
 } from "./master-section-semantic-verifier";
 
@@ -147,8 +149,17 @@ function sleep(
 }
 
 export type ContentAiProvider =
-  | "gemini"
-  | "groq";
+  | "openai"
+  | "gemini";
+
+
+export type OpenAiReasoningEffort =
+  | "none"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
 
 
 export function resolveContentAiProvider(
@@ -161,23 +172,73 @@ export function resolveContentAiProvider(
       ?.trim()
       .toLowerCase();
 
+  /*
+   * OPENAI_PRIMARY_V1
+   *
+   * OpenAI is production primary.
+   * Gemini is transport fallback.
+   * Groq is intentionally excluded from production dispatch.
+   */
   if (
     !provider ||
+    provider ===
+      "openai"
+  ) {
+    return "openai";
+  }
+
+  if (
     provider ===
       "gemini"
   ) {
     return "gemini";
   }
 
+  throw new ContentGenerationError(
+    `Unsupported CONTENT_AI_PROVIDER: ${provider}`
+  );
+}
+
+
+export function resolveOpenAiContentModel(
+  env:
+    Record<string, string | undefined> =
+      process.env
+): string {
+  return (
+    env.OPENAI_CONTENT_MODEL
+      ?.trim() ||
+    "gpt-5.6-luna"
+  );
+}
+
+
+export function resolveOpenAiReasoningEffort(
+  env:
+    Record<string, string | undefined> =
+      process.env
+): OpenAiReasoningEffort {
+  const value =
+    (
+      env.OPENAI_CONTENT_REASONING
+        ?.trim()
+        .toLowerCase() ||
+      "low"
+    );
+
   if (
-    provider ===
-    "groq"
+    value === "none" ||
+    value === "low" ||
+    value === "medium" ||
+    value === "high" ||
+    value === "xhigh" ||
+    value === "max"
   ) {
-    return "groq";
+    return value;
   }
 
   throw new ContentGenerationError(
-    `Unsupported CONTENT_AI_PROVIDER: ${provider}`
+    `Unsupported OPENAI_CONTENT_REASONING: ${value}`
   );
 }
 
@@ -202,12 +263,76 @@ const GROQ_MODEL =
   resolveGroqContentModel();
 
 
+const OPENAI_MODEL =
+  resolveOpenAiContentModel();
+
+
 function selectedContentModelName(): string {
   return (
     resolveContentAiProvider() ===
-    "groq"
-      ? GROQ_MODEL
+      "openai"
+      ? OPENAI_MODEL
       : GEMINI_MODEL
+  );
+}
+
+
+
+const GROQ_SAFE_REQUEST_TOKEN_BUDGET =
+  7800;
+
+const GROQ_MAX_COMPLETION_TOKENS =
+  2200;
+
+const GROQ_MIN_COMPLETION_TOKENS =
+  384;
+
+
+/**
+ * Groq free/dev TPM limits count the request
+ * token budget, not only generated output.
+ *
+ * We intentionally over-estimate prompt size.
+ * No prompt/evidence truncation is allowed here.
+ */
+function estimateGroqPromptTokens(
+  prompt: string
+): number {
+  return Math.ceil(
+    prompt.length / 2.5
+  );
+}
+
+
+function resolveGroqMaxCompletionTokens(
+  prompt: string
+): number {
+  const estimatedPromptTokens =
+    estimateGroqPromptTokens(
+      prompt
+    );
+
+  const available =
+    GROQ_SAFE_REQUEST_TOKEN_BUDGET -
+    estimatedPromptTokens;
+
+  if (
+    available <
+    GROQ_MIN_COMPLETION_TOKENS
+  ) {
+    throw new Error(
+      [
+        "GROQ_PROMPT_BUDGET_EXCEEDED",
+        `estimatedPromptTokens=${estimatedPromptTokens}`,
+        `safeRequestBudget=${GROQ_SAFE_REQUEST_TOKEN_BUDGET}`,
+        "Refusing to truncate grounded context.",
+      ].join(" ")
+    );
+  }
+
+  return Math.min(
+    GROQ_MAX_COMPLETION_TOKENS,
+    available
   );
 }
 
@@ -291,8 +416,7 @@ async function callGroq(
                 temperature:
                   0,
 
-                max_completion_tokens:
-                  16000,
+                max_completion_tokens: resolveGroqMaxCompletionTokens(prompt),
               }),
           }
         );
@@ -405,25 +529,463 @@ async function callGroq(
 }
 
 
+async function callOpenAiApi(
+  prompt:
+    string,
+  options?:
+    Readonly<{
+      reasoningEffort?:
+        OpenAiReasoningEffort;
+    }>
+): Promise<string> {
+  /*
+   * OPENAI_RESPONSES_TRANSPORT_V1
+   *
+   * Cost strategy:
+   * - gpt-5.6-luna
+   * - low reasoning for normal generation
+   * - none for classification/verifier work
+   * - low verbosity
+   * - no persisted response state
+   */
+
+  const client =
+    new OpenAI({
+      apiKey:
+        requireEnv(
+          "OPENAI_API_KEY"
+        ),
+
+      maxRetries:
+        0,
+
+      timeout:
+        GEMINI_TIMEOUT_MS,
+    });
+
+  const effort =
+    options
+      ?.reasoningEffort ??
+    resolveOpenAiReasoningEffort();
+
+  const rawMax =
+    Number(
+      process.env
+        .OPENAI_MAX_OUTPUT_TOKENS ??
+      "5000"
+    );
+
+  const maxOutputTokens =
+    Number.isFinite(
+      rawMax
+    ) &&
+    rawMax >=
+      512
+      ? Math.floor(
+          rawMax
+        )
+      : 5000;
+
+  let lastError:
+    ContentGenerationError |
+    null =
+      null;
+
+  for (
+    let attempt = 0;
+    attempt <=
+      MAX_RETRIES;
+    attempt++
+  ) {
+    try {
+      const response =
+        await client.responses.create({
+          model:
+            OPENAI_MODEL,
+
+          reasoning: {
+            effort,
+          },
+
+          input: [
+            {
+              role:
+                "developer",
+
+              content:
+                "Return valid JSON only. Follow the requested contract exactly. Never invent evidence, rankings, metrics, claims, search observations, or business facts.",
+            },
+
+            {
+              role:
+                "user",
+
+              content:
+                prompt,
+            },
+          ],
+
+          text: {
+            format: {
+              type:
+                "json_object",
+            },
+
+            verbosity:
+              "low",
+          },
+
+          max_output_tokens:
+            maxOutputTokens,
+
+          store:
+            false,
+        });
+
+      const output =
+        response
+          .output_text
+          ?.trim();
+
+      if (!output) {
+        throw new ContentGenerationError(
+          "OpenAI returned no content"
+        );
+      }
+
+      return output;
+    } catch (
+      cause
+    ) {
+      const status =
+        typeof cause ===
+          "object" &&
+        cause !== null &&
+        "status" in cause &&
+        typeof (
+          cause as {
+            status?:
+              unknown;
+          }
+        ).status ===
+          "number"
+          ? (
+              cause as {
+                status:
+                  number;
+              }
+            ).status
+          : null;
+
+      const message =
+        cause instanceof
+          Error
+          ? cause.message
+          : String(
+              cause
+            );
+
+      lastError =
+        new ContentGenerationError(
+          `OpenAI API error ${
+            status ??
+            "unknown"
+          }: ${message.slice(
+            0,
+            600
+          )}`
+        );
+
+      const retryable =
+        (
+          status !== null &&
+          [
+            408,
+            409,
+            413,
+            429,
+            500,
+            502,
+            503,
+            504,
+          ].includes(
+            status
+          )
+        ) ||
+        /timeout|timed out|fetch failed|network|ECONN|ENET|EAI_AGAIN/i.test(
+          message
+        );
+
+      if (
+        retryable &&
+        attempt <
+          MAX_RETRIES
+      ) {
+        const retryAfterMs =
+          Math.min(
+            1000 *
+              2 ** attempt,
+            8000
+          );
+
+        console.warn(
+          "[openai] temporary provider failure",
+          {
+            model:
+              OPENAI_MODEL,
+
+            effort,
+
+            status,
+
+            attempt:
+              attempt +
+              1,
+
+            retryAfterMs,
+          }
+        );
+
+        await sleep(
+          retryAfterMs
+        );
+
+        continue;
+      }
+
+      throw lastError;
+    }
+  }
+
+  throw (
+    lastError ??
+    new ContentGenerationError(
+      "OpenAI request failed after retries"
+    )
+  );
+}
+
+
 async function callGemini(
   prompt:
     string
 ): Promise<string> {
-  const provider =
+  /*
+   * GENERATOR_PROVIDER_FAILOVER_V2
+   *
+   * Every structured generation request goes through the
+   * canonical provider failover layer.
+   *
+   * Groq:
+   *   413 / 429 / 5xx / network
+   *       -> Gemini when configured
+   *
+   * Gemini:
+   *   429 / 5xx / network
+   *       -> Groq when configured
+   *
+   * SEO evidence / claims / rankings are NOT fabricated here.
+   * This function changes transport resilience only.
+   */
+  return callContentAiJson(
+    prompt
+  );
+}
+
+function hasContentAiKey(
+  name:
+    | "OPENAI_API_KEY"
+    | "GEMINI_API_KEY"
+    | "GROQ_API_KEY"
+): boolean {
+  return Boolean(
+    process.env[
+      name
+    ]?.trim()
+  );
+}
+
+
+function isContentAiFailoverEligible(
+  cause:
+    unknown
+): boolean {
+  const message =
+    cause instanceof
+      Error
+      ? cause.message
+      : String(
+          cause
+        );
+
+  return (
+    /(?:API error|HTTP)\s+(?:413|429|500|502|503|504)\b/i.test(
+      message
+    ) ||
+    /timeout|timed out|fetch failed|network|ECONN|ENET|EAI_AGAIN/i.test(
+      message
+    ) ||
+    /Groq API error 400:[\s\S]*(?:json_validate_failed|max completion tokens reached before generating a valid document)/i.test(
+      message
+    )
+  );
+}
+
+
+/*
+ * CONTENT_AI_FAILOVER_V1
+ *
+ * Structured semantic planning uses the configured provider first.
+ * A transient transport/provider failure may fail over to the other
+ * configured provider. Semantic fallback never creates SEO metrics,
+ * SERP observations, evidence, or claims; those remain source-backed.
+ */
+export async function callContentAiJson(
+  prompt:
+    string,
+  options?:
+    Readonly<{
+      forceAlternateProvider?:
+        boolean;
+
+      reasoningEffort?:
+        OpenAiReasoningEffort;
+    }>
+): Promise<string> {
+  const primary =
     resolveContentAiProvider();
 
+  const effort =
+    options
+      ?.reasoningEffort ??
+    resolveOpenAiReasoningEffort();
+
+
+  /*
+   * STRUCTURED_RECOVERY_ALTERNATE_PROVIDER_V2
+   *
+   * Provider switching is TRANSPORT recovery only.
+   * It never converts semantic/evidence/deterministic BLOCK to PASS.
+   */
   if (
-    provider ===
-    "groq"
+    options
+      ?.forceAlternateProvider
   ) {
-    return callGroq(
-      prompt
+    if (
+      primary ===
+        "openai"
+    ) {
+      if (
+        !hasContentAiKey(
+          "GEMINI_API_KEY"
+        )
+      ) {
+        throw new ContentGenerationError(
+          "CONTENT_AI_ALTERNATE_PROVIDER_UNAVAILABLE: Gemini is not configured"
+        );
+      }
+
+      console.warn(
+        "[content ai] structured recovery forcing alternate provider: Gemini"
+      );
+
+      return callGeminiApi(
+        prompt
+      );
+    }
+
+
+    if (
+      !hasContentAiKey(
+        "OPENAI_API_KEY"
+      )
+    ) {
+      throw new ContentGenerationError(
+        "CONTENT_AI_ALTERNATE_PROVIDER_UNAVAILABLE: OpenAI is not configured"
+      );
+    }
+
+    console.warn(
+      "[content ai] structured recovery forcing alternate provider: OpenAI"
+    );
+
+    return callOpenAiApi(
+      prompt,
+      {
+        reasoningEffort:
+          effort,
+      }
     );
   }
 
-  return callGeminiApi(
-    prompt
-  );
+
+  if (
+    primary ===
+      "openai"
+  ) {
+    try {
+      return await callOpenAiApi(
+        prompt,
+        {
+          reasoningEffort:
+            effort,
+        }
+      );
+    } catch (
+      cause
+    ) {
+      if (
+        !hasContentAiKey(
+          "GEMINI_API_KEY"
+        ) ||
+        !isContentAiFailoverEligible(
+          cause
+        )
+      ) {
+        throw cause;
+      }
+
+      console.warn(
+        "[content ai] OpenAI unavailable; failing over to Gemini"
+      );
+
+      return callGeminiApi(
+        prompt
+      );
+    }
+  }
+
+
+  try {
+    return await callGeminiApi(
+      prompt
+    );
+  } catch (
+    cause
+  ) {
+    if (
+      !hasContentAiKey(
+        "OPENAI_API_KEY"
+      ) ||
+      !isContentAiFailoverEligible(
+        cause
+      )
+    ) {
+      throw cause;
+    }
+
+    console.warn(
+      "[content ai] Gemini unavailable; failing over to OpenAI"
+    );
+
+    return callOpenAiApi(
+      prompt,
+      {
+        reasoningEffort:
+          effort,
+      }
+    );
+  }
 }
 
 
@@ -1136,6 +1698,46 @@ Respond with JSON only.`;
         input
       );
 
+
+    if (
+      process.env
+        .CONTENT_SEMANTIC_DEBUG ===
+      "1"
+    ) {
+      const estimatedPromptTokens =
+        estimateGroqPromptTokens(
+          prompt
+        );
+
+
+      console.error(
+        "[repair prompt budget]",
+        {
+          sectionIndex:
+            input.contract
+              .sectionIndex,
+
+          heading:
+            input.contract
+              .blueprint
+              .heading,
+
+          promptChars:
+            prompt.length,
+
+          estimatedPromptTokens,
+
+          safeRequestBudget:
+            GROQ_SAFE_REQUEST_TOKEN_BUDGET,
+
+          estimatedCompletionBudget:
+            GROQ_SAFE_REQUEST_TOKEN_BUDGET -
+            estimatedPromptTokens,
+        }
+      );
+    }
+
+
     const response =
       await callGemini(
         prompt
@@ -1148,29 +1750,253 @@ Respond with JSON only.`;
         response
       );
 
-    return finalizeGeneratedSectionV1({
-      contract:
-        input.contract,
+    try {
+      const repaired =
+        finalizeGeneratedSectionV1({
+          contract:
+            input.contract,
 
-      modelName:
-        selectedContentModelName(),
+          modelName:
+            selectedContentModelName(),
 
-      candidate,
-    });
+          candidate,
+        });
+
+
+      if (
+        process.env
+          .CONTENT_REPAIR_DEBUG ===
+        "1"
+      ) {
+        const initialBlockers =
+          input.semanticVerification
+            ?.units
+            .filter(
+              (
+                unit
+              ) =>
+                unit.classification ===
+                  "UNSUPPORTED" ||
+                unit.classification ===
+                  "CONTRADICTED"
+            )
+            .map(
+              (
+                unit
+              ) => ({
+                unitId:
+                  unit.unitId,
+
+                classification:
+                  unit.classification,
+
+                matchedClaimId:
+                  unit.matchedClaimId,
+
+                evidenceIds:
+                  unit.evidenceIds,
+
+                rationale:
+                  unit.rationale,
+              })
+            ) ??
+          [];
+
+
+        console.error(
+          "[repair success trace]",
+          JSON.stringify(
+            {
+              sectionIndex:
+                input.contract
+                  .sectionIndex,
+
+              heading:
+                input.contract
+                  .blueprint
+                  .heading,
+
+              requiredClaims:
+                input.contract
+                  .blueprint
+                  .requiredClaims,
+
+              evidenceIds:
+                input.contract
+                  .blueprint
+                  .evidenceIds,
+
+              initialBlockers,
+
+              originalBody:
+                input.section
+                  .bodyMarkdown,
+
+              repairedBody:
+                repaired
+                  .bodyMarkdown,
+
+              originalReferences: {
+                claims:
+                  input.section
+                    .referencedClaimIds,
+
+                evidence:
+                  input.section
+                    .referencedEvidenceIds,
+              },
+
+              repairedReferences: {
+                claims:
+                  repaired
+                    .referencedClaimIds,
+
+                evidence:
+                  repaired
+                    .referencedEvidenceIds,
+              },
+            },
+            null,
+            2
+          )
+        );
+      }
+
+
+      return repaired;
+    } catch (
+      cause
+    ) {
+      console.error(
+        "\n================ REPAIR FAILURE TRACE ================"
+      );
+
+      console.error(
+        "SECTION",
+        {
+          index:
+            input.contract.sectionIndex,
+
+          heading:
+            input.contract.blueprint.heading,
+
+          requiredClaims:
+            input.contract.blueprint.requiredClaims,
+
+          forbiddenClaims:
+            input.contract.blueprint.forbiddenClaims,
+
+          evidenceIds:
+            input.contract.blueprint.evidenceIds,
+        }
+      );
+
+      console.error(
+        "ORIGINAL SECTION",
+        {
+          bodyLength:
+            input.section.bodyMarkdown.length,
+
+          bodyPreview:
+            input.section.bodyMarkdown.slice(
+              0,
+              2500
+            ),
+
+          coveredQueryNodeIds:
+            input.section.coveredQueryNodeIds,
+
+          referencedClaimIds:
+            input.section.referencedClaimIds,
+
+          referencedEvidenceIds:
+            input.section.referencedEvidenceIds,
+
+          assetUsed:
+            input.section.assetUsed,
+        }
+      );
+
+      console.error(
+        "RECONCILIATION",
+        input.reconciliation
+      );
+
+      console.error(
+        "SEMANTIC VERIFICATION",
+        input.semanticVerification
+      );
+
+      console.error(
+        "RAW REPAIR RESPONSE",
+        response.slice(
+          0,
+          4000
+        )
+      );
+
+      console.error(
+        "PARSED REPAIR CANDIDATE",
+        candidate
+      );
+
+      console.error(
+        "FINALIZER ERROR",
+        cause instanceof Error
+          ? cause.message
+          : String(cause)
+      );
+
+      console.error(
+        "======================================================\n"
+      );
+
+      throw cause;
+    }
   },
 
   async verifySectionClaims(
     input
   ) {
+    /*
+     * SECTION_SEMANTIC_UNIT_CONTINUATION_V1
+     *
+     * Provider responses may be valid JSON yet omit trailing units
+     * when the verification batch is large.
+     *
+     * Safety properties:
+     * - initial deterministic unit set remains authoritative
+     * - exactly one continuation call is allowed
+     * - continuation receives ONLY missing stable unit IDs
+     * - outputs are merged, never synthesized
+     * - canonical finalizer still requires exact 1:1 coverage
+     * - UNSUPPORTED / CONTRADICTED classifications remain blocking
+     */
+    const expectedUnits =
+      extractSectionSemanticProseUnitsV1({
+        sectionIndex:
+          input.contract.sectionIndex,
+
+        bodyMarkdown:
+          input.section.bodyMarkdown,
+      });
+
+
     const prompt =
       buildMasterSectionSemanticVerificationPrompt(
         input
       );
 
+
     const response =
-      await callGemini(
-        prompt
+      await callContentAiJson(
+        prompt,
+        {
+          reasoningEffort:
+            "none",
+        }
       );
+
 
     const candidate =
       parseJson<
@@ -1179,18 +2005,468 @@ Respond with JSON only.`;
         response
       );
 
-    return finalizeSectionSemanticVerificationV1({
-      contract:
-        input.contract,
 
-      section:
-        input.section,
+    const finalize = (
+      value:
+        SectionSemanticVerificationCandidateV1
+    ) =>
+      finalizeSectionSemanticVerificationV1({
+        contract:
+          input.contract,
 
-      modelName:
-        selectedContentModelName(),
+        section:
+          input.section,
 
-      candidate,
-    });
+        modelName:
+          selectedContentModelName(),
+
+        candidate:
+          value,
+      });
+
+
+    const candidateUnits = (
+      value:
+        SectionSemanticVerificationCandidateV1
+    ): unknown[] => {
+      const record =
+        value as unknown as {
+          units?:
+            unknown[];
+        };
+
+
+      return Array.isArray(
+        record.units
+      )
+        ? record.units
+        : [];
+    };
+
+
+    const returnedUnitIds = (
+      values:
+        readonly unknown[]
+    ): Set<string> => {
+      const ids =
+        new Set<string>();
+
+
+      for (
+        const value
+        of values
+      ) {
+        if (
+          typeof value !==
+            "object" ||
+          value ===
+            null
+        ) {
+          continue;
+        }
+
+
+        const unitId =
+          (
+            value as {
+              unitId?:
+                unknown;
+            }
+          ).unitId;
+
+
+        if (
+          typeof unitId ===
+            "string" &&
+          unitId.trim()
+            .length >
+            0
+        ) {
+          ids.add(
+            unitId.trim()
+          );
+        }
+      }
+
+
+      return ids;
+    };
+
+
+    const debugFailure = ({
+      phase,
+      rawResponse,
+      value,
+      error,
+      missingUnitIds,
+    }: {
+      phase:
+        "INITIAL" |
+        "CONTINUATION";
+
+      rawResponse:
+        string;
+
+      value:
+        SectionSemanticVerificationCandidateV1;
+
+      error:
+        unknown;
+
+      missingUnitIds?:
+        readonly string[];
+    }) => {
+      if (
+        process.env
+          .CONTENT_SEMANTIC_DEBUG !==
+        "1"
+      ) {
+        return;
+      }
+
+
+      const units =
+        candidateUnits(
+          value
+        );
+
+
+      console.error(
+        "\n============================================================"
+      );
+
+      console.error(
+        "SEMANTIC UNIT COUNT DEBUG"
+      );
+
+      console.error(
+        JSON.stringify(
+          {
+            protocol:
+              "SECTION_SEMANTIC_UNIT_CONTINUATION_V1",
+
+            phase,
+
+            sectionIndex:
+              input.contract
+                .sectionIndex,
+
+            sectionNumber:
+              input.contract
+                .sectionNumber,
+
+            heading:
+              input.contract
+                .blueprint
+                .heading,
+
+            expectedUnitCount:
+              expectedUnits.length,
+
+            expectedUnits,
+
+            candidateUnitCount:
+              units.length,
+
+            candidateUnits:
+              units,
+
+            missingUnitIds:
+              missingUnitIds ??
+              [],
+
+            rawResponse,
+
+            error:
+              error instanceof
+                Error
+                ? error.message
+                : String(
+                    error
+                  ),
+          },
+          null,
+          2
+        )
+      );
+
+      console.error(
+        "============================================================\n"
+      );
+    };
+
+
+    try {
+      const finalized =
+          finalize(
+            candidate
+          );
+
+        /*
+         * SEMANTIC_BLOCK_OBSERVABILITY_V3
+         *
+         * Debug-only telemetry.
+         *
+         * IMPORTANT:
+         * - does not alter classifications
+         * - does not alter evidence requirements
+         * - does not convert BLOCK to PASS
+         * - does not alter repair behavior
+         */
+        if (
+          finalized.status ===
+            "BLOCK" &&
+          process.env
+            .CONTENT_SEMANTIC_DEBUG ===
+            "1"
+        ) {
+          console.error(
+            "\n================ SEMANTIC VALID BLOCK ================"
+          );
+
+          console.error(
+            JSON.stringify(
+              {
+                sectionIndex:
+                  input.contract.sectionIndex,
+
+                sectionNumber:
+                  input.contract.sectionNumber,
+
+                heading:
+                  input.contract.blueprint.heading,
+
+                mission:
+                  input.contract.blueprint.mission,
+
+                expectedOutcome:
+                  input.contract.blueprint.expectedOutcome,
+
+                requiredClaims:
+                  input.contract.blueprint.requiredClaims,
+
+                forbiddenClaims:
+                  input.contract.blueprint.forbiddenClaims,
+
+                evidenceIds:
+                  input.contract.blueprint.evidenceIds,
+
+                bodyMarkdown:
+                  input.section.bodyMarkdown,
+
+                coveredQueryNodeIds:
+                  input.section.coveredQueryNodeIds,
+
+                referencedClaimIds:
+                  input.section.referencedClaimIds,
+
+                referencedEvidenceIds:
+                  input.section.referencedEvidenceIds,
+
+                verification:
+                  finalized,
+              },
+              null,
+              2
+            )
+          );
+
+          console.error(
+            "========================================================\n"
+          );
+        }
+
+        return finalized;
+    } catch (
+      error
+    ) {
+      const message =
+        error instanceof
+          Error
+          ? error.message
+          : String(
+              error
+            );
+
+
+      if (
+        message !==
+        "SECTION_SEMANTIC_UNIT_COUNT_MISMATCH"
+      ) {
+        debugFailure({
+          phase:
+            "INITIAL",
+
+          rawResponse:
+            response,
+
+          value:
+            candidate,
+
+          error,
+        });
+
+        throw error;
+      }
+
+
+      const initialUnits =
+        candidateUnits(
+          candidate
+        );
+
+
+      const initialIds =
+        returnedUnitIds(
+          initialUnits
+        );
+
+
+      const missingUnits =
+        expectedUnits.filter(
+          (
+            unit
+          ) =>
+            !initialIds.has(
+              unit.id
+            )
+        );
+
+
+      const missingUnitIds =
+        missingUnits.map(
+          (
+            unit
+          ) =>
+            unit.id
+        );
+
+
+      debugFailure({
+        phase:
+          "INITIAL",
+
+        rawResponse:
+          response,
+
+        value:
+          candidate,
+
+        error,
+
+        missingUnitIds,
+      });
+
+
+      /*
+       * A count mismatch with no missing known IDs means the
+       * response contains duplicates / unknown IDs. Do not retry
+       * that malformed shape: the canonical finalizer owns it.
+       */
+      if (
+        missingUnitIds.length ===
+        0
+      ) {
+        throw error;
+      }
+
+
+      const continuationPrompt =
+        buildMasterSectionSemanticVerificationPrompt({
+          contract:
+            input.contract,
+
+          section:
+            input.section,
+
+          unitIds:
+            missingUnitIds,
+        });
+
+
+      const continuationResponse =
+        await callContentAiJson(
+        continuationPrompt,
+        {
+          reasoningEffort:
+            "none",
+        }
+      );
+
+
+      const continuationCandidate =
+        parseJson<
+          SectionSemanticVerificationCandidateV1
+        >(
+          continuationResponse
+        );
+
+
+      const continuationUnits =
+        candidateUnits(
+          continuationCandidate
+        );
+
+
+      const mergedCandidate =
+        {
+          ...(
+            candidate as unknown as
+              Record<
+                string,
+                unknown
+              >
+          ),
+
+          units: [
+            ...initialUnits,
+            ...continuationUnits,
+          ],
+        } as unknown as
+          SectionSemanticVerificationCandidateV1;
+
+
+      try {
+        /*
+         * Critical boundary:
+         *
+         * We DO NOT declare success ourselves.
+         * The same canonical strict finalizer now receives the
+         * merged provider output and rechecks:
+         * - exact count
+         * - duplicates
+         * - unknown IDs
+         * - missing IDs
+         * - claim IDs
+         * - evidence IDs
+         * - publication-grade evidence
+         * - classification semantics
+         */
+        return finalize(
+          mergedCandidate
+        );
+      } catch (
+        continuationError
+      ) {
+        debugFailure({
+          phase:
+            "CONTINUATION",
+
+          rawResponse:
+            continuationResponse,
+
+          value:
+            mergedCandidate,
+
+          error:
+            continuationError,
+
+          missingUnitIds,
+        });
+
+        throw continuationError;
+      }
+    }
   },
 
   async critiqueArticle(
@@ -1252,8 +2528,12 @@ Respond with JSON only.`;
     ].join("\n");
 
     const text =
-      await callGemini(
-        prompt
+      await callContentAiJson(
+        prompt,
+        {
+          reasoningEffort:
+            "none",
+        }
       );
 
     const parsed =
