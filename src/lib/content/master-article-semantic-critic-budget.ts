@@ -422,6 +422,50 @@ export function buildMasterArticleSemanticCriticBudgetV1({
       );
 
 
+  /*
+   * EVIDENCE_DEFERRED_SEMANTIC_BUDGET_V1
+   *
+   * Compact provider-facing projection only.
+   *
+   * These entries explain why an otherwise relevant topic is not
+   * part of the current publishable contract.
+   *
+   * This metadata never authorizes a factual claim.
+   */
+  const evidenceDeferredSections =
+    array(
+      x.evidenceDeferredSections
+    )
+      .slice(
+        0,
+        12
+      )
+      .map(
+        (
+          item
+        ) =>
+          pick(
+            item,
+            [
+              "heading",
+              "sourceDeferredHeading",
+              "summary",
+              "reason",
+            ],
+            800
+          )
+      )
+      .filter(
+        (
+          item
+        ) =>
+          typeof item.heading ===
+            "string" &&
+          item.heading.trim().length >
+            0
+      );
+
+
   return Object.freeze({
     version:
       "MASTER_ARTICLE_SEMANTIC_CRITIC_BUDGET_V1",
@@ -531,6 +575,7 @@ export function buildMasterArticleSemanticCriticBudgetV1({
     comparisonContext: {
       originalityReferences,
       cannibalizationCandidates,
+      evidenceDeferredSections,
     },
 
     writerProvenance:

@@ -61,6 +61,36 @@ string {
 }
 
 
+
+function stripComments(
+  value: string
+): string {
+  return value
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+
+function inOrder(
+  source: string,
+  markers: readonly string[]
+): boolean {
+  let at = -1;
+
+  for (const marker of markers) {
+    const next = source.indexOf(marker, at + 1);
+
+    if (next < 0) {
+      return false;
+    }
+
+    at = next;
+  }
+
+  return true;
+}
+
+
 describe(
   "Production Master Article Critic + Repair Boundary",
   () => {
@@ -311,56 +341,42 @@ describe(
 
 
     it(
-      "keeps repair/replay inside the existing rejection transaction before DRAFT",
+      "keeps critic repair/replay inside the rejection transaction and before Final Readiness / IN_REVIEW",
       () => {
-        const service =
-          generationFunctionSource();
+        const service = generationFunctionSource();
 
+        const repairReplay = service.indexOf(
+          "await executeMasterArticleCriticRepairReplayV1({"
+        );
+        const readiness = service.indexOf(
+          "FINAL_ARTICLE_READINESS_PRODUCTION_AUTHORITY_V1"
+        );
+        const catchIndex = service.lastIndexOf("} catch (error) {");
+        const rejected = service.lastIndexOf('"REJECTED"');
 
-        const repairReplay =
-          service.indexOf(
-            "await executeMasterArticleCriticRepairReplayV1({"
-          );
-
-        const draft =
-          service.lastIndexOf(
-            '"DRAFT"'
-          );
-
-        const catchIndex =
-          service.lastIndexOf(
-            "} catch (error) {"
-          );
-
-        const rejected =
-          service.lastIndexOf(
-            '"REJECTED"'
-          );
-
+        expect(repairReplay).toBeGreaterThanOrEqual(0);
+        expect(readiness).toBeGreaterThan(repairReplay);
+        expect(service.lastIndexOf('"IN_REVIEW"')).toBeGreaterThan(readiness);
+        expect(catchIndex).toBeGreaterThan(repairReplay);
+        expect(rejected).toBeGreaterThan(catchIndex);
 
         expect(
-          repairReplay
-        ).toBeGreaterThanOrEqual(
-          0
-        );
+          inOrder(service, [
+            "await executeMasterWriterV1({",
+            "await executeMasterArticleCriticsV1({",
+            "await executeMasterArticleCriticRepairReplayV1({",
+            "FINAL_ARTICLE_READINESS_PRODUCTION_AUTHORITY_V1",
+          ])
+        ).toBe(true);
+      }
+    );
 
-        expect(
-          draft
-        ).toBeGreaterThan(
-          repairReplay
-        );
 
-        expect(
-          catchIndex
-        ).toBeGreaterThan(
-          repairReplay
-        );
-
-        expect(
-          rejected
-        ).toBeGreaterThan(
-          catchIndex
-        );
+    it(
+      "order helper rejects an inverted lifecycle (mutation sanity)",
+      () => {
+        expect(inOrder("A B", ["A", "B"])).toBe(true);
+        expect(inOrder("B A", ["A", "B"])).toBe(false);
       }
     );
 
@@ -396,38 +412,15 @@ describe(
 
 
     it(
-      "does not re-enable legacy one-shot or whole-article rewrite",
+      "contains no executable legacy one-shot or whole-article rewrite after the Master Writer",
       () => {
-        const service =
-          generationFunctionSource();
+        const service = stripComments(generationFunctionSource());
+        const writer = service.indexOf("await executeMasterWriterV1({");
 
-
-        expect(
-          service
-        ).not.toMatch(
-          /generator\.generateArticle\s*\(/
-        );
-
-
-        expect(
-          service
-        ).toMatch(
-          /allowLegacyWholeArticleRewrite\s*=\s*false/
-        );
-
-
-        expect(
-          service
-        ).toMatch(
-          /allowLegacyWholeArticleRewrite\s*&&\s*\([\s\S]*shouldRewriteArticle/
-        );
-
-
-        expect(
-          service
-        ).not.toMatch(
-          /allowLegacyWholeArticleRewrite\s*&&\s*shouldRewriteArticle\s*\(/
-        );
+        expect(writer).toBeGreaterThanOrEqual(0);
+        expect(service).not.toMatch(/generator\.generateArticle\s*\(/);
+        expect(service.slice(writer)).not.toContain("rewriteArticle(");
+        expect(service).not.toContain("allowLegacyWholeArticleRewrite");
       }
     );
   }

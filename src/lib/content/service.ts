@@ -1,4 +1,29 @@
 import {
+  assertArticlePreWriterEvidenceReadyV1,
+} from "./article-prewriter-evidence-gate-v1";
+
+import {
+  classifyRejectedRecoveryV1,
+  formatRejectedRecoveryForPersistenceV1,
+} from "./rejected-recovery-v1";
+
+import type {
+  ArticleTemplateIdV1,
+} from "./article-template-policy-v1";
+
+import {
+  buildProductionFinalArticleReadinessV1,
+  formatProductionFinalArticleReadinessFailureV1,
+} from "./production-final-article-readiness-adapter-v1";
+
+import {
+  assertBestOpportunityWinnerAppliedV1,
+  assertExactKeywordDidNotDriftV1,
+  type ContentGenerationModeV1,
+  type ContentGenerationPolicyV1,
+} from "./content-generation-mode-v1";
+
+import {
   inspectProductionMasterRuntimePlan,
 } from "./production-master-runtime-readiness";
 
@@ -9,6 +34,11 @@ import {
 import {
   buildArticleGenerationContractV1,
 } from "./article-generation-contract";
+
+import {
+  bindArticleExecutionPlanToGenerationContractV1,
+  parsePersistedArticleExecutionPlanV1,
+} from "./article-execution-plan-binding-v1";
 
 import {
   executeMasterWriterV1,
@@ -62,12 +92,6 @@ import {
 } from "./production-master-brief-required";
 
 import {
-  assertArticleCriticsPassed,
-  shouldRewriteArticle,
-  summarizeArticleCritiques,
-} from "./article-review";
-
-import {
   buildResearchPack,
   researchPackPrompt,
 } from "./research-pack";
@@ -81,6 +105,14 @@ import {
 import {
   buildEvidenceAwareOutline,
 } from "./evidence-aware-planning";
+
+import {
+  resolveEvidenceDeferredMasterScopeV1,
+} from "./evidence-deferred-master-scope";
+
+import {
+  resolvePublicationEvidenceSectionScopeV1,
+} from "./publication-evidence-section-scope";
 
 import {
   buildSearchBlueprint,
@@ -123,7 +155,6 @@ import type {
 
 import {
   ContentGenerationError,
-  supportsArticleReviewGenerator,
 } from "./generator";
 
 import type {
@@ -423,6 +454,21 @@ export async function createContentBrief(
        */
       masterArtifacts?:
         ProductionMasterBriefArtifactInput;
+
+      /*
+       * CONTENT_GENERATION_POLICY_V1
+       */
+      templateOverride?:
+    ArticleTemplateIdV1 | null;
+
+  generationMode?:
+        ContentGenerationModeV1;
+
+      exactKeyword?:
+        string;
+
+      generationPolicy?:
+        Readonly<ContentGenerationPolicyV1>;
     }
 ) {
   const [
@@ -439,6 +485,16 @@ export async function createContentBrief(
 
         businessName:
           input.businessName,
+
+        /*
+         * EXACT_KEYWORD:
+         * lock before Content Strategy becomes FinalContentPlan.
+         *
+         * BEST_OPPORTUNITY:
+         * undefined => existing scorer remains authoritative.
+         */
+        requiredPrimaryKeyword:
+          input.requiredPrimaryKeyword,
       }),
 
       getWebsiteKeywordContext(
@@ -664,6 +720,10 @@ export async function createContentBrief(
           },
 
           mission: {
+          templateOverride:
+            input.templateOverride ??
+            null,
+
             websiteId:
               input.websiteId,
 
@@ -895,6 +955,24 @@ export async function createContentBrief(
             productionMaster
               .searchMissionInput,
 
+          /*
+           * PERSIST_ARTICLE_EXECUTION_PLAN_V1
+           *
+           * Persist the exact Research -> Writer execution decision
+           * beside Master Runtime so generation/replay never needs
+           * to reconstruct coverage from legacy outlines.
+           */
+          ...(
+            liveMaster
+              ?.articleExecutionPlan
+              ? {
+                  articleExecutionPlan:
+                    liveMaster
+                      .articleExecutionPlan,
+                }
+              : {}
+          ),
+
           ...(
             productionMaster
               .masterRuntime !==
@@ -934,7 +1012,49 @@ export async function createContentBrief(
     throw error;
   }
 
-  return createdBrief;
+    /*
+   * CONTENT_BEST_OPPORTUNITY_PRODUCTION_WINNER_V1
+   *
+   * BEST_OPPORTUNITY uses the EXISTING strategy winner:
+   * finalPlan.strategy.primary.
+   *
+   * No second keyword selector exists here.
+   */
+  if (
+    input.generationPolicy
+  ) {
+    assertBestOpportunityWinnerAppliedV1({
+      policy:
+        input.generationPolicy,
+
+      strategyPrimary:
+        strategy.primary.keyword,
+
+      productionPrimary:
+        createdBrief.primaryKeyword,
+    });
+  }
+
+  /*
+   * CONTENT_EXACT_KEYWORD_PRODUCTION_LOCK_V1
+   *
+   * EXACT_KEYWORD:
+   * Research may expand supporting coverage,
+   * but production primary must remain the user-selected query.
+   */
+  if (
+    input.generationPolicy
+  ) {
+    assertExactKeywordDidNotDriftV1({
+      policy:
+        input.generationPolicy,
+
+      productionPrimary:
+        createdBrief.primaryKeyword,
+    });
+  }
+
+return createdBrief;
 }
 
 
@@ -1038,36 +1158,57 @@ export async function generateArticleFromBrief(
     );
   }
 
-  const articleGenerationContract =
-    buildArticleGenerationContractV1(
-      masterRuntimeInspection
-        .runtime
+  /*
+   * LOAD_PERSISTED_ARTICLE_EXECUTION_PLAN_V1
+   *
+   * Never reconstruct coverage from brief.outline or another
+   * parallel planner during generation.
+   */
+  const generationPlanRecord =
+    generationSnapshot
+      ?.plan &&
+    typeof generationSnapshot
+      .plan ===
+      "object" &&
+    !Array.isArray(
+      generationSnapshot
+        .plan
+    )
+      ? generationSnapshot
+          .plan as unknown as
+            Record<
+              string,
+              unknown
+            >
+      : null;
+
+
+  const persistedArticleExecutionPlan =
+    parsePersistedArticleExecutionPlanV1(
+      generationPlanRecord
+        ?.articleExecutionPlan
     );
 
-  console.info(
-    "[content master writer contract]",
-    {
-      briefId:
-        brief.id,
 
-      version:
-        articleGenerationContract
-          .version,
 
-      runtimeVersion:
-        articleGenerationContract
-          .sourceRuntimeVersion,
 
-      sections:
-        articleGenerationContract
-          .sectionContracts
-          .length,
-
-      h1Mission:
-        articleGenerationContract
-          .h1Mission,
-    }
+  /*
+   * ARTICLE_PREWRITER_EVIDENCE_GATE_V1
+   *
+   * MUST coverage that was deferred for missing verified
+   * evidence is an upstream planning/evidence blocker.
+   * Never spend a Writer call trying to compensate for it.
+   */
+  assertArticlePreWriterEvidenceReadyV1(
+    persistedArticleExecutionPlan
   );
+/*
+   * EVIDENCE_DEFERRED_EFFECTIVE_RUNTIME_V1
+   *
+   * ArticleGenerationContract creation is deliberately delayed
+   * until evidence-aware planning has finalized publishable scope.
+   */
+
 
   const researchPack =
     buildResearchPack({
@@ -1118,8 +1259,417 @@ export async function generateArticleFromBrief(
       externalEvidenceSources,
     });
 
+  /*
+   * Evidence-aware planner owns the DEFER decision.
+   *
+   * The resolver only maps an already-deferred outline topic to
+   * the corresponding Master section identity.
+   *
+   * A section with assigned requiredClaims or evidenceIds cannot
+   * be removed by the resolver.
+   */
+  /*
+   * LEGACY_EVIDENCE_OUTLINE_DIAGNOSTIC_ONLY_V1
+   *
+   * This result MUST NOT determine Writer structure after
+   * ArticleExecutionPlan has been persisted.
+   */
+  /*
+   * LEGACY_EVIDENCE_OUTLINE_DIAGNOSTIC_RESULT_V1
+   *
+   * Kept only for compatibility / diagnostics.
+   *
+   * This value MUST NOT participate in:
+   * - deferredMasterIndexes
+   * - effectiveMasterSections
+   * - ArticleGenerationContract section selection
+   * - Writer job count
+   */
+  const evidenceDeferredMasterScope =
+    resolveEvidenceDeferredMasterScopeV1({
+      blueprints:
+        masterRuntimeInspection
+          .runtime
+          .sectionBlueprints
+          .sections,
+
+      deferredSections:
+        articleOutlinePlan
+          .deferredSections,
+    });
+
+
+  /*
+   * PUBLICATION_EVIDENCE_DEFERRED_SCOPE_V1
+   *
+   * Evidence-aware outline defer and publication-evidence defer
+   * are separate authorities.
+   *
+   * 1. Outline planner can defer unsupported optional scope.
+   * 2. Evidence Graph MUST defer any section whose required claim
+   *    lacks SUPPORTS + VERIFIED_EXCERPT authority.
+   */
+  const publicationEvidenceDeferredScope =
+    resolvePublicationEvidenceSectionScopeV1({
+      sections:
+        masterRuntimeInspection
+          .runtime
+          .sectionBlueprints
+          .sections,
+
+      claimEvidence:
+        masterRuntimeInspection
+          .runtime
+          .evidenceGraph
+          .claimEvidence,
+    });
+
+
+  /*
+   * ARTICLE_EXECUTION_PLAN_POST_LOCK_STRUCTURE_V1
+   *
+   * Research has already finished.
+   * Structure is now immutable.
+   */
+  const runtimeSectionsBeforeExecutionLock =
+    masterRuntimeInspection
+      .runtime
+      .sectionBlueprints
+      .sections;
+
+  if (
+    persistedArticleExecutionPlan
+      .sections
+      .length !==
+    runtimeSectionsBeforeExecutionLock
+      .length
+  ) {
+    throw new ContentGenerationError(
+      [
+        "ARTICLE_EXECUTION_PLAN_RUNTIME_SECTION_COUNT_DRIFT",
+        `plan=${persistedArticleExecutionPlan.sections.length}`,
+        `runtime=${runtimeSectionsBeforeExecutionLock.length}`,
+      ].join(":")
+    );
+  }
+
+  for (
+    let index = 0;
+    index <
+    runtimeSectionsBeforeExecutionLock.length;
+    index++
+  ) {
+    const runtimeSection =
+      runtimeSectionsBeforeExecutionLock[
+        index
+      ];
+
+    const executionSection =
+      persistedArticleExecutionPlan
+        .sections[
+          index
+        ];
+
+    const runtimeHeading =
+      runtimeSection
+        .heading
+        .trim();
+
+    const executionHeading =
+      executionSection
+        .heading
+        .trim();
+
+    if (
+      runtimeHeading !==
+      executionHeading
+    ) {
+      throw new ContentGenerationError(
+        [
+          "ARTICLE_EXECUTION_PLAN_RUNTIME_HEADING_DRIFT",
+          String(index),
+          executionHeading,
+          runtimeHeading,
+        ].join(":")
+      );
+    }
+  }
+
+  /*
+   * Publication evidence checks may still detect a safety problem,
+   * but after structure lock they may not SILENTLY remove a section.
+   *
+   * If publication evidence wants to defer a section that the
+   * ArticleExecutionPlan marked WRITABLE, fail closed instead.
+   */
+  for (
+    const index of
+    publicationEvidenceDeferredScope
+      .deferredIndexes
+  ) {
+    const executionSection =
+      persistedArticleExecutionPlan
+        .sections[
+          index
+        ];
+
+    if (
+      executionSection &&
+      executionSection.state ===
+        "WRITABLE"
+    ) {
+      throw new ContentGenerationError(
+        [
+          "ARTICLE_EXECUTION_PLAN_POST_LOCK_EVIDENCE_CONFLICT",
+          String(index),
+          executionSection.heading,
+        ].join(":")
+      );
+    }
+  }
+
+  const deferredMasterIndexes =
+    new Set<number>(
+      persistedArticleExecutionPlan
+        .sections
+        .flatMap(
+          (
+            section,
+            index
+          ) =>
+            section.state ===
+            "WRITABLE"
+              ? []
+              : [
+                  index,
+                ]
+        )
+    );
+
+/*
+   * ARTICLE_EXECUTION_PLAN_POST_LOCK_DEFER_AUTHORITY_V1
+   *
+   * After ArticleExecutionPlan has been persisted, legacy
+   * brief.outline/evidence-aware planning is DIAGNOSTIC ONLY.
+   *
+   * The only structural DEFER authority is the persisted plan.
+   */
+  const effectiveEvidenceDeferredSections =
+    Object.freeze(
+      persistedArticleExecutionPlan
+        .sections
+        .flatMap(
+          (
+            section
+          ) =>
+            section.state ===
+            "DEFERRED_NO_EVIDENCE"
+              ? [
+                  Object.freeze({
+                    heading:
+                      section.heading,
+
+                    sourceDeferredHeading:
+                      section.heading,
+
+                    summary:
+                      section.mission ??
+                      null,
+
+                    reason:
+                      "MISSING_PUBLICATION_GRADE_EVIDENCE" as const,
+                  }),
+                ]
+              : []
+        )
+    );
+
+
+  const effectiveMasterSections =
+    masterRuntimeInspection
+      .runtime
+      .sectionBlueprints
+      .sections
+      .filter(
+        (
+          _section,
+          index
+        ) =>
+          !deferredMasterIndexes.has(
+            index
+          )
+      );
+
+
+  if (
+    effectiveMasterSections.length ===
+    0
+  ) {
+    throw new ContentGenerationError(
+      "EVIDENCE_DEFERRED_MASTER_SCOPE_BLOCKED:NO_WRITABLE_SECTIONS"
+    );
+  }
+
+
+  /*
+   * Persisted Master Runtime remains immutable.
+   *
+   * This ephemeral runtime changes only Stage-8 section execution
+   * scope. All research, evidence, claims, SERP, ownership and
+   * strategy artifacts keep their original authority.
+   */
+  /*
+   * MERGED_DEFER_INDEXES_EFFECTIVE_RUNTIME_V1
+   *
+   * IMPORTANT:
+   *
+   * effectiveMasterSections is filtered by the MERGED defer set:
+   *
+   * - evidence-aware outline defer
+   * - publication-evidence defer
+   *
+   * Therefore the runtime branch MUST also use that merged set.
+   * Checking only evidenceDeferredMasterScope would compute the
+   * correct publication defer but then accidentally execute the
+   * original unfiltered runtime.
+   */
+  const effectiveMasterRuntime =
+    deferredMasterIndexes
+      .size ===
+    0
+      ? masterRuntimeInspection
+          .runtime
+      : Object.freeze({
+          ...masterRuntimeInspection
+            .runtime,
+
+          sectionBlueprints:
+            Object.freeze({
+              ...masterRuntimeInspection
+                .runtime
+                .sectionBlueprints,
+
+              sections:
+                Object.freeze([
+                  ...effectiveMasterSections,
+                ]),
+            }),
+        });
+
+
+  /*
+   * IMPORTANT:
+   *
+   * Rebuild the contract from runtime instead of filtering existing
+   * SectionGenerationContracts.
+   *
+   * buildArticleGenerationContractV1() re-establishes:
+   * - sectionIndex
+   * - sectionNumber
+   * - totalSections
+   * - canonical section order
+   */
+  /*
+   * ARTICLE_EXECUTION_PLAN_WRITER_BINDING_V1
+   *
+   * Existing ArticleGenerationContract remains the Writer
+   * contract. The persisted execution plan validates and
+   * enriches it; it does not replace it.
+   */
+  /*
+   * ARTICLE_EXECUTION_PLAN_WRITER_BINDING_V1
+   *
+   * Build the EXISTING Writer generation contract first.
+   * Then bind the persisted ArticleExecutionPlan authority to it.
+   *
+   * Runtime order:
+   *
+   * persisted plan
+   * -> existing generation contract
+   * -> execution-plan binding
+   * -> existing Master Writer
+   */
+  const baseArticleGenerationContract =
+    buildArticleGenerationContractV1(
+      effectiveMasterRuntime
+    );
+
+  const articleGenerationContract =
+    bindArticleExecutionPlanToGenerationContractV1({
+      plan:
+        persistedArticleExecutionPlan,
+
+      contract:
+        baseArticleGenerationContract,
+    });
+
+
   console.info(
-    "[content evidence-aware outline]",
+    "[content master writer contract]",
+    {
+      briefId:
+        brief.id,
+
+      version:
+        articleGenerationContract
+          .version,
+
+      runtimeVersion:
+        articleGenerationContract
+          .sourceRuntimeVersion,
+
+      originalSections:
+        masterRuntimeInspection
+          .runtime
+          .sectionBlueprints
+          .sections
+          .length,
+
+      sections:
+        articleGenerationContract
+          .sectionContracts
+          .length,
+
+      executionPlanWritableSections:
+        persistedArticleExecutionPlan
+          .sections
+          .filter(
+            (
+              section
+            ) =>
+              section.state ===
+              "WRITABLE"
+          )
+          .length,
+
+      executionPlanPreferredMin:
+        persistedArticleExecutionPlan
+          .lengthPlan
+          .preferredMin,
+
+      executionPlanPreferredMax:
+        persistedArticleExecutionPlan
+          .lengthPlan
+          .preferredMax,
+
+      evidenceDeferredSections:
+        effectiveEvidenceDeferredSections
+          .map(
+            (
+              section
+            ) =>
+              section.heading
+          ),
+
+      h1Mission:
+        articleGenerationContract
+          .h1Mission,
+    }
+  );
+
+
+  console.info(
+    "[content legacy evidence-aware outline diagnostic]",
     {
       briefId:
         brief.id,
@@ -1229,8 +1779,70 @@ export async function generateArticleFromBrief(
   }
 
 
+  /*
+   * REJECTED_RETRY_REUSES_LOGICAL_ARTICLE_V1
+   *
+   * A retry of a REJECTED generation reuses the same logical
+   * Article row instead of spawning another top-level row.
+   *
+   * Only REJECTED rows are reusable. GENERATING (in flight),
+   * IN_REVIEW, APPROVED, PUBLISHED and PUBLISH_FAILED are never
+   * overwritten.
+   */
+  const reusableRejectedArticle =
+    await prisma.contentArticle.findFirst({
+      where: {
+        briefId:
+          brief.id,
+
+        status:
+          "REJECTED",
+      },
+
+      orderBy: {
+        createdAt:
+          "desc",
+      },
+
+      select: {
+        id:
+          true,
+      },
+    });
+
+
   const pendingArticle =
-    await prisma.contentArticle.create({
+    reusableRejectedArticle
+      ? await prisma.contentArticle.update({
+          where: {
+            id:
+              reusableRejectedArticle.id,
+          },
+
+          data: {
+            title:
+              "",
+
+            metaDescription:
+              "",
+
+            h1:
+              "",
+
+            bodyMarkdown:
+              "",
+
+            status:
+              "GENERATING",
+
+            generatedBy:
+              generator.modelName,
+
+            publishError:
+              null,
+          },
+        })
+      : await prisma.contentArticle.create({
       data: {
         briefId:
           brief.id,
@@ -1276,8 +1888,17 @@ export async function generateArticleFromBrief(
      */
     const persistedMasterCriticContext =
       buildMasterArticleSemanticCriticContextV1(
-        masterRuntimeInspection
-          .runtime
+        effectiveMasterRuntime,
+        {
+          /*
+           * EVIDENCE_DEFERRED_CRITIC_SCOPE_V1
+           *
+           * This explains an intentional omission.
+           * It does not waive evidence requirements.
+           */
+          evidenceDeferredSections:
+            effectiveEvidenceDeferredSections,
+        }
       );
 
 
@@ -1571,8 +2192,7 @@ export async function generateArticleFromBrief(
             articleGenerationContract,
 
           runtime:
-            masterRuntimeInspection
-              .runtime,
+              effectiveMasterRuntime,
 
           run:
             acceptedMasterWriterRun,
@@ -1934,310 +2554,20 @@ export async function generateArticleFromBrief(
         null;
 
     /*
-     * Master writer output is contract-bound section-by-section.
+     * MASTER_WRITER_LEGACY_REVIEW_BYPASS_V1
      *
-     * Legacy rewriteArticle() rewrites the entire article and can
-     * mutate canonical H2 ownership, section order, evidence
-     * assignments and generation provenance.
+     * Production article review authority is:
      *
-     * Until targeted section repair is connected, critics may
-     * PASS or BLOCK, but may not invoke whole-article repair.
+     * Master Writer
+     * -> Master deterministic/semantic critics
+     * -> bounded targeted repair + critic replay
+     * -> Competitive SERP Replay
+     * -> deterministic downstream gates
+     * -> Final Readiness
+     *
+     * Legacy critiqueArticle()/rewriteArticle() must not execute
+     * again after the Master path.
      */
-    const allowLegacyWholeArticleRewrite =
-      false as const;
-
-    if (
-      supportsArticleReviewGenerator(
-        generator
-      )
-    ) {
-      const reviewGenerator =
-        generator;
-
-      try {
-      const criticRoles = [
-        "SEARCH_INTENT",
-        "FACT_CLAIM",
-        "EDITORIAL",
-      ] as const;
-
-      const researchContext =
-        [
-          researchPackPrompt(
-            researchPack
-          ),
-
-          externalEvidenceContext,
-        ]
-          .filter(
-            Boolean
-          )
-          .join(
-            "\n\n"
-          );
-
-      const reviewOutline =
-        articleOutlinePlan.outline;
-
-      const runCritics =
-        async (
-          article:
-            typeof generated
-        ) => {
-          const results:
-            Awaited<
-              ReturnType<
-                typeof reviewGenerator.critiqueArticle
-              >
-            >[] = [];
-
-          /*
-           * Intentionally sequential.
-           *
-           * Running SEARCH_INTENT, FACT_CLAIM and EDITORIAL
-           * simultaneously multiplies pressure on the same Gemini
-           * model and turns one transient 429/503 into a failed
-           * article generation.
-           */
-          for (
-            const role
-            of criticRoles
-          ) {
-            results.push(
-              await reviewGenerator
-                .critiqueArticle({
-                  role,
-
-                  article,
-
-                  researchContext,
-
-                  primaryKeyword:
-                    brief.primaryKeyword,
-
-                  searchIntent:
-                    brief.searchIntent,
-
-                  secondaryKeywords:
-                    brief.secondaryKeywords,
-
-                  outline:
-                    reviewOutline,
-                })
-            );
-          }
-
-          return results;
-        };
-
-      const initialCritiques =
-        await runCritics(
-          reviewedArticle
-        );
-
-      const initialSummary =
-        summarizeArticleCritiques(
-          initialCritiques
-        );
-
-      console.info(
-        "[content critics] initial",
-        {
-          briefId:
-            brief.id,
-
-          pass:
-            initialSummary.pass,
-
-          counts:
-            initialSummary.counts,
-
-          findings:
-            initialSummary
-              .findings
-              .map(
-                (finding) => ({
-                  code:
-                    finding.code,
-
-                  severity:
-                    finding.severity,
-
-                  message:
-                    finding.message,
-                })
-              ),
-        }
-      );
-
-      if (
-        allowLegacyWholeArticleRewrite &&
-        (
-          shouldRewriteArticle(
-            initialSummary
-          ) ||
-          shouldRewriteEditorialFindings(
-            initialSummary.findings
-          )
-        )
-      ) {
-        reviewedArticle =
-          await reviewGenerator
-            .rewriteArticle({
-              article:
-                reviewedArticle,
-
-              findings:
-                initialSummary.findings,
-
-              researchContext,
-
-              primaryKeyword:
-                brief.primaryKeyword,
-
-              searchIntent:
-                brief.searchIntent,
-
-              secondaryKeywords:
-                brief.secondaryKeywords,
-
-              outline:
-                reviewOutline,
-            });
-
-        const finalCritiques =
-          await runCritics(
-            reviewedArticle
-          );
-
-        const finalSummary =
-          summarizeArticleCritiques(
-            finalCritiques
-          );
-
-        console.info(
-          "[content critics] final",
-          {
-            briefId:
-              brief.id,
-
-            pass:
-              finalSummary.pass,
-
-            counts:
-              finalSummary.counts,
-
-            findings:
-              finalSummary
-                .findings
-                .map(
-                  (finding) => ({
-                    code:
-                      finding.code,
-
-                    severity:
-                      finding.severity,
-
-                    message:
-                      finding.message,
-                  })
-                ),
-          }
-        );
-
-        try {
-          assertArticleCriticsPassed(
-            finalSummary
-          );
-
-          assertEditorialFindingsResolved(
-            finalSummary.findings
-          );
-        } catch (
-          reviewGateError
-        ) {
-          reviewGateWarning =
-            reviewGateError instanceof Error
-              ? reviewGateError.message
-              : "ARTICLE_REVIEW_GATE_FAILED";
-
-          console.warn(
-            "[content critics] final gate requires review; article retained",
-            {
-              briefId:
-                brief.id,
-
-              articleId:
-                pendingArticle.id,
-
-              message:
-                reviewGateWarning,
-            }
-          );
-        }
-      }
-      } catch (
-        reviewError
-      ) {
-        if (
-          !isTransientContentProviderFailure(
-            reviewError
-          )
-        ) {
-          throw reviewError;
-        }
-
-        const reviewMessage =
-          reviewError instanceof Error
-            ? reviewError.message
-            : "Temporary Gemini review failure";
-
-        reviewProviderWarning =
-          [
-            "ARTICLE_REVIEW_PROVIDER_TEMPORARY",
-            reviewMessage.slice(
-              0,
-              240
-            ),
-          ].join(
-            ": "
-          );
-
-        /*
-         * The writer already produced an article.
-         *
-         * A temporary critic/rewrite provider outage must not
-         * destroy that work. Deterministic quality/evidence gates
-         * still run below, and the article remains non-publishable
-         * until review is complete.
-         */
-        console.warn(
-          "[content critics] temporary provider failure; article retained",
-          {
-            briefId:
-              brief.id,
-
-            articleId:
-              pendingArticle.id,
-
-            message:
-              reviewMessage,
-          }
-        );
-      }
-
-    } else {
-      console.warn(
-        "[content critics] provider does not support multi-pass article review",
-        {
-          briefId:
-            brief.id,
-
-          generator:
-            generator.modelName,
-        }
-      );
-    }
 
     /*
      * Master Writer + targeted section repair already own all
@@ -2431,6 +2761,12 @@ export async function generateArticleFromBrief(
       }
     );
 
+    /*
+     * FINAL_REVIEW_AUTHORITY_PRECONDITION_V1
+     *
+     * A failed publication policy is a blocker.
+     * It may NEVER enter IN_REVIEW.
+     */
     if (
       !publicationPolicy.pass
     ) {
@@ -2454,7 +2790,7 @@ export async function generateArticleFromBrief(
             repaired.bodyMarkdown,
 
           status:
-            "IN_REVIEW",
+            "REJECTED",
 
           publishError:
             formatArticlePublicationPolicyFailure(
@@ -2465,6 +2801,12 @@ export async function generateArticleFromBrief(
     }
 
 
+    /*
+     * FINAL_REVIEW_WARNING_FAIL_CLOSED_V1
+     *
+     * A warning from a required review/provider path cannot
+     * independently authorize IN_REVIEW.
+     */
     if (
       reviewProviderWarning ||
       reviewGateWarning
@@ -2489,7 +2831,7 @@ export async function generateArticleFromBrief(
             repaired.bodyMarkdown,
 
           status:
-            "IN_REVIEW",
+            "REJECTED",
 
           publishError:
             reviewProviderWarning ??
@@ -2499,6 +2841,117 @@ export async function generateArticleFromBrief(
     }
 
 
+    /*
+     * FINAL_ARTICLE_READINESS_PRODUCTION_AUTHORITY_V1
+     *
+     * This is the ONLY decision allowed to authorize IN_REVIEW.
+     *
+     * PASS -> IN_REVIEW
+     * WARN -> IN_REVIEW with non-blocking diagnostics
+     * FAIL -> fail closed
+     */
+    const finalArticleReadiness =
+      buildProductionFinalArticleReadinessV1({
+        plan:
+          persistedArticleExecutionPlan,
+
+        writerRun:
+          acceptedMasterWriterRun,
+
+        finalCritics:
+          finalMasterCriticExecution,
+
+        articleBodyMarkdown:
+          repaired.bodyMarkdown,
+
+        contentGatePass:
+          gate.pass,
+
+        publicationPolicyPass:
+          publicationPolicy.pass,
+
+        serpReplay:
+          masterSerpReplay,
+
+        serpReplayWarning:
+          masterSerpReplayWarning,
+      });
+
+    console.info(
+      "[content final article readiness]",
+      {
+        briefId:
+          brief.id,
+
+        articleId:
+          pendingArticle.id,
+
+        version:
+          finalArticleReadiness.version,
+
+        status:
+          finalArticleReadiness.status,
+
+        blockers:
+          finalArticleReadiness.blockers,
+
+        warnings:
+          finalArticleReadiness.warnings,
+
+        diagnostics:
+          finalArticleReadiness.diagnostics,
+      }
+    );
+
+    if (
+      finalArticleReadiness
+        .status ===
+      "FAIL"
+    ) {
+      return prisma.contentArticle.update({
+        where: {
+          id:
+            pendingArticle.id,
+        },
+
+        data: {
+          title:
+            repaired.title,
+
+          metaDescription:
+            repaired.metaDescription,
+
+          h1:
+            repaired.h1,
+
+          bodyMarkdown:
+            repaired.bodyMarkdown,
+
+          status:
+            "REJECTED",
+
+          publishError:
+            formatProductionFinalArticleReadinessFailureV1(
+              finalArticleReadiness
+            ),
+        },
+      });
+    }
+
+
+    /*
+     * SUCCESSFUL_CONTENT_GENERATION_ENTERS_REVIEW_V1
+     *
+     * A completed production generation may enter review ONLY
+     * after FINAL_ARTICLE_READINESS_V1 returns PASS.
+     *
+     * Earlier gates remain evidence inputs; none of them can
+     * independently authorize IN_REVIEW.
+     *
+     * Human approval remains a separate explicit transition:
+     *
+     * IN_REVIEW -> APPROVED -> PUBLISHED
+     */
     return prisma.contentArticle.update({
       where: {
         id:
@@ -2519,29 +2972,55 @@ export async function generateArticleFromBrief(
           repaired.bodyMarkdown,
 
         status:
-          "DRAFT",
+          "IN_REVIEW",
 
         publishError:
           null,
       },
     });
   } catch (error) {
-    const rawMessage =
-      error instanceof Error
-        ? error.message
-        : "";
-
-    const transientProviderFailure =
-      /(?:Gemini|Groq) API error (413|429|500|502|503|504)\b/.test(
-        rawMessage
-      ) ||
-      /AbortError|aborted|timeout/i.test(
-        rawMessage
+    /*
+     * REJECTED_RECOVERY_PERSISTENCE_V1
+     *
+     * Every generation attempt remains append-only visible.
+     * A transport failure is not allowed to delete its attempt.
+     */
+    const recovery =
+      classifyRejectedRecoveryV1(
+        error
       );
 
-    if (transientProviderFailure) {
+
+    const rejectedArticle =
+      await prisma.contentArticle.update({
+        where: {
+          id:
+            pendingArticle.id,
+        },
+
+        data: {
+          status:
+            "REJECTED",
+
+          publishError:
+            formatRejectedRecoveryForPersistenceV1(
+              recovery
+            ),
+        },
+      });
+
+
+    /*
+     * Only genuine temporary infrastructure failures bubble to the
+     * HTTP layer for retry behavior.
+     *
+     * The REJECTED attempt has already been persisted.
+     */
+    if (
+      recovery.autoRetryAllowed
+    ) {
       console.warn(
-        "[content generation] temporary provider failure",
+        "[content generation] retryable infrastructure failure",
         {
           briefId:
             brief.id,
@@ -2549,46 +3028,23 @@ export async function generateArticleFromBrief(
           articleId:
             pendingArticle.id,
 
+          failureClass:
+            recovery.failureClass,
+
           message:
-            rawMessage.slice(
+            recovery.message.slice(
               0,
               240
             ),
         }
       );
 
-      await prisma.contentArticle.delete({
-        where: {
-          id:
-            pendingArticle.id,
-        },
-      }).catch(
-        () => undefined
-      );
 
       throw error;
     }
 
-    const message =
-      error instanceof
-      ContentGenerationError
-        ? error.message
-        : "Article generation failed";
 
-    return prisma.contentArticle.update({
-      where: {
-        id:
-          pendingArticle.id,
-      },
-
-      data: {
-        status:
-          "REJECTED",
-
-        publishError:
-          message,
-      },
-    });
+    return rejectedArticle;
   }
 }
 
@@ -2625,8 +3081,6 @@ export async function approveArticle(
   }
 
   if (
-    article.status !==
-      "DRAFT" &&
     article.status !==
       "IN_REVIEW"
   ) {

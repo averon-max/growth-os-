@@ -411,6 +411,17 @@ function unionAuthority(
       );
     }
 
+    /*
+     * SEMANTIC_CRITIC_SOURCE_REFERENCE_ALIAS_V1
+     *
+     * Canonical source references are source.id.
+     *
+     * The semantic model may occasionally echo the exact source URL
+     * visible in authoritative evidence instead of its internal ID.
+     *
+     * Permit ONLY the exact URL of an already-authorized source.
+     * Invented / unrelated URLs remain fail-closed.
+     */
     for (
       const source
       of section.evidenceGraph
@@ -418,6 +429,10 @@ function unionAuthority(
     ) {
       sourceIds.add(
         source.id
+      );
+
+      sourceIds.add(
+        source.url
       );
     }
 
@@ -478,9 +493,11 @@ function sectionAuthority(
       new Set(
         section.evidenceGraph
           .sources
-          .map(
-            (source) =>
-              source.id
+          .flatMap(
+            (source) => [
+              source.id,
+              source.url,
+            ]
           )
       ),
   };

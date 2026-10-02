@@ -127,6 +127,84 @@ describe(
 
 
     it(
+      "does not confuse generic credit-monitoring overlap with section identity",
+      () => {
+        const affinity =
+          evidenceDeferredHeadingAffinityV1(
+            "How credit monitoring works",
+            "What Credit Monitoring Can and Cannot Do"
+          );
+
+
+        expect(
+          affinity
+        ).toBeLessThan(
+          0.70
+        );
+
+
+        const result =
+          resolveEvidenceDeferredMasterScopeV1({
+            blueprints: [
+              {
+                heading:
+                  "How credit monitoring works",
+
+                requiredClaims:
+                  [],
+
+                evidenceIds:
+                  [],
+              },
+
+              {
+                heading:
+                  "Free versus paid credit monitoring",
+
+                requiredClaims:
+                  [],
+
+                evidenceIds:
+                  [],
+              },
+            ],
+
+            deferredSections: [
+              {
+                heading:
+                  "What Credit Monitoring Can and Cannot Do",
+              },
+
+              {
+                heading:
+                  "Free Credit Monitoring vs. Paid Monitoring",
+              },
+            ],
+          });
+
+
+        expect(
+          result.deferredIndexes
+        ).toEqual([
+          1,
+        ]);
+
+        expect(
+          result.deferredSections.map(
+            (
+              section
+            ) =>
+              section.heading
+          )
+        ).toEqual([
+          "Free versus paid credit monitoring",
+        ]);
+      }
+    );
+
+
+
+    it(
       "does not remove an unrelated no-evidence explanatory section",
       () => {
         const result =

@@ -50,6 +50,36 @@ string {
 }
 
 
+
+function stripComments(
+  value: string
+): string {
+  return value
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+
+function inOrder(
+  source: string,
+  markers: readonly string[]
+): boolean {
+  let at = -1;
+
+  for (const marker of markers) {
+    const next = source.indexOf(marker, at + 1);
+
+    if (next < 0) {
+      return false;
+    }
+
+    at = next;
+  }
+
+  return true;
+}
+
+
 describe(
   "Production SERP Replay boundary",
   () => {
@@ -150,17 +180,20 @@ describe(
 
 
     it(
-      "uses persisted runtime and the accepted post-critic writer run",
+      "uses the effective persisted runtime and the accepted post-critic writer run",
       () => {
-        const source =
-          generationFunctionSource();
-
-
-        expect(
-          source
-        ).toMatch(
-          /await executeCompetitiveSerpReplayRepairV2\(\{[\s\S]*runtime:\s*masterRuntimeInspection[\s\S]*\.runtime,[\s\S]*run:\s*acceptedMasterWriterRun,[\s\S]*generator,[\s\S]*siteDomain:\s*serpReplaySiteDomain/
+        const source = generationFunctionSource();
+        const at = source.indexOf(
+          "await executeCompetitiveSerpReplayRepairV2({"
         );
+
+        expect(at).toBeGreaterThanOrEqual(0);
+
+        const call = source.slice(at, at + 1800);
+
+        expect(call).toMatch(/runtime:\s*effectiveMasterRuntime\b/);
+        expect(call).toMatch(/run:\s*acceptedMasterWriterRun\b/);
+        expect(call).toMatch(/siteDomain:\s*serpReplaySiteDomain\b/);
       }
     );
 
@@ -400,34 +433,36 @@ describe(
 
 
     it(
-      "completes replay before final DRAFT persistence",
+      "completes critics and replay before Final Readiness and IN_REVIEW persistence",
       () => {
-        const source =
-          generationFunctionSource();
-
-
-        const replay =
-          source.indexOf(
-            "await executeCompetitiveSerpReplayRepairV2({"
-          );
-
-        const draft =
-          source.lastIndexOf(
-            '"DRAFT"'
-          );
-
-
-        expect(
-          replay
-        ).toBeGreaterThanOrEqual(
-          0
+        const source = generationFunctionSource();
+        const readiness = source.indexOf(
+          "FINAL_ARTICLE_READINESS_PRODUCTION_AUTHORITY_V1"
         );
 
+        expect(readiness).toBeGreaterThanOrEqual(0);
+
         expect(
-          draft
-        ).toBeGreaterThan(
-          replay
-        );
+          inOrder(source, [
+            "await executeMasterWriterV1({",
+            "await executeMasterArticleCriticsV1({",
+            "await executeMasterArticleCriticRepairReplayV1({",
+            "await executeCompetitiveSerpReplayRepairV2({",
+            "FINAL_ARTICLE_READINESS_PRODUCTION_AUTHORITY_V1",
+          ])
+        ).toBe(true);
+
+        expect(source.lastIndexOf("IN_REVIEW")).toBeGreaterThan(readiness);
+      }
+    );
+
+
+    it(
+      "order helper rejects an inverted lifecycle (mutation sanity)",
+      () => {
+        expect(inOrder("A B", ["A", "B"])).toBe(true);
+        expect(inOrder("B A", ["A", "B"])).toBe(false);
+        expect(inOrder("A", ["A", "B"])).toBe(false);
       }
     );
   }

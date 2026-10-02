@@ -56,11 +56,9 @@ describe(
     it(
       "supports an explicit alternate-provider recovery path",
       () => {
-        expect(
-          generatorSource
-        ).toContain(
-          "STRUCTURED_RECOVERY_ALTERNATE_PROVIDER_V1"
-        );
+        expect(generatorSource).toContain("CONTENT_AI_FAILOVER_V1");
+
+        expect(generatorSource).toContain("GENERATOR_PROVIDER_FAILOVER_V2");
 
         expect(
           generatorSource
@@ -77,7 +75,7 @@ describe(
         expect(
           generatorSource
         ).toContain(
-          "structured recovery forcing alternate provider: Groq"
+          "structured recovery forcing alternate provider: OpenAI"
         );
       }
     );

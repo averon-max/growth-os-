@@ -57,6 +57,36 @@ string {
 }
 
 
+
+function stripComments(
+  value: string
+): string {
+  return value
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+
+function inOrder(
+  source: string,
+  markers: readonly string[]
+): boolean {
+  let at = -1;
+
+  for (const marker of markers) {
+    const next = source.indexOf(marker, at + 1);
+
+    if (next < 0) {
+      return false;
+    }
+
+    at = next;
+  }
+
+  return true;
+}
+
+
 describe(
   "Production Competitive SERP Replay V2",
   () => {
@@ -87,16 +117,24 @@ describe(
 
 
     it(
-      "passes exact persisted runtime and accepted writer run",
+      "passes the effective persisted runtime and accepted writer run",
       () => {
-        const source =
-          generation();
+        const source = generation();
+        const at = source.indexOf(
+          "await executeCompetitiveSerpReplayRepairV2({"
+        );
 
+        expect(at).toBeGreaterThanOrEqual(0);
 
-        expect(
-          source
-        ).toMatch(
-          /executeCompetitiveSerpReplayRepairV2\(\{[\s\S]*contract:\s*articleGenerationContract,[\s\S]*runtime:\s*masterRuntimeInspection[\s\S]*\.runtime,[\s\S]*run:\s*acceptedMasterWriterRun,[\s\S]*context:\s*masterCriticContext/
+        const call = source.slice(at, at + 1800);
+
+        expect(call).toMatch(/contract:\s*articleGenerationContract\b/);
+        expect(call).toMatch(/runtime:\s*effectiveMasterRuntime\b/);
+        expect(call).toMatch(/run:\s*acceptedMasterWriterRun\b/);
+        expect(call).toMatch(/context:\s*masterCriticContext\b/);
+
+        expect(source.slice(at, at + 4000)).toMatch(
+          /acceptedMasterWriterRun\s*=\s*[\s\S]{0,60}competitiveReplayExecution\s*\.run/
         );
       }
     );
@@ -202,52 +240,25 @@ describe(
 
 
     it(
-      "does not contain whole article competitive rewrite",
+      "contains no executable whole-article rewrite after the Master Writer",
       () => {
-        const executor =
-          readFileSync(
-            join(
-              process.cwd(),
-              "src/lib/content/competitive-serp-replay-execution-v2.ts"
-            ),
-            "utf8"
-          );
-
-
-        expect(
-          executor
-        ).not.toContain(
-          "rewriteArticle("
+        const executor = readFileSync(
+          join(
+            process.cwd(),
+            "src/lib/content/competitive-serp-replay-execution-v2.ts"
+          ),
+          "utf8"
         );
 
+        expect(executor).not.toContain("rewriteArticle(");
+        expect(executor).not.toContain("generateArticle(");
 
-        expect(
-          executor
-        ).not.toContain(
-          "generateArticle("
-        );
+        const source = stripComments(generation());
+        const writer = source.indexOf("await executeMasterWriterV1({");
 
-
-        /*
-         * service.ts still retains the disabled legacy review
-         * implementation for compatibility, but Competitive Replay
-         * must never enable that path.
-         */
-        const source =
-          generation();
-
-
-        expect(
-          source
-        ).toContain(
-          "const allowLegacyWholeArticleRewrite ="
-        );
-
-        expect(
-          source
-        ).toContain(
-          "false as const"
-        );
+        expect(writer).toBeGreaterThanOrEqual(0);
+        expect(source.slice(writer)).not.toContain("rewriteArticle(");
+        expect(source).not.toContain("allowLegacyWholeArticleRewrite");
       }
     );
   }

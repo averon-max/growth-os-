@@ -783,7 +783,7 @@ async function callGeminiBatch(
       try {
         const response =
           await fetch(
-            `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`,
+            `${GEMINI_API_BASE}/models/${model}:generateContent`,
             {
               method:
                 "POST",
@@ -793,7 +793,7 @@ async function callGeminiBatch(
 
               headers: {
                 "Content-Type":
-                  "application/json",
+                  "application/json", "x-goog-api-key": apiKey,
               },
 
               body:

@@ -7,6 +7,12 @@ import {
 } from "./generator";
 
 
+import {
+  isMediaRequirementReadyV1,
+  parseMediaRequirementsV1,
+} from "./media-requirements-v1";
+
+
 export interface GeneratedSectionCandidateV1 {
   bodyMarkdown:
     string;
@@ -529,6 +535,60 @@ export function finalizeGeneratedSectionV1({
       0
       ? blueprintAssetRaw.trim()
       : null;
+
+  /*
+   * MEDIA_REQUIREMENTS_WRITER_ENFORCEMENT_V1
+   *
+   * The Writer may receive a planned Original Value asset,
+   * but proof media is not considered real until upstream
+   * verification marks the MediaRequirement READY.
+   */
+  const contractRecord =
+    record(
+      contract
+    );
+
+
+  const executionAuthority =
+    record(
+      contractRecord
+        ?.executionPlanAuthority
+    );
+
+
+  const mediaRequirements =
+    parseMediaRequirementsV1(
+      executionAuthority
+        ?.mediaRequirements
+    );
+
+
+  if (
+    assetUsed !==
+      null
+  ) {
+    const mediaRequirement =
+      mediaRequirements.find(
+        (
+          requirement
+        ) =>
+          requirement.assetId ===
+          assetUsed
+      );
+
+
+    if (
+      mediaRequirement &&
+      !isMediaRequirementReadyV1(
+        mediaRequirement
+      )
+    ) {
+      throw new ContentGenerationError(
+        `SECTION_GENERATION_UNVERIFIED_MEDIA_ASSET_USED:${assetUsed}`
+      );
+    }
+  }
+
 
   assertSubset({
     actual:

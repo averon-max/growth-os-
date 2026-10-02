@@ -81,6 +81,116 @@ function sentences(
     );
 }
 
+/*
+ * RANKING_CONTEXT_CLASSIFIER_V1
+ *
+ * The lexical ranking markers below intentionally remain broad:
+ * best / top N / leading / most popular / etc.
+ *
+ * But a sentence that explicitly rejects a universal ranking,
+ * or states that the "best" choice depends on user-specific
+ * criteria, is not itself an external ranking assertion.
+ *
+ * This exemption is deliberately narrow. It does NOT exempt:
+ *
+ *   "X is the best service."
+ *   "The top 3 services are A, B and C."
+ *   "X is a leading provider."
+ *   "A, B and C are widely recognized platforms."
+ */
+function isNonRankingContextStatement(
+  sentence:
+    string
+): boolean {
+  const value =
+    sentence
+      .replace(
+        /[“”]/g,
+        '"'
+      )
+      .replace(
+        /[‘’]/g,
+        "'"
+      )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+
+
+  /*
+   * "The best option depends on your needs/scope/context..."
+   *
+   * This says no universal winner exists; the selection is
+   * conditional on user-specific criteria.
+   */
+  if (
+    /\bbest\b.{0,120}\bdepends?\s+on\b/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+
+  /*
+   * Explicit rejection of a universal ranking:
+   *
+   * "there is no universal best..."
+   * "there is no single best..."
+   * "no single service is best..."
+   */
+  if (
+    /\b(?:there\s+(?:is|are)\s+)?no\s+(?:single\s+|universal\s+)*(?:best|top\s+\d+)\b/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+
+  if (
+    /\bno\s+(?:single\s+)?(?:service|provider|product|option|choice|tool|platform)\s+is\s+(?:the\s+)?best\b/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+
+  /*
+   * "rather than a universal top three"
+   * "instead of a universal best"
+   */
+  if (
+    /\b(?:rather\s+than|instead\s+of)\s+(?:an?\s+)?(?:single\s+|universal\s+)*(?:best|top\s+\d+)\b/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+
+  /*
+   * Direct negation:
+   *
+   * "not the best for everyone"
+   * "isn't universally the best"
+   */
+  if (
+    /\b(?:is|are|was|were|isn't|aren't|isnt|arent)\s+not?\s+(?:universally\s+)?(?:the\s+)?best\b/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+
+  return false;
+}
+
+
 const RULES:
   Array<{
     code:
@@ -186,6 +296,24 @@ export function auditExternalEvidenceClaims(
       ) {
         continue;
       }
+
+
+      /*
+       * EXTERNAL_RANKING_FALSE_POSITIVE_GUARD_V1
+       *
+       * Only the ranking rule receives this exemption.
+       * Price/legal/absolute evidence requirements are unchanged.
+       */
+      if (
+        rule.code ===
+          "EXTERNAL_RANKING_REQUIRES_EVIDENCE" &&
+        isNonRankingContextStatement(
+          sentence
+        )
+      ) {
+        continue;
+      }
+
 
       const support =
         findExternalEvidenceSupport({

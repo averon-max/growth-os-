@@ -192,10 +192,49 @@ export function inspectProductionMasterRuntimePlan(
     );
 
 
+  /*
+   * CLAIM_GATE_DEFERRED_TO_PUBLICATION_SCOPE_V1
+   *
+   * The Master Runtime adapter intentionally distinguishes:
+   *
+   * STRUCTURAL INVALIDITY
+   * -> runtime = null
+   *
+   * WRITER/PUBLICATION CLAIM BLOCK
+   * -> readiness = BLOCKED
+   * -> runtime remains fully persisted
+   *
+   * Claim publication blockers must survive into the later
+   * publication-evidence section scope where unsupported
+   * sections are removed before Writer execution.
+   *
+   * Do NOT soften:
+   * - MASTER_RUNTIME_NO_GO
+   * - MASTER_RUNTIME_ORIGINAL_VALUE_BLOCKED
+   * - structural / hydration / fingerprint failures
+   */
+  const claimGateOnlyBlockedRuntime =
+    Boolean(
+      masterInspection.runtime
+    ) &&
+    masterInspection.readiness ===
+      "BLOCKED" &&
+    masterInspection.blockers.length >
+      0 &&
+    masterInspection.blockers.every(
+      (blocker) =>
+        blocker ===
+        "MASTER_RUNTIME_CLAIM_GATE_BLOCKED"
+    );
+
+
   if (
-    masterInspection.readiness !==
-      "READY" ||
-    !masterInspection.runtime
+    !masterInspection.runtime ||
+    (
+      masterInspection.readiness !==
+        "READY" &&
+      !claimGateOnlyBlockedRuntime
+    )
   ) {
     blockers.push(
       "MASTER_RUNTIME_INVALID"

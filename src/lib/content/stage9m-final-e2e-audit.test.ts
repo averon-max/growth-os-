@@ -277,17 +277,48 @@ describe(
           );
 
 
+        /*
+         * MASTER_WRITER_LEGACY_REVIEW_BYPASS_V1
+         *
+         * The legacy whole-article rewrite switch no longer exists.
+         * Production Master Writer output must flow directly into
+         * deterministic downstream gates.
+         */
+        expect(
+          generation
+        ).toContain(
+          "MASTER_WRITER_LEGACY_REVIEW_BYPASS_V1"
+        );
+
         expect(
           generation
         ).toMatch(
-          /const\s+allowLegacyWholeArticleRewrite\s*=\s*false\s+as\s+const/
+          /const\s+repaired\s*=\s*reviewedArticle\s*;/
+        );
+
+        expect(
+          generation
+        ).not.toMatch(
+          /await\s+rewriteArticle\s*\(/
+        );
+
+        expect(
+          generation
+        ).not.toMatch(
+          /await\s+critiqueArticle\s*\(/
         );
 
 
         expect(
           generation
-        ).not.toMatch(
-          /allowLegacyWholeArticleRewrite\s*&&\s*shouldRewriteArticle\([^)]*\)\s*\|\|/
+        ).toContain(
+          "MASTER_WRITER_LEGACY_REVIEW_BYPASS_V1"
+        );
+
+        expect(
+          generation
+        ).toMatch(
+          /const\s+repaired\s*=\s*reviewedArticle\s*;/
         );
       }
     );

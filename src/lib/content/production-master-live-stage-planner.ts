@@ -1,4 +1,26 @@
 import {
+  ARTICLE_TEMPLATE_POLICIES_V1,
+  selectArticleTemplateV1,
+  type ArticleTemplateIdV1,
+  type ArticleSectionRoleV1,
+  type ArticleTemplatePolicyV1,
+} from "./article-template-policy-v1";
+
+import {
+  assertTemplateCoverageV1,
+} from "./template-coverage-validator-v1";
+
+import {
+  assertProductionTemplateEvidenceGateV1,
+} from "./production-template-evidence-gate-v1";
+
+
+import {
+  buildRiskProfilePromptV1,
+  deriveContentRiskProfileV1,
+} from "./content-risk-profile-v1";
+
+import {
   callContentAiJson,
 } from "./gemini-generator";
 
@@ -27,6 +49,21 @@ import {
 } from "./production-original-value-planner";
 
 import {
+  buildInternalLinkSelectionV1,
+} from "./internal-link-planner-v1";
+
+
+import {
+  buildMediaRequirementsForAssignedAssetV1,
+} from "./media-requirements-v1";
+
+
+import {
+  applyCompetitorInformationGainV1,
+  buildCompetitorInformationGainV1,
+} from "./competitor-information-gain-v1";
+
+import {
   buildProductionMasterLiveSourceBundle,
   type ProductionMasterLiveStageContract,
 } from "./production-master-live-research-assembler";
@@ -34,6 +71,11 @@ import {
 import type {
   ProductionMasterArtifactPipelineInput,
 } from "./production-master-artifact-builders";
+
+import {
+  buildArticleExecutionPlanV1,
+  type ArticleExecutionPlanV1,
+} from "./article-execution-plan-v1";
 
 import type {
   ExplicitSearchMissionInput,
@@ -73,6 +115,7 @@ import {
   enrichLiveEvidenceGraphV1,
   assignVerifiedEvidenceToSectionsV1,
   assignVerifiedEvidenceToExplicitSectionsV2,
+  discoverClaimEvidenceFallbackSourcesV1,
 } from "./live-evidence-verification";
 
 
@@ -118,6 +161,16 @@ export interface ProductionMasterLiveStagePlanMissionInput {
   location: string;
   riskClass: ExplicitSearchMissionInput["riskClass"];
   missionIntent: QueryIntent;
+
+  /*
+   * Optional explicit user choice from Create Content.
+   * null/undefined = AUTO.
+   *
+   * This guides planning only.
+   * ArticleExecutionPlan remains the structural authority.
+   */
+  templateOverride?:
+    ArticleTemplateIdV1 | null;
 }
 
 
@@ -125,6 +178,15 @@ export interface ProductionMasterLiveStagePlanResult {
   masterArtifacts: ProductionMasterArtifactPipelineInput;
   searchMissionInput: ExplicitSearchMissionInput;
   research: Readonly<ProductionMasterLiveSourceResearch>;
+
+  /*
+   * ARTICLE_EXECUTION_PLAN_V1
+   *
+   * Single topic-agnostic execution contract produced from the
+   * same live Stage Plan + verified evidence that created
+   * Master Runtime.
+   */
+  articleExecutionPlan: Readonly<ArticleExecutionPlanV1>;
 }
 
 
@@ -167,10 +229,10 @@ async function callGeminiForStagePlan(prompt: string): Promise<string> {
 
     try {
       const response = await fetch(
-        `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`,
+        `${GEMINI_API_BASE}/models/${model}:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
@@ -297,6 +359,16 @@ interface StagePlanSectionDecision {
   mission: string;
   expectedOutcome: string;
   queries: string[];
+  topics: string[];
+  questions: string[];
+
+  /*
+   * Semantic classification only.
+   * ArticleExecutionPlan remains structural authority.
+   */
+  roles:
+    ArticleSectionRoleV1[];
+
   requiredClaimIds: string[];
 }
 
@@ -310,6 +382,52 @@ interface StagePlanModelOutput {
   topics: StagePlanTopicDecision[];
   claims: StagePlanClaimDecision[];
   sections: StagePlanSectionDecision[];
+}
+
+
+function resolveSelectedTemplatePolicyV1({
+  research,
+  mission,
+}: {
+  research:
+    Readonly<ProductionMasterLiveSourceResearch>;
+
+  mission:
+    ProductionMasterLiveStagePlanMissionInput;
+}): Readonly<ArticleTemplatePolicyV1> {
+  return mission.templateOverride
+    ? ARTICLE_TEMPLATE_POLICIES_V1[
+        mission.templateOverride
+      ]
+    : selectArticleTemplateV1({
+        primaryQuery:
+          research.keyword,
+
+        intent:
+          String(
+            mission.missionIntent
+          ),
+
+        hasGeoIntent:
+          String(
+            mission.missionIntent
+          ).toUpperCase() ===
+          "LOCAL",
+
+        /*
+         * Ranking claims remain fail-closed until real
+         * ranking methodology evidence is wired.
+         */
+        rankingEvidenceAvailable:
+          false,
+
+        /*
+         * Review first-party experience is proven later by
+         * Original Value assets, not inferred from the query.
+         */
+        firstPartyExperienceAvailable:
+          false,
+      });
 }
 
 
@@ -328,6 +446,60 @@ function buildStagePlanPrompt({
     )
     .join("\n");
 
+  const selectedTemplate =
+    resolveSelectedTemplatePolicyV1({
+      research,
+      mission,
+    });
+
+
+  const riskProfile =
+    deriveContentRiskProfileV1({
+      query:
+        research.keyword,
+
+      riskClass:
+        String(
+          mission.riskClass
+        ),
+    });
+
+
+  const articleTemplatePolicyPrompt =
+    [
+      "ARTICLE_TEMPLATE_POLICY_V1:",
+      `templateId=${selectedTemplate.id}`,
+      `requiredSemanticRoles=${JSON.stringify(selectedTemplate.requiredRoles)}`,
+      `optionalSemanticRoles=${JSON.stringify(selectedTemplate.optionalRoles)}`,
+      `evidenceSensitiveRoles=${JSON.stringify(selectedTemplate.evidenceSensitiveRoles)}`,
+      `h2PlanningRange=${selectedTemplate.h2PlanningRange.min}-${selectedTemplate.h2PlanningRange.max}`,
+      `h3PlanningRange=${selectedTemplate.h3PlanningRange.min}-${selectedTemplate.h3PlanningRange.max}`,
+      "",
+      "CRITICAL TEMPLATE RULES:",
+      "- The template is planning guidance, NOT a second outline authority.",
+      "- Create only distinct information jobs justified by search intent, live SERP evidence, questions, topics, and useful coverage.",
+      "- Required semantic roles may be combined into one section when they represent one information job.",
+      "- Every section MUST declare roles: ArticleSectionRoleV1[] using only roles allowed by this selected template.",
+      "- Across all sections, every requiredSemanticRole MUST be covered at least once.",
+      "- roles are semantic annotations only; they MUST NOT create filler sections or become a parallel outline.",
+      "- Do NOT create filler sections merely to hit the planning range.",
+      "- Do NOT create headings merely to repeat keywords.",
+      "- FAQ is allowed only for real unanswered question jobs.",
+      "- A RANKED_LIST may not invent ranking methodology, scores, winners, popularity, or ordinal claims.",
+      "- A PRODUCT_REVIEW may not invent hands-on testing or first-party experience.",
+      "- Local pages require genuine local relevance; do not create doorway-style geographic filler.",
+      "- The resulting validated ArticleExecutionPlan remains the sole structural authority consumed by Writer.",
+    ].join(
+      "\n"
+    );
+
+
+  const riskProfilePrompt =
+    buildRiskProfilePromptV1(
+      riskProfile
+    );
+
+
   return `You are the production Stage 2-8 research planner for an SEO content system.
 
 You will decide SEMANTICS ONLY. You must NEVER invent numbers (search volume, CPC, impressions, clicks, position, SERP frequency). Those are added by deterministic code from real data after you respond.
@@ -338,6 +510,10 @@ Audience: ${mission.audience}
 Reader goal: ${mission.readerGoal}
 Language: ${mission.language}
 Location: ${mission.location}
+
+${articleTemplatePolicyPrompt}
+
+${riskProfilePrompt}
 
 Real primary keyword observed live: "${research.keyword}"
 
@@ -393,6 +569,9 @@ Respond with JSON only, matching exactly this shape:
       "mission": "one distinct information job, must be unique across sections",
       "expectedOutcome": "what the reader should know/do after this section",
       "queries": ["query strings this section answers, from the queries array"],
+      "topics": ["exact topic strings from the topics array this section owns"],
+      "questions": ["exact question strings from the questions array this section answers"],
+      "roles": ["semantic roles from ARTICLE_TEMPLATE_POLICY_V1 that this section actually performs"],
       "requiredClaimIds": ["claim ids from the claims array this section relies on"]
     }
   ]
@@ -910,12 +1089,12 @@ export async function planProductionMasterArtifactsFromLiveSources({
       "Do NOT join independent factual propositions with 'and' or 'or'. Split them into separate claim records.",
       "A source excerpt must be able to support the WHOLE claim, not merely its general topic.",
       "Prefer the narrowest useful factual proposition.",
-      "Example BAD: Credit monitoring tracks reports and alerts users about new accounts, inquiries, and missed payments.",
-      "Example GOOD claim 1: Credit monitoring services track changes to credit reports.",
-      "Example GOOD claim 2: Credit monitoring services can alert users when information on a credit report changes.",
-      "Example BAD: Free monitoring is offered by banks and consumer websites.",
-      "Example GOOD claim 1: Free credit monitoring options exist.",
-      "Example GOOD claim 2: Some banks offer free credit monitoring tools.",
+      "Example BAD: A service performs action A, performs action B, and produces outcome C.",
+      "Example GOOD claim 1: The service performs action A.",
+      "Example GOOD claim 2: The service performs action B.",
+      "Example BAD: A product is available through provider type A and provider type B.",
+      "Example GOOD claim 1: The product is available through provider type A.",
+      "Example GOOD claim 2: The product is available through provider type B.",
       "If a proposition cannot reasonably be verified from one authoritative excerpt, split it further.",
       "Never invent evidence, source text, provider capabilities, prices, guarantees, statistics, or legal conclusions.",
     ].join(
@@ -936,6 +1115,16 @@ export async function planProductionMasterArtifactsFromLiveSources({
       "A comparison claim belongs only to the comparison section.",
       "Do not assign one claim to multiple sections.",
       "Use requiredClaimIds: [] when a section needs no material factual claim.",
+      "If a section uses any role listed by ARTICLE_TEMPLATE_POLICY_V1 as evidenceSensitiveRoles, requiredClaimIds MUST contain at least one material factual claim owned by that section.",
+      "If no supportable material claim exists for an OPTIONAL evidence-sensitive role, OMIT that optional role instead of inventing a claim.",
+      "SECTION_COVERAGE_OWNERSHIP_V1:",
+      "Every plan.topics item MUST be owned by exactly one plan.sections item through sections[].topics.",
+      "Every plan.questions item MUST be owned by exactly one plan.sections item through sections[].questions.",
+      "sections[].topics MUST contain only exact topic strings from plan.topics.",
+      "sections[].questions MUST contain only exact strings from plan.questions.",
+      "One section may own multiple related topics/questions when they form one information job.",
+      "Do not duplicate the same topic/question across multiple sections.",
+      "Do not create an extra section merely to repeat a keyword variation.",
       "Do not invent a claim merely so every section has one.",
     ].join(
       "\n"
@@ -1190,19 +1379,123 @@ export async function planProductionMasterArtifactsFromLiveSources({
       missing.push(
         "sections"
       );
-    } else if (
-      candidate.sections.some(
-        (
-          section
-        ) =>
-          !Array.isArray(
-            section.requiredClaimIds
-          )
-      )
-    ) {
-      missing.push(
-        "sections[].requiredClaimIds"
-      );
+    } else {
+      if (
+        candidate.sections.some(
+          (
+            section
+          ) =>
+            !Array.isArray(
+              section.requiredClaimIds
+            )
+        )
+      ) {
+        missing.push(
+          "sections[].requiredClaimIds"
+        );
+      }
+
+
+      /*
+       * TEMPLATE_ROLE_COMPLETENESS_RECOVERY_V1
+       *
+       * roles[] is now part of the Stage Plan semantic contract.
+       * Missing roles must enter the same single bounded recovery
+       * used for other incomplete structured output.
+       *
+       * Do not wait until the later deterministic template gate
+       * to throw away an otherwise recoverable planning response.
+       */
+      if (
+        candidate.sections.some(
+          (
+            section
+          ) =>
+            !Array.isArray(
+              section.roles
+            )
+        )
+      ) {
+        missing.push(
+          "sections[].roles"
+        );
+      }
+      /*
+       * EVIDENCE_SENSITIVE_ROLE_CLAIM_COMPLETENESS_RECOVERY_V1
+       *
+       * Optional template roles remain optional.
+       *
+       * However, once the semantic planner chooses an
+       * evidence-sensitive role, that section must explicitly own
+       * at least one material factual claim through requiredClaimIds.
+       *
+       * Do not synthesize a claim here.
+       * Do not silently remove the role here.
+       *
+       * Treat the structured response as incomplete and route it
+       * through the EXISTING single bounded Stage Plan regeneration.
+       */
+      const evidenceSensitiveRoles =
+        new Set(
+          resolveSelectedTemplatePolicyV1({
+            research,
+            mission,
+          }).evidenceSensitiveRoles
+        );
+
+
+      if (
+        candidate.sections.some(
+          (
+            section
+          ) =>
+            Array.isArray(
+              section.roles
+            ) &&
+            section.roles.some(
+              (
+                role
+              ) =>
+                evidenceSensitiveRoles.has(
+                  role
+                )
+            ) &&
+            Array.isArray(
+              section.requiredClaimIds
+            ) &&
+            section.requiredClaimIds.length ===
+              0
+        )
+      ) {
+        missing.push(
+          "sections[].evidenceSensitiveRole.requiredClaimIds"
+        );
+      }
+
+      /*
+       * TEMPLATE_H2_PLANNING_MINIMUM_RECOVERY_V1
+       *
+       * The selected template owns the structural floor for
+       * independent search intents. An under-structured plan is
+       * incomplete structured output and uses the EXISTING single
+       * bounded Stage Plan regeneration BEFORE the Writer runs.
+       *
+       * No new planner, prompt family or LLM path.
+       */
+      const templateH2Minimum =
+        resolveSelectedTemplatePolicyV1({
+          research,
+          mission,
+        }).h2PlanningRange.min;
+
+      if (
+        candidate.sections.length <
+        templateH2Minimum
+      ) {
+        missing.push(
+          `sections (selected template requires at least ${templateH2Minimum} independent H2 sections; received ${candidate.sections.length}; cover every required topic/question with its own section)`
+        );
+      }
     }
 
     return missing;
@@ -1440,7 +1733,10 @@ export async function planProductionMasterArtifactsFromLiveSources({
 
         "claims must exist. It may be [] only when no material factual claims are required.",
 
+        "Every section must contain roles: string[] using the selected ARTICLE_TEMPLATE_POLICY_V1 semantic-role vocabulary.",
         "Every section must contain requiredClaimIds: string[].",
+        "If a section uses an evidenceSensitiveRole from ARTICLE_TEMPLATE_POLICY_V1, that section must own at least one material factual claim through requiredClaimIds.",
+        "If no supportable material claim exists for an OPTIONAL evidence-sensitive role, omit that optional role instead of inventing a claim.",
         "Each claim id may appear in requiredClaimIds of AT MOST ONE section. Never assign the same claim to multiple sections.",
 
         "Every requiredClaimId must exactly equal one claims[].id.",
@@ -1524,6 +1820,408 @@ export async function planProductionMasterArtifactsFromLiveSources({
       `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
     );
   }
+
+  /*
+   * REQUIRED_COVERAGE_OWNERSHIP_V1
+   *
+   * The model may identify information jobs.
+   * It may NOT allow them to disappear between Research and Writer.
+   *
+   * Identity is exact-string based here on purpose:
+   * no fuzzy lexical assignment,
+   * no topic-specific heuristics,
+   * no post-hoc guessing.
+   */
+  const plannedTopicLabels =
+    plan.topics.map(
+      (
+        topic
+      ) =>
+        topic.topic.trim()
+    );
+
+
+  const plannedQuestions =
+    [
+      ...new Set(
+        plan.questions
+          .map(
+            (
+              question
+            ) =>
+              question.trim()
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+
+  const knownTopicLabels =
+    new Set(
+      plannedTopicLabels
+    );
+
+
+  const knownQuestions =
+    new Set(
+      plannedQuestions
+    );
+
+
+  const topicOwnerCount =
+    new Map<
+      string,
+      number
+    >(
+      plannedTopicLabels.map(
+        (
+          topic
+        ) => [
+          topic,
+          0,
+        ]
+      )
+    );
+
+
+  const questionOwnerCount =
+    new Map<
+      string,
+      number
+    >(
+      plannedQuestions.map(
+        (
+          question
+        ) => [
+          question,
+          0,
+        ]
+      )
+    );
+
+
+  for (
+    const [
+      sectionIndex,
+      section,
+    ]
+    of plan.sections.entries()
+  ) {
+    if (
+      !Array.isArray(
+        section.topics
+      )
+    ) {
+      throw new ProductionMasterLiveStagePlanError(
+        "LIVE_STAGE_PLAN_SECTION_TOPICS_REQUIRED",
+        `Section ${sectionIndex} must provide topics: string[].`
+      );
+    }
+
+
+    if (
+      !Array.isArray(
+        section.questions
+      )
+    ) {
+      throw new ProductionMasterLiveStagePlanError(
+        "LIVE_STAGE_PLAN_SECTION_QUESTIONS_REQUIRED",
+        `Section ${sectionIndex} must provide questions: string[].`
+      );
+    }
+
+
+    const ownedTopics =
+      [
+        ...new Set(
+          section.topics.map(
+            (
+              topic
+            ) =>
+              typeof topic ===
+                "string"
+                ? topic.trim()
+                : ""
+          )
+        ),
+      ].filter(Boolean);
+
+
+    const ownedQuestions =
+      [
+        ...new Set(
+          section.questions.map(
+            (
+              question
+            ) =>
+              typeof question ===
+                "string"
+                ? question.trim()
+                : ""
+          )
+        ),
+      ].filter(Boolean);
+
+
+    for (
+      const topic
+      of ownedTopics
+    ) {
+      if (
+        !knownTopicLabels.has(
+          topic
+        )
+      ) {
+        throw new ProductionMasterLiveStagePlanError(
+          "LIVE_STAGE_PLAN_SECTION_UNKNOWN_TOPIC",
+          `Section ${sectionIndex} references unknown topic: ${topic}`
+        );
+      }
+
+
+      topicOwnerCount.set(
+        topic,
+        (
+          topicOwnerCount.get(
+            topic
+          ) ??
+          0
+        ) +
+        1
+      );
+    }
+
+
+    for (
+      const question
+      of ownedQuestions
+    ) {
+      if (
+        !knownQuestions.has(
+          question
+        )
+      ) {
+        throw new ProductionMasterLiveStagePlanError(
+          "LIVE_STAGE_PLAN_SECTION_UNKNOWN_QUESTION",
+          `Section ${sectionIndex} references unknown question: ${question}`
+        );
+      }
+
+
+      questionOwnerCount.set(
+        question,
+        (
+          questionOwnerCount.get(
+            question
+          ) ??
+          0
+        ) +
+        1
+      );
+    }
+  }
+
+
+  for (
+    const [
+      topic,
+      owners,
+    ]
+    of topicOwnerCount
+  ) {
+    if (
+      owners !==
+      1
+    ) {
+      throw new ProductionMasterLiveStagePlanError(
+        owners ===
+          0
+          ? "LIVE_STAGE_PLAN_REQUIRED_TOPIC_UNOWNED"
+          : "LIVE_STAGE_PLAN_REQUIRED_TOPIC_MULTIPLE_OWNERS",
+        `${topic}:owners=${owners}`
+      );
+    }
+  }
+
+
+  for (
+    const [
+      question,
+      owners,
+    ]
+    of questionOwnerCount
+  ) {
+    if (
+      owners !==
+      1
+    ) {
+      throw new ProductionMasterLiveStagePlanError(
+        owners ===
+          0
+          ? "LIVE_STAGE_PLAN_REQUIRED_QUESTION_UNOWNED"
+          : "LIVE_STAGE_PLAN_REQUIRED_QUESTION_MULTIPLE_OWNERS",
+        `${question}:owners=${owners}`
+      );
+    }
+  }
+
+
+
+  /*
+   * TEMPLATE_COVERAGE_PRODUCTION_GATE_V1
+   *
+   * Stage Plan remains the semantic planner.
+   * ArticleExecutionPlan remains the sole structural authority.
+   *
+   * This gate only proves that the selected template's semantic
+   * jobs are represented before the structural plan is compiled.
+   */
+  const selectedTemplatePolicy =
+    resolveSelectedTemplatePolicyV1({
+      research,
+      mission,
+    });
+
+
+  const allowedTemplateRoles =
+    new Set<ArticleSectionRoleV1>([
+      ...selectedTemplatePolicy
+        .requiredRoles,
+
+      ...selectedTemplatePolicy
+        .optionalRoles,
+
+      ...selectedTemplatePolicy
+        .evidenceSensitiveRoles,
+    ]);
+
+
+  const templateCoverageSections =
+    plan.sections.map(
+      (
+        section,
+        sectionIndex
+      ) => {
+        const rawRoles =
+          (
+            section as
+              typeof section & {
+                roles?:
+                  unknown;
+              }
+          ).roles;
+
+
+        if (
+          !Array.isArray(
+            rawRoles
+          )
+        ) {
+          throw new ProductionMasterLiveStagePlanError(
+            "LIVE_STAGE_PLAN_SECTION_ROLES_REQUIRED",
+            `Section ${sectionIndex} must provide roles: string[].`
+          );
+        }
+
+
+        const roles:
+          ArticleSectionRoleV1[] =
+            [];
+
+
+        for (
+          const value
+          of rawRoles
+        ) {
+          if (
+            typeof value !==
+              "string" ||
+            !allowedTemplateRoles.has(
+              value as
+                ArticleSectionRoleV1
+            )
+          ) {
+            throw new ProductionMasterLiveStagePlanError(
+              "LIVE_STAGE_PLAN_SECTION_ROLE_INVALID",
+              `Section ${sectionIndex} contains an invalid template role: ${String(value)}`
+            );
+          }
+
+
+          roles.push(
+            value as
+              ArticleSectionRoleV1
+          );
+        }
+
+
+        const requiredClaimIds =
+          Array.isArray(
+            section.requiredClaimIds
+          )
+            ? section
+                .requiredClaimIds
+                .filter(
+                  (
+                    value
+                  ): value is string =>
+                    typeof value ===
+                      "string" &&
+                    value.trim()
+                      .length >
+                      0
+                )
+            : [];
+
+
+        return {
+          heading:
+            section.heading,
+
+          mission:
+            section.mission,
+
+          roles: [
+            ...new Set(
+              roles
+            ),
+          ],
+
+          requiredClaimIds: [
+            ...new Set(
+              requiredClaimIds
+            ),
+          ],
+        };
+      }
+    );
+
+
+  let templateCoverage;
+
+  try {
+    templateCoverage =
+      assertTemplateCoverageV1({
+        policy:
+          selectedTemplatePolicy,
+
+        sections:
+          templateCoverageSections,
+      });
+  } catch (
+    cause
+  ) {
+    throw new ProductionMasterLiveStagePlanError(
+      "LIVE_STAGE_PLAN_TEMPLATE_COVERAGE_FAILED",
+      cause instanceof
+        Error
+        ? cause.message
+        : String(
+            cause
+          )
+    );
+  }
+
 
   // ---- Stage 2: observed-query-locked signals ----
   /*
@@ -1862,8 +2560,79 @@ export async function planProductionMasterArtifactsFromLiveSources({
     expectedCoverageTopics.map((t) => normalizeText(t.topic))
   );
 
+  /*
+   * COMPETITOR_INFORMATION_GAIN_V1_PRODUCTION
+   *
+   * Uses already-fetched live SERP competitor pages.
+   *
+   * ZERO additional network calls.
+   * ZERO LLM calls.
+   * ZERO new query/topic identities.
+   *
+   * Only two existing fields may become more deterministic:
+   *
+   * - competitorCoverage
+   * - originalValueOpportunity
+   *
+   * clarity / evidence / action remain semantic because DOM
+   * structure alone cannot prove those judgments.
+   */
+  const competitorInformationGain =
+    buildCompetitorInformationGainV1({
+      competitors:
+        research
+          .serpIntelligence
+          .competitors,
+
+      topics:
+        plan.topics.map(
+          (
+            topic
+          ) =>
+            topic.topic
+        ),
+    });
+
+
+  const deterministicTopicOpportunities =
+    applyCompetitorInformationGainV1({
+      opportunities:
+        plan.topics,
+
+      informationGain:
+        competitorInformationGain,
+    });
+
+
+  console.info(
+    "[content competitive intelligence] information gain",
+    {
+      version:
+        competitorInformationGain
+          .version,
+
+      confidence:
+        competitorInformationGain
+          .confidence,
+
+      fetchedPages:
+        competitorInformationGain
+          .fingerprints
+          .length,
+
+      informationGainTopics:
+        competitorInformationGain
+          .informationGainTopics,
+
+      assetCoverage:
+        competitorInformationGain
+          .assetCoverage,
+    }
+  );
+
+
   const gapObservations: ProductionMasterArtifactPipelineInput["gaps"]["observations"] =
-    plan.topics
+    deterministicTopicOpportunities
       .filter((t) => expectedTopicSet.has(normalizeText(t.topic)))
       .map((t) => ({
         topic: t.topic.trim(),
@@ -1890,8 +2659,84 @@ export async function planProductionMasterArtifactsFromLiveSources({
           .serpCoverage,
 
       opportunities:
-        plan.topics,
+        deterministicTopicOpportunities,
     });
+
+
+  /*
+   * PRODUCTION_TEMPLATE_EVIDENCE_AND_LINKABILITY_GATE_V1
+   *
+   * Reuses the EXISTING Original Value authority.
+   * It does not create a second original-value plan.
+   *
+   * Current rankingEvidenceAvailable=false is intentionally
+   * fail-closed until real methodology evidence exists.
+   */
+  let productionTemplateEvidenceGate;
+
+  try {
+    productionTemplateEvidenceGate =
+      assertProductionTemplateEvidenceGateV1({
+        policy:
+          selectedTemplatePolicy,
+
+        templateCoverage,
+
+        rankingEvidenceAvailable:
+          false,
+
+        location:
+          mission.location,
+
+        originalValueAssets:
+          originalValuePlan
+            .input
+            .assets,
+      });
+  } catch (
+    cause
+  ) {
+    throw new ProductionMasterLiveStagePlanError(
+      "LIVE_STAGE_PLAN_TEMPLATE_EVIDENCE_GATE_FAILED",
+      cause instanceof
+        Error
+        ? cause.message
+        : String(
+            cause
+          )
+    );
+  }
+
+
+  console.info(
+    "[content stage planner] template/linkability gate",
+    {
+      template:
+        selectedTemplatePolicy.id,
+
+      templateCoverage:
+        templateCoverage.status,
+
+      linkability:
+        productionTemplateEvidenceGate
+          .linkability
+          .status,
+
+      plannedLinkableAssets:
+        productionTemplateEvidenceGate
+          .linkability
+          .plannedLinkableAssetIds,
+
+      verifiedLinkableAssets:
+        productionTemplateEvidenceGate
+          .linkability
+          .verifiedLinkableAssetIds,
+
+      warnings:
+        productionTemplateEvidenceGate
+          .warnings,
+    }
+  );
 
 
   // ---- Stage 7A/7B: evidence + claims ----
@@ -1919,7 +2764,22 @@ export async function planProductionMasterArtifactsFromLiveSources({
     );
 
 
-  const evidenceGraphInput =
+  /*
+   * BOUNDED_CLAIM_EVIDENCE_RECOVERY_V1
+   *
+   * Pass 1:
+   * use the normal article-level research sources.
+   *
+   * Pass 2:
+   * only claims still lacking SUPPORTS + VERIFIED_EXCERPT
+   * receive bounded claim-specific SERP discovery.
+   *
+   * There is exactly ONE recovery pass.
+   *
+   * Discovery snippets never become evidence. New URLs still
+   * pass through fetchSinglePage + excerpt verification.
+   */
+  const initialEvidenceGraphInput =
     await enrichLiveEvidenceGraphV1({
       graph:
         baseEvidenceGraphInput,
@@ -1927,6 +2787,177 @@ export async function planProductionMasterArtifactsFromLiveSources({
       claims:
         claimsInput,
     });
+
+
+  const initiallyVerifiedClaimIds =
+    new Set(
+      initialEvidenceGraphInput
+        .claimEvidence
+        .filter(
+          (
+            evidence
+          ) =>
+            evidence.kind ===
+              "VERIFIED_EXCERPT" &&
+            evidence.relation ===
+              "SUPPORTS" &&
+            Boolean(
+              evidence.excerpt
+                ?.trim()
+            )
+        )
+        .map(
+          (
+            evidence
+          ) =>
+            evidence.claimId
+        )
+    );
+
+
+  const unresolvedEvidenceClaims =
+    claimsInput.filter(
+      (
+        claim
+      ) =>
+        !initiallyVerifiedClaimIds.has(
+          claim.id
+        )
+    );
+
+
+  const fallbackEvidenceSources =
+    unresolvedEvidenceClaims
+      .length >
+    0
+      ? await discoverClaimEvidenceFallbackSourcesV1({
+          claims:
+            unresolvedEvidenceClaims,
+
+          primaryQuery:
+            research.keyword,
+
+          locationName:
+            research.market
+              .locationName,
+
+          languageName:
+            research.market
+              .languageName,
+
+          existingUrls:
+            initialEvidenceGraphInput
+              .sources
+              .map(
+                (
+                  source
+                ) =>
+                  source.url
+              ),
+        })
+      : [];
+
+
+  const evidenceGraphInput =
+    fallbackEvidenceSources
+      .length ===
+    0
+      ? initialEvidenceGraphInput
+      : await enrichLiveEvidenceGraphV1({
+          /*
+           * New claim-specific discovery sources are intentionally
+           * first. fetchSourceBodies() remains bounded, and Pass 1
+           * has already examined the normal article-level sources.
+           */
+          graph: {
+            sources: [
+              ...fallbackEvidenceSources,
+              ...initialEvidenceGraphInput
+                .sources,
+            ],
+
+            claimEvidence: [
+              ...initialEvidenceGraphInput
+                .claimEvidence,
+            ],
+          },
+
+          claims:
+            unresolvedEvidenceClaims,
+        });
+
+
+  const finallyVerifiedClaimIds =
+    new Set(
+      evidenceGraphInput
+        .claimEvidence
+        .filter(
+          (
+            evidence
+          ) =>
+            evidence.kind ===
+              "VERIFIED_EXCERPT" &&
+            evidence.relation ===
+              "SUPPORTS" &&
+            Boolean(
+              evidence.excerpt
+                ?.trim()
+            )
+        )
+        .map(
+          (
+            evidence
+          ) =>
+            evidence.claimId
+        )
+    );
+
+
+  console.info(
+    "[content evidence closure]",
+    {
+      claims:
+        claimsInput.length,
+
+      initiallyVerified:
+        initiallyVerifiedClaimIds
+          .size,
+
+      unresolvedBeforeFallback:
+        unresolvedEvidenceClaims
+          .map(
+            (
+              claim
+            ) =>
+              claim.id
+          ),
+
+      fallbackSources:
+        fallbackEvidenceSources
+          .length,
+
+      finallyVerified:
+        finallyVerifiedClaimIds
+          .size,
+
+      unresolvedAfterFallback:
+        claimsInput
+          .filter(
+            (
+              claim
+            ) =>
+              !finallyVerifiedClaimIds.has(
+                claim.id
+              )
+          )
+          .map(
+            (
+              claim
+            ) =>
+              claim.id
+          ),
+    }
+  );
 
   // ---- Stage 8A/8B ----
   const questions = [...new Set(plan.questions.map((q) => q.trim()).filter(Boolean))];
@@ -2049,6 +3080,70 @@ export async function planProductionMasterArtifactsFromLiveSources({
     });
 
 
+  /*
+   * PRODUCTION_INTERNAL_LINK_SELECTION_V1
+   *
+   * Existing crawled URLs only.
+   * No invented URL.
+   * No invented anchor.
+   * No fixed internal-link quota.
+   */
+  const internalLinkSelection =
+    buildInternalLinkSelectionV1({
+      siteHostname:
+        research
+          .keywordContext
+          ?.hostname ??
+        "",
+
+      /*
+       * CREATE does not yet guarantee a final canonical URL.
+       */
+      articleTargetUrl:
+        null,
+
+      candidates:
+        research
+          .internalLinkCandidates ??
+        [],
+
+      sections:
+        plan.sections.map(
+          (
+            section,
+            index
+          ) => ({
+            id:
+              `section-${index + 1}`,
+
+            heading:
+              section.heading,
+
+            mission:
+              section.mission,
+
+            topics:
+              section.topics,
+          })
+        ),
+    });
+
+
+  const internalLinksBySectionId =
+    new Map(
+      internalLinkSelection
+        .assignments
+        .map(
+          (
+            assignment
+          ) => [
+            assignment.sectionId,
+            assignment.targetUrls,
+          ] as const
+        )
+    );
+
+
   const sectionsInput: ProductionMasterArtifactPipelineInput["sectionBlueprints"]["sections"] =
     plan.sections.map(
       (
@@ -2084,6 +3179,16 @@ export async function planProductionMasterArtifactsFromLiveSources({
             ),
           ],
 
+        internalLinks:
+          [
+            ...(
+              internalLinksBySectionId.get(
+                `section-${index + 1}`
+              ) ??
+              []
+            ),
+          ],
+
         ...(
           originalValuePlan
             .assetId &&
@@ -2098,6 +3203,392 @@ export async function planProductionMasterArtifactsFromLiveSources({
         ),
       })
     );
+
+
+  /*
+   * LIVE_ARTICLE_EXECUTION_PLAN_V1
+   *
+   * This is the canonical immutable bridge between live Research
+   * and Writer execution.
+   *
+   * No topic-specific rules.
+   * No keyword-density rules.
+   * No fixed article length.
+   */
+  const topicIdByLabel =
+    new Map(
+      plannedTopicLabels.map(
+        (
+          topic,
+          index
+        ) => [
+          topic,
+          `topic-${index + 1}`,
+        ] as const
+      )
+    );
+
+
+  const questionIdByLabel =
+    new Map(
+      plannedQuestions.map(
+        (
+          question,
+          index
+        ) => [
+          question,
+          `question-${index + 1}`,
+        ] as const
+      )
+    );
+
+
+  const verifiedClaimIds =
+    new Set(
+      evidenceGraphInput
+        .claimEvidence
+        .filter(
+          (
+            evidence
+          ) =>
+            evidence.relation ===
+              "SUPPORTS" &&
+            evidence.kind ===
+              "VERIFIED_EXCERPT" &&
+            Boolean(
+              evidence.excerpt
+                ?.trim()
+            )
+        )
+        .map(
+          (
+            evidence
+          ) =>
+            evidence.claimId
+        )
+    );
+
+
+  const verifiedEvidenceIds =
+    evidenceGraphInput
+      .claimEvidence
+      .filter(
+        (
+          evidence
+        ) =>
+          evidence.relation ===
+            "SUPPORTS" &&
+          evidence.kind ===
+            "VERIFIED_EXCERPT" &&
+          Boolean(
+            evidence.excerpt
+              ?.trim()
+          )
+      )
+      .map(
+        (
+          evidence
+        ) =>
+          evidence.id
+      );
+
+
+  /*
+   * PRODUCTION_MEDIA_REQUIREMENTS_V1
+   *
+   * Derived ONLY from the existing assigned OriginalValueAsset.
+   *
+   * No second asset planner.
+   * No fixed image count.
+   * No invented screenshot/chart/video.
+   */
+  const assignedOriginalValueAsset =
+    originalValuePlan
+      .assetId
+      ? originalValuePlan
+          .input
+          .assets
+          .find(
+            (
+              asset
+            ) =>
+              asset.id ===
+              originalValuePlan
+                .assetId
+          ) ??
+        null
+      : null;
+
+
+  if (
+    originalValuePlan
+      .assetId &&
+    !assignedOriginalValueAsset
+  ) {
+    throw new ProductionMasterLiveStagePlanError(
+      "LIVE_STAGE_PLAN_MEDIA_ASSIGNED_ASSET_NOT_FOUND",
+      originalValuePlan.assetId
+    );
+  }
+
+
+  const mediaRequirements =
+    assignedOriginalValueAsset
+      ? buildMediaRequirementsForAssignedAssetV1({
+          sectionId:
+            `section-${assetSectionIndex + 1}`,
+
+          asset:
+            assignedOriginalValueAsset,
+        })
+      : Object.freeze(
+          []
+        );
+
+
+  console.info(
+    "[content media requirements]",
+    {
+      count:
+        mediaRequirements.length,
+
+      requirements:
+        mediaRequirements.map(
+          (
+            requirement
+          ) => ({
+            id:
+              requirement.id,
+
+            sectionId:
+              requirement.sectionId,
+
+            assetId:
+              requirement.assetId,
+
+            type:
+              requirement.type,
+
+            status:
+              requirement.status,
+          })
+        ),
+    }
+  );
+
+
+  const executionSections =
+    plan.sections.map(
+      (
+        section,
+        index
+      ) => {
+        const assignment =
+          sectionEvidenceAssignments[
+            index
+          ];
+
+
+        const requiredClaimIds =
+          [
+            ...(
+              assignment
+                ?.requiredClaims ??
+              []
+            ),
+          ];
+
+
+        const evidenceIds =
+          [
+            ...(
+              assignment
+                ?.evidenceIds ??
+              []
+            ),
+          ];
+
+
+        const hasUnsupportedRequiredClaim =
+          requiredClaimIds.some(
+            (
+              claimId
+            ) =>
+              !verifiedClaimIds.has(
+                claimId
+              )
+          );
+
+
+        return {
+          id:
+            `section-${index + 1}`,
+
+          heading:
+            section.heading.trim(),
+
+          level:
+            2 as const,
+
+          mission:
+            section.mission.trim(),
+
+          requiredTopicIds:
+            section.topics.map(
+              (
+                topic
+              ) => {
+                const id =
+                  topicIdByLabel.get(
+                    topic.trim()
+                  );
+
+
+                if (!id) {
+                  throw new ProductionMasterLiveStagePlanError(
+                    "LIVE_STAGE_PLAN_SECTION_TOPIC_ID_RESOLUTION_FAILED",
+                    topic
+                  );
+                }
+
+
+                return id;
+              }
+            ),
+
+          requiredQuestionIds:
+            section.questions.map(
+              (
+                question
+              ) => {
+                const id =
+                  questionIdByLabel.get(
+                    question.trim()
+                  );
+
+
+                if (!id) {
+                  throw new ProductionMasterLiveStagePlanError(
+                    "LIVE_STAGE_PLAN_SECTION_QUESTION_ID_RESOLUTION_FAILED",
+                    question
+                  );
+                }
+
+
+                return id;
+              }
+            ),
+
+          requiredEntityIds:
+            [],
+
+          requiredClaimIds,
+
+          evidenceIds,
+
+          state:
+            hasUnsupportedRequiredClaim
+              ? "DEFERRED_NO_EVIDENCE" as const
+              : "WRITABLE" as const,
+        };
+      }
+    );
+
+
+  const articleExecutionPlanBase =
+    buildArticleExecutionPlanV1({
+      websiteId:
+        mission.websiteId,
+
+      topic:
+        mission.topic,
+
+      primaryQuery:
+        research.keyword.trim(),
+
+      intent:
+        plan.intent.trim(),
+
+      pageType:
+        plan.pageType.trim(),
+
+      riskClass:
+        mission.riskClass,
+
+      pageAction:
+        plan.action,
+
+      /*
+       * The Stage planner already decided which information jobs
+       * belong to THIS page.
+       *
+       * Therefore every selected Stage-plan topic/question is a
+       * required coverage job for this execution instance.
+       *
+       * This is topic-agnostic and does not impose any particular
+       * number of topics or sections.
+       */
+      requiredTopics:
+        plannedTopicLabels.map(
+          (
+            topic,
+            index
+          ) => ({
+            id:
+              `topic-${index + 1}`,
+
+            label:
+              topic,
+
+            priority:
+              "MUST" as const,
+          })
+        ),
+
+      requiredQuestions:
+        plannedQuestions.map(
+          (
+            question,
+            index
+          ) => ({
+            id:
+              `question-${index + 1}`,
+
+            label:
+              question,
+
+            priority:
+              "MUST" as const,
+          })
+        ),
+
+      requiredEntities:
+        [],
+
+      verifiedEvidenceIds,
+
+      sections:
+        executionSections,
+    });
+
+
+  /*
+   * ARTICLE_EXECUTION_PLAN_MEDIA_LOCK_V1
+   *
+   * ArticleExecutionPlan remains the sole post-lock authority.
+   */
+  const articleExecutionPlan:
+    Readonly<ArticleExecutionPlanV1> =
+      Object.freeze({
+        ...articleExecutionPlanBase,
+
+        mediaRequirements:
+          Object.freeze([
+            ...mediaRequirements,
+          ]),
+      });
+
+
 
   /*
    * Stage 1 boundary:
@@ -2155,13 +3646,23 @@ export async function planProductionMasterArtifactsFromLiveSources({
       intent: plan.intent.trim(),
       pageType: plan.pageType.trim(),
       questions,
+
+      internalLinkTargets:
+        [
+          ...internalLinkSelection
+            .approvedTargetUrls,
+        ],
     },
 
     sectionBlueprints: {
       sections: sectionsInput,
     },
 
-    internalLinkPlan: [],
+    internalLinkPlan:
+      [
+        ...internalLinkSelection
+          .concretePlan,
+      ],
     styleRules: [],
   };
 
@@ -2181,5 +3682,6 @@ export async function planProductionMasterArtifactsFromLiveSources({
     masterArtifacts: bundle.input,
     searchMissionInput,
     research,
+    articleExecutionPlan,
   });
 }

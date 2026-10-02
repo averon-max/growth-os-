@@ -765,3 +765,31 @@
     display: none;
   }
 }
+
+
+/*
+ * ARTICLE_SIDEBAR_BLUE_KEYWORDS_V1
+ *
+ * Source of truth:
+ * sidebar active indicator = #3b82f6 = var(--accent)
+ */
+.keywordRow > strong:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.keywordRow:hover > strong:first-child {
+  color: #93c5fd;
+}
+
+.keywordHead > span:first-child {
+  color: #93c5fd;
+}
+
+.keywordBlock {
+  --article-keyword-accent: var(--accent);
+}
+
+.keywordBlock strong {
+  text-decoration-color: rgba(59, 130, 246, .35);
+}

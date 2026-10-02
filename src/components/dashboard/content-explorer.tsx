@@ -32,6 +32,8 @@ import {
 } from "./ui";
 
 import uiStyles from "./ui.module.css";
+
+import { ContentGenerationHud } from "./content-generation-hud";
 import styles from "./content-intelligence.module.css";
 
 
@@ -1333,10 +1335,22 @@ export function ContentExplorer({
                 JSON.stringify({
                   websiteId,
 
-                  topic,
+                  /*
+                   * This path already has an analyzed winner from
+                   * Content Intelligence. Do not select a second
+                   * keyword after the user accepts that plan.
+                   */
+                  topic:
+                    primary,
+
+                  generationMode:
+                    "EXACT_KEYWORD",
+
+                  exactKeyword:
+                    primary,
 
                   reason:
-                    "Content Intelligence selected this topic after keyword, intent, cannibalization and live SERP analysis.",
+                    "Content Intelligence selected this primary keyword after keyword, intent, cannibalization and live SERP analysis.",
 
                   recommendation:
                     `Follow the analyzed Content Intelligence plan. Primary keyword: "${primary}". Target format: ${plan.targetFormat}. Search intent: ${plan.strategy.searchIntent}. Use dynamic semantic headings only when the subject requires them.`,
@@ -1541,12 +1555,52 @@ export function ContentExplorer({
     [];
 
 
+
+  /*
+   * CONTENT_EXPLORER_GENERATION_HUD_V1
+   */
+  const activeGenerationBrief =
+    generatingArticleBriefId
+      ? (
+          briefs ??
+          []
+        ).find(
+          (
+            brief
+          ) =>
+            brief.id ===
+            generatingArticleBriefId
+        ) ??
+        null
+      : null;
+
   return (
     <div
       className={
         styles.workspace
       }
     >
+      {generatingArticleBriefId ? (
+        <ContentGenerationHud
+          mode="WRITING"
+          topic={
+            activeGenerationBrief
+              ?.topic ??
+            "Generating article"
+          }
+          primaryKeyword={
+            activeGenerationBrief
+              ?.primaryKeyword ??
+            null
+          }
+          searchIntent={
+            activeGenerationBrief
+              ?.searchIntent ??
+            null
+          }
+        />
+      ) : null}
+
       {
         error && (
           <div

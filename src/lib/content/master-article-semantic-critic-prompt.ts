@@ -60,6 +60,11 @@ export function buildMasterArticleSemanticCriticPrompt({
     "- Evaluate whether the article meaningfully fulfills the approved article mission and each section mission.",
     "- Do not judge by keyword overlap alone.",
     "- Missing or materially misaligned intent may be WARN or BLOCK depending severity.",
+    /* EVIDENCE_DEFERRED_INTENT_SCOPE_V1 */
+    "- evidenceDeferredSections are topics intentionally excluded from this publishable article because publication-grade evidence was unavailable.",
+    "- Do NOT create a DEEP_INTENT finding solely because an evidenceDeferredSections topic is absent.",
+    "- Every mission that remains in the ArticleGenerationContract must still be fulfilled normally.",
+    "- Deferred scope does NOT authorize facts. If the article nevertheless makes a material claim about a deferred topic, evaluate that claim normally and BLOCK it when unsupported.",
     "",
     "ORIGINALITY:",
     "- Compare ONLY against supplied originalityReferences.",
@@ -95,6 +100,9 @@ export function buildMasterArticleSemanticCriticPrompt({
     "- SECTION location must use the exact supplied sectionIndex, sectionNumber, and heading.",
     "- repairScope may be SECTION only for a SECTION finding.",
     "- ARTICLE/SHELL findings must use repairScope NONE.",
+    /* SEMANTIC_CRITIC_CANONICAL_SOURCE_ID_PROMPT_V1 */
+    "- sourceIds means INTERNAL source IDs only. Never place an http:// or https:// URL inside sourceIds.",
+    "- If a real URL is visible but its internal source ID is not explicitly available in authoritative input, leave sourceIds empty rather than substituting the URL.",
     "- cite only real claimIds/evidenceIds/queryNodeIds/sourceIds supplied in authoritative input.",
     "- if no problem exists for a review, return an empty findings array.",
     "",

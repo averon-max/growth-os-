@@ -1,0 +1,413 @@
+.hud {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid rgba(59, 130, 246, 0.34);
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at 12% -20%,
+      rgba(59, 130, 246, 0.20),
+      transparent 42%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(18, 20, 32, 0.98),
+      rgba(10, 11, 15, 0.98)
+    );
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.04) inset,
+    0 18px 50px rgba(0, 0, 0, 0.26);
+}
+
+.ambientGlow {
+  position: absolute;
+  z-index: -1;
+  top: -90px;
+  left: 16%;
+  width: 55%;
+  height: 150px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.20);
+  filter: blur(56px);
+  animation: breathe 3.4s ease-in-out infinite;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.orb {
+  display: grid;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(127, 139, 255, 0.38);
+  border-radius: 9px;
+  color: #dbeafe;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(59, 130, 246, 0.38),
+      rgba(59, 130, 246, 0.12)
+    );
+  box-shadow:
+    0 0 24px rgba(59, 130, 246, 0.24);
+  animation: orbPulse 2.2s ease-in-out infinite;
+}
+
+.eyebrow {
+  margin-bottom: 2px;
+  color: #858aa1;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.title {
+  overflow: hidden;
+  color: #f7f8f8;
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  border-radius: 999px;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.09);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.12),
+    0 0 12px rgba(59, 130, 246, 0.9);
+  animation: dotPulse 1.25s ease-in-out infinite;
+}
+
+.activity {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: 16px;
+  gap: 7px;
+  color: #8f96ba;
+  font-size: 11px;
+}
+
+.activityLabel {
+  flex: 0 0 auto;
+  color: #686e88;
+}
+
+.activityText {
+  overflow: hidden;
+  color: #93c5fd;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: textEnter 260ms ease-out;
+}
+
+.cursor {
+  width: 5px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+  animation: blink 0.8s steps(1) infinite;
+}
+
+.progress {
+  position: relative;
+  overflow: hidden;
+  height: 5px;
+  margin-top: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.progressGrid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 38px,
+      rgba(255, 255, 255, 0.08) 39px,
+      transparent 40px
+    );
+}
+
+.progressBeam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24%;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(59, 130, 246, 0.40),
+      var(--accent),
+      rgba(59, 130, 246, 0.45),
+      transparent
+    );
+  filter: drop-shadow(
+    0 0 6px
+    rgba(59, 130, 246, 0.70)
+  );
+  animation: beam 1.7s linear infinite;
+}
+
+.progressGlow {
+  position: absolute;
+  inset: -8px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(59, 130, 246, 0.16),
+      transparent 55%
+    );
+  animation: glowMove 2.4s linear infinite;
+}
+
+.ticker {
+  overflow: hidden;
+  margin-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  mask-image:
+    linear-gradient(
+      90deg,
+      transparent,
+      #000 8%,
+      #000 92%,
+      transparent
+    );
+}
+
+.tickerTrack {
+  display: flex;
+  width: max-content;
+  padding: 7px 0;
+  color: #6870a1;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  animation: ticker 19s linear infinite;
+}
+
+.tickerTrack span {
+  padding-right: 58px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.metricLabel {
+  display: block;
+  margin-bottom: 5px;
+  color: #636878;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metric strong {
+  display: block;
+  overflow: hidden;
+  color: #d9dcf1;
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #5f6473;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.footer svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+@keyframes beam {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(520%);
+  }
+}
+
+@keyframes glowMove {
+  0% {
+    transform: translateX(-45%);
+  }
+
+  100% {
+    transform: translateX(45%);
+  }
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes orbPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 18px rgba(59, 130, 246, 0.18);
+  }
+
+  50% {
+    box-shadow:
+      0 0 32px rgba(59, 130, 246, 0.38);
+  }
+}
+
+@keyframes dotPulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.72);
+  }
+}
+
+@keyframes blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0.16;
+  }
+}
+
+@keyframes textEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .metrics {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+  .title {
+    max-width: 210px;
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .ambientGlow,
+  .orb,
+  .liveDot,
+  .progressBeam,
+  .progressGlow,
+  .tickerTrack,
+  .cursor,
+  .activityText {
+    animation: none;
+  }
+
+  .progressBeam {
+    left: 35%;
+  }
+}

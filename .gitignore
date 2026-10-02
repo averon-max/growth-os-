@@ -49,3 +49,6 @@ next-env.d.ts
 .growth-os-checkpoints/
 .growth-os-backups/
 .ui-backup-*/
+
+*.bak-*
+*.backup_*

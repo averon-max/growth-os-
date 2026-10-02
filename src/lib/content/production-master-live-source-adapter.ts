@@ -3,6 +3,11 @@ import {
 } from "./keyword-context";
 
 import {
+  getInternalLinkCandidatesForWebsiteV1,
+  type InternalLinkCandidateV1,
+} from "./internal-link-candidates-v1";
+
+import {
   getBusinessFactRegistryForWebsite,
 } from "./business-fact-repository";
 
@@ -158,6 +163,13 @@ export interface ProductionMasterLiveSourceResearch {
   businessFacts:
     VerifiedBusinessFacts;
 
+  /*
+   * Existing pages from the latest real site crawl.
+   * Never synthesized from keywords or SERP competitors.
+   */
+  internalLinkCandidates?:
+    readonly Readonly<InternalLinkCandidateV1>[];
+
   provenance:
     readonly Readonly<
       ProductionMasterSourceRecord
@@ -168,6 +180,9 @@ export interface ProductionMasterLiveSourceResearch {
 export interface ProductionMasterLiveSourceDependencies {
   getWebsiteKeywordContext:
     typeof getWebsiteKeywordContext;
+
+  getInternalLinkCandidatesForWebsite?:
+    typeof getInternalLinkCandidatesForWebsiteV1;
 
   getBusinessFactRegistryForWebsite:
     typeof getBusinessFactRegistryForWebsite;
@@ -191,6 +206,9 @@ DEFAULT_PRODUCTION_MASTER_LIVE_SOURCE_DEPENDENCIES:
   ProductionMasterLiveSourceDependencies =
     Object.freeze({
       getWebsiteKeywordContext,
+
+      getInternalLinkCandidatesForWebsite:
+        getInternalLinkCandidatesForWebsiteV1,
 
       getBusinessFactRegistryForWebsite,
 
@@ -606,6 +624,7 @@ export async function collectProductionMasterLiveSources(
     keywordDifficulty,
     serpIntelligence,
     businessFacts,
+    internalLinkCandidates,
   ] =
     await Promise.all([
       dependencies
@@ -653,6 +672,16 @@ export async function collectProductionMasterLiveSources(
         .getBusinessFactRegistryForWebsite(
           websiteId
         ),
+
+      dependencies
+        .getInternalLinkCandidatesForWebsite
+        ? dependencies
+            .getInternalLinkCandidatesForWebsite(
+              websiteId
+            )
+        : Promise.resolve(
+            undefined
+          ),
     ]);
 
 
@@ -752,6 +781,18 @@ export async function collectProductionMasterLiveSources(
     serpSnapshot,
 
     businessFacts,
+
+    ...(
+      internalLinkCandidates !==
+        undefined
+        ? {
+            internalLinkCandidates:
+              Object.freeze([
+                ...internalLinkCandidates,
+              ]),
+          }
+        : {}
+    ),
 
     provenance,
   });

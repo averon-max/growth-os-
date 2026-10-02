@@ -139,6 +139,39 @@ export function evidenceDeferredHeadingAffinityV1(
   right:
     string
 ): number {
+  /*
+   * EVIDENCE_DEFERRED_HEADING_IDENTITY_V2
+   *
+   * This function is an IDENTITY bridge, not a semantic similarity
+   * engine.
+   *
+   * The old overlap / min-length ratio allowed generic shared terms
+   * such as "credit monitoring" to incorrectly match:
+   *
+   *   "How credit monitoring works"
+   *
+   * with:
+   *
+   *   "What credit monitoring can and cannot do"
+   *
+   * That is unsafe because the bridge is allowed to remove a section
+   * from the executable article contract.
+   *
+   * Use Jaccard overlap instead:
+   *
+   *   intersection / union
+   *
+   * This heavily penalizes headings that share only generic topic
+   * words while still treating:
+   *
+   *   "Free versus paid credit monitoring"
+   *
+   * and:
+   *
+   *   "Free credit monitoring vs. paid monitoring"
+   *
+   * as the same information job.
+   */
   const leftTerms =
     planningTerms(
       left
@@ -148,6 +181,7 @@ export function evidenceDeferredHeadingAffinityV1(
     planningTerms(
       right
     );
+
 
   if (
     leftTerms.length ===
@@ -159,6 +193,11 @@ export function evidenceDeferredHeadingAffinityV1(
   }
 
 
+  const leftSet =
+    new Set(
+      leftTerms
+    );
+
   const rightSet =
     new Set(
       rightTerms
@@ -166,7 +205,9 @@ export function evidenceDeferredHeadingAffinityV1(
 
 
   const intersection =
-    leftTerms.filter(
+    Array.from(
+      leftSet
+    ).filter(
       (
         token
       ) =>
@@ -176,15 +217,19 @@ export function evidenceDeferredHeadingAffinityV1(
     ).length;
 
 
-  return (
-    intersection /
-    Math.min(
-      leftTerms.length,
-      rightTerms.length
-    )
-  );
-}
+  const union =
+    new Set([
+      ...leftSet,
+      ...rightSet,
+    ]).size;
 
+
+  return union >
+    0
+    ? intersection /
+        union
+    : 0;
+}
 
 export function resolveEvidenceDeferredMasterScopeV1({
   blueprints,
@@ -284,17 +329,20 @@ export function resolveEvidenceDeferredMasterScopeV1({
        * This is only an identity bridge between two plans.
        * It does NOT independently decide whether evidence is needed.
        *
-       * 0.60 requires most terms in the shorter heading to agree
-       * while still tolerating:
+       * 0.70 Jaccard is intentionally strict because this bridge
+       * can remove an executable section.
+       *
+       * Generic topic overlap is not enough.
+       *
+       * Normalization still tolerates:
        *
        *   vs <-> versus
        *   service <-> services
-       *   options / wording expansion
        */
       if (
         !best ||
         bestAffinity <
-          0.60
+          0.70
       ) {
         return;
       }

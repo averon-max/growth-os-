@@ -39,6 +39,11 @@ import {
 
 import styles from "./article-workspace.module.css";
 
+import {
+  ArticleStructureStats,
+} from "./article-structure-stats";
+
+
 type ArticleState = {
   id: string;
   websiteId: string;
@@ -2416,6 +2421,29 @@ ${article.bodyMarkdown}`
         )}
       </section>
 
+
+      {/* ARTICLE_STRUCTURE_STATS_SIDEBAR_BLUE_V1 */}
+      <ArticleStructureStats
+        title={
+          draft.title
+        }
+        h1={
+          draft.h1
+        }
+        bodyMarkdown={
+          draft.bodyMarkdown
+        }
+        keywords={
+          plannedKeywordIntelligence
+            .items
+            .map(
+              (
+                item
+              ) =>
+                item.keyword
+            )
+        }
+      />
 
       {/* ARTICLE_KEYWORD_INTELLIGENCE_UI_V2 */}
       <section

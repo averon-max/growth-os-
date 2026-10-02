@@ -2,6 +2,11 @@ import {
   fetchSinglePage,
 } from "../crawler/crawler";
 
+import {
+  defaultAuthorityTier,
+  type EvidenceSourceType,
+} from "./evidence-graph";
+
 import type {
   ProductionMasterArtifactPipelineInput,
 } from "./production-master-artifact-builders";
@@ -41,7 +46,7 @@ export interface SectionEvidenceAssignmentV1 {
 
 
 const MAX_EVIDENCE_FETCH_SOURCES =
-  16;
+  24;
 
 
 const STOP_WORDS =
@@ -88,6 +93,18 @@ const STOP_WORDS =
   ]);
 
 
+/*
+ * EVIDENCE_LEXICAL_CANONICALIZATION_V1
+ *
+ * Deterministic normalization only.
+ *
+ * It does NOT:
+ * - lower verification thresholds
+ * - bypass negation
+ * - bypass numeric matching
+ * - promote SEARCH_SNIPPET
+ * - establish factual truth
+ */
 function normalize(
   value:
     string
@@ -98,11 +115,169 @@ function normalize(
       /[^a-z0-9$%.-]+/g,
       " "
     )
+    /*
+     * Hyphenation must not change semantic identity:
+     *
+     * credit-report
+     * credit report
+     *
+     * become the same token sequence.
+     */
+    .replace(
+      /-+/g,
+      " "
+    )
     .replace(
       /\s+/g,
       " "
     )
     .trim();
+}
+
+
+export function canonicalEvidenceTokenV1(
+  input:
+    string
+): string {
+  let token =
+    input
+      .trim()
+      .toLowerCase();
+
+
+  /*
+   * Small deterministic morphology normalization.
+   */
+  if (
+    token.length >
+      5 &&
+    token.endsWith(
+      "ies"
+    )
+  ) {
+    token =
+      `${token.slice(
+        0,
+        -3
+      )}y`;
+  } else if (
+    token.length >
+      5 &&
+    token.endsWith(
+      "ing"
+    )
+  ) {
+    token =
+      token.slice(
+        0,
+        -3
+      );
+  } else if (
+    token.length >
+      5 &&
+    /(?:ches|shes|xes|zes)$/u.test(
+      token
+    )
+  ) {
+    token =
+      token.slice(
+        0,
+        -2
+      );
+  } else if (
+    token.length >
+      4 &&
+    token.endsWith(
+      "ed"
+    )
+  ) {
+    token =
+      token.slice(
+        0,
+        -2
+      );
+  } else if (
+    token.length >
+      4 &&
+    token.endsWith(
+      "s"
+    ) &&
+    !token.endsWith(
+      "ss"
+    )
+  ) {
+    token =
+      token.slice(
+        0,
+        -1
+      );
+  }
+
+
+  /*
+   * Small controlled synonym set for obvious factual
+   * paraphrases.
+   *
+   * These aliases only affect lexical comparison.
+   */
+  const aliases:
+    Readonly<
+      Record<
+        string,
+        string
+      >
+    > = {
+      watch:
+        "monitor",
+
+      track:
+        "monitor",
+
+      monitor:
+        "monitor",
+
+      notify:
+        "alert",
+
+      notification:
+        "alert",
+
+      alert:
+        "alert",
+
+      fix:
+        "repair",
+
+      correct:
+        "repair",
+
+      correction:
+        "repair",
+
+      repair:
+        "repair",
+
+      update:
+        "change",
+
+      change:
+        "change",
+
+      error:
+        "inaccuracy",
+
+      inaccurate:
+        "inaccuracy",
+
+      incorrect:
+        "inaccuracy",
+    };
+
+
+  return (
+    aliases[token] ??
+    token
+  );
 }
 
 
@@ -119,7 +294,9 @@ function semanticTokens(
       )
       .map(
         (token) =>
-          token.trim()
+          canonicalEvidenceTokenV1(
+            token
+          )
       )
       .filter(
         (token) =>
@@ -254,6 +431,238 @@ function sentenceWindows(
 
 
   return windows;
+}
+
+
+
+/*
+ * NEGATIVE_CLAIM_TARGET_PRESERVATION_V1
+ *
+ * Existing evidence matching already requires:
+ * - semantic lexical coverage
+ * - matching negation polarity
+ * - exact numeric preservation
+ *
+ * That is necessary but not sufficient for negative factual claims.
+ *
+ * A thematically related excerpt can contain enough shared words and
+ * an unrelated negation while omitting the actual object/predicate
+ * being denied.
+ *
+ * Example:
+ *
+ * claim:
+ *   "Checking a credit monitoring service does not itself
+ *    change a credit score."
+ *
+ * unrelated excerpt:
+ *   discusses monitoring services, credit, and balance changes,
+ *   but never says anything about a credit score.
+ *
+ * This gate deterministically preserves the tail semantic target of
+ * negative claims. No LLM, topic-specific vocabulary, or weaker
+ * threshold is introduced.
+ */
+
+
+const NEGATIVE_CLAIM_PATTERN_V1 =
+  /\b(?:does\s+not|do\s+not|did\s+not|is\s+not|are\s+not|was\s+not|were\s+not|cannot|can't|doesn't|don't|didn't|isn't|aren't|wasn't|weren't|not|never|without|no)\b/i;
+
+
+const NEGATIVE_CLAIM_NON_TARGET_TOKENS_V1 =
+  new Set([
+    "itself",
+    "himself",
+    "herself",
+    "yourself",
+    "ourselves",
+    "themselves",
+
+    /*
+     * Generic container noun: carries no denied target of its own.
+     * Polarity, numbers and coverage thresholds are unchanged.
+     */
+    "information",
+  ]);
+
+
+/*
+ * NEGATIVE_CLAIM_TARGET_TOKEN_NORMALIZATION_V1
+ *
+ * semanticTokens intentionally preserves "." for existing
+ * evidence/numeric behavior. Do not change that global contract.
+ *
+ * Target-anchor comparison is lexical identity only, so strip
+ * punctuation from the edges locally.
+ */
+function normalizeNegativeTargetTokenV1(
+  token:
+    string
+): string {
+  return token
+    .replace(
+      /^[^a-z0-9$%]+/i,
+      ""
+    )
+    .replace(
+      /[^a-z0-9$%]+$/i,
+      ""
+    );
+}
+
+
+export function negativeClaimTargetAnchorsV1(
+  claimText:
+    string
+): readonly string[] {
+  const match =
+    NEGATIVE_CLAIM_PATTERN_V1.exec(
+      claimText
+    );
+
+
+  if (
+    !match ||
+    match.index ===
+      undefined
+  ) {
+    return [];
+  }
+
+
+  const prefix =
+    claimText.slice(
+      0,
+      match.index
+    );
+
+
+  const tail =
+    claimText.slice(
+      match.index +
+        match[0].length
+    );
+
+
+  const prefixTokens =
+    new Set(
+      semanticTokens(
+        prefix
+      )
+    );
+
+
+  const candidates =
+    semanticTokens(
+      tail
+    )
+      .map(
+        (
+          token
+        ) =>
+          normalizeNegativeTargetTokenV1(
+            token
+          )
+      )
+      .filter(
+        (
+          token
+        ) =>
+          token.length >
+            0 &&
+          !NEGATIVE_CLAIM_NON_TARGET_TOKENS_V1.has(
+            token
+          ) &&
+          !prefixTokens.has(
+            token
+          )
+      );
+
+
+  /*
+   * Last two distinctive tail tokens represent the material
+   * object/target conservatively:
+   *
+   *   credit score
+   *   identity theft
+   *   transunion data
+   *
+   * Fewer than two is allowed only when the negative claim has
+   * one genuinely distinctive tail token.
+   */
+  return candidates.slice(
+    -2
+  );
+}
+
+
+function preservesNegativeClaimTargetV1({
+  claimText,
+  excerpt,
+}: {
+  claimText:
+    string;
+
+  excerpt:
+    string;
+}): boolean {
+  if (
+    !hasNegation(
+      claimText
+    )
+  ) {
+    /*
+     * Positive claims retain the existing matcher unchanged.
+     */
+    return true;
+  }
+
+
+  const anchors =
+    negativeClaimTargetAnchorsV1(
+      claimText
+    );
+
+
+  /*
+   * Negative claim with no deterministic target identity:
+   * fail closed rather than invent support.
+   */
+  if (
+    anchors.length ===
+    0
+  ) {
+    return false;
+  }
+
+
+  const excerptTokens =
+    new Set(
+      semanticTokens(
+        excerpt
+      )
+        .map(
+          (
+            token
+          ) =>
+            normalizeNegativeTargetTokenV1(
+              token
+            )
+        )
+        .filter(
+          Boolean
+        )
+    );
+
+
+  return anchors.every(
+    (
+      anchor
+    ) =>
+      excerptTokens.has(
+        anchor
+      )
+  );
 }
 
 
@@ -399,6 +808,24 @@ export function findVerifiedExcerptCandidateV1({
         minimumCoverage ||
       covered <
         minimumCovered
+    ) {
+      continue;
+    }
+
+
+
+    /*
+     * VERIFIED_EXCERPT_NEGATIVE_TARGET_GATE_V1
+     *
+     * Topical overlap + matching negation is not enough.
+     * The evidence window must preserve the material target
+     * of a negative factual claim.
+     */
+    if (
+      !preservesNegativeClaimTargetV1({
+        claimText,
+        excerpt,
+      })
     ) {
       continue;
     }
@@ -571,6 +998,570 @@ async function fetchSourceBodies(
       )
     );
   }
+
+
+  return output;
+}
+
+
+
+/*
+ * CLAIM_SPECIFIC_EVIDENCE_FALLBACK_V1
+ *
+ * Initial EvidenceGraph discovery is article-level:
+ * live SERP + AI overview + verified first-party sources.
+ *
+ * That is useful for strategy but can miss an authoritative page
+ * for one specific MUST-support claim.
+ *
+ * This helper performs ONE bounded fallback discovery pass for
+ * unresolved claims.
+ *
+ * Important:
+ * - search snippets NEVER become VERIFIED_EXCERPT
+ * - discovered URLs still go through fetchSinglePage()
+ * - fetched page text still goes through
+ *   findVerifiedExcerptCandidateV1()
+ * - no claim with zero verified evidence is authorized
+ * - no retry loop exists here
+ */
+
+const MAX_EVIDENCE_FALLBACK_CLAIMS =
+  6;
+
+const MAX_EVIDENCE_FALLBACK_QUERIES_PER_CLAIM =
+  3;
+
+const MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM =
+  4;
+
+
+export interface EvidenceFallbackOrganicResultV1 {
+  url:
+    string;
+
+  title?:
+    string | null;
+
+  domain?:
+    string | null;
+}
+
+
+export type EvidenceFallbackSearchV1 =
+  (
+    input: {
+      keyword:
+        string;
+
+      locationName:
+        string;
+
+      languageName:
+        string;
+    }
+  ) => Promise<{
+    organic:
+      readonly EvidenceFallbackOrganicResultV1[];
+  }>;
+
+
+export function buildClaimEvidenceFallbackQueriesV1({
+  primaryQuery,
+  claimText,
+}: {
+  primaryQuery:
+    string;
+
+  claimText:
+    string;
+}): string[] {
+  const primary =
+    primaryQuery
+      .trim();
+
+  const claim =
+    claimText
+      .trim();
+
+  const primaryTokens =
+    new Set(
+      semanticTokens(
+        primary
+      )
+    );
+
+  const claimTokens =
+    [
+      ...new Set(
+        semanticTokens(
+          claim
+        )
+      ),
+    ];
+
+
+  const conceptTokens =
+    claimTokens
+      .filter(
+        (
+          token
+        ) =>
+          !primaryTokens.has(
+            token
+          )
+      )
+      .slice(
+        0,
+        6
+      );
+
+
+  const simplifiedClaim =
+    claimTokens
+      .slice(
+        0,
+        10
+      )
+      .join(
+        " "
+      );
+
+
+  const topicConceptQuery =
+    [
+      primary,
+
+      ...conceptTokens.slice(
+        0,
+        4
+      ),
+    ]
+      .filter(
+        Boolean
+      )
+      .join(
+        " "
+      )
+      .trim();
+
+
+  return [
+    claim,
+    simplifiedClaim,
+    topicConceptQuery,
+  ]
+    .map(
+      (
+        value
+      ) =>
+        value
+          .replace(
+            /\s+/g,
+            " "
+          )
+          .trim()
+    )
+    .filter(
+      (
+        value,
+        index,
+        values
+      ) =>
+        value.length >
+          0 &&
+        values.indexOf(
+          value
+        ) ===
+          index
+    )
+    .slice(
+      0,
+      MAX_EVIDENCE_FALLBACK_QUERIES_PER_CLAIM
+    );
+}
+
+
+function evidenceFallbackSourceTypeV1(
+  hostname:
+    string
+): EvidenceSourceType {
+  const lower =
+    hostname
+      .toLowerCase();
+
+  if (
+    lower.endsWith(
+      ".gov"
+    ) ||
+    lower.includes(
+      ".gov."
+    )
+  ) {
+    return "PRIMARY_GOVERNMENT";
+  }
+
+
+  if (
+    lower.endsWith(
+      ".edu"
+    ) ||
+    lower.includes(
+      ".edu."
+    )
+  ) {
+    return "ACADEMIC";
+  }
+
+
+  return "REPUTABLE_SECONDARY";
+}
+
+
+function normalizeEvidenceSourceUrlV1(
+  raw:
+    string
+): string | null {
+  try {
+    const url =
+      new URL(
+        raw
+      );
+
+    if (
+      url.protocol !==
+        "https:" &&
+      url.protocol !==
+        "http:"
+    ) {
+      return null;
+    }
+
+
+    url.hash =
+      "";
+
+
+    return url
+      .toString()
+      .replace(
+        /\/$/,
+        ""
+      );
+  } catch {
+    return null;
+  }
+}
+
+
+export async function discoverClaimEvidenceFallbackSourcesV1({
+  claims,
+  primaryQuery,
+  locationName,
+  languageName,
+  existingUrls = [],
+  search,
+}: {
+  claims:
+    readonly MinimalClaim[];
+
+  primaryQuery:
+    string;
+
+  locationName:
+    string;
+
+  languageName:
+    string;
+
+  existingUrls?:
+    readonly string[];
+
+  search?:
+    EvidenceFallbackSearchV1;
+}): Promise<
+  EvidenceGraphInput[
+    "sources"
+  ]
+> {
+  const runSearch:
+    EvidenceFallbackSearchV1 =
+      search ??
+      (
+        async (
+          input
+        ) => {
+          /*
+           * LAZY_SERVER_ONLY_SERP_IMPORT_V1
+           *
+           * live-evidence-verification contains pure helpers that are
+           * imported directly by Vitest.
+           *
+           * serp-intelligence is server-only, so importing it at module
+           * initialization would make every pure evidence test fail
+           * before execution.
+           *
+           * Load it only on the real production fallback path.
+           * Tests that inject `search` never execute this import.
+           */
+          const {
+            buildSerpIntelligence,
+          } =
+            await import(
+              "./serp-intelligence"
+            );
+
+
+          const serp =
+            await buildSerpIntelligence({
+              keyword:
+                input.keyword,
+
+              locationName:
+                input.locationName,
+
+              languageName:
+                input.languageName,
+            });
+
+
+          const organic =
+            (
+              serp.organic ??
+              []
+            ) as unknown as
+              readonly EvidenceFallbackOrganicResultV1[];
+
+
+          return {
+            organic,
+          };
+        }
+      );
+
+
+  const seenUrls =
+    new Set(
+      existingUrls
+        .map(
+          (
+            url
+          ) =>
+            normalizeEvidenceSourceUrlV1(
+              url
+            )
+        )
+        .filter(
+          (
+            url
+          ): url is string =>
+            Boolean(
+              url
+            )
+        )
+    );
+
+
+  const output:
+    EvidenceGraphInput[
+      "sources"
+    ] =
+      [];
+
+
+  const diagnostics:
+    Array<{
+      claimId:
+        string;
+
+      queries:
+        string[];
+
+      discoveredSources:
+        number;
+    }> =
+      [];
+
+
+  for (
+    const claim
+    of claims.slice(
+      0,
+      MAX_EVIDENCE_FALLBACK_CLAIMS
+    )
+  ) {
+    const queries =
+      buildClaimEvidenceFallbackQueriesV1({
+        primaryQuery,
+        claimText:
+          claim.text,
+      });
+
+
+    let sourcesForClaim =
+      0;
+
+
+    for (
+      const query
+      of queries
+    ) {
+      if (
+        sourcesForClaim >=
+        MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM
+      ) {
+        break;
+      }
+
+
+      let results:
+        readonly EvidenceFallbackOrganicResultV1[] =
+          [];
+
+
+      try {
+        const response =
+          await runSearch({
+            keyword:
+              query,
+
+            locationName,
+
+            languageName,
+          });
+
+
+        results =
+          response.organic;
+      } catch (
+        error
+      ) {
+        console.warn(
+          "[content evidence fallback search failed]",
+          {
+            claimId:
+              claim.id,
+
+            query,
+
+            error:
+              error instanceof
+              Error
+                ? error.message
+                : String(
+                    error
+                  ),
+          }
+        );
+
+        continue;
+      }
+
+
+      for (
+        const result
+        of results.slice(
+          0,
+          5
+        )
+      ) {
+        if (
+          sourcesForClaim >=
+          MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM
+        ) {
+          break;
+        }
+
+
+        const normalizedUrl =
+          normalizeEvidenceSourceUrlV1(
+            result.url
+          );
+
+
+        if (
+          !normalizedUrl ||
+          seenUrls.has(
+            normalizedUrl
+          )
+        ) {
+          continue;
+        }
+
+
+        let hostname:
+          string;
+
+
+        try {
+          hostname =
+            new URL(
+              normalizedUrl
+            ).hostname;
+        } catch {
+          continue;
+        }
+
+
+        const sourceType =
+          evidenceFallbackSourceTypeV1(
+            hostname
+          );
+
+
+        seenUrls.add(
+          normalizedUrl
+        );
+
+
+        output.push({
+          id:
+            `claim-fallback-source-${stableHash(
+              normalizedUrl
+            )}`,
+
+          url:
+            normalizedUrl,
+
+          publisher:
+            result.domain
+              ?.trim() ||
+            hostname,
+
+          sourceType,
+
+          authorityTier:
+            defaultAuthorityTier(
+              sourceType
+            ),
+
+          retrievedAt:
+            new Date(),
+        });
+
+
+        sourcesForClaim +=
+          1;
+      }
+    }
+
+
+    diagnostics.push({
+      claimId:
+        claim.id,
+
+      queries,
+
+      discoveredSources:
+        sourcesForClaim,
+    });
+  }
+
+
+  console.info(
+    "[content evidence fallback discovery]",
+    diagnostics
+  );
 
 
   return output;
@@ -1150,12 +2141,23 @@ export function assignVerifiedEvidenceToExplicitSectionsV2({
 
 
         /*
-         * Critical boundary:
+         * CLAIM_OWNERSHIP_PUBLICATION_AUTHORITY_SPLIT_V1
          *
-         * Planner intent alone cannot authorize publication.
-         * Only claims with real SUPPORTS + VERIFIED_EXCERPT
-         * become required writer claims.
+         * requiredClaims records semantic ownership.
+         *
+         * evidenceIds records publication authority.
+         *
+         * These MUST NOT be collapsed into one concept.
+         *
+         * A required claim with zero verified evidence remains
+         * owned by this section, but downstream publication scope
+         * must defer the section before Writer execution.
          */
+        requiredClaims.push(
+          claimId
+        );
+
+
         const verifiedEvidence =
           verifiedByClaim.get(
             claimId
@@ -1164,21 +2166,13 @@ export function assignVerifiedEvidenceToExplicitSectionsV2({
 
 
         if (
-          verifiedEvidence.length ===
+          verifiedEvidence.length >
           0
         ) {
-          continue;
+          evidenceIds.push(
+            ...verifiedEvidence
+          );
         }
-
-
-        requiredClaims.push(
-          claimId
-        );
-
-
-        evidenceIds.push(
-          ...verifiedEvidence
-        );
       }
 
 

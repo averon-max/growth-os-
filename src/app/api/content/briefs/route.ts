@@ -1,3 +1,26 @@
+import {
+  ContentRunBudgetExceededErrorV1,
+} from "@/lib/content/content-run-budget-v1";
+
+import {
+  runContentCrawlPreflightV1,
+} from "@/lib/content/content-crawl-preflight-v1";
+
+import {
+  parseContentGenerationPolicyV1,
+  resolveGenerationTopicV1,
+} from "@/lib/content/content-generation-mode-v1";
+
+import {
+  BRIEF_RESEARCH_BUDGET_V1,
+  createContentRunBudgetV1,
+  withContentRunBudgetV1,
+} from "@/lib/content/content-run-budget-v1";
+
+import {
+  parseArticleTemplateOverrideV1,
+} from "@/lib/content/article-template-policy-v1";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +54,29 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const body = await req.json();
+
+    /*
+     * CONTENT_GENERATION_MODE_INGRESS_V1
+     *
+     * Existing behavior defaults to EXACT_KEYWORD.
+     * BEST_OPPORTUNITY must be explicitly requested.
+     */
+    const generationPolicy =
+      parseContentGenerationPolicyV1(
+        body
+      );
+
+
+    const templateOverride =
+      parseArticleTemplateOverrideV1(
+        (
+          body as {
+            templateOverride?:
+              unknown;
+          }
+        ).templateOverride
+      );
+
 
     const missionIngress =
       parseOptionalExplicitSearchMissionInput(
@@ -95,10 +141,48 @@ export async function POST(req: NextRequest) {
       recommendation = bodyRecommendation;
     }
 
+    /*
+     * CONTENT_GENERATION_TOPIC_RESOLUTION_V1
+     */
+    topic =
+      resolveGenerationTopicV1(
+        generationPolicy
+      );
+
     const business = await prisma.business.findUnique({ where: { id: website.businessId } });
     if (!business) {
       return NextResponse.json({ error: "Business not found for this website." }, { status: 500 });
     }
+
+
+    /*
+     * CONTENT_REAL_CRAWL_PREFLIGHT_V1
+     *
+     * Uses the existing SSRF-safe crawler.
+     * Never dumps full page body text into the Writer context.
+     */
+    const crawlPreflight =
+      await runContentCrawlPreflightV1({
+        websiteUrl:
+          website.url,
+
+        query:
+          generationPolicy.requestedTopic,
+      });
+
+    const effectiveRecommendation =
+      [
+        recommendation,
+
+        crawlPreflight
+          .promptContext,
+      ]
+        .filter(
+          Boolean
+        )
+        .join(
+          "\n\n"
+        );
 
 
     /*
@@ -119,20 +203,120 @@ export async function POST(req: NextRequest) {
           business.location,
       });
 
-    const brief = await createContentBrief(geminiGenerator, {
+    const contentRunBudget =
+      createContentRunBudgetV1(
+        BRIEF_RESEARCH_BUDGET_V1
+      );
+
+    const budgetedGenerator =
+      withContentRunBudgetV1({
+        generator:
+          geminiGenerator,
+
+        budget:
+          contentRunBudget,
+      });
+
+    const brief = await createContentBrief(
+      budgetedGenerator,
+      {
       websiteId,
       opportunityId,
       topic,
       reason,
-      recommendation,
+      recommendation:
+        effectiveRecommendation,
       businessName: business.name,
       websiteUrl: website.url,
       searchMission:
         effectiveSearchMission,
-    });
 
-    return NextResponse.json({ brief }, { status: 201 });
+      templateOverride,
+
+      generationMode:
+        generationPolicy.mode,
+
+      requiredPrimaryKeyword:
+        generationPolicy.mode ===
+        "EXACT_KEYWORD"
+          ? generationPolicy
+              .exactKeyword ??
+            undefined
+          : undefined,
+
+      exactKeyword:
+        generationPolicy.exactKeyword ??
+        undefined,
+
+      generationPolicy,
+      }
+    );
+
+    return NextResponse.json(
+      {
+        brief,
+
+        generationMode:
+          generationPolicy.mode,
+
+        crawlPreflight: {
+          version:
+            crawlPreflight.version,
+
+          status:
+            crawlPreflight.status,
+
+          pagesCrawled:
+            crawlPreflight.pagesCrawled,
+
+          usablePages:
+            crawlPreflight.usablePages,
+
+          ownershipSignal:
+            crawlPreflight.ownershipSignal,
+
+          candidates:
+            crawlPreflight.candidates,
+        },
+
+        runBudget:
+          contentRunBudget
+            .snapshot(),
+      },
+      {
+        status:
+          201,
+      }
+    );
   } catch (err) {
+    /*
+     * CONTENT_RUN_BUDGET_EXCEEDED_SURFACE_V1
+     */
+    if (
+      err instanceof
+        ContentRunBudgetExceededErrorV1
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Content generation stopped before exceeding the configured AI budget.",
+
+          code:
+            err.code,
+
+          budget:
+            err.snapshot,
+
+          retryable:
+            false,
+        },
+        {
+          status:
+            422,
+        }
+      );
+    }
+
     /*
      * CONTENT_BRIEF_ASSEMBLY_ERROR_SURFACE_V1
      */

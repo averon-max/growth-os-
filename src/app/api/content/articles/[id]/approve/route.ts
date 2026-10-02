@@ -21,8 +21,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await requireWebsiteAccess(user.id, article.brief.websiteId);
 
-    if (article.status !== "DRAFT" && article.status !== "IN_REVIEW") {
-      return NextResponse.json({ error: `Cannot approve an article with status ${article.status}.` }, { status: 409 });
+    if (article.status !== "IN_REVIEW") {
+      return NextResponse.json(
+        {
+          error:
+            `Cannot approve an article with status ${article.status}. Article must be IN_REVIEW.`,
+        },
+        {
+          status:
+            409,
+        }
+      );
     }
 
     const updated = await approveArticle(id);

@@ -1,3 +1,13 @@
+import {
+  ContentRunBudgetExceededErrorV1,
+} from "@/lib/content/content-run-budget-v1";
+
+import {
+  ARTICLE_GENERATION_BUDGET_V1,
+  createContentRunBudgetV1,
+  withContentRunBudgetV1,
+} from "@/lib/content/content-run-budget-v1";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { getContentBriefById } from "@/lib/content/repository";
@@ -16,16 +26,78 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await requireWebsiteAccess(user.id, brief.websiteId);
 
-    const article = await generateArticleFromBrief(geminiGenerator, id);
-    return NextResponse.json({ article }, { status: 201 });
+    /*
+     * CONTENT_ARTICLE_RUN_BUDGET_V1
+     */
+    const contentRunBudget =
+      createContentRunBudgetV1(
+        ARTICLE_GENERATION_BUDGET_V1
+      );
+
+    const budgetedGenerator =
+      withContentRunBudgetV1({
+        generator:
+          geminiGenerator,
+
+        budget:
+          contentRunBudget,
+      });
+
+    const article =
+      await generateArticleFromBrief(
+        budgetedGenerator,
+        id
+      );
+
+    return NextResponse.json(
+      {
+        article,
+
+        runBudget:
+          contentRunBudget
+            .snapshot(),
+      },
+      {
+        status:
+          201,
+      }
+    );
   } catch (err) {
+    /*
+     * CONTENT_RUN_BUDGET_EXCEEDED_SURFACE_V1
+     */
+    if (
+      err instanceof
+        ContentRunBudgetExceededErrorV1
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Content generation stopped before exceeding the configured AI budget.",
+
+          code:
+            err.code,
+
+          budget:
+            err.snapshot,
+
+          retryable:
+            false,
+        },
+        {
+          status:
+            422,
+        }
+      );
+    }
+
     const providerMessage =
       err instanceof Error
         ? err.message
         : "";
 
     const providerMatch =
-      /(?:Gemini|Groq) API error (413|429|500|502|503|504)\b/.exec(
+      /(?:OpenAI|Gemini|Groq) API error (413|429|500|502|503|504)\b/.exec(
         providerMessage
       );
 

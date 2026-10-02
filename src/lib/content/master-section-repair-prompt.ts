@@ -1,24 +1,17 @@
-import type {
-  SectionRepairInputV1,
-} from "./master-section-repair";
+import type { SectionRepairInputV1 } from "./master-section-repair";
 
-import {
-  buildSectionScopedAuthorityContextV1,
-} from "./master-section-context";
-
+import { buildSectionScopedAuthorityContextV1 } from "./master-section-context";
 
 export function buildMasterSectionRepairPrompt(
-  input:
-    Readonly<SectionRepairInputV1>
+  input: Readonly<SectionRepairInputV1>,
 ): string {
   const {
     contract,
     section,
     reconciliation,
     semanticVerification,
-  } =
-    input;
-
+    depthRepair,
+  } = input;
 
   /*
    * SECTION_REPAIR_COMPACT_CONTEXT_V2
@@ -35,256 +28,142 @@ export function buildMasterSectionRepairPrompt(
    * - only actual BLOCK semantic findings
    * - deterministic reconciliation findings remain visible
    */
-  const scopedAuthority =
-    buildSectionScopedAuthorityContextV1(
-      contract
-    );
+  const scopedAuthority = buildSectionScopedAuthorityContextV1(contract);
 
+  /*
+   * SECTION_REPAIR_SCOPED_AUTHORITY_V1
+   *
+   * Claims, evidence and sources come ONLY from the canonical
+   * section-scoped projector above. Repair never re-reads or
+   * re-filters the article-level ledger or graph.
+   */
+  const scopedClaims = scopedAuthority.claimLedger as
+    | { claims?: unknown }
+    | undefined;
 
-  const allowedClaimIds =
-    new Set([
-      ...(
-        contract.blueprint
-          .requiredClaims ??
-        []
-      ),
+  const scopedEvidence = scopedAuthority.evidenceGraph as
+    | { claimEvidence?: unknown; sources?: unknown }
+    | undefined;
 
-      ...(
-        contract.blueprint
-          .forbiddenClaims ??
-        []
-      ),
-    ]);
+  const claims = Array.isArray(scopedClaims?.claims) ? scopedClaims.claims : [];
 
+  const evidence = Array.isArray(scopedEvidence?.claimEvidence)
+    ? scopedEvidence.claimEvidence
+    : [];
 
-  const assignedEvidenceIds =
-    new Set(
-      contract.blueprint
-        .evidenceIds ??
-      []
-    );
+  const sources = Array.isArray(scopedEvidence?.sources)
+    ? scopedEvidence.sources
+    : [];
 
+  const blockingSemanticUnits = semanticVerification
+    ? semanticVerification.units
+        .filter(
+          (unit) =>
+            unit.classification === "UNSUPPORTED" ||
+            unit.classification === "CONTRADICTED",
+        )
+        .map((unit) => ({
+          unitId: unit.unitId,
 
-  const claims =
-    contract.claimLedger
-      .claims
-      .filter(
-        (
-          claim
-        ) =>
-          allowedClaimIds.has(
-            claim.id
-          )
-      );
+          classification: unit.classification,
 
+          matchedClaimId: unit.matchedClaimId,
 
-  const evidence =
-    contract.evidenceGraph
-      .claimEvidence
-      .filter(
-        (
-          item
-        ) =>
-          assignedEvidenceIds.has(
-            item.id
-          )
-      );
+          evidenceIds: unit.evidenceIds,
 
+          rationale: unit.rationale,
+        }))
+    : [];
 
-  const sourceIds =
-    new Set(
-      evidence.map(
-        (
-          item
-        ) =>
-          item.sourceId
-      )
-    );
+  const context = JSON.stringify({
+    sectionAuthority: {
+      version: scopedAuthority.version,
 
+      sectionIndex: contract.sectionIndex,
 
-  const sources =
-    contract.evidenceGraph
-      .sources
-      .filter(
-        (
-          source
-        ) =>
-          sourceIds.has(
-            source.id
-          )
-      );
+      sectionNumber: contract.sectionNumber,
 
+      totalSections: contract.totalSections,
 
-  const blockingSemanticUnits =
-    semanticVerification
-      ? semanticVerification
-          .units
-          .filter(
-            (
-              unit
-            ) =>
-              unit.classification ===
-                "UNSUPPORTED" ||
-              unit.classification ===
-                "CONTRADICTED"
-          )
-          .map(
-            (
-              unit
-            ) => ({
-              unitId:
-                unit.unitId,
+      blueprint: contract.blueprint,
 
-              classification:
-                unit.classification,
+      claims,
 
-              matchedClaimId:
-                unit.matchedClaimId,
+      evidence,
 
-              evidenceIds:
-                unit.evidenceIds,
+      sources,
 
-              rationale:
-                unit.rationale,
-            })
-          )
-      : [];
+      styleRules: contract.styleRules,
 
+      hardRules: contract.hardRules,
+    },
 
-  const context =
-    JSON.stringify({
-      sectionAuthority: {
-        version:
-          scopedAuthority.version,
+    originalSection: {
+      bodyMarkdown: section.bodyMarkdown,
 
-        sectionIndex:
-          contract.sectionIndex,
+      coveredQueryNodeIds: section.coveredQueryNodeIds,
 
-        sectionNumber:
-          contract.sectionNumber,
+      referencedClaimIds: section.referencedClaimIds,
 
-        totalSections:
-          contract.totalSections,
+      referencedEvidenceIds: section.referencedEvidenceIds,
 
-        blueprint:
-          contract.blueprint,
+      usedInternalLinks: section.usedInternalLinks,
 
-        claims,
+      assetUsed: section.assetUsed,
+    },
 
-        evidence,
+    depthRepair: depthRepair ?? null,
 
-        sources,
+    deterministicReconciliation: {
+      status: reconciliation.status,
 
-        styleRules:
-          contract.styleRules,
+      requiredClaimIds: reconciliation.requiredClaimIds,
 
-        hardRules:
-          contract.hardRules,
-      },
+      referencedClaimIds: reconciliation.referencedClaimIds,
 
-      originalSection: {
-        bodyMarkdown:
-          section.bodyMarkdown,
+      referencedEvidenceIds: reconciliation.referencedEvidenceIds,
 
-        coveredQueryNodeIds:
-          section
-            .coveredQueryNodeIds,
+      findings: reconciliation.findings,
+    },
 
-        referencedClaimIds:
-          section
-            .referencedClaimIds,
+    semanticVerification: semanticVerification
+      ? {
+          status: semanticVerification.status,
 
-        referencedEvidenceIds:
-          section
-            .referencedEvidenceIds,
+          counts: semanticVerification.counts,
 
-        usedInternalLinks:
-          section
-            .usedInternalLinks,
+          blockingUnits: blockingSemanticUnits,
+        }
+      : null,
+  });
 
-        assetUsed:
-          section.assetUsed,
-      },
-
-      deterministicReconciliation: {
-        status:
-          reconciliation.status,
-
-        requiredClaimIds:
-          reconciliation
-            .requiredClaimIds,
-
-        referencedClaimIds:
-          reconciliation
-            .referencedClaimIds,
-
-        referencedEvidenceIds:
-          reconciliation
-            .referencedEvidenceIds,
-
-        findings:
-          reconciliation
-            .findings,
-      },
-
-      semanticVerification:
-        semanticVerification
-          ? {
-              status:
-                semanticVerification
-                  .status,
-
-              counts:
-                semanticVerification
-                  .counts,
-
-              blockingUnits:
-                blockingSemanticUnits,
-            }
-          : null,
-    });
-
-  const criticFindings =
-    input.criticFindings ??
-    [];
-
+  const criticFindings = input.criticFindings ?? [];
 
   const criticFindingsBlock =
-    criticFindings.length >
-    0
+    criticFindings.length > 0
       ? [
           "",
           "FINAL ARTICLE CRITIC FINDINGS FOR THIS SECTION:",
           JSON.stringify(
-            criticFindings.map(
-              (finding) => ({
-                criticId:
-                  finding.criticId,
+            criticFindings.map((finding) => ({
+              criticId: finding.criticId,
 
-                code:
-                  finding.code,
+              code: finding.code,
 
-                severity:
-                  finding.severity,
+              severity: finding.severity,
 
-                location:
-                  finding.location,
+              location: finding.location,
 
-                message:
-                  finding.message,
+              message: finding.message,
 
-                recommendation:
-                  finding.recommendation,
+              recommendation: finding.recommendation,
 
-                repairScope:
-                  finding.repairScope,
+              repairScope: finding.repairScope,
 
-                evidence:
-                  finding.evidence,
-              })
-            ),
+              evidence: finding.evidence,
+            })),
             null,
-            2
+            2,
           ),
           "",
           "CRITIC REPAIR RULES:",
@@ -299,23 +178,14 @@ export function buildMasterSectionRepairPrompt(
         ]
       : [];
 
-
-  const competitiveReplayFindings =
-    input.competitiveReplayFindings ??
-    [];
-
+  const competitiveReplayFindings = input.competitiveReplayFindings ?? [];
 
   const competitiveReplayFindingsBlock =
-    competitiveReplayFindings.length >
-    0
+    competitiveReplayFindings.length > 0
       ? [
           "",
           "COMPETITIVE SERP REPLAY FINDINGS FOR THIS SECTION:",
-          JSON.stringify(
-            competitiveReplayFindings,
-            null,
-            2
-          ),
+          JSON.stringify(competitiveReplayFindings, null, 2),
           "",
           "COMPETITIVE REPLAY REPAIR RULES:",
           "- These findings identify competitive weakness only; they are NOT factual authority.",
@@ -329,10 +199,26 @@ export function buildMasterSectionRepairPrompt(
         ]
       : [];
 
-
   return [
     ...criticFindingsBlock,
     ...competitiveReplayFindingsBlock,
+
+    ...(depthRepair
+      ? [
+          "",
+          "DEPTH COMPLETENESS REPAIR:",
+          `Current words: ${depthRepair.currentWords}`,
+          `Minimum useful floor: ${depthRepair.minWords}`,
+          `Preferred depth: ${depthRepair.preferredWords}`,
+          `Maximum planned depth: ${depthRepair.maxWords}`,
+          "- Expand ONLY by fully answering this section's already-assigned information jobs.",
+          "- Added prose must directly serve the existing section mission, assigned queries/topics/questions/entities, or supported claims.",
+          "- Do not add another H2, another intent, another keyword target, another claim, or another evidence source.",
+          "- Do not use filler, repetition, generic throat-clearing, or keyword stuffing.",
+          "- Aim for at least the minimum floor and near the preferred depth.",
+          "- Stay below the planned maximum unless extra words are strictly necessary for factual correctness.",
+        ]
+      : []),
 
     "You are repairing EXACTLY ONE article section inside a contract-bound publishing system.",
     "",
@@ -344,7 +230,7 @@ export function buildMasterSectionRepairPrompt(
     context,
     "",
     "REPAIR GOAL:",
-    "Resolve the supplied reconciliation and/or semantic BLOCK findings while preserving all already-correct useful prose.",
+    "Resolve the supplied reconciliation/semantic findings and, when depthRepair is present, fully complete this section's already-assigned information jobs while preserving all already-correct useful prose.",
     "",
     "SEMANTIC BLOCK REPAIR PROTOCOL:",
     "1. If semanticVerification contains any unit classified UNSUPPORTED or CONTRADICTED, that unit is a mandatory repair target.",
@@ -376,7 +262,7 @@ export function buildMasterSectionRepairPrompt(
     "12. SUPPORTS + VERIFIED_EXCERPT is the only publication-grade evidence for factual support.",
     "13. Do not use SEARCH_SNIPPET or REFERENCE_ONLY material as factual authorization.",
     "14. Do not keyword-stuff.",
-    "15. Do not add headings or prose to hit a length target.",
+    "15. Never pad with filler to hit a number. When depthRepair is present, expansion is allowed only to complete already-assigned information jobs inside the existing section contract.",
     "16. Do not mention repair instructions, contracts, IDs, critics, or verification machinery in reader-facing prose.",
     "",
     "DYNAMIC WRITER V2 REPAIR POLICY:",
@@ -399,7 +285,5 @@ export function buildMasterSectionRepairPrompt(
     "",
     "Do not add any other fields.",
     "Do not include markdown fences around the JSON.",
-  ].join(
-    "\n"
-  );
+  ].join("\n");
 }

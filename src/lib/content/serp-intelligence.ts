@@ -121,6 +121,37 @@ export interface CompetitorPageAnalysis {
   wordCount:
     number | null;
 
+  /*
+   * SERP_COMPETITOR_OBSERVABILITY_V1
+   *
+   * Direct DOM observations only.
+   * These fields do NOT claim that an asset is original,
+   * authoritative, accurate, or high quality.
+   */
+  schemaTypes?:
+    string[];
+
+  tableCount?:
+    number;
+
+  imageCount?:
+    number;
+
+  videoCount?:
+    number;
+
+  detailsCount?:
+    number;
+
+  externalLinkCount?:
+    number;
+
+  authorSignal?:
+    boolean;
+
+  dateSignal?:
+    boolean;
+
   error:
     string | null;
 }
@@ -929,6 +960,282 @@ function analyzeHtml(
       html
     );
 
+
+  /*
+   * SERP_COMPETITOR_OBSERVABILITY_V1
+   *
+   * Capture only facts directly observable in fetched HTML.
+   * Never infer "quality", "original research", expertise,
+   * trustworthiness, or factual correctness from these signals.
+   */
+  const schemaTypes =
+    new Set<string>();
+
+
+  const visitJsonLd =
+    (
+      value:
+        unknown
+    ): void => {
+      if (
+        Array.isArray(
+          value
+        )
+      ) {
+        for (
+          const item
+          of value
+        ) {
+          visitJsonLd(
+            item
+          );
+        }
+
+        return;
+      }
+
+
+      if (
+        typeof value !==
+          "object" ||
+        value ===
+          null
+      ) {
+        return;
+      }
+
+
+      const record =
+        value as
+          Record<
+            string,
+            unknown
+          >;
+
+
+      const type =
+        record[
+          "@type"
+        ];
+
+
+      if (
+        typeof type ===
+          "string" &&
+        type.trim()
+      ) {
+        schemaTypes.add(
+          type.trim()
+        );
+      } else if (
+        Array.isArray(
+          type
+        )
+      ) {
+        for (
+          const item
+          of type
+        ) {
+          if (
+            typeof item ===
+              "string" &&
+            item.trim()
+          ) {
+            schemaTypes.add(
+              item.trim()
+            );
+          }
+        }
+      }
+
+
+      for (
+        const nested
+        of Object.values(
+          record
+        )
+      ) {
+        if (
+          typeof nested ===
+            "object" &&
+          nested !==
+            null
+        ) {
+          visitJsonLd(
+            nested
+          );
+        }
+      }
+    };
+
+
+  $(
+    'script[type="application/ld+json"]'
+  ).each(
+    (
+      _,
+      element
+    ) => {
+      const raw =
+        $(element)
+          .html()
+          ?.trim();
+
+      if (!raw) {
+        return;
+      }
+
+      try {
+        visitJsonLd(
+          JSON.parse(
+            raw
+          )
+        );
+      } catch {
+        /*
+         * Invalid competitor JSON-LD is simply unavailable
+         * observation data. Never fail the SERP crawl for it.
+         */
+      }
+    }
+  );
+
+
+  const tableCount =
+    $("table")
+      .length;
+
+
+  const imageCount =
+    $("img")
+      .length;
+
+
+  const videoCount =
+    $(
+      [
+        "video",
+        'iframe[src*="youtube.com"]',
+        'iframe[src*="youtu.be"]',
+        'iframe[src*="vimeo.com"]',
+      ].join(
+        ","
+      )
+    ).length;
+
+
+  const detailsCount =
+    $("details")
+      .length;
+
+
+  let externalLinkCount =
+    0;
+
+
+  const pageHost =
+    safeHostname(
+      url
+    )
+      .toLowerCase();
+
+
+  $("a[href]").each(
+    (
+      _,
+      element
+    ) => {
+      const href =
+        $(element)
+          .attr(
+            "href"
+          );
+
+      if (!href) {
+        return;
+      }
+
+      try {
+        const target =
+          new URL(
+            href,
+            url
+          );
+
+        if (
+          (
+            target.protocol ===
+              "http:" ||
+            target.protocol ===
+              "https:"
+          ) &&
+          target.hostname
+            .toLowerCase() !==
+            pageHost
+        ) {
+          externalLinkCount +=
+            1;
+        }
+      } catch {
+        // Non-URL href. Ignore.
+      }
+    }
+  );
+
+
+  const authorSignal =
+    Boolean(
+      cleanText(
+        $(
+          'meta[name="author"]'
+        ).attr(
+          "content"
+        ) ??
+        ""
+      ) ||
+      cleanText(
+        $(
+          '[rel="author"]'
+        )
+          .first()
+          .text()
+      ) ||
+      $(
+        '[itemprop="author"]'
+      ).length >
+        0 ||
+      schemaTypes.has(
+        "Person"
+      )
+    );
+
+
+  const dateSignal =
+    Boolean(
+      $(
+        [
+          'meta[property="article:published_time"]',
+          'meta[property="article:modified_time"]',
+          'meta[name="date"]',
+          'meta[name="last-modified"]',
+          "time[datetime]",
+        ].join(
+          ","
+        )
+      ).length >
+        0 ||
+      schemaTypes.has(
+        "Article"
+      ) ||
+      schemaTypes.has(
+        "NewsArticle"
+      ) ||
+      schemaTypes.has(
+        "BlogPosting"
+      )
+    );
+
+
   $(
     "script, style, noscript, svg, template"
   ).remove();
@@ -1031,6 +1338,25 @@ function analyzeHtml(
 
     wordCount:
       words,
+
+    schemaTypes:
+      [
+        ...schemaTypes,
+      ].sort(),
+
+    tableCount,
+
+    imageCount,
+
+    videoCount,
+
+    detailsCount,
+
+    externalLinkCount,
+
+    authorSignal,
+
+    dateSignal,
 
     error:
       null,

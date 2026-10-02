@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import {
   Plus,
@@ -15,10 +12,180 @@ import { useRouter } from "next/navigation";
 
 import styles from "./content-create-button.module.css";
 
+import { ContentGenerationHud } from "./content-generation-hud";
+
 type Stage =
   | "IDLE"
   | "PLANNING"
   | "WRITING";
+
+interface ContentSuggestionItemV1 {
+  readonly keyword:
+    string;
+
+  readonly source:
+    "SITE_KEYWORD"
+    | "GSC"
+    | "CACHED_RELATED";
+
+  readonly searchVolume:
+    number | null;
+
+  readonly difficulty:
+    number | null;
+
+  readonly position:
+    number | null;
+
+  readonly impressions:
+    number;
+
+  readonly clicks:
+    number;
+}
+
+
+interface ContentSuggestionsResponseV1 {
+  readonly version:
+    "CONTENT_SUGGESTIONS_V1";
+
+  readonly paidApiUsed:
+    false;
+
+  readonly recommended:
+    readonly ContentSuggestionItemV1[];
+
+  readonly related:
+    readonly ContentSuggestionItemV1[];
+}
+
+
+type ArticleTypeSelection =
+  | "AUTO"
+  | "EXPLAINER_GUIDE"
+  | "HOW_TO"
+  | "COMPARISON"
+  | "CURATED_LIST"
+  | "RANKED_LIST"
+  | "PRODUCT_DETAIL_EDUCATION"
+  | "PRODUCT_REVIEW"
+  | "SERVICE_LANDING"
+  | "LOCAL_SERVICE_GUIDE"
+  | "LOCAL_DIRECTORY"
+  | "AUDIENCE_USE_CASE"
+  | "IDEAS_USE_CASES"
+  | "PROBLEM_SOLUTION"
+  | "COMMERCIAL_CATEGORY"
+  | "BRAND_SHOP_HUB";
+
+
+const ARTICLE_TYPE_OPTIONS:
+  readonly {
+    value:
+      ArticleTypeSelection;
+
+    label:
+      string;
+  }[] =
+    [
+      {
+        value:
+          "AUTO",
+        label:
+          "Auto — Search intent + SERP",
+      },
+      {
+        value:
+          "EXPLAINER_GUIDE",
+        label:
+          "Guide / Explainer",
+      },
+      {
+        value:
+          "HOW_TO",
+        label:
+          "How-to",
+      },
+      {
+        value:
+          "COMPARISON",
+        label:
+          "Comparison",
+      },
+      {
+        value:
+          "CURATED_LIST",
+        label:
+          "List / Roundup",
+      },
+      {
+        value:
+          "RANKED_LIST",
+        label:
+          "Ranked list",
+      },
+      {
+        value:
+          "PRODUCT_DETAIL_EDUCATION",
+        label:
+          "Product page",
+      },
+      {
+        value:
+          "PRODUCT_REVIEW",
+        label:
+          "Product review",
+      },
+      {
+        value:
+          "SERVICE_LANDING",
+        label:
+          "Service page",
+      },
+      {
+        value:
+          "LOCAL_SERVICE_GUIDE",
+        label:
+          "Local service guide",
+      },
+      {
+        value:
+          "LOCAL_DIRECTORY",
+        label:
+          "Local directory",
+      },
+      {
+        value:
+          "AUDIENCE_USE_CASE",
+        label:
+          "Audience / Use case",
+      },
+      {
+        value:
+          "IDEAS_USE_CASES",
+        label:
+          "Ideas",
+      },
+      {
+        value:
+          "PROBLEM_SOLUTION",
+        label:
+          "Problem / Solution",
+      },
+      {
+        value:
+          "COMMERCIAL_CATEGORY",
+        label:
+          "Category / Collection",
+      },
+      {
+        value:
+          "BRAND_SHOP_HUB",
+        label:
+          "Brand / Shop",
+      },
+    ];
+
 
 export function ContentCreateButton({
   websiteId,
@@ -40,6 +207,27 @@ export function ContentCreateButton({
   ] =
     useState("");
 
+  /*
+   * Checked = use exactly what the user entered.
+   * Unchecked = treat input as a seed and let existing
+   * Keyword Intelligence choose the production primary.
+   */
+  const [
+    useExactKeyword,
+    setUseExactKeyword,
+  ] =
+    useState(true);
+
+
+  const [
+    articleType,
+    setArticleType,
+  ] =
+    useState<ArticleTypeSelection>(
+      "AUTO"
+    );
+
+
   const [
     stage,
     setStage,
@@ -58,6 +246,146 @@ export function ContentCreateButton({
 
   const busy =
     stage !== "IDLE";
+
+  const [
+    suggestions,
+    setSuggestions,
+  ] =
+    useState<ContentSuggestionsResponseV1>({
+      version:
+        "CONTENT_SUGGESTIONS_V1",
+
+      paidApiUsed:
+        false,
+
+      recommended:
+        [],
+
+      related:
+        [],
+    });
+
+
+  const [
+    suggestionsLoading,
+    setSuggestionsLoading,
+  ] =
+    useState(
+      false
+    );
+
+
+  /*
+   * CONTENT_SUGGESTIONS_UI_V1
+   *
+   * Endpoint is DB/GSC/cache-only.
+   * It never calls DataForSEO or an LLM.
+   */
+  useEffect(
+    () => {
+      if (!open) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      const timer =
+        window.setTimeout(
+          async () => {
+            try {
+              setSuggestionsLoading(
+                true
+              );
+
+              const params =
+                new URLSearchParams({
+                  websiteId,
+                });
+
+              const cleanTopic =
+                topic.trim();
+
+              if (cleanTopic) {
+                params.set(
+                  "seed",
+                  cleanTopic
+                );
+              }
+
+              const response =
+                await fetch(
+                  `/api/content/suggestions?${params.toString()}`,
+                  {
+                    signal:
+                      controller.signal,
+
+                    cache:
+                      "no-store",
+                  }
+                );
+
+              if (!response.ok) {
+                return;
+              }
+
+              const json =
+                await response.json() as
+                  ContentSuggestionsResponseV1;
+
+              if (
+                json.version ===
+                  "CONTENT_SUGGESTIONS_V1" &&
+                json.paidApiUsed ===
+                  false
+              ) {
+                setSuggestions(
+                  json
+                );
+              }
+            } catch (
+              cause
+            ) {
+              if (
+                cause instanceof
+                  DOMException &&
+                cause.name ===
+                  "AbortError"
+              ) {
+                return;
+              }
+            } finally {
+              if (
+                !controller.signal
+                  .aborted
+              ) {
+                setSuggestionsLoading(
+                  false
+                );
+              }
+            }
+          },
+          topic.trim()
+            ? 280
+            : 0
+        );
+
+
+      return () => {
+        window.clearTimeout(
+          timer
+        );
+
+        controller.abort();
+      };
+    },
+    [
+      open,
+      topic,
+      websiteId,
+    ]
+  );
+
 
   async function createArticle(
     event:
@@ -104,6 +432,22 @@ export function ContentCreateButton({
 
                 topic:
                   cleanTopic,
+
+                generationMode:
+                  useExactKeyword
+                    ? "EXACT_KEYWORD"
+                    : "BEST_OPPORTUNITY",
+
+                exactKeyword:
+                  useExactKeyword
+                    ? cleanTopic
+                    : undefined,
+
+                templateOverride:
+                  articleType ===
+                    "AUTO"
+                    ? undefined
+                    : articleType,
 
                 reason:
                   "This topic was selected for a new content page.",
@@ -215,8 +559,17 @@ export function ContentCreateButton({
           styles.trigger
         }
         onClick={() => {
-          setError(null);
-          setOpen(true);
+          setArticleType(
+            "AUTO"
+          );
+
+          setError(
+            null
+          );
+
+          setOpen(
+            true
+          );
         }}
       >
         <Plus
@@ -297,6 +650,71 @@ export function ContentCreateButton({
                 createArticle
               }
             >
+
+              <div
+                className={
+                  styles.templateField
+                }
+              >
+                <label
+                  htmlFor="content-article-type"
+                  className={
+                    styles.templateLabel
+                  }
+                >
+                  Article type
+                </label>
+
+                <select
+                  id="content-article-type"
+                  className={
+                    styles.templateSelect
+                  }
+                  value={
+                    articleType
+                  }
+                  disabled={
+                    busy
+                  }
+                  onChange={(
+                    event
+                  ) => {
+                    setArticleType(
+                      event.target
+                        .value as
+                        ArticleTypeSelection
+                    );
+                  }}
+                >
+                  {ARTICLE_TYPE_OPTIONS.map(
+                    (
+                      option
+                    ) => (
+                      <option
+                        key={
+                          option.value
+                        }
+                        value={
+                          option.value
+                        }
+                      >
+                        {
+                          option.label
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <div
+                  className={
+                    styles.templateHint
+                  }
+                >
+                  Auto is recommended. Article type changes structure planning only — evidence and SEO safety still apply.
+                </div>
+              </div>
+
               <label
                 className={
                   styles.label
@@ -331,6 +749,229 @@ export function ContentCreateButton({
 
               <div
                 className={
+                  styles.suggestionsPanel
+                }
+              >
+                <div
+                  className={
+                    styles.suggestionsHeader
+                  }
+                >
+                  <span>
+                    Suggestions
+                  </span>
+
+                  <span
+                    className={
+                      styles.suggestionsSource
+                    }
+                  >
+                    {suggestionsLoading
+                      ? "Loading…"
+                      : "Local data only"}
+                  </span>
+                </div>
+
+                {suggestions
+                  .recommended
+                  .length >
+                0 ? (
+                  <div
+                    className={
+                      styles.suggestionGroup
+                    }
+                  >
+                    <div
+                      className={
+                        styles.suggestionGroupLabel
+                      }
+                    >
+                      Recommended
+                    </div>
+
+                    <div
+                      className={
+                        styles.suggestionChips
+                      }
+                    >
+                      {suggestions
+                        .recommended
+                        .map(
+                          (
+                            suggestion
+                          ) => (
+                            <button
+                              key={
+                                `recommended:${suggestion.keyword}`
+                              }
+                              type="button"
+                              className={
+                                styles.suggestionChip
+                              }
+                              disabled={
+                                busy
+                              }
+                              onClick={() => {
+                                setTopic(
+                                  suggestion.keyword
+                                );
+                              }}
+                            >
+                              <span>
+                                {
+                                  suggestion.keyword
+                                }
+                              </span>
+
+                              {suggestion
+                                .searchVolume !==
+                              null ? (
+                                <small>
+                                  {
+                                    suggestion.searchVolume
+                                  } vol
+                                </small>
+                              ) : null}
+                            </button>
+                          )
+                        )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {suggestions
+                  .related
+                  .length >
+                0 ? (
+                  <div
+                    className={
+                      styles.suggestionGroup
+                    }
+                  >
+                    <div
+                      className={
+                        styles.suggestionGroupLabel
+                      }
+                    >
+                      Related
+                    </div>
+
+                    <div
+                      className={
+                        styles.suggestionChips
+                      }
+                    >
+                      {suggestions
+                        .related
+                        .map(
+                          (
+                            suggestion
+                          ) => (
+                            <button
+                              key={
+                                `related:${suggestion.keyword}`
+                              }
+                              type="button"
+                              className={
+                                styles.suggestionChip
+                              }
+                              disabled={
+                                busy
+                              }
+                              onClick={() => {
+                                setTopic(
+                                  suggestion.keyword
+                                );
+                              }}
+                            >
+                              <span>
+                                {
+                                  suggestion.keyword
+                                }
+                              </span>
+
+                              {suggestion
+                                .searchVolume !==
+                              null ? (
+                                <small>
+                                  {
+                                    suggestion.searchVolume
+                                  } vol
+                                </small>
+                              ) : null}
+                            </button>
+                          )
+                        )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {!suggestionsLoading &&
+                suggestions
+                  .recommended
+                  .length ===
+                  0 &&
+                suggestions
+                  .related
+                  .length ===
+                  0 ? (
+                  <div
+                    className={
+                      styles.suggestionsEmpty
+                    }
+                  >
+                    No cached or site keyword suggestions yet.
+                  </div>
+                ) : null}
+              </div>
+
+
+              {/* CONTENT_GENERATION_MODE_UI_V1 */}
+              <label
+                className={
+                  styles.modeToggle
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={
+                    useExactKeyword
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setUseExactKeyword(
+                      event.target
+                        .checked
+                    )
+                  }
+                  disabled={
+                    busy
+                  }
+                  className={
+                    styles.modeCheckbox
+                  }
+                />
+
+                <span
+                  className={
+                    styles.modeCopy
+                  }
+                >
+                  <strong>
+                    Use exact keyword
+                  </strong>
+
+                  <span>
+                    {useExactKeyword
+                      ? "Growth OS will target this exact search phrase."
+                      : "Growth OS will use this as a seed and choose the strongest eligible keyword from real SEO data."}
+                  </span>
+                </span>
+              </label>
+
+              <div
+                className={
                   styles.explainer
                 }
               >
@@ -351,6 +992,21 @@ export function ContentCreateButton({
                   writing.
                 </span>
               </div>
+
+              {/* CONTENT_GENERATION_HUD_V1 */}
+              {busy ? (
+                <ContentGenerationHud
+                  mode={
+                    stage ===
+                    "PLANNING"
+                      ? "PLANNING"
+                      : "WRITING"
+                  }
+                  topic={
+                    topic
+                  }
+                />
+              ) : null}
 
               {error ? (
                 <div

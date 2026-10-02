@@ -47,6 +47,36 @@ string {
 }
 
 
+
+function stripComments(
+  value: string
+): string {
+  return value
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+
+function inOrder(
+  source: string,
+  markers: readonly string[]
+): boolean {
+  let at = -1;
+
+  for (const marker of markers) {
+    const next = source.indexOf(marker, at + 1);
+
+    if (next < 0) {
+      return false;
+    }
+
+    at = next;
+  }
+
+  return true;
+}
+
+
 describe(
   "Production Master Writer Boundary",
   () => {
@@ -147,22 +177,14 @@ describe(
 
 
     it(
-      "does not allow legacy whole-article rewrite to mutate master output",
+      "contains no executable whole-article rewrite that can mutate master output",
       () => {
-        const source =
-          generationFunctionSource();
+        const source = stripComments(generationFunctionSource());
+        const writer = source.indexOf("executeMasterWriterV1({");
 
-        expect(
-          source
-        ).toMatch(
-          /allowLegacyWholeArticleRewrite\s*=\s*false/
-        );
-
-        expect(
-          source
-        ).toMatch(
-          /allowLegacyWholeArticleRewrite\s*&&\s*\(\s*shouldRewriteArticle\s*\(/
-        );
+        expect(writer).toBeGreaterThanOrEqual(0);
+        expect(source.slice(writer)).not.toContain("rewriteArticle(");
+        expect(source).not.toContain("allowLegacyWholeArticleRewrite");
       }
     );
   }

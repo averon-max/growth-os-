@@ -31,6 +31,11 @@ import {
 } from "./serp-feasibility";
 
 
+import {
+  applyExactPrimaryAuthorityV1,
+} from "./exact-primary-authority-v1";
+
+
 export interface FinalContentPlan {
   serpSnapshot:
     {
@@ -1021,6 +1026,7 @@ export async function buildFinalContentPlan({
   websiteId,
   topic,
   businessName,
+  requiredPrimaryKeyword,
 }: {
   websiteId:
     string;
@@ -1030,12 +1036,31 @@ export async function buildFinalContentPlan({
 
   businessName:
     string;
+
+  requiredPrimaryKeyword?:
+    string;
 }): Promise<FinalContentPlan> {
-  const strategy =
+  const discoveredStrategy =
     await buildContentStrategy({
       websiteId,
       topic,
       businessName,
+    });
+
+
+  /*
+   * EXACT_PRIMARY_AUTHORITY_V1
+   *
+   * Lock the primary BEFORE SERP analysis.
+   * BEST_OPPORTUNITY passes no requiredPrimaryKeyword and therefore
+   * keeps the existing production selector unchanged.
+   */
+  const strategy =
+    applyExactPrimaryAuthorityV1({
+      strategy:
+        discoveredStrategy,
+
+      requiredPrimaryKeyword,
     });
 
   let serp:

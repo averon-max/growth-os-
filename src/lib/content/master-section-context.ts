@@ -595,7 +595,27 @@ export function buildSectionScopedAuthorityContextV1(
     );
 
 
-  return Object.freeze({
+    /*
+   * SECTION_EXECUTION_PLAN_AUTHORITY_CONTEXT_V1
+   *
+   * Bound by ArticleExecutionPlan before the Writer runs.
+   * Kept optional here only so isolated legacy unit fixtures
+   * can still construct SectionGenerationContractV1.
+   */
+  const executionPlanAuthority =
+    (
+      contract as
+        Readonly<
+          SectionGenerationContractV1
+        > & {
+          readonly executionPlanAuthority?:
+            unknown;
+        }
+    ).executionPlanAuthority ??
+    null;
+
+
+return Object.freeze({
     version:
       "SECTION_SCOPED_AUTHORITY_CONTEXT_V1",
 
@@ -607,6 +627,9 @@ export function buildSectionScopedAuthorityContextV1(
 
     totalSections:
       contract.totalSections,
+
+    executionPlanAuthority,
+
 
     section:
       contract.blueprint,

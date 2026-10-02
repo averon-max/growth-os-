@@ -1,3 +1,8 @@
+import {
+  recordContentProviderRequestV1,
+  runWithContentProviderDispatchMetaV1,
+} from "./content-provider-request-context-v1";
+
 import OpenAI from "openai";
 import type {
   SerpReplayPairwiseGeneratorV1,
@@ -368,6 +373,26 @@ async function callGroq(
       );
 
     try {
+      /*
+       * CONTENT_PROVIDER_REQUEST_BUDGET_V1:groq
+       *
+       * One charge per physical outbound HTTP attempt.
+       */
+      recordContentProviderRequestV1({
+        provider:
+          "groq",
+
+        model:
+          GROQ_MODEL,
+
+        attempt:
+          attempt +
+          1,
+
+        prompt,
+      });
+
+
       const response =
         await fetch(
           GROQ_API_URL,
@@ -598,6 +623,27 @@ async function callOpenAiApi(
     attempt++
   ) {
     try {
+      /*
+       * CONTENT_PROVIDER_REQUEST_BUDGET_V1:openai
+       *
+       * OpenAI SDK has maxRetries=0.
+       * Therefore this is exactly one physical provider attempt.
+       */
+      recordContentProviderRequestV1({
+        provider:
+          "openai",
+
+        model:
+          OPENAI_MODEL,
+
+        attempt:
+          attempt +
+          1,
+
+        prompt,
+      });
+
+
       const response =
         await client.responses.create({
           model:
@@ -1020,9 +1066,29 @@ async function callGeminiApi(
       );
 
     try {
+      /*
+       * CONTENT_PROVIDER_REQUEST_BUDGET_V1:gemini
+       *
+       * One charge per physical outbound HTTP attempt.
+       */
+      recordContentProviderRequestV1({
+        provider:
+          "gemini",
+
+        model:
+          GEMINI_MODEL,
+
+        attempt:
+          attempt +
+          1,
+
+        prompt,
+      });
+
+
       const response =
         await fetch(
-          `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+          `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent`,
           {
             method:
               "POST",
@@ -1032,7 +1098,7 @@ async function callGeminiApi(
 
             headers: {
               "Content-Type":
-                "application/json",
+                "application/json", "x-goog-api-key": apiKey,
             },
 
             body:
@@ -2384,14 +2450,28 @@ Respond with JSON only.`;
         });
 
 
+      /*
+       * CONTENT_SEMANTIC_CONTINUATION_TELEMETRY_V1
+       *
+       * This is a second physical provider request within the same
+       * logical verifySectionClaims() call.
+       */
       const continuationResponse =
-        await callContentAiJson(
-        continuationPrompt,
-        {
-          reasoningEffort:
-            "none",
-        }
-      );
+        await runWithContentProviderDispatchMetaV1(
+          {
+            continuation:
+              true,
+          },
+
+          () =>
+            callContentAiJson(
+              continuationPrompt,
+              {
+                reasoningEffort:
+                  "none",
+              }
+            )
+        );
 
 
       const continuationCandidate =

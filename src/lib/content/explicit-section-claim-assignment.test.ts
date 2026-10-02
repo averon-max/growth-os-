@@ -141,12 +141,17 @@ describe(
 
 
         /*
-         * SEARCH_SNIPPET must never create publication authority.
+         * Semantic ownership survives even without publication
+         * authority.
+         *
+         * SEARCH_SNIPPET still must never become evidenceIds.
          */
         expect(
           result[1]
             ?.requiredClaims
-        ).toEqual([]);
+        ).toEqual([
+          "alerts",
+        ]);
 
 
         expect(
