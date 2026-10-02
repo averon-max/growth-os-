@@ -2765,20 +2765,30 @@ export async function planProductionMasterArtifactsFromLiveSources({
 
 
   /*
-   * BOUNDED_CLAIM_EVIDENCE_RECOVERY_V1
+   * SELF_HEALING_CLAIM_EVIDENCE_RECOVERY_V1
    *
-   * Pass 1:
-   * use the normal article-level research sources.
+   * Missing evidence is not a product-level terminal state.
    *
-   * Pass 2:
-   * only claims still lacking SUPPORTS + VERIFIED_EXCERPT
-   * receive bounded claim-specific SERP discovery.
+   * Recovery strategy:
+   * 1. Verify normal article-level research.
+   * 2. Identify only unresolved factual claims.
+   * 3. Run repeated claim-specific discovery waves.
+   * 4. Every discovered URL must still be fetched.
+   * 5. Only deterministic VERIFIED_EXCERPT evidence is accepted.
+   * 6. Re-check unresolved claims after every wave.
+   * 7. Stop immediately once every claim is verified.
    *
-   * There is exactly ONE recovery pass.
+   * SEARCH_SNIPPET / REFERENCE_ONLY never become factual authority.
    *
-   * Discovery snippets never become evidence. New URLs still
-   * pass through fetchSinglePage + excerpt verification.
+   * The wave budget prevents runaway provider spend or an infinite
+   * request if the external search/fetch infrastructure is unavailable.
+   * The pre-writer gate remains the final safety invariant and must
+   * never be bypassed.
    */
+  const MAX_EVIDENCE_RECOVERY_WAVES_V1 =
+    6;
+
+
   const initialEvidenceGraphInput =
     await enrichLiveEvidenceGraphV1({
       graph:
@@ -2789,33 +2799,47 @@ export async function planProductionMasterArtifactsFromLiveSources({
     });
 
 
+  const verifiedClaimIdsFromGraph =
+    (
+      graph:
+        typeof initialEvidenceGraphInput
+    ) =>
+      new Set(
+        graph
+          .claimEvidence
+          .filter(
+            (
+              evidence
+            ) =>
+              evidence.kind ===
+                "VERIFIED_EXCERPT" &&
+              evidence.relation ===
+                "SUPPORTS" &&
+              Boolean(
+                evidence.excerpt
+                  ?.trim()
+              )
+          )
+          .map(
+            (
+              evidence
+            ) =>
+              evidence.claimId
+          )
+      );
+
+
   const initiallyVerifiedClaimIds =
-    new Set(
+    verifiedClaimIdsFromGraph(
       initialEvidenceGraphInput
-        .claimEvidence
-        .filter(
-          (
-            evidence
-          ) =>
-            evidence.kind ===
-              "VERIFIED_EXCERPT" &&
-            evidence.relation ===
-              "SUPPORTS" &&
-            Boolean(
-              evidence.excerpt
-                ?.trim()
-            )
-        )
-        .map(
-          (
-            evidence
-          ) =>
-            evidence.claimId
-        )
     );
 
 
-  const unresolvedEvidenceClaims =
+  let evidenceGraphInput =
+    initialEvidenceGraphInput;
+
+
+  let unresolvedEvidenceClaims =
     claimsInput.filter(
       (
         claim
@@ -2826,58 +2850,123 @@ export async function planProductionMasterArtifactsFromLiveSources({
     );
 
 
-  const fallbackEvidenceSources =
-    unresolvedEvidenceClaims
-      .length >
-    0
-      ? await discoverClaimEvidenceFallbackSourcesV1({
-          claims:
-            unresolvedEvidenceClaims,
-
-          primaryQuery:
-            research.keyword,
-
-          locationName:
-            research.market
-              .locationName,
-
-          languageName:
-            research.market
-              .languageName,
-
-          existingUrls:
-            initialEvidenceGraphInput
-              .sources
-              .map(
-                (
-                  source
-                ) =>
-                  source.url
-              ),
-        })
-      : [];
+  let fallbackEvidenceSourcesTotal =
+    0;
 
 
-  const evidenceGraphInput =
-    fallbackEvidenceSources
-      .length ===
-    0
-      ? initialEvidenceGraphInput
-      : await enrichLiveEvidenceGraphV1({
-          /*
-           * New claim-specific discovery sources are intentionally
-           * first. fetchSourceBodies() remains bounded, and Pass 1
-           * has already examined the normal article-level sources.
-           */
+  const evidenceRecoveryWaves:
+    Array<{
+      wave:
+        number;
+
+      query:
+        string;
+
+      unresolvedBefore:
+        string[];
+
+      discoveredSources:
+        number;
+
+      verifiedAfter:
+        number;
+
+      unresolvedAfter:
+        string[];
+    }> =
+      [];
+
+
+  const recoveryQuerySuffixes =
+    [
+      "",
+      " official guidance",
+      " consumer guidance",
+      " government guidance",
+      " help center",
+      " facts",
+    ];
+
+
+  for (
+    let recoveryWave =
+      0;
+
+    recoveryWave <
+      MAX_EVIDENCE_RECOVERY_WAVES_V1 &&
+    unresolvedEvidenceClaims.length >
+      0;
+
+    recoveryWave++
+  ) {
+    const unresolvedBefore =
+      unresolvedEvidenceClaims.map(
+        (
+          claim
+        ) =>
+          claim.id
+      );
+
+
+    const recoveryPrimaryQuery =
+      `${research.keyword}${recoveryQuerySuffixes[
+        recoveryWave
+      ] ?? ""}`.trim();
+
+
+    const fallbackEvidenceSources =
+      await discoverClaimEvidenceFallbackSourcesV1({
+        claims:
+          unresolvedEvidenceClaims,
+
+        primaryQuery:
+          recoveryPrimaryQuery,
+
+        locationName:
+          research.market
+            .locationName,
+
+        languageName:
+          research.market
+            .languageName,
+
+        existingUrls:
+          evidenceGraphInput
+            .sources
+            .map(
+              (
+                source
+              ) =>
+                source.url
+            ),
+      });
+
+
+    fallbackEvidenceSourcesTotal +=
+      fallbackEvidenceSources
+        .length;
+
+
+    if (
+      fallbackEvidenceSources.length >
+      0
+    ) {
+      /*
+       * Put fresh sources first because fetchSourceBodies()
+       * has its own safety bound. Old verified evidence is
+       * retained in claimEvidence.
+       */
+      evidenceGraphInput =
+        await enrichLiveEvidenceGraphV1({
           graph: {
             sources: [
               ...fallbackEvidenceSources,
-              ...initialEvidenceGraphInput
+              ...evidenceGraphInput
                 .sources,
             ],
 
             claimEvidence: [
-              ...initialEvidenceGraphInput
+              ...evidenceGraphInput
                 .claimEvidence,
             ],
           },
@@ -2885,31 +2974,68 @@ export async function planProductionMasterArtifactsFromLiveSources({
           claims:
             unresolvedEvidenceClaims,
         });
+    }
+
+
+    const verifiedAfterWave =
+      verifiedClaimIdsFromGraph(
+        evidenceGraphInput
+      );
+
+
+    unresolvedEvidenceClaims =
+      claimsInput.filter(
+        (
+          claim
+        ) =>
+          !verifiedAfterWave.has(
+            claim.id
+          )
+      );
+
+
+    evidenceRecoveryWaves.push({
+      wave:
+        recoveryWave +
+        1,
+
+      query:
+        recoveryPrimaryQuery,
+
+      unresolvedBefore,
+
+      discoveredSources:
+        fallbackEvidenceSources
+          .length,
+
+      verifiedAfter:
+        verifiedAfterWave
+          .size,
+
+      unresolvedAfter:
+        unresolvedEvidenceClaims
+          .map(
+            (
+              claim
+            ) =>
+              claim.id
+          ),
+    });
+
+
+    console.info(
+      "[content evidence recovery wave]",
+      evidenceRecoveryWaves[
+        evidenceRecoveryWaves.length -
+          1
+      ]
+    );
+  }
 
 
   const finallyVerifiedClaimIds =
-    new Set(
+    verifiedClaimIdsFromGraph(
       evidenceGraphInput
-        .claimEvidence
-        .filter(
-          (
-            evidence
-          ) =>
-            evidence.kind ===
-              "VERIFIED_EXCERPT" &&
-            evidence.relation ===
-              "SUPPORTS" &&
-            Boolean(
-              evidence.excerpt
-                ?.trim()
-            )
-        )
-        .map(
-          (
-            evidence
-          ) =>
-            evidence.claimId
-        )
     );
 
 
@@ -2923,18 +3049,11 @@ export async function planProductionMasterArtifactsFromLiveSources({
         initiallyVerifiedClaimIds
           .size,
 
-      unresolvedBeforeFallback:
-        unresolvedEvidenceClaims
-          .map(
-            (
-              claim
-            ) =>
-              claim.id
-          ),
-
       fallbackSources:
-        fallbackEvidenceSources
-          .length,
+        fallbackEvidenceSourcesTotal,
+
+      recoveryWaves:
+        evidenceRecoveryWaves,
 
       finallyVerified:
         finallyVerifiedClaimIds
@@ -2958,6 +3077,7 @@ export async function planProductionMasterArtifactsFromLiveSources({
           ),
     }
   );
+
 
   // ---- Stage 8A/8B ----
   const questions = [...new Set(plan.questions.map((q) => q.trim()).filter(Boolean))];

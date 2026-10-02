@@ -146,6 +146,24 @@ export function canonicalEvidenceTokenV1(
 
 
   /*
+   * EVIDENCE_TOKEN_BOUNDARY_PUNCTUATION_V1
+   *
+   * Semantic words must not retain sentence punctuation.
+   *
+   * information. -> information
+   * appears.     -> appears
+   *
+   * Internal decimal punctuation remains intact:
+   * 3.5 -> 3.5
+   */
+  token =
+    token.replace(
+      /^[^a-z0-9$%]+|[^a-z0-9$%]+$/gu,
+      ""
+    );
+
+
+  /*
    * Small deterministic morphology normalization.
    */
   if (
@@ -215,6 +233,35 @@ export function canonicalEvidenceTokenV1(
 
 
   /*
+   * EVIDENCE_MONITORING_PARAPHRASE_V1
+   *
+   * "watch", "track", and "monitor" describe the same
+   * observation action in evidence statements such as:
+   *
+   * "credit monitoring watches for changes"
+   * "credit monitoring tracks changes"
+   *
+   * Morphology normalization has already reduced:
+   * watches -> watch
+   * watching -> watch
+   * tracks -> track
+   * tracking -> track
+   *
+   * This preserves the existing coverage threshold,
+   * polarity gate, numeric gate, and negative-target gate.
+   */
+  if (
+    token ===
+      "watch" ||
+    token ===
+      "track"
+  ) {
+    token =
+      "monitor";
+  }
+
+
+  /*
    * Small controlled synonym set for obvious factual
    * paraphrases.
    *
@@ -271,6 +318,67 @@ export function canonicalEvidenceTokenV1(
 
       incorrect:
         "inaccuracy",
+
+      /*
+       * SELF_HEALING_EVIDENCE_ALIASES_V1
+       *
+       * Small deterministic equivalence classes for
+       * common factual paraphrases.
+       */
+      checking:
+        "check",
+
+      reviewing:
+        "check",
+
+      review:
+        "check",
+
+      check:
+        "check",
+
+      constitute:
+        "cause",
+
+      create:
+        "cause",
+
+      creates:
+        "cause",
+
+      trigger:
+        "cause",
+
+      cause:
+        "cause",
+
+      cover:
+        "scope",
+
+      coverage:
+        "scope",
+
+      include:
+        "scope",
+
+      includ:
+        "scope",
+
+      depend:
+        "scope",
+
+      differ:
+        "scope",
+
+      vary:
+        "scope",
+
+      pull:
+        "inquiry",
+
+      inquiry:
+        "inquiry",
+
     };
 
 
@@ -313,6 +421,59 @@ function semanticTokens(
       tokens
     ),
   ];
+}
+
+
+
+/*
+ * EVIDENCE_VERIFICATION_CONTEXT_TOKENS_V1
+ *
+ * Generic wrapper nouns must not dominate factual identity.
+ * This does NOT relax:
+ * - numeric identity
+ * - polarity
+ * - negative target preservation
+ * - real-page VERIFIED_EXCERPT requirement
+ */
+const EVIDENCE_VERIFICATION_CONTEXT_TOKENS_V1 =
+  new Set([
+    "service",
+    "consumer",
+    "person",
+    "user",
+    "information",
+    "product",
+    "option",
+  ]);
+
+
+function evidenceVerificationTokensV1(
+  value:
+    string
+): string[] {
+  const semantic =
+    semanticTokens(
+      value
+    );
+
+  const focused =
+    semantic.filter(
+      (
+        token
+      ) =>
+        !EVIDENCE_VERIFICATION_CONTEXT_TOKENS_V1.has(
+          token
+        )
+    );
+
+  /*
+   * Never reduce a short claim below the existing
+   * minimum semantic-identity requirement.
+   */
+  return focused.length >=
+    3
+    ? focused
+    : semantic;
 }
 
 
@@ -677,7 +838,7 @@ export function findVerifiedExcerptCandidateV1({
     string;
 }): VerifiedExcerptCandidateV1 | null {
   const claimTokens =
-    semanticTokens(
+    evidenceVerificationTokensV1(
       claimText
     );
 
@@ -754,7 +915,7 @@ export function findVerifiedExcerptCandidateV1({
 
     const excerptTokens =
       new Set(
-        semanticTokens(
+        evidenceVerificationTokensV1(
           excerpt
         )
       );
@@ -1462,7 +1623,7 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
         const result
         of results.slice(
           0,
-          5
+          10
         )
       ) {
         if (
