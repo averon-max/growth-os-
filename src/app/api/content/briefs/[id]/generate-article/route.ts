@@ -1,4 +1,8 @@
 import {
+  ArticlePreWriterEvidenceGateErrorV1,
+} from "@/lib/content/article-prewriter-evidence-gate-v1";
+
+import {
   ContentRunBudgetExceededErrorV1,
 } from "@/lib/content/content-run-budget-v1";
 
@@ -87,6 +91,51 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         {
           status:
             422,
+        }
+      );
+    }
+
+    /*
+     * ARTICLE_PREWRITER_BLOCKED_SURFACE_V1
+     *
+     * Upstream evidence/planning blocker. No ContentArticle exists
+     * for this attempt (the gate runs before any article row is
+     * touched), so surface an actionable state instead of a
+     * failed-article page.
+     */
+    if (
+      err instanceof
+        ArticlePreWriterEvidenceGateErrorV1 ||
+      (
+        err instanceof Error &&
+        err.name ===
+          "ArticlePreWriterEvidenceGateErrorV1"
+      )
+    ) {
+      const gateError =
+        err as ArticlePreWriterEvidenceGateErrorV1;
+
+      return NextResponse.json(
+        {
+          error:
+            "Not enough verified evidence to write every required section yet. No article was created. Add verified sources or adjust the brief, then try again.",
+
+          code:
+            gateError.code,
+
+          sectionIds:
+            gateError.sectionIds ??
+            [],
+
+          articleCreated:
+            false,
+
+          retryable:
+            false,
+        },
+        {
+          status:
+            409,
         }
       );
     }
