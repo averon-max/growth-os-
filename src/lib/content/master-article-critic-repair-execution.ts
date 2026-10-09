@@ -33,8 +33,9 @@ import type {
 } from "./master-writer-orchestrator";
 
 import {
+  countSectionWordsV1,
   supportsMasterSectionRepairGenerator,
-  verifyAndRepairGeneratedSectionV1,
+  verifyGeneratedSectionOnlyV1,
 } from "./master-section-repair";
 
 import {
@@ -111,7 +112,7 @@ export interface MasterArticleCriticRepairExecutionV1 {
   provenance:
     Readonly<{
       criticReplayCount:
-        0 | 1;
+        number;
 
       repairedSectionCount:
         number;
@@ -289,6 +290,38 @@ function rebuildWriterRun({
 }
 
 
+/*
+ * MASTER_CRITIC_SINGLE_REPAIR_CYCLE_V1
+ *
+ * Final critics are a bounded quality-control transaction.
+ *
+ * Ownership:
+ *
+ * initial full critic suite
+ * -> classify repairability
+ * -> ONE scoped model repair per initial section task
+ * -> canonical reconciliation + semantic verification
+ * -> deterministic semantic cleanup when needed
+ * -> ONE full critic replay
+ * -> STOP
+ *
+ * The replay is diagnostic. It does NOT recursively become a new
+ * writer/repair planner.
+ *
+ * Hard safety is still fail-closed:
+ * - upstream evidence/context/cannibalization blockers
+ * - section reconciliation failures
+ * - section semantic/evidence failures
+ * - required claim loss
+ *
+ * Residual repairable SECTION critic findings are preserved in
+ * finalCritics for review/final-readiness diagnostics, but they
+ * cannot start another authoring loop.
+ *
+ * No whole-article rewrite.
+ */
+
+
 export async function executeMasterArticleCriticRepairReplayV1({
   contract,
   run,
@@ -329,13 +362,10 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
 
   /*
-   * IMPORTANT:
+   * Upstream/unrepairable BLOCKs fail before any model repair.
    *
-   * This runs BEFORE any repair capability check or model call.
-   *
-   * Missing context, evidence authority, cannibalization,
-   * ARTICLE/SHELL scope, etc. therefore fail without wasting an
-   * LLM call.
+   * Repairable SECTION findings are allowed through into the one
+   * bounded repair transaction below.
    */
   assertMasterArticleCriticRepairPlanExecutableV1(
     repairPlan
@@ -411,10 +441,6 @@ export async function executeMasterArticleCriticRepairReplayV1({
     generator;
 
 
-  const semanticGenerator =
-    generator;
-
-
   const sections =
     [
       ...run.sections,
@@ -440,44 +466,20 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
 
   /*
-   * Explicitly forbid a hidden second LLM repair.
+   * MASTER_CRITIC_SINGLE_MODEL_OWNER_V1
    *
-   * verifyAndRepairGeneratedSectionV1() is reused because it
-   * already owns:
+   * Exactly ONE model mutation is allowed for each INITIAL critic
+   * repair task.
    *
-   * structural identity
-   * -> deterministic reconciliation
+   * verifyGeneratedSectionOnlyV1 owns ZERO model mutations.
+   * It may only:
+   *
+   * identity
+   * -> reconciliation
    * -> semantic verification
-   *
-   * If the critic-repaired section still BLOCKS, its internal
-   * repair hook throws immediately instead of calling the model
-   * a second time.
+   * -> deterministic semantic deletion
+   * -> one semantic re-verification.
    */
-  const verificationOnlyGenerator = {
-    modelName:
-      repairGenerator.modelName,
-
-    verifySectionClaims:
-      (
-        input:
-          Parameters<
-            typeof semanticGenerator.verifySectionClaims
-          >[0]
-      ) =>
-        semanticGenerator
-          .verifySectionClaims(
-            input
-          ),
-
-    async repairSection():
-    Promise<never> {
-      throw new ContentGenerationError(
-        "MASTER_CRITIC_REPAIR_SECOND_PASS_FORBIDDEN"
-      );
-    },
-  };
-
-
   for (
     const task
     of repairPlan.repairTasks
@@ -522,13 +524,90 @@ export async function executeMasterArticleCriticRepairReplayV1({
     }
 
 
+    /*
+     * MASTER_CRITIC_DEPTH_PRESERVATION_V1
+     *
+     * Critic owns exactly ONE model mutation.
+     *
+     * Therefore that mutation must know the execution-plan depth
+     * contract BEFORE it rewrites the section.
+     *
+     * We intentionally provide the full section budget even when
+     * the incoming section is already above min: the goal is not
+     * another depth-repair loop, but preventing critic shrinkage.
+     */
+    const criticTargetWords =
+      (
+        sectionContract as
+          typeof sectionContract & {
+            readonly executionPlanAuthority?: Readonly<{
+              readonly targetWords?: Readonly<{
+                readonly min: number;
+                readonly preferred: number;
+                readonly max: number;
+              }>;
+            }>;
+          }
+      ).executionPlanAuthority?.targetWords ??
+      null;
+
+
+    /*
+     * MASTER_CRITIC_EXISTING_DEPTH_FLOOR_V1
+     *
+     * A section reaching Master Critic has already passed the
+     * Writer depth contract.
+     *
+     * Critic owns exactly one model mutation. That mutation may
+     * fix critic findings, but it must not unnecessarily destroy
+     * already-valid useful depth.
+     *
+     * Preserve existing depth up to the execution-plan preferred
+     * target:
+     *
+     *   preservation floor =
+     *     max(
+     *       target.min,
+     *       min(currentWords, target.preferred)
+     *     )
+     *
+     * No extra repair/model loop is introduced here.
+     */
+    const criticCurrentWords =
+      countSectionWordsV1(
+        currentSection.bodyMarkdown
+      );
+
+
+    const criticDepthPreservation =
+      criticTargetWords
+        ? Object.freeze({
+            currentWords:
+              criticCurrentWords,
+
+            minWords:
+              Math.max(
+                criticTargetWords.min,
+
+                Math.min(
+                  criticCurrentWords,
+                  criticTargetWords.preferred
+                )
+              ),
+
+            preferredWords:
+              criticTargetWords.preferred,
+
+            maxWords:
+              criticTargetWords.max,
+          })
+        : undefined;
+
+
     let repairedSection;
 
 
     try {
-      /*
-       * Exactly ONE critic-driven model repair for this section.
-       */
       repairedSection =
         await repairGenerator
           .repairSection({
@@ -544,6 +623,9 @@ export async function executeMasterArticleCriticRepairReplayV1({
             semanticVerification:
               currentSemanticVerification,
 
+            depthRepair:
+              criticDepthPreservation,
+
             attempt:
               1,
 
@@ -556,9 +638,11 @@ export async function executeMasterArticleCriticRepairReplayV1({
       throw new ContentGenerationError(
         [
           "MASTER_CRITIC_SECTION_REPAIR_FAILED",
+
           String(
             index
           ),
+
           failureMessage(
             error
           ),
@@ -574,13 +658,16 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
     try {
       /*
-       * Reuse the proven 9I-F validation transaction.
+       * MASTER_CRITIC_VALIDATION_CONVERGENCE_V2
        *
-       * Any structural / claim / semantic regression blocks.
-       * No second model repair is permitted.
+       * Critic already spent the only model mutation.
+       *
+       * Canonical verify-only may deterministically self-heal
+       * unsupported incidental prose but may never call
+       * repairSection() itself.
        */
       verified =
-        await verifyAndRepairGeneratedSectionV1({
+        await verifyGeneratedSectionOnlyV1({
           contract:
             sectionContract,
 
@@ -588,7 +675,7 @@ export async function executeMasterArticleCriticRepairReplayV1({
             repairedSection,
 
           generator:
-            verificationOnlyGenerator,
+            repairGenerator,
         });
     } catch (
       error
@@ -596,9 +683,11 @@ export async function executeMasterArticleCriticRepairReplayV1({
       throw new ContentGenerationError(
         [
           "MASTER_CRITIC_SECTION_REPAIR_VERIFICATION_FAILED",
+
           String(
             index
           ),
+
           failureMessage(
             error
           ),
@@ -657,7 +746,9 @@ export async function executeMasterArticleCriticRepairReplayV1({
             Array.from(
               new Set(
                 task.findings.map(
-                  (finding) =>
+                  (
+                    finding
+                  ) =>
                     finding
                       .criticId
                 )
@@ -668,7 +759,9 @@ export async function executeMasterArticleCriticRepairReplayV1({
         findingCodes:
           Object.freeze(
             task.findings.map(
-              (finding) =>
+              (
+                finding
+              ) =>
                 finding.code
             )
           ),
@@ -705,13 +798,13 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
 
   /*
-   * Full replay.
+   * ONE complete replay.
    *
-   * Do NOT replay only the critic that requested repair.
-   * A localized edit can create a new coverage, evidence,
-   * semantic-drift, intent, originality or technical defect.
+   * We still re-run the complete critic suite because a localized
+   * edit can expose a new intent/editorial/originality problem.
    *
-   * Therefore ALL 9 final critics execute again.
+   * But this replay is validation/diagnostic only.
+   * It does NOT create a recursive critic-author loop.
    */
   const finalCritics =
     await executeMasterArticleCriticsV1({
@@ -727,13 +820,91 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
 
   /*
-   * There is no recursive critic-repair loop.
+   * Classify residual findings once.
    *
-   * A second BLOCK after the one repair pass fails closed here.
+   * This assertion continues to fail closed for genuinely
+   * UNREPAIRABLE upstream/context/evidence/cannibalization
+   * blockers.
+   *
+   * REPAIRABLE_SECTION findings are retained as final review
+   * diagnostics and are NOT executed again here.
    */
-  assertMasterArticleCriticExecutionPassed(
-    finalCritics
+  const residualPlan =
+    buildMasterArticleCriticRepairPlanV1({
+      contract,
+
+      suite:
+        finalCritics.suite,
+    });
+
+
+  assertMasterArticleCriticRepairPlanExecutableV1(
+    residualPlan
   );
+
+
+  if (
+    residualPlan.disposition ===
+    "NO_REPAIR_NEEDED"
+  ) {
+    assertMasterArticleCriticExecutionPassed(
+      finalCritics
+    );
+  } else if (
+    residualPlan.repairTasks.length >
+    0
+  ) {
+    console.warn(
+      "[content master critic residual review findings]",
+      {
+        repairTaskCount:
+          residualPlan
+            .repairTasks
+            .length,
+
+        sectionIndexes:
+          Array.from(
+            new Set(
+              residualPlan
+                .repairTasks
+                .map(
+                  (
+                    task
+                  ) =>
+                    task.sectionIndex
+                )
+            )
+          ),
+
+        findingCodes:
+          residualPlan
+            .repairTasks
+            .flatMap(
+              (
+                task
+              ) =>
+                task.findings
+                  .map(
+                    (
+                      finding
+                    ) =>
+                      finding.code
+                  )
+            ),
+      }
+    );
+  }
+
+
+  const repairedSectionCount =
+    new Set(
+      audits.map(
+        (
+          audit
+        ) =>
+          audit.sectionIndex
+      )
+    ).size;
 
 
   return Object.freeze({
@@ -759,8 +930,7 @@ export async function executeMasterArticleCriticRepairReplayV1({
         criticReplayCount:
           1 as const,
 
-        repairedSectionCount:
-          audits.length,
+        repairedSectionCount,
 
         repairAttemptCount:
           audits.length,

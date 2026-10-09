@@ -6,13 +6,11 @@ import {
 
 import {
   resolveContentAiProvider,
-  resolveOpenAiContentModel,
-  resolveOpenAiReasoningEffort,
 } from "./gemini-generator";
 
 
 describe(
-  "content AI provider selection",
+  "Content AI provider GPT-only V1",
   () => {
     it(
       "defaults to OpenAI",
@@ -29,12 +27,12 @@ describe(
 
 
     it(
-      "normalizes OpenAI configuration",
+      "accepts explicit OpenAI",
       () => {
         expect(
           resolveContentAiProvider({
             CONTENT_AI_PROVIDER:
-              " OPENAI ",
+              "openai",
           })
         ).toBe(
           "openai"
@@ -44,22 +42,23 @@ describe(
 
 
     it(
-      "retains Gemini as fallback provider",
+      "rejects Gemini production selection",
       () => {
         expect(
-          resolveContentAiProvider({
-            CONTENT_AI_PROVIDER:
-              "gemini",
-          })
-        ).toBe(
-          "gemini"
+          () =>
+            resolveContentAiProvider({
+              CONTENT_AI_PROVIDER:
+                "gemini",
+            })
+        ).toThrow(
+          /GPT-only Content runtime/
         );
       }
     );
 
 
     it(
-      "does not allow Groq in production selection",
+      "rejects Groq production selection",
       () => {
         expect(
           () =>
@@ -68,50 +67,7 @@ describe(
                 "groq",
             })
         ).toThrow(
-          /Unsupported CONTENT_AI_PROVIDER/
-        );
-      }
-    );
-
-
-    it(
-      "defaults to Luna",
-      () => {
-        expect(
-          resolveOpenAiContentModel(
-            {}
-          )
-        ).toBe(
-          "gpt-5.6-luna"
-        );
-      }
-    );
-
-
-    it(
-      "defaults reasoning to low",
-      () => {
-        expect(
-          resolveOpenAiReasoningEffort(
-            {}
-          )
-        ).toBe(
-          "low"
-        );
-      }
-    );
-
-
-    it(
-      "supports none for cheap classifiers",
-      () => {
-        expect(
-          resolveOpenAiReasoningEffort({
-            OPENAI_CONTENT_REASONING:
-              "none",
-          })
-        ).toBe(
-          "none"
+          /GPT-only Content runtime/
         );
       }
     );

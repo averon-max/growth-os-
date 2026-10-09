@@ -141,7 +141,7 @@ describe(
 
 
     it(
-      "allows exactly one critic-driven repair attempt per target section",
+      "uses verification-only validation after the critic-owned repair",
       () => {
         const execution =
           source(
@@ -152,28 +152,34 @@ describe(
         expect(
           execution
         ).toContain(
-          "attempt:\n              1"
+          "MASTER_CRITIC_SINGLE_REPAIR_CYCLE_V1"
         );
 
 
         expect(
           execution
         ).toContain(
-          "MASTER_CRITIC_REPAIR_SECOND_PASS_FORBIDDEN"
+          "verifyGeneratedSectionOnlyV1({"
+        );
+
+
+        expect(
+          execution
+        ).toMatch(
+          /verifyGeneratedSectionOnlyV1\(\{[\s\S]*generator:\s*repairGenerator/
         );
 
 
         expect(
           execution
         ).toContain(
-          "attemptCount:\n          1 as const"
+          "MASTER_CRITIC_SINGLE_MODEL_OWNER_V1"
         );
       }
     );
-
 
     it(
-      "reuses 9I-F structural reconciliation and semantic verification after critic repair",
+      "reuses canonical structural reconciliation and semantic verification after critic repair",
       () => {
         const execution =
           source(
@@ -184,25 +190,24 @@ describe(
         expect(
           execution
         ).toContain(
-          "verifyAndRepairGeneratedSectionV1({"
+          "verifyGeneratedSectionOnlyV1({"
         );
 
 
         expect(
           execution
-        ).toContain(
-          "verified.reconciliation"
+        ).toMatch(
+          /verified\s*\.reconciliation/
         );
 
 
         expect(
           execution
-        ).toContain(
-          "verified\n        .semanticVerification"
+        ).toMatch(
+          /verified\s*\.semanticVerification/
         );
       }
     );
-
 
     it(
       "recomposes with the original article shell and repaired approved sections",

@@ -21,7 +21,7 @@ describe(
   "Stage Plan coverage ownership recovery V1",
   () => {
     it(
-      "routes coverage ownership drift through the existing bounded regeneration",
+      "revalidates coverage ownership at every Stage Plan repair boundary",
       () => {
         expect(
           source
@@ -40,10 +40,26 @@ describe(
             /\.\.\.inspectStagePlanCoverageOwnership\(\s*plan\s*\),/g
           ) ?? [];
 
+        /*
+         * Three deterministic validation boundaries exist:
+         *
+         * 1. initial Stage Plan validation
+         * 2. revalidation after local claim-owner repair
+         * 3. revalidation after the ONE bounded full regeneration
+         *
+         * This count is NOT a model-call count.
+         */
+        expect(
+          source
+        ).toContain(
+          "STAGE_PLAN_LOCAL_REQUIRED_QUESTION_CONTRACTION_V1"
+        );
+
+
         expect(
           calls
         ).toHaveLength(
-          2
+          4
         );
       }
     );

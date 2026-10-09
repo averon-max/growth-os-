@@ -31,7 +31,7 @@ function extractHostname(url: string): string {
  */
 export async function getWebsiteKeywordContext(
   websiteId: string,
-  limit = 8
+  limit = 50
 ): Promise<WebsiteKeywordContext | null> {
   const website = await prisma.website.findUnique({
     where: { id: websiteId },

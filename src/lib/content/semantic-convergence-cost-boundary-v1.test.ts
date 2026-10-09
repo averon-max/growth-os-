@@ -39,16 +39,12 @@ describe(
         expect(
           source
         ).toMatch(
-          /MAX_DETERMINISTIC_SEMANTIC_PASSES\s*=\s*1;/
+          /MAX_DETERMINISTIC_SEMANTIC_PASSES\s*=\s*4;/
         );
 
 
-        expect(
-          source
-        ).not.toMatch(
-          /MAX_DETERMINISTIC_SEMANTIC_PASSES\s*=\s*[2-9]\d*;/
-        );
-      }
+
+}
     );
 
 

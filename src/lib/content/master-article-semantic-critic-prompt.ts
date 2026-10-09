@@ -60,6 +60,11 @@ export function buildMasterArticleSemanticCriticPrompt({
     "- Evaluate whether the article meaningfully fulfills the approved article mission and each section mission.",
     "- Do not judge by keyword overlap alone.",
     "- Missing or materially misaligned intent may be WARN or BLOCK depending severity.",
+    /* DEEP_INTENT_SECTION_ANCHOR_V1 */
+    "- If a required topic, query job, or mission element is missing or too thin, anchor the finding to the ONE section that owns it, or is the closest topical fit, using that section's exact supplied sectionIndex, sectionNumber, and heading, with repairScope SECTION.",
+    "- In such a finding, name the missing topic in message and state in recommendation what that section must add, so a targeted section repair can act on it.",
+    "- Use an ARTICLE location with repairScope NONE only when the defect is genuinely article-wide and no single section could reasonably carry the fix.",
+    "- Never anchor a finding to a section merely to demand a topic listed in evidenceDeferredSections.",
     /* EVIDENCE_DEFERRED_INTENT_SCOPE_V1 */
     "- evidenceDeferredSections are topics intentionally excluded from this publishable article because publication-grade evidence was unavailable.",
     "- Do NOT create a DEEP_INTENT finding solely because an evidenceDeferredSections topic is absent.",

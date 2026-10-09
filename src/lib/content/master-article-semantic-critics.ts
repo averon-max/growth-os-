@@ -102,6 +102,19 @@ export interface MasterArticleCannibalizationCandidateV1 {
 
 
 export interface MasterArticleSemanticCriticContextV1 {
+  /*
+   * RANK_READY_KEYWORD_EXECUTION_V1
+   *
+   * Final production primary + approved same-page secondaries.
+   *
+   * Execution only:
+   * - no density quota
+   * - no repetition quota
+   * - no new factual authority
+   */
+  rankReadyKeywords?:
+    readonly string[];
+
   originalityReferences:
     readonly Readonly<
       MasterArticleOriginalityReferenceV1
@@ -638,6 +651,167 @@ function deriveStatus(
   }
 
   return "PASS";
+}
+
+
+
+/*
+ * MASTER_SEMANTIC_CRITIC_REFERENCE_SELF_HEAL_V1
+ *
+ * Semantic critic output is diagnostic metadata.
+ * It may NEVER expand factual/query/source authority.
+ *
+ * Provider models occasionally emit an identifier that resembles
+ * a real verified-excerpt id but is not part of the canonical
+ * ArticleGenerationContract.
+ *
+ * That is recoverable provider-output noise, not a reason to throw
+ * away an already generated article.
+ *
+ * Unknown references are deterministically removed BEFORE the
+ * existing strict finalizer runs.
+ *
+ * Important:
+ * - no unknown id becomes trusted;
+ * - no claim/evidence/source/query is invented;
+ * - finding severity/message/repair scope are preserved;
+ * - structural/location validation remains strict;
+ * - canonical finalizer remains fail-closed.
+ */
+export function normalizeMasterArticleSemanticCriticCandidateV1({
+  contract,
+  candidate,
+}: {
+  contract:
+    Readonly<ArticleGenerationContractV1>;
+
+  candidate:
+    Readonly<MasterArticleSemanticCriticCandidateV1>;
+}): MasterArticleSemanticCriticCandidateV1 {
+
+  const knownOnly = (
+    values:
+      string[],
+
+    allowed:
+      ReadonlySet<string>
+  ): string[] =>
+    Array.isArray(
+      values
+    )
+      ? values
+          .filter(
+            (
+              value
+            ): value is string =>
+              typeof value ===
+                "string"
+          )
+          .map(
+            (
+              value
+            ) =>
+              value.trim()
+          )
+          .filter(
+            (
+              value
+            ) =>
+              value.length >
+                0 &&
+              allowed.has(
+                value
+              )
+          )
+      : values;
+
+
+  return {
+    ...candidate,
+
+    reviews:
+      candidate.reviews.map(
+        (
+          review
+        ) => ({
+          ...review,
+
+          findings:
+            review.findings.map(
+              (
+                finding
+              ) => {
+                const section =
+                  finding.location
+                    .scope ===
+                    "SECTION"
+                    ? contract
+                        .sectionContracts[
+                          finding
+                            .location
+                            .sectionIndex
+                        ]
+                    : null;
+
+
+                /*
+                 * Unknown SECTION locations remain untouched.
+                 * The strict canonical finalizer must reject those.
+                 */
+                if (
+                  finding.location
+                    .scope ===
+                      "SECTION" &&
+                  !section
+                ) {
+                  return {
+                    ...finding,
+                  };
+                }
+
+
+                const authority =
+                  section
+                    ? sectionAuthority(
+                        section
+                      )
+                    : unionAuthority(
+                        contract
+                      );
+
+
+                return {
+                  ...finding,
+
+                  claimIds:
+                    knownOnly(
+                      finding.claimIds,
+                      authority.claimIds
+                    ),
+
+                  evidenceIds:
+                    knownOnly(
+                      finding.evidenceIds,
+                      authority.evidenceIds
+                    ),
+
+                  queryNodeIds:
+                    knownOnly(
+                      finding.queryNodeIds,
+                      authority.queryNodeIds
+                    ),
+
+                  sourceIds:
+                    knownOnly(
+                      finding.sourceIds,
+                      authority.sourceIds
+                    ),
+                };
+              }
+            ),
+        })
+      ),
+  };
 }
 
 

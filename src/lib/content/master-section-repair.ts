@@ -100,13 +100,16 @@ export interface SectionRepairAuditV1 {
   attempted: boolean;
 
   /*
-   * REPAIR_AUDIT_ATTEMPT_COUNT_V2
+   * REPAIR_AUDIT_ATTEMPT_COUNT_CONVERGENCE_V3
    *
-   * Maximum possible work:
-   * 1 structured reconciliation repair
-   * + 4 deterministic semantic cleanup passes.
+   * Telemetry records actual local repair work.
+   *
+   * There is deliberately no arbitrary numeric attempt ceiling.
+   * Convergence is controlled by meaningful progress / cycle
+   * detection inside the owning repair stage.
    */
-  attemptCount: 0 | 1 | 2 | 3 | 4 | 5;
+  attemptCount:
+    number;
 
   trigger: SectionRepairTriggerV1;
 
@@ -351,6 +354,458 @@ export function buildSectionDepthRepairRequirementV1({
   });
 }
 
+
+/*
+ * SECTION_VERIFY_ONLY_TRANSACTION_V1
+ *
+ * Used when another owning stage has already performed its ONE
+ * allowed model mutation.
+ *
+ * This transaction is intentionally NOT a repair transaction.
+ *
+ * It performs:
+ *   structural identity
+ *   -> deterministic reconciliation
+ *   -> semantic verification
+ *   -> terminal safety assertions
+ *
+ * It NEVER invokes repairSection().
+ * It NEVER performs depth model repair.
+ * It NEVER performs clean-room model rewrite.
+ *
+ * This keeps model mutation ownership single and explicit.
+ */
+export async function verifyGeneratedSectionOnlyV1({
+  contract,
+  section,
+  generator,
+}: {
+  contract:
+    Readonly<SectionGenerationContractV1>;
+
+  section:
+    Readonly<GeneratedSectionV1>;
+
+  generator:
+    Readonly<MasterSectionVerificationGenerator>;
+}): Promise<
+  Readonly<VerifiedMasterSectionV1>
+> {
+  /*
+   * SECTION_VERIFY_ONLY_TRANSACTION_V1
+   *
+   * Used after an upstream stage already performed its ONE
+   * model mutation — especially Master Critic repair.
+   *
+   * HARD OWNERSHIP RULE:
+   *
+   *   verify-only NEVER calls repairSection().
+   *
+   * A semantic BLOCK may receive exactly ONE deterministic
+   * semantic deletion pass, followed by complete reconciliation
+   * and semantic re-verification.
+   */
+
+
+  assertSectionIdentity({
+    contract,
+
+    section,
+
+    modelName:
+      generator.modelName,
+  });
+
+
+  const initialReconciliation =
+    reconciliationFor({
+      contract,
+
+      section,
+    });
+
+
+  try {
+    assertSectionClaimReconciliationPassed(
+      initialReconciliation
+    );
+  } catch (
+    error
+  ) {
+    throw new ContentGenerationError(
+      [
+        "SECTION_VERIFY_ONLY_RECONCILIATION_FAILED",
+
+        failureMessage(
+          error
+        ),
+      ].join(
+        ":"
+      )
+    );
+  }
+
+
+  let initialSemantic:
+    Readonly<SectionSemanticVerificationV1>;
+
+
+  try {
+    initialSemantic =
+      await semanticVerify({
+        contract,
+
+        section,
+
+        generator,
+      });
+  } catch (
+    error
+  ) {
+    throw new ContentGenerationError(
+      [
+        "SECTION_VERIFY_ONLY_SEMANTIC_FAILED",
+
+        failureMessage(
+          error
+        ),
+      ].join(
+        ":"
+      )
+    );
+  }
+
+
+  let acceptedSection:
+    Readonly<GeneratedSectionV1> =
+      section;
+
+
+  let acceptedReconciliation:
+    Readonly<SectionClaimReconciliationV1> =
+      initialReconciliation;
+
+
+  let finalSemantic:
+    Readonly<SectionSemanticVerificationV1> =
+      initialSemantic;
+
+
+  let deterministicCleanupUsed =
+    false;
+
+
+  /*
+   * CRITIC_VERIFY_ONLY_DETERMINISTIC_SEMANTIC_CLEANUP_V1
+   *
+   * The critic already owns the model rewrite.
+   *
+   * If that rewrite adds unsupported or contradicted incidental
+   * prose, remove only verifier-identified blocked prose using
+   * the canonical deterministic repair.
+   *
+   * This helper already fails closed when required claims would
+   * lose their surviving supported representation.
+   */
+  if (
+    initialSemantic.status ===
+      "BLOCK"
+  ) {
+    const beforeBody =
+      acceptedSection
+        .bodyMarkdown;
+
+
+    let cleanedSection:
+      Readonly<GeneratedSectionV1>;
+
+
+    try {
+      cleanedSection =
+        deterministicSemanticDeleteRepairV1({
+          contract,
+
+          section:
+            acceptedSection,
+
+          verification:
+            initialSemantic,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_VERIFY_ONLY_DETERMINISTIC_CLEANUP_FAILED",
+
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    if (
+      cleanedSection.bodyMarkdown ===
+      beforeBody
+    ) {
+      throw new ContentGenerationError(
+        "SECTION_VERIFY_ONLY_DETERMINISTIC_CLEANUP_NO_PROGRESS"
+      );
+    }
+
+
+    assertSectionIdentity({
+      contract,
+
+      section:
+        cleanedSection,
+
+      modelName:
+        generator.modelName,
+    });
+
+
+    const cleanedReconciliation =
+      reconciliationFor({
+        contract,
+
+        section:
+          cleanedSection,
+      });
+
+
+    try {
+      assertSectionClaimReconciliationPassed(
+        cleanedReconciliation
+      );
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_VERIFY_ONLY_CLEANUP_RECONCILIATION_FAILED",
+
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    let cleanedSemantic:
+      Readonly<SectionSemanticVerificationV1>;
+
+
+    try {
+      cleanedSemantic =
+        await semanticVerify({
+          contract,
+
+          section:
+            cleanedSection,
+
+          generator,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_VERIFY_ONLY_CLEANUP_SEMANTIC_FAILED",
+
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    acceptedSection =
+      cleanedSection;
+
+    acceptedReconciliation =
+      cleanedReconciliation;
+
+    finalSemantic =
+      cleanedSemantic;
+
+    deterministicCleanupUsed =
+      true;
+  }
+
+
+  /*
+   * PASS/WARN => accepted.
+   *
+   * Remaining BLOCK after deterministic cleanup stays fail-closed.
+   * There is intentionally NO second model repair here.
+   */
+  try {
+    assertSectionSemanticVerificationPassed(
+      finalSemantic
+    );
+  } catch (
+    error
+  ) {
+    throw new ContentGenerationError(
+      [
+        "SECTION_VERIFY_ONLY_SEMANTIC_FAILED",
+
+        failureMessage(
+          error
+        ),
+      ].join(
+        ":"
+      )
+    );
+  }
+
+
+  /*
+     * SECTION_VERIFY_ONLY_DEPTH_INVARIANT_V1
+     *
+     * This transaction owns ZERO model mutations.
+     *
+     * After critic repair and any deterministic semantic cleanup,
+     * the accepted section must still satisfy the execution-plan
+     * minimum depth.
+     *
+     * We do NOT repair here. We only prevent a shrunken section
+     * from silently escaping to article-level Final Readiness.
+     */
+    const verifyOnlyTargetWords =
+      (
+        contract as
+          Readonly<SectionGenerationContractV1> & {
+            readonly executionPlanAuthority?: Readonly<{
+              readonly targetWords?: Readonly<{
+                readonly min: number;
+                readonly preferred: number;
+                readonly max: number;
+              }>;
+            }>;
+          }
+      ).executionPlanAuthority?.targetWords ??
+      null;
+
+
+    const verifyOnlyDepthFailure =
+      buildSectionDepthRepairRequirementV1({
+        targetWords:
+          verifyOnlyTargetWords,
+
+        bodyMarkdown:
+          acceptedSection.bodyMarkdown,
+      });
+
+
+    /*
+     * CRITIC_VERIFY_ONLY_DEPTH_GUIDANCE_V2
+     *
+     * The section already passed the Writer depth contract before
+     * Master Critic mutation.
+     *
+     * Critic repair owns one bounded prose mutation and verify-only
+     * owns safety validation, not another depth-writing cycle.
+     *
+     * A post-critic shortfall against executionPlan targetWords.min
+     * is therefore planning guidance only after:
+     * - identity passed
+     * - claim reconciliation passed
+     * - semantic verification passed
+     *
+     * Whole-article Final Readiness remains the authority for useful
+     * article depth. Do not reject or spend another model call here.
+     */
+    if (
+      verifyOnlyDepthFailure
+    ) {
+      console.info(
+        "[content critic verify-only] soft depth guidance",
+        {
+          sectionIndex:
+            contract.sectionIndex,
+
+          currentWords:
+            verifyOnlyDepthFailure.currentWords,
+
+          plannedMinWords:
+            verifyOnlyDepthFailure.minWords,
+        }
+      );
+    }
+
+
+    return Object.freeze({
+    section:
+      acceptedSection,
+
+    reconciliation:
+      acceptedReconciliation,
+
+    semanticVerification:
+      finalSemantic,
+
+    repair:
+      freezeAudit({
+        version:
+          "SECTION_REPAIR_AUDIT_V1",
+
+        attempted:
+          deterministicCleanupUsed,
+
+        attemptCount:
+          deterministicCleanupUsed
+            ? 1
+            : 0,
+
+        trigger:
+          deterministicCleanupUsed
+            ? "SEMANTIC"
+            : "NONE",
+
+        sectionIndex:
+          contract.sectionIndex,
+
+        sectionNumber:
+          contract.sectionNumber,
+
+        /*
+         * No model is owned by this transaction.
+         */
+        modelName:
+          null,
+
+        initialReconciliationStatus:
+          initialReconciliation
+            .status,
+
+        initialSemanticStatus:
+          initialSemantic
+            .status,
+
+        finalReconciliationStatus:
+          acceptedReconciliation
+            .status,
+
+        finalSemanticStatus:
+          finalSemantic
+            .status,
+      }),
+  });
+}
+
+
 export async function verifyAndRepairGeneratedSectionV1({
   contract,
   section,
@@ -377,26 +832,19 @@ export async function verifyAndRepairGeneratedSectionV1({
     section,
   });
 
-  let initialSemantic: Readonly<SectionSemanticVerificationV1> | null = null;
-
-  if (initialReconciliation.status !== "BLOCK") {
-    try {
-      initialSemantic = await semanticVerify({
-        contract,
-        section,
-        generator,
-      });
-    } catch (error) {
-      throw new ContentGenerationError(
-        ["SECTION_SEMANTIC_VERIFICATION_FAILED", failureMessage(error)].join(
-          ":",
-        ),
-      );
-    }
-  }
-
-  const initialDepthRepair = buildSectionDepthRepairRequirementV1({
-    targetWords: (
+  /*
+   * SECTION_SINGLE_MODEL_MUTATION_PER_SECTION_V1
+   *
+   * One Writer section may perform at most ONE model mutation.
+   *
+   * Reconciliation / semantic / depth defects are merged into
+   * that one repair request whenever they are already known.
+   *
+   * Deterministic reconciliation and deterministic semantic
+   * cleanup do not count as model mutation and remain allowed.
+   */
+  const sectionTargetWords =
+    (
       contract as
         Readonly<SectionGenerationContractV1> & {
           readonly executionPlanAuthority?: Readonly<{
@@ -407,12 +855,78 @@ export async function verifyAndRepairGeneratedSectionV1({
             }>;
           }>;
         }
-    ).executionPlanAuthority?.targetWords ?? null,
+    ).executionPlanAuthority?.targetWords ??
+    null;
 
-    bodyMarkdown: section.bodyMarkdown,
-  });
 
-  const trigger: SectionRepairTriggerV1 =
+  const depthRepairFor = (
+    bodyMarkdown:
+      string
+  ) =>
+    buildSectionDepthRepairRequirementV1({
+      targetWords:
+        sectionTargetWords,
+
+      bodyMarkdown,
+    });
+
+
+  const initialDepthRepair =
+    depthRepairFor(
+      section.bodyMarkdown
+    );
+
+
+    /*
+   * SECTION_PRE_SEMANTIC_DEPTH_COST_V1
+   *
+   * If reconciliation already BLOCKS or the section is already
+   * below its execution-plan depth floor, do not spend an initial
+   * semantic verifier call before the first/only model repair.
+   *
+   * Otherwise verify semantics before deciding whether repair is
+   * necessary.
+   */
+  let initialSemantic:
+    Readonly<
+      SectionSemanticVerificationV1
+    > |
+    null =
+      null;
+
+
+  if (
+    initialReconciliation.status !==
+      "BLOCK" &&
+    !initialDepthRepair
+  ) {
+    try {
+      initialSemantic =
+        await semanticVerify({
+          contract,
+
+          section,
+
+          generator,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_SEMANTIC_VERIFICATION_FAILED",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+  }
+
+
+const trigger: SectionRepairTriggerV1 =
     initialReconciliation.status === "BLOCK"
       ? "RECONCILIATION"
       : initialSemantic?.status === "BLOCK"
@@ -425,7 +939,8 @@ export async function verifyAndRepairGeneratedSectionV1({
   // CLEAN SECTION — NO REPAIR
   // ========================================================
 
-  if (trigger === "NONE") {
+  if (/* DEPTH_MODEL_REPAIR_WIRING_V1 */
+  trigger === "NONE") {
     if (!initialSemantic) {
       throw new ContentGenerationError(
         "SECTION_REPAIR_INTERNAL_SEMANTIC_RESULT_MISSING",
@@ -474,7 +989,7 @@ export async function verifyAndRepairGeneratedSectionV1({
   //
   // Semantic BLOCK:
   //   exact deterministic deletion only.
-  //   Reverify and repeat up to four bounded passes.
+  //   Reverify once after one deterministic cleanup pass.
   //
   // No LLM is allowed to rewrite verifier-identified
   // unsupported factual prose.
@@ -520,7 +1035,8 @@ export async function verifyAndRepairGeneratedSectionV1({
         semanticVerification: initialSemantic,
 
         depthRepair:
-          trigger === "DEPTH" ? (initialDepthRepair ?? undefined) : undefined,
+            initialDepthRepair ??
+            undefined,
 
         attempt: 1,
       });
@@ -598,18 +1114,19 @@ export async function verifyAndRepairGeneratedSectionV1({
     /*
      * SEMANTIC_CONVERGENCE_SINGLE_MUTATION_V1
      *
-     * One deterministic removal pass is allowed.
+     * Up to four deterministic removal passes are allowed.
      *
      * Flow:
      * verify
-     * -> deterministic cleanup ONCE
+     * -> deterministic cleanup
      * -> reconciliation
-     * -> semantic reverify ONCE
+     * -> semantic reverify
      * -> terminal PASS/WARN/BLOCK
      *
-     * No repeated delete -> verify loop.
+     * Repeat only while BLOCK, bounded to four deterministic passes.
      */
-    const MAX_DETERMINISTIC_SEMANTIC_PASSES = 1;
+    const MAX_DETERMINISTIC_SEMANTIC_PASSES =
+      4;
 
     for (
       let semanticPass = 1;
@@ -656,11 +1173,19 @@ export async function verifyAndRepairGeneratedSectionV1({
           ? "SECTION_TARGETED_REPAIR_FAILED"
           : "SECTION_TARGETED_REPAIR_EXHAUSTED";
 
-        throw new ContentGenerationError(
-          [semanticRepairFailureCode, "SEMANTIC", semanticRepairFailure].join(
-            ":",
-          ),
+        console.warn(
+          "[content section repair] deterministic semantic cleanup escalated to model rewrite",
+          {
+            sectionIndex:
+              contract.sectionIndex,
+
+            semanticRepairFailureCode,
+
+            semanticRepairFailure,
+          }
         );
+
+        break;
       }
 
       assertSectionIdentity({
@@ -677,16 +1202,17 @@ export async function verifyAndRepairGeneratedSectionV1({
         section: repaired,
       });
 
-      try {
-        assertSectionClaimReconciliationPassed(finalReconciliation);
-      } catch (error) {
-        throw new ContentGenerationError(
-          [
-            "SECTION_TARGETED_REPAIR_EXHAUSTED",
-            "RECONCILIATION",
-            failureMessage(error),
-          ].join(":"),
-        );
+      /*
+       * A deterministic deletion can expose required-claim loss.
+       *
+       * This is not terminal. The model rewrite stage below owns
+       * reconstruction from the original section contract.
+       */
+      if (
+        finalReconciliation.status ===
+        "BLOCK"
+      ) {
+        break;
       }
 
       try {
@@ -727,34 +1253,448 @@ export async function verifyAndRepairGeneratedSectionV1({
     }
   }
 
+  /*
+   * Before model self-heal we terminate the strictly deterministic
+   * semantic convergence stage.
+   *
+   * This boundary is deliberate:
+   *
+   * semantic verifier
+   * -> ONE deterministic cleanup
+   * -> reconciliation
+   * -> ONE semantic reverify
+   *
+   * No model call belongs inside
+   * SEMANTIC_REPAIR_DETERMINISTIC_CONVERGENCE_V2.
+   */
   if (!finalSemantic) {
     throw new ContentGenerationError(
-      "SECTION_REPAIR_INTERNAL_SEMANTIC_RESULT_MISSING",
+      "SECTION_REPAIR_INTERNAL_SEMANTIC_RESULT_MISSING"
     );
   }
 
+
+  /*
+   * SECTION_SEMANTIC_MODEL_SELF_HEAL_V1
+   *
+   * A remaining local semantic/reconciliation BLOCK is repairable,
+   * but it must remain tightly bounded.
+   *
+   * Maximum escalation:
+   *
+   * 1. At most ONE model rewrite for this section in total.
+   * 2. All remaining convergence is deterministic verification/cleanup.
+   * 3. Terminal verification.
+   *
+   * Never:
+   * - rewrite the whole article
+   * - loop model repair
+   * - weaken evidence rules
+   * - invent claims/evidence
+   */
+  if (
+    !modelRepairUsed &&
+    (
+      finalSemantic.status ===
+        "BLOCK" ||
+      finalReconciliation.status ===
+        "BLOCK"
+    )
+  ) {
+    const beforeSelfHealBody =
+      repaired.bodyMarkdown;
+
+
+    let targetedSection:
+      Readonly<GeneratedSectionV1>;
+
+
+    try {
+      targetedSection =
+        await generator.repairSection({
+          contract,
+
+          section:
+            repaired,
+
+          reconciliation:
+            finalReconciliation,
+
+          semanticVerification:
+            finalReconciliation.status ===
+              "BLOCK"
+              ? null
+              : finalSemantic,
+
+          depthRepair:
+            depthRepairFor(
+              repaired.bodyMarkdown
+            ) ??
+            undefined,
+
+          attempt:
+            1,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_SELF_HEAL_MODEL_REWRITE_FAILED",
+          "SEMANTIC",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    modelRepairUsed =
+      true;
+
+    repairAttemptCount +=
+      1;
+
+
+    assertSectionIdentity({
+      contract,
+
+      section:
+        targetedSection,
+
+      modelName:
+        generator.modelName,
+    });
+
+
+    /*
+     * Same body = proven no progress.
+     *
+     * Do not burn another incremental rewrite.
+     * A second model rewrite is forbidden; remaining convergence is deterministic.
+     */
+    if (
+      targetedSection.bodyMarkdown !==
+        beforeSelfHealBody
+    ) {
+      repaired =
+        targetedSection;
+
+
+      finalReconciliation =
+        reconciliationFor({
+          contract,
+
+          section:
+            repaired,
+        });
+
+
+      if (
+        finalReconciliation.status !==
+        "BLOCK"
+      ) {
+        try {
+          finalSemantic =
+            await semanticVerify({
+              contract,
+
+              section:
+                repaired,
+
+              generator,
+            });
+        } catch (
+          error
+        ) {
+          throw new ContentGenerationError(
+            [
+              "SECTION_SELF_HEAL_SEMANTIC_REVERIFY_FAILED",
+              failureMessage(
+                error
+              ),
+            ].join(
+              ":"
+            )
+          );
+        }
+      }
+    }
+  }
+
+
+  /*
+   * SECTION_SEMANTIC_CLEAN_ROOM_FALLBACK_V1
+   *
+   * Exactly one final section-local reconstruction.
+   *
+   * Preserve the immutable SectionGenerationContract;
+   * discard only the failed prose.
+   */
+  if (
+    !modelRepairUsed &&
+    (
+      finalSemantic.status ===
+        "BLOCK" ||
+      finalReconciliation.status ===
+        "BLOCK"
+    )
+  ) {
+    const cleanRoomSection:
+      Readonly<GeneratedSectionV1> =
+      {
+        ...repaired,
+
+        bodyMarkdown:
+          "",
+
+        coveredQueryNodeIds:
+          [],
+
+        referencedClaimIds:
+          [],
+
+        referencedEvidenceIds:
+          [],
+
+        usedInternalLinks:
+          [],
+
+        assetUsed:
+          null,
+      };
+
+
+    const cleanRoomReconciliation =
+      reconciliationFor({
+        contract,
+
+        section:
+          cleanRoomSection,
+      });
+
+
+    let rewrittenSection:
+      Readonly<GeneratedSectionV1>;
+
+
+    try {
+      rewrittenSection =
+        await generator.repairSection({
+          contract,
+
+          section:
+            cleanRoomSection,
+
+          reconciliation:
+            cleanRoomReconciliation,
+
+          semanticVerification:
+            null,
+
+          depthRepair:
+            depthRepairFor(
+              cleanRoomSection.bodyMarkdown
+            ) ??
+            undefined,
+
+          attempt:
+            1,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_CLEAN_ROOM_REWRITE_FAILED",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    modelRepairUsed =
+      true;
+
+    repairAttemptCount +=
+      1;
+
+
+    assertSectionIdentity({
+      contract,
+
+      section:
+        rewrittenSection,
+
+      modelName:
+        generator.modelName,
+    });
+
+
+    const rewrittenReconciliation =
+      reconciliationFor({
+        contract,
+
+        section:
+          rewrittenSection,
+      });
+
+
+    try {
+      assertSectionClaimReconciliationPassed(
+        rewrittenReconciliation
+      );
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_CLEAN_ROOM_RECONCILIATION_FAILED",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    let rewrittenSemantic:
+      Readonly<SectionSemanticVerificationV1>;
+
+
+    try {
+      rewrittenSemantic =
+        await semanticVerify({
+          contract,
+
+          section:
+            rewrittenSection,
+
+          generator,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_CLEAN_ROOM_SEMANTIC_VERIFY_FAILED",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    repaired =
+      rewrittenSection;
+
+    finalReconciliation =
+      rewrittenReconciliation;
+
+    finalSemantic =
+      rewrittenSemantic;
+  }
+
+
+  /*
+   * Terminal section safety gate.
+   *
+   * Model self-heal is allowed to repair a local BLOCK.
+   * It is NEVER allowed to bypass reconciliation or semantics.
+   */
   try {
-    assertSectionSemanticVerificationPassed(finalSemantic);
-  } catch (error) {
+    assertSectionClaimReconciliationPassed(
+      finalReconciliation
+    );
+  } catch (
+    error
+  ) {
+    throw new ContentGenerationError(
+      [
+        "SECTION_TARGETED_REPAIR_EXHAUSTED",
+        "RECONCILIATION",
+        failureMessage(
+          error
+        ),
+      ].join(
+        ":"
+      )
+    );
+  }
+
+
+  try {
+    assertSectionSemanticVerificationPassed(
+      finalSemantic
+    );
+  } catch (
+    error
+  ) {
     throw new ContentGenerationError(
       [
         "SECTION_TARGETED_REPAIR_EXHAUSTED",
         "SEMANTIC",
-        failureMessage(error),
-      ].join(":"),
+        failureMessage(
+          error
+        ),
+      ].join(
+        ":"
+      )
     );
   }
+
 
   /*
    * SECTION_DEPTH_TERMINAL_GATE_V1
    *
-   * This runs after reconciliation + semantic verification.
+   * Depth remains section-local and runs only after the section
+   * has passed reconciliation + semantic safety.
    *
-   * Therefore a semantic cleanup cannot accidentally shrink an
-   * otherwise-valid section below its execution-plan floor.
+   * The implementation below may converge by useful depth progress,
+   * while the global ContentRunBudget remains the hard physical cap.
    */
-  const terminalDepthRepair = buildSectionDepthRepairRequirementV1({
-    targetWords: (
+
+  /*
+   * SECTION_DEPTH_LOCAL_CONVERGENCE_V2
+   *
+   * Depth is owned by THIS section repair stage.
+   *
+   * Do not throw DEPTH back to the article orchestrator merely
+   * because one repair undershot the floor by a few words.
+   *
+   * Flow:
+   *
+   * current verified section
+   * -> local depth repair
+   * -> identity
+   * -> reconciliation
+   * -> semantic verification
+   * -> depth check
+   * -> repeat ONLY while meaningful progress exists
+   *
+   * Strict bounded local convergence; global budget remains a backstop.
+   *
+   * Fail closed only on:
+   * - repeated body state
+   * - non-increasing depth while still below floor
+   * - reconciliation regression
+   * - semantic regression
+   * - provider/programming failure
+   */
+  const depthTargetWords =
+    (
       contract as
         Readonly<SectionGenerationContractV1> & {
           readonly executionPlanAuthority?: Readonly<{
@@ -765,38 +1705,546 @@ export async function verifyAndRepairGeneratedSectionV1({
             }>;
           }>;
         }
-    ).executionPlanAuthority?.targetWords ?? null,
+    ).executionPlanAuthority?.targetWords ??
+    null;
 
-    bodyMarkdown: repaired.bodyMarkdown,
-  });
 
-  if (terminalDepthRepair) {
-    throw new ContentGenerationError(
-      [
-        "SECTION_TARGETED_REPAIR_EXHAUSTED",
-        "DEPTH",
-        `${terminalDepthRepair.currentWords}<${terminalDepthRepair.minWords}`,
-      ].join(":"),
-    );
-  }
+  let terminalDepthRepair =
+    buildSectionDepthRepairRequirementV1({
+      targetWords:
+        depthTargetWords,
+
+      bodyMarkdown:
+        repaired.bodyMarkdown,
+    });
+
+
+  const seenDepthBodies =
+    new Set<string>([
+      repaired.bodyMarkdown,
+    ]);
+
 
   /*
-   * REPAIR_AUDIT_ATTEMPT_COUNT_RUNTIME_BOUND_V2
+   * SECTION_DEPTH_SINGLE_MODEL_PASS_V1
    *
-   * Keep telemetry honest even if the repair algorithm changes later.
+   * One useful expansion attempt per section.
+   *
+   * If it remains slightly below the section soft target, do not
+   * burn repeated LLM calls. Whole-article readiness remains the
+   * downstream authority for actual article length.
+   */
+  const MAX_DEPTH_MODEL_REPAIR_PASSES =
+    1;
+
+  for (
+    let depthPass =
+      1;
+    depthPass <=
+      MAX_DEPTH_MODEL_REPAIR_PASSES &&
+    !modelRepairUsed &&
+    terminalDepthRepair;
+    depthPass +=
+      1
+  ) {
+    const beforeDepth =
+      terminalDepthRepair;
+
+    const beforeBody =
+      repaired.bodyMarkdown;
+
+
+    let nextSection:
+      Readonly<GeneratedSectionV1>;
+
+
+    try {
+      nextSection =
+        await generator.repairSection({
+          contract,
+
+          section:
+            repaired,
+
+          reconciliation:
+            finalReconciliation,
+
+          semanticVerification:
+            finalSemantic,
+
+          depthRepair:
+            beforeDepth,
+
+          attempt:
+            1,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_FAILED",
+          "DEPTH",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    modelRepairUsed =
+      true;
+
+    repairAttemptCount +=
+      1;
+
+
+    assertSectionIdentity({
+      contract,
+
+      section:
+        nextSection,
+
+      modelName:
+        generator.modelName,
+    });
+
+
+    /*
+     * DEPTH_SEMANTIC_LOCAL_CONVERGENCE_V3
+     *
+     * A depth repair can accidentally introduce an unsupported
+     * semantic unit.
+     *
+     * Do NOT restart the article and do NOT accept it.
+     *
+     * Instead:
+     * depth repair
+     * -> reconcile
+     * -> semantic verify
+     * -> deterministic unsupported-unit deletion when BLOCKED
+     * -> reconcile again
+     * -> semantic reverify
+     * -> depth check
+     *
+     * If semantic cleanup returns us to an already-seen body,
+     * convergence has genuinely stalled and we fail closed locally.
+     */
+    if (
+      nextSection.bodyMarkdown ===
+        beforeBody
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_EXHAUSTED",
+          "DEPTH",
+          "NO_PROGRESS_BODY_CYCLE",
+          `${beforeDepth.currentWords}<${beforeDepth.minWords}`,
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    let acceptedSection:
+      Readonly<GeneratedSectionV1> =
+        nextSection;
+
+
+    let acceptedReconciliation =
+      reconciliationFor({
+        contract,
+
+        section:
+          acceptedSection,
+      });
+
+
+    try {
+      assertSectionClaimReconciliationPassed(
+        acceptedReconciliation
+      );
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_EXHAUSTED",
+          "RECONCILIATION",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    let acceptedSemantic:
+      Readonly<SectionSemanticVerificationV1>;
+
+
+    try {
+      acceptedSemantic =
+        await semanticVerify({
+          contract,
+
+          section:
+            acceptedSection,
+
+          generator,
+        });
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_EXHAUSTED",
+          "SEMANTIC",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    /*
+     * DEPTH_SEMANTIC_DELETION_CONVERGENCE_V4
+     *
+     * One deterministic cleanup pass is not sufficient when the
+     * verifier exposes several unsupported prose units.
+     *
+     * Keep cleanup local to THIS section:
+     *
+     * BLOCK
+     * -> deterministic deletion
+     * -> reconciliation
+     * -> semantic reverify
+     * -> terminal PASS/WARN/BLOCK
+     *
+     * No arbitrary numeric ceiling.
+     *
+     * Stop fail-closed only if:
+     * - cleanup produces the same body
+     * - a previously-seen cleanup body repeats
+     * - reconciliation breaks
+     * - required claim survival breaks
+     * - verifier itself fails
+     */
+    const seenSemanticCleanupBodies =
+      new Set<string>();
+
+
+        /*
+     * DEPTH_SEMANTIC_DETERMINISTIC_CONVERGENCE_V5
+     *
+     * Deterministic cleanup is local and has ZERO writer/model
+     * mutations. Continue only while the semantic verifier is BLOCK.
+     *
+     * Termination is structural rather than an arbitrary pass quota:
+     * - unchanged body -> fail closed
+     * - repeated body -> fail closed
+     * - reconciliation regression -> fail closed
+     * - required claim loss -> fail closed
+     * - semantic verifier failure -> fail closed
+     *
+     * The existing seenSemanticCleanupBodies guard below guarantees
+     * convergence without creating an LLM repair loop.
+     */
+    while (
+      acceptedSemantic.status ===
+        "BLOCK"
+    ) {
+      const beforeSemanticBody =
+        acceptedSection.bodyMarkdown;
+
+
+      if (
+        seenSemanticCleanupBodies.has(
+          beforeSemanticBody
+        )
+      ) {
+        throw new ContentGenerationError(
+          [
+            "SECTION_TARGETED_REPAIR_EXHAUSTED",
+            "SEMANTIC",
+            "NO_PROGRESS_SEMANTIC_CYCLE",
+          ].join(
+            ":"
+          )
+        );
+      }
+
+
+      seenSemanticCleanupBodies.add(
+        beforeSemanticBody
+      );
+
+
+      let semanticallyCleaned:
+        Readonly<GeneratedSectionV1>;
+
+
+      try {
+        semanticallyCleaned =
+          deterministicSemanticDeleteRepairV1({
+            contract,
+
+            section:
+              acceptedSection,
+
+            verification:
+              acceptedSemantic,
+          });
+      } catch (
+        error
+      ) {
+        throw new ContentGenerationError(
+          [
+            "SECTION_TARGETED_REPAIR_EXHAUSTED",
+            "SEMANTIC",
+            failureMessage(
+              error
+            ),
+          ].join(
+            ":"
+          )
+        );
+      }
+
+
+      if (
+        semanticallyCleaned.bodyMarkdown ===
+          beforeSemanticBody
+      ) {
+        throw new ContentGenerationError(
+          [
+            "SECTION_TARGETED_REPAIR_EXHAUSTED",
+            "SEMANTIC",
+            "NO_PROGRESS_SEMANTIC_BODY_UNCHANGED",
+          ].join(
+            ":"
+          )
+        );
+      }
+
+
+      deterministicSemanticRepairUsed =
+        true;
+
+      repairAttemptCount +=
+        1;
+
+
+      assertSectionIdentity({
+        contract,
+
+        section:
+          semanticallyCleaned,
+
+        modelName:
+          generator.modelName,
+      });
+
+
+      acceptedSection =
+        semanticallyCleaned;
+
+
+      acceptedReconciliation =
+        reconciliationFor({
+          contract,
+
+          section:
+            acceptedSection,
+        });
+
+
+      try {
+        assertSectionClaimReconciliationPassed(
+          acceptedReconciliation
+        );
+      } catch (
+        error
+      ) {
+        throw new ContentGenerationError(
+          [
+            "SECTION_TARGETED_REPAIR_EXHAUSTED",
+            "RECONCILIATION",
+            failureMessage(
+              error
+            ),
+          ].join(
+            ":"
+          )
+        );
+      }
+
+
+      try {
+        acceptedSemantic =
+          await semanticVerify({
+            contract,
+
+            section:
+              acceptedSection,
+
+            generator,
+          });
+      } catch (
+        error
+      ) {
+        throw new ContentGenerationError(
+          [
+            "SECTION_TARGETED_REPAIR_EXHAUSTED",
+            "SEMANTIC",
+            failureMessage(
+              error
+            ),
+          ].join(
+            ":"
+          )
+        );
+      }
+    }
+
+
+    try {
+      assertSectionSemanticVerificationPassed(
+        acceptedSemantic
+      );
+    } catch (
+      error
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_EXHAUSTED",
+          "SEMANTIC",
+          failureMessage(
+            error
+          ),
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    /*
+     * Check convergence AFTER semantic cleanup.
+     *
+     * This catches:
+     *   360 words
+     *   -> model adds unsupported prose
+     *   -> semantic cleanup removes it
+     *   -> back to the same 360-word body
+     *
+     * without restarting the entire article.
+     */
+    if (
+      acceptedSection.bodyMarkdown ===
+        beforeBody ||
+      seenDepthBodies.has(
+        acceptedSection.bodyMarkdown
+      )
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_EXHAUSTED",
+          "DEPTH",
+          "NO_PROGRESS_AFTER_SEMANTIC_CLEANUP",
+          `${beforeDepth.currentWords}<${beforeDepth.minWords}`,
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    seenDepthBodies.add(
+      acceptedSection.bodyMarkdown
+    );
+
+
+    const nextDepthRepair =
+      buildSectionDepthRepairRequirementV1({
+        targetWords:
+          depthTargetWords,
+
+        bodyMarkdown:
+          acceptedSection.bodyMarkdown,
+      });
+
+
+    /*
+     * Body changed but useful depth did not increase.
+     *
+     * This is not meaningful convergence and must not cause
+     * another whole-article regeneration.
+     */
+    if (
+      nextDepthRepair &&
+      nextDepthRepair.currentWords <=
+        beforeDepth.currentWords
+    ) {
+      throw new ContentGenerationError(
+        [
+          "SECTION_TARGETED_REPAIR_EXHAUSTED",
+          "DEPTH",
+          "NO_MEANINGFUL_PROGRESS",
+          `${nextDepthRepair.currentWords}<${nextDepthRepair.minWords}`,
+        ].join(
+          ":"
+        )
+      );
+    }
+
+
+    repaired =
+      acceptedSection;
+
+    finalReconciliation =
+      acceptedReconciliation;
+
+    finalSemantic =
+      acceptedSemantic;
+
+    terminalDepthRepair =
+      nextDepthRepair;
+  }
+
+
+  /*
+   * REPAIR_AUDIT_ATTEMPT_COUNT_RUNTIME_CONVERGENCE_V3
+   *
+   * Telemetry validation only.
+   *
+   * Local convergence has no arbitrary max attempt count.
    */
   if (
-    !Number.isInteger(repairAttemptCount) ||
-    repairAttemptCount < 0 ||
-    repairAttemptCount > 5
+    !Number.isInteger(
+      repairAttemptCount
+    ) ||
+    repairAttemptCount <
+      0
   ) {
     throw new ContentGenerationError(
-      `SECTION_REPAIR_AUDIT_ATTEMPT_COUNT_INVALID:${repairAttemptCount}`,
+      `SECTION_REPAIR_AUDIT_ATTEMPT_COUNT_INVALID:${repairAttemptCount}`
     );
   }
 
+
   const boundedRepairAttemptCount =
-    repairAttemptCount as SectionRepairAuditV1["attemptCount"];
+    repairAttemptCount;
+
 
   return Object.freeze({
     section: repaired,

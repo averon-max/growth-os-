@@ -384,34 +384,6 @@ export function analyzeQueryOwnership({
   };
 }
 
-function hasEvidence(
-  candidate:
-    PrimaryCandidateLike
-): boolean {
-  return (
-    candidate.score >=
-      5 ||
-    (
-      candidate
-        .searchVolume ??
-      0
-    ) >
-      0 ||
-    (
-      candidate
-        .impressions ??
-      0
-    ) >
-      0 ||
-    (
-      candidate
-        .clicks ??
-      0
-    ) >
-      0
-  );
-}
-
 export function primaryOwnershipCandidates<
   T extends PrimaryCandidateLike
 >({
@@ -431,53 +403,42 @@ export function primaryOwnershipCandidates<
     return [];
   }
 
-  const exact =
-    candidates.find(
-      (candidate) =>
-        normalize(
-          candidate.keyword
-        ) ===
-        normalize(
-          topic
-        )
-    );
+  /*
+   * FOREIGN_ENTITY_PRIMARY_HARD_GATE_V2
+   *
+   * Query ownership is an eligibility boundary, not a
+   * ranking preference.
+   *
+   * A generic AUTO seed such as:
+   *
+   *   "credit monitoring"
+   *
+   * may legitimately expand to generic modifiers such as:
+   *
+   *   "free credit monitoring"
+   *   "best credit monitoring services"
+   *
+   * but it must never silently become an unrequested
+   * entity mission such as:
+   *
+   *   "experian credit monitoring"
+   *
+   * Raw score, volume, CPC, KD, impressions, clicks or
+   * authority may rank eligible candidates; they may not
+   * resurrect an UNREQUESTED_ENTITY_MODIFIER.
+   */
+  return candidates.filter(
+    (candidate) =>
+      analyzeQueryOwnership({
+        topic,
 
-  if (
-    !exact ||
-    !hasEvidence(
-      exact
-    )
-  ) {
-    return candidates;
-  }
-
-  if (
-    !isExplicitInformationalTopic(
-      topic
-    )
-  ) {
-    return candidates;
-  }
-
-  const filtered =
-    candidates.filter(
-      (candidate) =>
-        analyzeQueryOwnership({
-          topic,
-
-          keyword:
-            candidate.keyword,
-        }).status !==
+        keyword:
+          candidate.keyword,
+      }).status !==
         "UNREQUESTED_ENTITY_MODIFIER"
-    );
-
-  return (
-    filtered.length >
-    0
-  )
-    ? filtered
-    : candidates;
+  );
 }
+
 
 export function selectProductionPrimaryCandidate<
   T extends PrimaryCandidateLike

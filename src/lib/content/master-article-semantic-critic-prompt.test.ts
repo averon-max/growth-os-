@@ -160,5 +160,75 @@ describe(
         );
       }
     );
+
+
+    it(
+      "anchors missing required topics to the owning section and never for deferred topics",
+      () => {
+        const prompt =
+          buildMasterArticleSemanticCriticPrompt({
+            contract: {
+              h1Mission:
+                "Mission",
+
+              sectionContracts:
+                [],
+            } as never,
+
+            run: {
+              article: {
+                title:
+                  "Title",
+
+                metaDescription:
+                  "Description",
+
+                h1:
+                  "H1",
+
+                bodyMarkdown:
+                  "Body",
+              },
+
+              sections:
+                [],
+            } as never,
+
+            context: {
+              originalityReferences:
+                [],
+
+              cannibalizationCandidates:
+                [],
+            },
+          });
+
+
+        /* section-anchored */
+        expect(
+          prompt
+        ).toContain(
+          "anchor the finding to the ONE section that owns it"
+        );
+
+        expect(
+          prompt
+        ).toContain(
+          "with repairScope SECTION."
+        );
+
+        expect(
+          prompt
+        ).toContain(
+          "Use an ARTICLE location with repairScope NONE only when the defect is genuinely article-wide"
+        );
+
+        expect(
+          prompt
+        ).toContain(
+          "Never anchor a finding to a section merely to demand a topic listed in evidenceDeferredSections."
+        );
+      }
+    );
   }
 );

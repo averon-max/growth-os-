@@ -104,27 +104,53 @@ describe(
 
 
     it(
-      "keeps production request and repair limits while article cumulative token cap is disabled",
+      "keeps finite runaway ceilings separate from article quality targets",
       () => {
+        expect(
+          Number.isSafeInteger(
+            ARTICLE_GENERATION_BUDGET_V1
+              .maxModelCalls
+          )
+        ).toBe(true);
+
         expect(
           ARTICLE_GENERATION_BUDGET_V1
             .maxModelCalls
-        ).toBe(
-          64
-        );
+        ).toBeGreaterThanOrEqual(8);
+
+        expect(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxModelCalls
+        ).toBeLessThanOrEqual(36);
 
         expect(
           ARTICLE_GENERATION_BUDGET_V1
             .maxEstimatedInputTokens
-        ).toBe(
-          Number.MAX_SAFE_INTEGER
-        );
+        ).toBeGreaterThanOrEqual(20_000);
+
+        expect(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxEstimatedInputTokens
+        ).toBeLessThanOrEqual(140_000);
+
+        expect(
+          Number.isSafeInteger(
+            ARTICLE_GENERATION_BUDGET_V1
+              .maxRepairCalls
+          )
+        ).toBe(true);
 
         expect(
           ARTICLE_GENERATION_BUDGET_V1
             .maxRepairCalls
-        ).toBe(
-          2
+        ).toBeGreaterThanOrEqual(1);
+
+        expect(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxRepairCalls
+        ).toBeLessThan(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxModelCalls
         );
       }
     );

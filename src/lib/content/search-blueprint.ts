@@ -525,46 +525,76 @@ export function buildSearchBlueprint({
     );
   }
 
-  const selectedKeyword =
+  /*
+   * PRODUCTION_PRIMARY_METRIC_AUTHORITY_V2
+   *
+   * Search evidence belongs to the actual production primary.
+   * KeywordDecision.primary may differ from production primary
+   * in EXACT or preserved low-confidence mission flows.
+   */
+  const normalizedProductionPrimaryForMetrics =
+    productionPrimary
+      .trim()
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        " "
+      );
+
+
+  const productionMetricCandidate =
     keywordDecision
-      ?.primary ??
+      ?.ranked
+      .find(
+        (
+          candidate
+        ) =>
+          candidate.keyword
+            .trim()
+            .toLowerCase()
+            .replace(
+              /\s+/g,
+              " "
+            ) ===
+          normalizedProductionPrimaryForMetrics
+      ) ??
     null;
 
   const metricSource =
-    selectedKeyword
+    productionMetricCandidate
       ? {
           searchVolume:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .searchVolume,
 
           difficulty:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .difficulty,
 
           existingPosition:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .existingPosition,
 
           impressions:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .impressions,
 
           clicks:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .clicks,
 
           ctr:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .observedCtr,
 
           authority:
-            selectedKeyword
+            productionMetricCandidate
               .metrics
               .authorityStrength,
         }

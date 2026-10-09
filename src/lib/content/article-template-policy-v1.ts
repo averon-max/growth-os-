@@ -279,11 +279,13 @@ export const ARTICLE_TEMPLATE_POLICIES_V1:
             "USE_CASE",
             "FAQ",
             "CTA",
+            "COMPARISON",
           ],
 
           evidenceSensitiveRoles: [
             "BENEFIT",
             "COST",
+            "COMPARISON",
           ],
 
           allowRanking:

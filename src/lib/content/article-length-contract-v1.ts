@@ -28,7 +28,19 @@ export interface ArticleLengthContractV1 {
 }
 
 export const COMPREHENSIVE_INFORMATIONAL_TARGET_WORDS_V1 = Object.freeze({
-  min: 1800,
+  /*
+   * Growth OS product completeness floor.
+   *
+   * This is NOT claimed to be a Google ranking rule.
+   */
+  min: 1500,
+
+  /*
+   * Planning headroom.
+   *
+   * Final publication quality is still governed by coverage,
+   * evidence, structure, critics and SERP replay.
+   */
   max: 2350,
 });
 

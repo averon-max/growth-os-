@@ -96,7 +96,7 @@ describe(
         expect(
           method
         ).toContain(
-          "await callGemini("
+          "await callContentAiJson("
         );
 
         expect(

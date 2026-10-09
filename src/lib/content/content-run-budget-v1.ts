@@ -558,32 +558,57 @@ export const BRIEF_RESEARCH_BUDGET_V1 =
   });
 
 
+/*
+ * ARTICLE_REPAIR_CONVERGENCE_POLICY_V1
+ *
+ * Article quality is never defined by consuming a call/token quota.
+ *
+ * These finite limits are runaway cost/safety ceilings only.
+ * A normal article should converge substantially below them.
+ *
+ * Article generation remains quality/convergence driven.
+ *
+ * Real provider per-request limits, evidence policy,
+ * deterministic contracts and safety gates remain authoritative.
+ */
 export const ARTICLE_GENERATION_BUDGET_V1 =
   Object.freeze({
     /*
-     * ARTICLE_PHYSICAL_CALL_SAFETY_CEILING_V2
+     * ARTICLE_PRODUCTION_BUDGET_FINAL_V1
      *
-     * This is a runaway-protection ceiling, not a generation target.
-     * The production pipeline is independently bounded by stage
-     * structure and repair limits. 64 allows the legitimate bounded
-     * Master Writer + critics + pairwise SERP replay/repair path
-     * without rejecting it merely because it requires >24 requests.
+     * Physical provider requests and model repair operations
+     * are hard-bounded.
+     *
+     * 32 calls is a runaway safety ceiling, NOT a target.
+     * Normal runs should be substantially lower.
      */
     maxModelCalls:
-      64,
+        36,
 
     /*
-     * ARTICLE_CUMULATIVE_INPUT_TOKEN_CAP_DISABLED_V1
-     *
-     * Physical request count and repair count remain bounded.
-     * Provider/model per-request context limits remain authoritative.
-     *
-     * Do not reject a valid long article merely because cumulative
-     * estimated input across independent requests exceeds 50k.
+     * Cumulative estimated input has a finite runaway ceiling.
+     * It is an operational cost/safety guard, never a content-quality
+     * requirement. Normal successful runs should remain far below it.
      */
     maxEstimatedInputTokens:
-      Number.MAX_SAFE_INTEGER,
+        140_000,
 
+    /*
+     * ARTICLE_REPAIR_BUDGET_RESERVE_V2
+     *
+     * Includes section reconciliation/depth/semantic repair and
+     * critic-local repair.
+     *
+     * Production evidence:
+     * section-local convergence can legitimately consume the old
+     * 12-operation ceiling before the bounded critic stage begins.
+     *
+     * 10 preserves a finite global hard stop while leaving a bounded
+     * reserve for critic-local convergence.
+     *
+     * This replaces the proven-too-small historical value of 2,
+     * while still preventing runaway local repair.
+     */
     maxRepairCalls:
-      2,
+        10,
   });

@@ -94,27 +94,48 @@ describe(
 
 
     it(
-      "keeps production request and repair limits while article cumulative token cap is disabled",
+      "keeps production article safety budgets finite and bounded",
       () => {
         expect(
           ARTICLE_GENERATION_BUDGET_V1
             .maxModelCalls
-        ).toBe(
-          64
+        ).toBeGreaterThan(
+          0
+        );
+
+        expect(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxModelCalls
+        ).toBeLessThanOrEqual(
+          36
         );
 
         expect(
           ARTICLE_GENERATION_BUDGET_V1
             .maxEstimatedInputTokens
-        ).toBe(
-          Number.MAX_SAFE_INTEGER
+        ).toBeGreaterThan(
+          0
+        );
+
+        expect(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxEstimatedInputTokens
+        ).toBeLessThanOrEqual(
+          140_000
         );
 
         expect(
           ARTICLE_GENERATION_BUDGET_V1
             .maxRepairCalls
-        ).toBe(
-          2
+        ).toBeGreaterThan(
+          0
+        );
+
+        expect(
+          ARTICLE_GENERATION_BUDGET_V1
+            .maxRepairCalls
+        ).toBeLessThanOrEqual(
+          10
         );
       }
     );

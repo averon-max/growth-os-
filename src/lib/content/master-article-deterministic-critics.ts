@@ -1,3 +1,7 @@
+import {
+  countExactPhrase,
+} from "./article-analyzer";
+
 import type {
   ArticleGenerationContractV1,
   SectionGenerationContractV1,
@@ -326,12 +330,16 @@ export function runDeterministicIntentCriticV1({
 export function runDeterministicCoverageCriticV1({
   contract,
   run,
+  rankReadyKeywords,
 }: {
   contract:
     Readonly<ArticleGenerationContractV1>;
 
   run:
     Readonly<MasterWriterRunV1>;
+
+  rankReadyKeywords?:
+    readonly string[];
 }): Readonly<
   MasterArticleCriticResultV1
 > {
@@ -551,6 +559,253 @@ export function runDeterministicCoverageCriticV1({
         }
       }
     );
+
+
+
+  /*
+   * RANK_READY_KEYWORD_EXECUTION_V1
+   *
+   * A planned keyword must occur naturally at least once in
+   * reader-facing BODY PROSE.
+   *
+   * H1/H2/H3-only occurrence does not count.
+   *
+   * This is deliberately NOT a density rule.
+   */
+  const rankReadyProse =
+    run.article
+      .bodyMarkdown
+      .split(
+        /\r?\n/
+      )
+      .filter(
+        (line) =>
+          !/^#{1,6}\s+/.test(
+            line.trim()
+          )
+      )
+      .join(
+        "\n"
+      );
+
+
+  const rankReadySeen =
+    new Set<string>();
+
+
+  for (
+    const rawKeyword
+    of rankReadyKeywords ??
+      []
+  ) {
+    const keyword =
+      rawKeyword.trim();
+
+    const dedupeKey =
+      keyword
+        .toLocaleLowerCase(
+          "en-US"
+        );
+
+    if (
+      keyword.length ===
+        0 ||
+      rankReadySeen.has(
+        dedupeKey
+      )
+    ) {
+      continue;
+    }
+
+
+    rankReadySeen.add(
+      dedupeKey
+    );
+
+
+    if (
+      countExactPhrase(
+        rankReadyProse,
+        keyword
+      ) >
+      0
+    ) {
+      continue;
+    }
+
+
+    /*
+     * Localize the repair to the most relevant EXISTING section.
+     *
+     * Never create a heading or section merely for a keyword.
+     */
+    const keywordTokens =
+      dedupeKey
+        .split(
+          /[^a-z0-9]+/
+        )
+        .filter(
+          Boolean
+        );
+
+
+    let targetSection =
+      contract
+        .sectionContracts[
+          0
+        ] ??
+      null;
+
+
+    let targetScore =
+      -1;
+
+
+    for (
+      const section
+      of contract
+        .sectionContracts
+    ) {
+      const blueprint =
+        section.blueprint as
+          unknown as
+          Record<
+            string,
+            unknown
+          >;
+
+
+      const sectionRecord =
+        section as
+          unknown as
+          Record<
+            string,
+            unknown
+          >;
+
+
+      const mission =
+        typeof blueprint
+          .mission ===
+        "string"
+          ? blueprint
+              .mission
+          : "";
+
+
+      const planningText =
+        [
+          section
+            .blueprint
+            .heading,
+
+          mission,
+
+          JSON.stringify(
+            sectionRecord
+              .executionPlanAuthority ??
+            {}
+          ),
+        ].join(
+          "\n"
+        );
+
+
+      const planningLower =
+        planningText
+          .toLocaleLowerCase(
+            "en-US"
+          );
+
+
+      const score =
+        keywordTokens
+          .reduce(
+            (
+              total,
+              token
+            ) =>
+              total +
+              (
+                planningLower
+                  .includes(
+                    token
+                  )
+                  ? 1
+                  : 0
+              ),
+            0
+          ) +
+        (
+          countExactPhrase(
+            planningText,
+            keyword
+          ) >
+          0
+            ? 100
+            : 0
+        );
+
+
+      if (
+        score >
+        targetScore
+      ) {
+        targetSection =
+          section;
+
+        targetScore =
+          score;
+      }
+    }
+
+
+    if (!targetSection) {
+      continue;
+    }
+
+
+    findings.push(
+      createMasterArticleCriticFindingV1({
+        criticId:
+          "COVERAGE",
+
+        code:
+          "RANK_READY_PLANNED_KEYWORD_MISSING",
+
+        severity:
+          "BLOCK",
+
+        location:
+          sectionLocation(
+            targetSection
+          ),
+
+        message:
+          `Production-planned keyword "${keyword}" is missing from reader-facing article prose.`,
+
+        recommendation:
+          `Integrate "${keyword}" naturally once inside this existing section's information job. Do not add a section, do not pad, and do not repeat it for density.`,
+
+        repairScope:
+          "SECTION",
+
+        evidence: {
+          claimIds:
+            [],
+
+          evidenceIds:
+            [],
+
+          queryNodeIds:
+            [],
+
+          sourceIds:
+            [],
+        },
+      })
+    );
+  }
 
 
   return result(
@@ -1548,12 +1803,16 @@ export function runDeterministicTechnicalSeoCriticV1({
 export function runDeterministicMasterArticleCriticsV1({
   contract,
   run,
+  rankReadyKeywords,
 }: {
   contract:
     Readonly<ArticleGenerationContractV1>;
 
   run:
     Readonly<MasterWriterRunV1>;
+
+  rankReadyKeywords?:
+    readonly string[];
 }): readonly Readonly<
   MasterArticleCriticResultV1
 >[] {
@@ -1566,6 +1825,9 @@ export function runDeterministicMasterArticleCriticsV1({
     runDeterministicCoverageCriticV1({
       contract,
       run,
+
+      rankReadyKeywords:
+        rankReadyKeywords,
     }),
 
     runDeterministicEvidenceYmylCriticV1({

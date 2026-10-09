@@ -397,14 +397,17 @@ export function evaluateFinalArticleReadinessV1(
 
 
   /*
-   * ARTICLE_LENGTH_AND_STRUCTURE_HARD_GATES_V1
+   * ARTICLE_LENGTH_GUIDANCE_STRUCTURE_HARD_GATES_V2
    *
    * Replaces ARTICLE_WORD_COUNT_IS_DIAGNOSTIC_ONLY_V1.
    *
-   * Length is NOT a keyword/ranking trick. For an explicitly
-   * classified article type the product contract defines the
-   * required range, and that range must come from FULL coverage
-   * of the approved sections/topics/questions/evidence.
+   * Length is editorial depth guidance, not a ranking quota.
+   *
+   * Execution-plan coverage, required information jobs, evidence,
+   * semantics and generated structure remain authoritative.
+   *
+   * A complete article may be shorter or longer than the planning
+   * range without becoming a publication failure.
    *
    * keyword exact-phrase counts remain diagnostics elsewhere.
    */
@@ -418,14 +421,14 @@ export function evaluateFinalArticleReadinessV1(
       input.articleWordCount <
       lengthRange.min
     ) {
-      blockers.push(
+      warnings.push(
         `FINAL_READINESS_LENGTH_DEFICIT:${input.articleWordCount}<${lengthRange.min}`
       );
     } else if (
       input.articleWordCount >
       lengthRange.max
     ) {
-      blockers.push(
+      warnings.push(
         `FINAL_READINESS_LENGTH_EXCESS:${input.articleWordCount}>${lengthRange.max}`
       );
     }

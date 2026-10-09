@@ -2574,9 +2574,37 @@ export async function executeSerpReplayV1({
       [];
 
 
+  /*
+   * SERP_REPLAY_PAIRWISE_COST_BOUND_V1
+   *
+   * Full SERP discovery / extraction already happened upstream.
+   * Final replay is a post-writer verification sample, not another
+   * full SERP research pass.
+   *
+   * Compare against the top three ranked usable competitors.
+   * This preserves competitive validation while preventing one
+   * article from issuing 8-10 near-identical large LLM calls.
+   */
+  /*
+   * SERP_REPLAY_TOP_RESULT_COST_BOUND_V2
+   *
+   * Full competitor research already happened before Writer.
+   * Final replay compares the article against the strongest
+   * ranked usable competitor only.
+   *
+   * This preserves a real competitive replay while avoiding
+   * three near-identical full-article judge calls.
+   */
+  const pairwiseCompetitors =
+    competitors.slice(
+      0,
+      1
+    );
+
+
   for (
     const competitor
-    of competitors
+    of pairwiseCompetitors
   ) {
     const competitorEvidence =
       competitorInput(

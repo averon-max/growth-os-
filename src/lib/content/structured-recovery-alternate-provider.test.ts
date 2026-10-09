@@ -1,152 +1,129 @@
 import {
+  readFileSync,
+} from "node:fs";
+
+import {
   describe,
   expect,
   it,
 } from "vitest";
 
-import {
-  readFileSync,
-} from "node:fs";
-
-import {
-  join,
-} from "node:path";
-
 
 const generatorSource =
   readFileSync(
-    join(
-      process.cwd(),
-      "src/lib/content/gemini-generator.ts"
+    new URL(
+      "./gemini-generator.ts",
+      import.meta.url
     ),
     "utf8"
   );
 
+
 const plannerSource =
   readFileSync(
-    join(
-      process.cwd(),
-      "src/lib/content/production-master-live-stage-planner.ts"
+    new URL(
+      "./production-master-live-stage-planner.ts",
+      import.meta.url
     ),
     "utf8"
   );
 
 
 describe(
-  "structured recovery alternate provider boundary",
+  "Structured recovery GPT-only boundary",
   () => {
     it(
-      "keeps normal structured generation on the configured primary provider",
+      "keeps recovery calls but never switches vendor",
       () => {
         expect(
-          generatorSource
+          plannerSource
         ).toContain(
-          "const primary ="
+          "forceAlternateProvider:"
         );
 
-        expect(
-          generatorSource
-        ).toContain(
-          "resolveContentAiProvider()"
-        );
-      }
-    );
 
-
-    it(
-      "supports an explicit alternate-provider recovery path",
-      () => {
-        expect(generatorSource).toContain("CONTENT_AI_FAILOVER_V1");
-
-        expect(generatorSource).toContain("GENERATOR_PROVIDER_FAILOVER_V2");
-
-        expect(
-          generatorSource
-        ).toContain(
-          "forceAlternateProvider"
-        );
-
-        expect(
-          generatorSource
-        ).toContain(
-          "structured recovery forcing alternate provider: Gemini"
-        );
-
-        expect(
-          generatorSource
-        ).toContain(
-          "structured recovery forcing alternate provider: OpenAI"
-        );
-      }
-    );
-
-
-    it(
-      "uses alternate provider only in Stage Plan completeness recovery",
-      () => {
-        const retryStart =
-          plannerSource.indexOf(
-            "STAGE_PLAN_COMPLETENESS_RETRY_V4:"
+        const start =
+          generatorSource.indexOf(
+            "export async function callContentAiJson("
           );
 
-        expect(
-          retryStart
-        ).toBeGreaterThanOrEqual(
-          0
-        );
-
-        const retryBlock =
-          plannerSource.slice(
-            retryStart,
-            retryStart + 5000
+        const end =
+          generatorSource.indexOf(
+            "async function callGeminiApi(",
+            start
           );
 
+
+        expect(start)
+          .toBeGreaterThanOrEqual(
+            0
+          );
+
+        expect(end)
+          .toBeGreaterThan(
+            start
+          );
+
+
+        const dispatcher =
+          generatorSource.slice(
+            start,
+            end
+          );
+
+
         expect(
-          retryBlock
+          dispatcher
         ).toContain(
-          "completenessRetryPrompt"
+          "GPT_ONLY_CONTENT_RUNTIME_V1"
         );
 
         expect(
-          retryBlock
+          dispatcher
         ).toContain(
-          "forceAlternateProvider"
+          "return callOpenAiApi("
         );
 
         expect(
-          retryBlock
+          dispatcher
         ).toContain(
-          "true"
+          "GPT-only structured recovery using OpenAI"
+        );
+
+        expect(
+          dispatcher
+        ).not.toContain(
+          "callGeminiApi("
+        );
+
+        expect(
+          dispatcher
+        ).not.toContain(
+          "callGroq("
         );
       }
     );
 
 
     it(
-      "does not synthesize missing Stage Plan semantics",
+      "keeps strict evidence verification authoritative",
       () => {
         expect(
           plannerSource
-        ).not.toContain(
-          "plan.claims ="
-        );
-
-        expect(
-          plannerSource
-        ).not.toContain(
-          "plan.sections ="
-        );
-
-        expect(
-          plannerSource
-        ).not.toContain(
-          "plan.topics ="
+        ).toContain(
+          "enrichLiveEvidenceGraphV1"
         );
 
         expect(
           plannerSource
         ).toContain(
-          "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE"
+          "VERIFIED_EXCERPT"
+        );
+
+        expect(
+          plannerSource
+        ).toContain(
+          "SUPPORTS"
         );
       }
     );

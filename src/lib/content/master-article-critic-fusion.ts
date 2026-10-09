@@ -435,6 +435,12 @@ export async function executeMasterArticleCriticsV1({
     runDeterministicMasterArticleCriticsV1({
       contract,
       run,
+
+      /*
+       * RANK_READY_KEYWORD_AGGREGATOR_BINDING_V1
+       */
+      rankReadyKeywords:
+        context.rankReadyKeywords,
     });
 
 

@@ -92,10 +92,38 @@ describe(
           "MERGED_DEFER_INDEXES_EFFECTIVE_RUNTIME_V1"
         );
 
+        /*
+         * POST_LOCK_PROJECTED_RUNTIME_V1
+         *
+         * The previous assertion expected the old conditional:
+         *
+         * deferredMasterIndexes.size === 0
+         *   ? originalRuntime
+         *   : projectedRuntime
+         *
+         * That behavior is intentionally retired because mixed-section
+         * evidence contraction can exist even when zero whole sections
+         * are deferred.
+         *
+         * Generation must now ALWAYS consume the post-lock projected
+         * runtime.
+         */
         expect(
           service
         ).toContain(
-          "deferredMasterIndexes\n      .size ==="
+          "POST_LOCK_PROJECTED_RUNTIME_V1"
+        );
+
+        expect(
+          service
+        ).toContain(
+          "ARTICLE_EXECUTION_PLAN_POST_LOCK_DEFER_AUTHORITY_V1"
+        );
+
+        expect(
+          service
+        ).toContain(
+          "...effectiveMasterSections"
         );
 
         expect(

@@ -287,12 +287,167 @@ function coverage(
   corpus: string,
   values: string[]
 ): ContentPlanCoverage {
-  const seen =
-    new Set<string>();
+  /*
+   * COVERAGE_SEMANTIC_NORMALIZATION_V2
+   *
+   * Coverage is an information check, NOT an exact-keyword
+   * repetition check.
+   *
+   * Examples that MUST match:
+   *
+   * "How Does Credit Monitoring Work?"
+   * "How Credit Monitoring Works"
+   *
+   * "Why Do I Need to Monitor My Credit?"
+   * "Why Monitor Your Credit?"
+   *
+   * We intentionally keep this deterministic. No extra model
+   * call is allowed merely to decide lexical coverage.
+   */
+  const grammaticalStopWords =
+    new Set([
+      "i",
+      "you",
+      "your",
+      "we",
+      "they",
+      "it",
+      "its",
+      "what",
+      "why",
+      "when",
+      "where",
+      "who",
+      "which",
+      "need",
+      "needs",
+      "understand",
+    ]);
 
-  const items:
-    ContentPlanCoverageItem[] =
-      [];
+  const normalizeToken = (
+    raw:
+      string
+  ): string => {
+    let token =
+      raw
+        .toLocaleLowerCase(
+          "en-US"
+        )
+        .replace(
+          /['’]s$/u,
+          ""
+        );
+
+    if (
+      token.endsWith(
+        "ies"
+      ) &&
+      token.length >
+        4
+    ) {
+      token =
+        `${token.slice(0, -3)}y`;
+    } else if (
+      token.endsWith(
+        "ing"
+      ) &&
+      token.length >
+        5
+    ) {
+      token =
+        token.slice(
+          0,
+          -3
+        );
+    } else if (
+      token.endsWith(
+        "ed"
+      ) &&
+      token.length >
+        4
+    ) {
+      token =
+        token.slice(
+          0,
+          -2
+        );
+    } else if (
+      token.endsWith(
+        "es"
+      ) &&
+      token.length >
+        4
+    ) {
+      token =
+        token.slice(
+          0,
+          -2
+        );
+    } else if (
+      token.endsWith(
+        "s"
+      ) &&
+      token.length >
+        3
+    ) {
+      token =
+        token.slice(
+          0,
+          -1
+        );
+    }
+
+    return token;
+  };
+
+  const tokens = (
+    value:
+      string
+  ): string[] =>
+    value
+      .toLocaleLowerCase(
+        "en-US"
+      )
+      .replace(
+        /['’]s\b/gu,
+        ""
+      )
+      .replace(
+        /[^\p{L}\p{N}]+/gu,
+        " "
+      )
+      .split(
+        /\s+/u
+      )
+      .map(
+        normalizeToken
+      )
+      .filter(
+        (token) =>
+          token.length >
+            1 &&
+          !COVERAGE_STOP_WORDS
+            .has(
+              token
+            ) &&
+          !grammaticalStopWords
+            .has(
+              token
+            )
+      );
+
+  const corpusTokens =
+    new Set(
+      tokens(
+        corpus
+      )
+    );
+
+  const unique =
+    new Map<
+      string,
+      string
+    >();
 
   for (
     const raw
@@ -300,6 +455,10 @@ function coverage(
   ) {
     const text =
       raw.trim();
+
+    if (!text) {
+      continue;
+    }
 
     const key =
       text
@@ -312,28 +471,66 @@ function coverage(
         );
 
     if (
-      !text ||
-      seen.has(key)
+      !unique.has(
+        key
+      )
     ) {
-      continue;
+      unique.set(
+        key,
+        text
+      );
     }
-
-    seen.add(key);
-
-    items.push({
-      text,
-
-      /*
-       * This is deliberately lexical evidence.
-       * It is NOT branded as semantic coverage.
-       */
-      covered:
-          hasCoverageEvidence(
-            corpus,
-            text
-          ),
-    });
   }
+
+  const items =
+    Array.from(
+      unique.values()
+    ).map(
+      (text) => {
+        const required =
+          Array.from(
+            new Set(
+              tokens(
+                text
+              )
+            )
+          );
+
+        const matches =
+          required.filter(
+            (token) =>
+              corpusTokens.has(
+                token
+              )
+          ).length;
+
+        /*
+         * One-word concepts remain exact after normalization.
+         *
+         * Two-word concepts require both concepts.
+         *
+         * Longer information jobs tolerate grammatical /
+         * morphological variation while still requiring
+         * substantial concept overlap.
+         */
+        const covered =
+          required.length ===
+            0
+            ? false
+            : required.length <=
+                2
+              ? matches ===
+                required.length
+              : matches /
+                    required.length >=
+                  0.75;
+
+        return {
+          text,
+          covered,
+        };
+      }
+    );
 
   const covered =
     items.filter(
@@ -352,10 +549,13 @@ function coverage(
       covered,
 
     coveragePct:
-      items.length > 0
+      items.length >
+        0
         ? Math.round(
-            (covered /
-              items.length) *
+            (
+              covered /
+              items.length
+            ) *
               100
           )
         : null,
@@ -383,13 +583,23 @@ export function analyzeArticleAgainstPlan(
       root?.benchmark
     );
 
-  const requiredTopics =
+  /*
+   * LEGACY_SERP_COVERAGE_DIAGNOSTICS_V2
+   *
+   * FinalContentPlan architecture contains observed SERP
+   * topics and questions. They are diagnostics, not canonical
+   * MUST requirements.
+   *
+   * Canonical MUST authority belongs to ArticleExecutionPlan
+   * and FinalArticleReadiness.
+   */
+  const observedSerpTopics =
     stringArray(
       architecture
         ?.requiredTopics
     );
 
-  const questions =
+  const observedSerpQuestions =
     stringArray(
       architecture
         ?.questionsToAnswer
@@ -446,13 +656,13 @@ export function analyzeArticleAgainstPlan(
   const topics =
     coverage(
       corpus,
-      requiredTopics
+      observedSerpTopics
     );
 
   const questionCoverage =
     coverage(
       corpus,
-      questions
+      observedSerpQuestions
     );
 
   const warnings:
@@ -466,7 +676,7 @@ export function analyzeArticleAgainstPlan(
       !item.covered
     ) {
       warnings.push(
-        `REQUIRED_TOPIC_NOT_LEXICALLY_COVERED: ${item.text}`
+        `SERP_OBSERVED_TOPIC_NOT_LEXICALLY_COVERED: ${item.text}`
       );
     }
   }
@@ -479,7 +689,7 @@ export function analyzeArticleAgainstPlan(
       !item.covered
     ) {
       warnings.push(
-        `PLANNED_QUESTION_NOT_LEXICALLY_COVERED: ${item.text}`
+        `SERP_OBSERVED_QUESTION_NOT_LEXICALLY_COVERED: ${item.text}`
       );
     }
   }

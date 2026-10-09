@@ -415,13 +415,30 @@ export function buildMasterArticleCriticRepairPlanV1({
     );
 
 
+  /*
+   * MASTER_CRITIC_WARN_DIAGNOSTIC_ONLY_V1
+   *
+   * WARN is review telemetry, not an automatic authoring mandate.
+   *
+   * Spending Writer/repair calls on non-blocking cosmetic warnings
+   * creates unnecessary model cost and can itself introduce new
+   * semantic risk.
+   *
+   * Only a localized BLOCK may enter the bounded model-repair
+   * transaction.
+   *
+   * WARN findings remain in the critic suite and therefore remain
+   * visible to Final Readiness / human review.
+   */
   const repairable =
     classifications.filter(
       (
         item
       ) =>
+        item.severity ===
+          "BLOCK" &&
         item.repairability ===
-        "REPAIRABLE_SECTION"
+          "REPAIRABLE_SECTION"
     );
 
 

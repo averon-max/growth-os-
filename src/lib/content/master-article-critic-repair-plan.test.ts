@@ -529,7 +529,7 @@ describe(
 
 
     it(
-      "can collect explicitly repairable WARN findings without turning arbitrary warnings into blockers",
+      "keeps repairable WARN findings diagnostic without spending a repair call",
       () => {
         const plan =
           buildMasterArticleCriticRepairPlanV1({
@@ -555,8 +555,16 @@ describe(
         expect(
           plan.disposition
         ).toBe(
-          "REPAIR_REQUIRED"
+          "NO_REPAIR_NEEDED"
         );
+
+
+        expect(
+          plan.repairTasks
+        ).toEqual(
+          []
+        );
+
 
         expect(
           plan
@@ -566,7 +574,6 @@ describe(
         );
       }
     );
-
 
     it(
       "freezes repair plan and section tasks",

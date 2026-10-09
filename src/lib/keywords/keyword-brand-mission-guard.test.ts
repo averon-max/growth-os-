@@ -278,3 +278,115 @@ describe(
     );
   }
 );
+
+
+/*
+ * GENERIC_AUTO_FOREIGN_ENTITY_REGRESSION_V1
+ *
+ * BEST_OPPORTUNITY receives a seed topic, not permission
+ * to switch the production mission to a foreign entity.
+ */
+describe(
+  "generic AUTO seed entity ownership gate",
+  () => {
+    it(
+      "rejects a foreign entity before ranking while preserving generic modifiers",
+      () => {
+        const selected =
+          selectProductionPrimaryCandidate({
+            topic:
+              "credit monitoring",
+
+            candidates: [
+              {
+                keyword:
+                  "experian credit monitoring",
+
+                score:
+                  999999,
+
+                searchVolume:
+                  1000000,
+
+                impressions:
+                  1000000,
+
+                clicks:
+                  100000,
+              },
+
+              {
+                keyword:
+                  "free credit monitoring",
+
+                score:
+                  100,
+
+                searchVolume:
+                  10000,
+
+                impressions:
+                  0,
+
+                clicks:
+                  0,
+              },
+
+              {
+                keyword:
+                  "credit monitoring",
+
+                score:
+                  1,
+
+                searchVolume:
+                  null,
+
+                impressions:
+                  0,
+
+                clicks:
+                  0,
+              },
+            ],
+          });
+
+        expect(
+          selected?.keyword
+        ).toBe(
+          "free credit monitoring"
+        );
+
+
+        const foreignOnly =
+          selectProductionPrimaryCandidate({
+            topic:
+              "credit monitoring",
+
+            candidates: [
+              {
+                keyword:
+                  "experian credit monitoring",
+
+                score:
+                  999999,
+
+                searchVolume:
+                  1000000,
+
+                impressions:
+                  1000000,
+
+                clicks:
+                  100000,
+              },
+            ],
+          });
+
+        expect(
+          foreignOnly
+        ).toBeNull();
+      }
+    );
+  }
+);

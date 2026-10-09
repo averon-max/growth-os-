@@ -16,6 +16,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { getContentBriefById } from "@/lib/content/repository";
 import { generateArticleFromBrief } from "@/lib/content/service";
+import {
+  ARTICLE_RECOVERY_ORCHESTRATOR_V1,
+  executeArticleRecoveryOrchestratorV1,
+} from "@/lib/content/article-recovery-orchestrator-v1";
+
 import { geminiGenerator } from "@/lib/content/gemini-generator";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -47,11 +52,147 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           contentRunBudget,
       });
 
+    /*
+     * ARTICLE_RECOVERY_ORCHESTRATOR_V1
+     *
+     * Tier 1:
+     * owning stages perform their own bounded repair.
+     *
+     * Tier 2:
+     * if the completed pass still returns a recoverable REJECTED
+     * article, execute exactly ONE fresh production pass using
+     * the SAME logical ContentArticle and SAME run budget.
+     */
+    const recoveryExecution =
+      await executeArticleRecoveryOrchestratorV1({
+        run:
+          () =>
+            generateArticleFromBrief(
+              budgetedGenerator,
+              id
+            ),
+
+        onTransition:
+          (
+            transition
+          ) => {
+            console.warn(
+              "[content article recovery]",
+              {
+                version:
+                  ARTICLE_RECOVERY_ORCHESTRATOR_V1,
+
+                briefId:
+                  id,
+
+                attempt:
+                  transition.attempt,
+
+                failureClass:
+                  transition
+                    .recovery
+                    .failureClass,
+
+                owner:
+                  transition
+                    .recovery
+                    .owner,
+
+                action:
+                  transition
+                    .recovery
+                    .nextAction,
+              }
+            );
+          },
+      });
+
+
     const article =
-      await generateArticleFromBrief(
-        budgetedGenerator,
-        id
+      recoveryExecution
+        .article;
+
+
+    /*
+     * FINAL_REJECTED_IS_NOT_HTTP_SUCCESS_V1
+     *
+     * Never send the UI into an empty REJECTED editor.
+     */
+    if (
+      article.status ===
+        "REJECTED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            recoveryExecution
+              .recoveryAttempted
+              ? "Growth OS attempted automatic recovery, but the article still could not pass its production gates safely."
+              : "The article could not pass its production gates safely.",
+
+          code:
+            "ARTICLE_RECOVERY_EXHAUSTED",
+
+          articleCreated:
+            true,
+
+          articleId:
+            article.id,
+
+          recovery: {
+            version:
+              ARTICLE_RECOVERY_ORCHESTRATOR_V1,
+
+            attempts:
+              recoveryExecution
+                .attempts,
+
+            attempted:
+              recoveryExecution
+                .recoveryAttempted,
+
+            transitions:
+              recoveryExecution
+                .transitions
+                .map(
+                  (
+                    transition
+                  ) => ({
+                    attempt:
+                      transition
+                        .attempt,
+
+                    failureClass:
+                      transition
+                        .recovery
+                        .failureClass,
+
+                    owner:
+                      transition
+                        .recovery
+                        .owner,
+
+                    action:
+                      transition
+                        .recovery
+                        .nextAction,
+                  })
+                ),
+          },
+
+          runBudget:
+            contentRunBudget
+              .snapshot(),
+
+          retryable:
+            false,
+        },
+        {
+          status:
+            422,
+        }
       );
+    }
 
     return NextResponse.json(
       {

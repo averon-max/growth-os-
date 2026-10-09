@@ -84,7 +84,7 @@ describe(
 
         expect(
           block
-        ).toContain(
+        ).not.toContain(
           "callGeminiApi("
         );
 

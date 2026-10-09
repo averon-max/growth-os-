@@ -793,7 +793,7 @@ describe(
 
 
     it(
-      "fails closed when deterministic semantic repair still fails re-verification",
+      "escalates once to model self-heal when deterministic semantic repair still fails re-verification",
       async () => {
         let semanticCalls =
           0;
@@ -1034,7 +1034,7 @@ describe(
             },
           })
         ).rejects.toThrow(
-          "SECTION_TARGETED_REPAIR_EXHAUSTED:SEMANTIC"
+          "SECTION_SELF_HEAL_MODEL_REWRITE_FAILED:SEMANTIC"
         );
 
 
@@ -1048,7 +1048,7 @@ describe(
         expect(
           repairCalls
         ).toBe(
-          0
+          1
         );
       }
     );

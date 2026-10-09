@@ -525,11 +525,15 @@ function validPublicationEvidence({
 
 function assertEvidenceIdentity({
   contract,
+  classification,
   matchedClaimId,
   evidenceIds,
 }: {
   contract:
     Readonly<SectionGenerationContractV1>;
+
+  classification:
+    SectionSemanticClassificationV1;
 
   matchedClaimId:
     string | null;
@@ -557,6 +561,46 @@ function assertEvidenceIdentity({
         )
     );
 
+  /*
+   * MULTI_CLAIM_PROSE_EVIDENCE_V1
+   *
+   * A semantic prose unit may contain more than one material
+   * assertion when all assertions belong to approved required
+   * claims of THIS section.
+   *
+   * matchedClaimId remains the primary claim selected by the
+   * verifier.
+   *
+   * Additional evidence is allowed only when its claim:
+   * - is another required claim of this same section
+   * - is VERIFIED
+   * - is backed by SUPPORTS + VERIFIED_EXCERPT
+   *
+   * This does NOT permit evidence from unrelated, forbidden,
+   * unsupported, stale, or outside-section claims.
+   *
+   * The primary matched claim must still independently satisfy
+   * validPublicationEvidence() later in the finalizer.
+   */
+  const requiredClaimIds =
+    new Set(
+      contract.blueprint
+        .requiredClaims ??
+      []
+    );
+
+  const claimMap =
+    new Map(
+      contract.claimLedger
+        .claims
+        .map(
+          (claim) =>
+            [
+              claim.id,
+              claim,
+            ] as const
+        )
+    );
 
   for (
     const evidenceId
@@ -588,9 +632,44 @@ function assertEvidenceIdentity({
       evidence.claimId !==
         matchedClaimId
     ) {
-      throw new ContentGenerationError(
-        `SECTION_SEMANTIC_EVIDENCE_CLAIM_MISMATCH:${evidenceId}`
-      );
+      const additionalClaim =
+        claimMap.get(
+          evidence.claimId
+        );
+
+      const validAdditionalRequiredClaimEvidence =
+        (
+          classification ===
+            "SUPPORTED" ||
+          classification ===
+            "NARROWER"
+        ) &&
+        requiredClaimIds.has(
+          evidence.claimId
+        ) &&
+        Boolean(
+          additionalClaim &&
+          additionalClaim.status ===
+            "VERIFIED"
+        ) &&
+        evidence.relation ===
+          "SUPPORTS" &&
+        evidence.kind ===
+          "VERIFIED_EXCERPT" &&
+        typeof evidence.excerpt ===
+          "string" &&
+        evidence.excerpt
+          .trim()
+          .length >
+          0;
+
+      if (
+        !validAdditionalRequiredClaimEvidence
+      ) {
+        throw new ContentGenerationError(
+          `SECTION_SEMANTIC_EVIDENCE_CLAIM_MISMATCH:${evidenceId}`
+        );
+      }
     }
   }
 }
@@ -816,6 +895,7 @@ export function finalizeSectionSemanticVerificationV1({
 
     assertEvidenceIdentity({
       contract,
+      classification,
       matchedClaimId,
       evidenceIds,
     });

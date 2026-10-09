@@ -1,4 +1,8 @@
 import {
+  normalizeGeneratedSectionCandidateV1,
+} from "./section-candidate-normalization-v1";
+
+import {
   recordContentProviderRequestV1,
   runWithContentProviderDispatchMetaV1,
 } from "./content-provider-request-context-v1";
@@ -20,6 +24,7 @@ import type {
 
 import {
   finalizeMasterArticleSemanticCriticRunV1,
+  normalizeMasterArticleSemanticCriticCandidateV1,
 } from "./master-article-semantic-critics";
 
 import {
@@ -172,18 +177,18 @@ export function resolveContentAiProvider(
     Record<string, string | undefined> =
       process.env
 ): ContentAiProvider {
+  /*
+   * GPT_ONLY_PROVIDER_SELECTION_V1
+   *
+   * Growth OS Content production supports OpenAI only.
+   * Legacy Gemini/Groq transport functions may remain as
+   * unreachable implementation history until cleanup.
+   */
   const provider =
     env.CONTENT_AI_PROVIDER
       ?.trim()
       .toLowerCase();
 
-  /*
-   * OPENAI_PRIMARY_V1
-   *
-   * OpenAI is production primary.
-   * Gemini is transport fallback.
-   * Groq is intentionally excluded from production dispatch.
-   */
   if (
     !provider ||
     provider ===
@@ -192,15 +197,8 @@ export function resolveContentAiProvider(
     return "openai";
   }
 
-  if (
-    provider ===
-      "gemini"
-  ) {
-    return "gemini";
-  }
-
   throw new ContentGenerationError(
-    `Unsupported CONTENT_AI_PROVIDER: ${provider}`
+    `Unsupported CONTENT_AI_PROVIDER in GPT-only Content runtime: ${provider}`
   );
 }
 
@@ -273,12 +271,13 @@ const OPENAI_MODEL =
 
 
 function selectedContentModelName(): string {
-  return (
-    resolveContentAiProvider() ===
-      "openai"
-      ? OPENAI_MODEL
-      : GEMINI_MODEL
-  );
+  /*
+   * GPT_ONLY_CONTENT_MODEL_IDENTITY_V1
+   *
+   * Telemetry/generatedBy must reflect the provider that
+   * actually receives production Content requests.
+   */
+  return resolveOpenAiContentModel();
 }
 
 
@@ -898,140 +897,50 @@ export async function callContentAiJson(
         OpenAiReasoningEffort;
     }>
 ): Promise<string> {
-  const primary =
-    resolveContentAiProvider();
+  /*
+   * GPT_ONLY_CONTENT_RUNTIME_V1
+   *
+   * Canonical Growth OS Content AI transport is OpenAI only.
+   *
+   * forceAlternateProvider remains in the public/internal API
+   * for compatibility with existing recovery callers, but it
+   * NEVER changes vendors.
+   *
+   * Gemini/Groq legacy transport helpers may remain below as
+   * dead compatibility code until cleanup, but this dispatcher
+   * cannot reach them.
+   */
+  if (
+    !process.env
+      .OPENAI_API_KEY
+      ?.trim()
+  ) {
+    throw new ContentGenerationError(
+      "OPENAI_API_KEY is not configured"
+    );
+  }
 
   const effort =
     options
       ?.reasoningEffort ??
     resolveOpenAiReasoningEffort();
 
-
-  /*
-   * STRUCTURED_RECOVERY_ALTERNATE_PROVIDER_V2
-   *
-   * Provider switching is TRANSPORT recovery only.
-   * It never converts semantic/evidence/deterministic BLOCK to PASS.
-   */
   if (
     options
       ?.forceAlternateProvider
   ) {
-    if (
-      primary ===
-        "openai"
-    ) {
-      if (
-        !hasContentAiKey(
-          "GEMINI_API_KEY"
-        )
-      ) {
-        throw new ContentGenerationError(
-          "CONTENT_AI_ALTERNATE_PROVIDER_UNAVAILABLE: Gemini is not configured"
-        );
-      }
-
-      console.warn(
-        "[content ai] structured recovery forcing alternate provider: Gemini"
-      );
-
-      return callGeminiApi(
-        prompt
-      );
-    }
-
-
-    if (
-      !hasContentAiKey(
-        "OPENAI_API_KEY"
-      )
-    ) {
-      throw new ContentGenerationError(
-        "CONTENT_AI_ALTERNATE_PROVIDER_UNAVAILABLE: OpenAI is not configured"
-      );
-    }
-
     console.warn(
-      "[content ai] structured recovery forcing alternate provider: OpenAI"
-    );
-
-    return callOpenAiApi(
-      prompt,
-      {
-        reasoningEffort:
-          effort,
-      }
+      "[content ai] GPT-only structured recovery using OpenAI"
     );
   }
 
-
-  if (
-    primary ===
-      "openai"
-  ) {
-    try {
-      return await callOpenAiApi(
-        prompt,
-        {
-          reasoningEffort:
-            effort,
-        }
-      );
-    } catch (
-      cause
-    ) {
-      if (
-        !hasContentAiKey(
-          "GEMINI_API_KEY"
-        ) ||
-        !isContentAiFailoverEligible(
-          cause
-        )
-      ) {
-        throw cause;
-      }
-
-      console.warn(
-        "[content ai] OpenAI unavailable; failing over to Gemini"
-      );
-
-      return callGeminiApi(
-        prompt
-      );
+  return callOpenAiApi(
+    prompt,
+    {
+      reasoningEffort:
+        effort,
     }
-  }
-
-
-  try {
-    return await callGeminiApi(
-      prompt
-    );
-  } catch (
-    cause
-  ) {
-    if (
-      !hasContentAiKey(
-        "OPENAI_API_KEY"
-      ) ||
-      !isContentAiFailoverEligible(
-        cause
-      )
-    ) {
-      throw cause;
-    }
-
-    console.warn(
-      "[content ai] Gemini unavailable; failing over to OpenAI"
-    );
-
-    return callOpenAiApi(
-      prompt,
-      {
-        reasoningEffort:
-          effort,
-      }
-    );
-  }
+  );
 }
 
 
@@ -1563,7 +1472,7 @@ Every heading must earn its place by improving the information architecture.
 
 Respond with JSON only.`;
 
-    const text = await callGemini(prompt);
+    const text = await callContentAiJson(prompt);
     const parsed = parseJson<GeneratedBrief>(text);
 
     if (!parsed.primaryKeyword || !Array.isArray(parsed.outline) || parsed.outline.length === 0) {
@@ -1610,7 +1519,7 @@ Write for humans first, avoid keyword stuffing, use the outline as structure. Pr
 
 Respond with JSON only.`;
 
-    const text = await callGemini(prompt);
+    const text = await callContentAiJson(prompt);
     const parsed = parseJson<GeneratedArticle>(text);
 
     if (!parsed.title || !parsed.bodyMarkdown) {
@@ -1628,7 +1537,7 @@ Respond with JSON only.`;
       );
 
     const text =
-      await callGemini(
+      await callContentAiJson(
         prompt
       );
 
@@ -1659,7 +1568,7 @@ Respond with JSON only.`;
       );
 
     const text =
-      await callGemini(
+      await callContentAiJson(
         prompt
       );
 
@@ -1677,7 +1586,13 @@ Respond with JSON only.`;
       modelName:
         selectedContentModelName(),
 
-      candidate,
+      candidate:
+        normalizeGeneratedSectionCandidateV1({
+          contract:
+            input,
+
+          candidate,
+        }),
     });
   },
 
@@ -1690,7 +1605,7 @@ Respond with JSON only.`;
       );
 
     const response =
-      await callGemini(
+      await callContentAiJson(
         prompt
       );
 
@@ -1711,7 +1626,13 @@ Respond with JSON only.`;
       modelName:
         selectedContentModelName(),
 
-      candidate,
+      candidate:
+          normalizeMasterArticleSemanticCriticCandidateV1({
+            contract:
+              input.contract,
+
+            candidate,
+          }),
     });
   },
 
@@ -1731,7 +1652,7 @@ Respond with JSON only.`;
      * retry policy, timeout policy and JSON response mode.
      */
     const response =
-      await callGemini(
+      await callContentAiJson(
         prompt
       );
 
@@ -1805,7 +1726,7 @@ Respond with JSON only.`;
 
 
     const response =
-      await callGemini(
+      await callContentAiJson(
         prompt
       );
 
@@ -1825,7 +1746,13 @@ Respond with JSON only.`;
           modelName:
             selectedContentModelName(),
 
-          candidate,
+          candidate:
+            normalizeGeneratedSectionCandidateV1({
+              contract:
+                input.contract,
+
+              candidate,
+            }),
         });
 
 
@@ -2688,7 +2615,7 @@ Respond with JSON only.`;
     ].join("\n");
 
     const text =
-      await callGemini(
+      await callContentAiJson(
         prompt
       );
 

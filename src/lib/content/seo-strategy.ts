@@ -1325,7 +1325,7 @@ export async function buildContentStrategy({
         )
       ).slice(
         0,
-        40
+        80
       );
   } catch (error) {
     console.warn(
@@ -1886,7 +1886,33 @@ export async function buildContentStrategy({
     }
   );
 
+  /*
+   * KEYWORD_DECISION_PRODUCTION_AUTHORITY_V2
+   *
+   * Query ownership remains the hard eligibility boundary.
+   * Keyword Decision is the final ranking authority when it
+   * returns SELECTED.
+   *
+   * This removes split-brain state where:
+   * productionPrimary !== decisionPrimary.
+   */
+  const canonicalProductionPrimaryCandidate =
+    keywordDecisionShadow.status ===
+      "SELECTED" &&
+    keywordDecisionShadow.primary
+      ? authorityShadow.find(
+          (item) =>
+            item.candidate.keyword ===
+            keywordDecisionShadow
+              .primary
+              ?.keyword
+        )?.candidate ??
+        null
+      : null;
+
+
   const primary =
+    canonicalProductionPrimaryCandidate ??
     productionPrimaryCandidate ?? {
       keyword:
         topic,

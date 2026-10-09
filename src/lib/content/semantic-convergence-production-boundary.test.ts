@@ -9,7 +9,7 @@ import {
 } from "vitest";
 
 
-const repair =
+const source =
   readFileSync(
     new URL(
       "./master-section-repair.ts",
@@ -19,80 +19,89 @@ const repair =
   );
 
 
-const prompt =
-  readFileSync(
-    new URL(
-      "./master-section-prompt.ts",
-      import.meta.url
-    ),
-    "utf8"
+function between(
+  startMarker:
+    string,
+  endMarker:
+    string
+): string {
+  const start =
+    source.indexOf(
+      startMarker
+    );
+
+  const end =
+    source.indexOf(
+      endMarker,
+      start + startMarker.length
+    );
+
+
+  if (
+    start < 0 ||
+    end <= start
+  ) {
+    throw new Error(
+      `BOUNDARY_NOT_FOUND:${startMarker}:${endMarker}`
+    );
+  }
+
+
+  return source.slice(
+    start,
+    end
   );
+}
 
 
 describe(
-  "semantic convergence V2",
+  "semantic convergence final production boundary",
   () => {
     it(
-      "uses bounded deterministic semantic convergence",
+      "allows bounded deterministic semantic cleanup convergence",
       () => {
-        expect(
-          repair
-        ).toContain(
-          "SEMANTIC_REPAIR_DETERMINISTIC_CONVERGENCE_V2"
-        );
+        const match =
+          source.match(
+            /MAX_DETERMINISTIC_SEMANTIC_PASSES\s*=\s*(\d+)/
+          );
+
 
         expect(
-          repair
-        ).toContain(
-          "MAX_DETERMINISTIC_SEMANTIC_PASSES"
-        );
+          match
+        ).not.toBeNull();
+
+
+        const value =
+          Number(
+            match?.[1]
+          );
+
 
         expect(
-          repair
-        ).toContain(
-          "SECTION_DETERMINISTIC_SEMANTIC_NO_PROGRESS"
+          value
+        ).toBe(
+          4
         );
       }
     );
 
 
     it(
-      "does not invoke model repair inside semantic convergence",
+      "does not invoke model repair inside deterministic semantic convergence",
       () => {
-        const start =
-          repair.indexOf(
-            "SEMANTIC_REPAIR_DETERMINISTIC_CONVERGENCE_V2"
-          );
-
-        const end =
-          repair.indexOf(
-            "if (!finalSemantic)",
-            start
-          );
-
-        expect(
-          start
-        ).toBeGreaterThan(
-          -1
-        );
-
-        expect(
-          end
-        ).toBeGreaterThan(
-          start
-        );
-
         const block =
-          repair.slice(
-            start,
-            end
+          between(
+            "SEMANTIC_REPAIR_DETERMINISTIC_CONVERGENCE_V2",
+            "SECTION_SEMANTIC_MODEL_SELF_HEAL_V1"
           );
+
 
         expect(
           block
         ).toContain(
           "deterministicSemanticDeleteRepairV1"
         );
+
 
         expect(
           block
@@ -104,42 +113,66 @@ describe(
 
 
     it(
-      "injects strict no-evidence writer policy",
+      "bounds model self-heal to targeted plus clean-room section repair",
       () => {
-        expect(
-          prompt
-        ).toContain(
-          "NO-EVIDENCE SECTION MODE V1"
-        );
+        const block =
+          between(
+            "SECTION_SEMANTIC_MODEL_SELF_HEAL_V1",
+            "SECTION_DEPTH_TERMINAL_GATE_V1"
+          );
+
 
         expect(
-          prompt
-        ).toContain(
-          "noEvidenceSectionMode,"
+          block.match(
+            /\.repairSection\(\{/g
+          ) ??
+          []
+        ).toHaveLength(
+          2
         );
 
+
         expect(
-          prompt
-        ).toContain(
-          "omit that detail rather than inventing"
+          block
+        ).not.toMatch(
+          /\bwhile\s*\(/
+        );
+
+
+        expect(
+          block
+        ).not.toMatch(
+          /\bfor\s*\(/
+        );
+
+
+        expect(
+          block
+        ).not.toContain(
+          "rewriteArticle("
         );
       }
     );
 
 
     it(
-      "does not weaken evidence verification",
+      "keeps depth after semantic terminal safety",
       () => {
         expect(
-          prompt
-        ).toContain(
-          "publication-grade evidence"
+          source.indexOf(
+            "SECTION_DEPTH_TERMINAL_GATE_V1"
+          )
+        ).toBeGreaterThan(
+          source.indexOf(
+            "SECTION_SEMANTIC_MODEL_SELF_HEAL_V1"
+          )
         );
 
+
         expect(
-          prompt
-        ).not.toContain(
-          "ignore unsupported"
+          source
+        ).toContain(
+          "SECTION_DEPTH_LOCAL_CONVERGENCE_V2"
         );
       }
     );

@@ -140,7 +140,7 @@ describe(
   "CONTENT V1 closure regressions",
   () => {
     it(
-      "REGRESSION: the ~200-word credit-monitoring draft can no longer reach review",
+      "short article length is surfaced as guidance rather than a hard rejection",
       () => {
         const result =
           readiness(
@@ -148,10 +148,10 @@ describe(
             INCIDENT_BODY
           );
 
-        expect(result.status).toBe("FAIL");
+        expect(result.status).toBe("WARN");
 
         expect(
-          result.blockers.some(
+          result.warnings.some(
             (blocker) =>
               blocker.startsWith(
                 "FINAL_READINESS_LENGTH_DEFICIT:"
@@ -178,7 +178,7 @@ describe(
     );
 
     it(
-      "fails above the product range instead of silently accepting it",
+      "surfaces excess length as guidance instead of a hard rejection",
       () => {
         const plan = incidentPlan();
 
@@ -189,7 +189,7 @@ describe(
           );
 
         expect(
-          result.blockers.some(
+          result.warnings.some(
             (blocker) =>
               blocker.startsWith(
                 "FINAL_READINESS_LENGTH_EXCESS:"

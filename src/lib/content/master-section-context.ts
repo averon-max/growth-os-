@@ -332,6 +332,15 @@ export function buildSectionScopedAuthorityContextV1(
     {};
 
 
+  /*
+   * SECTION_EVIDENCE_AUTHORITY_CLOSURE_V1
+   *
+   * Claims are section-relevant, but evidence authority is
+   * strictly blueprint-scoped.
+   *
+   * Article-level claim.evidenceIds must never widen what this
+   * individual section is allowed to cite.
+   */
   const selectedClaims =
     recordsById(
       claimLedger.claims,
@@ -339,8 +348,8 @@ export function buildSectionScopedAuthorityContextV1(
     ).map(
       (
         claim
-      ) =>
-        compactRecord(
+      ): UnknownRecord => ({
+        ...compactRecord(
           claim,
           [
             "id",
@@ -348,10 +357,22 @@ export function buildSectionScopedAuthorityContextV1(
             "category",
             "risk",
             "jurisdiction",
-            "evidenceIds",
             "status",
           ]
-        )
+        ),
+
+        evidenceIds:
+          strings(
+            claim.evidenceIds
+          ).filter(
+            (
+              evidenceId
+            ) =>
+              assignedEvidenceIds.has(
+                evidenceId
+              )
+          ),
+      })
     );
 
 
@@ -388,18 +409,18 @@ export function buildSectionScopedAuthorityContextV1(
               ? item.id
               : "";
 
-          const claimId =
-            typeof item.claimId ===
-              "string"
-              ? item.claimId
-              : "";
-
+          /*
+           * BLUEPRINT_EVIDENCE_IS_SOLE_SECTION_AUTHORITY_V1
+           *
+           * The claim relationship is intentionally NOT enough.
+           *
+           * Only evidence explicitly assigned through
+           * blueprint.evidenceIds may enter the provider-visible
+           * authority context for this H2.
+           */
           return (
             assignedEvidenceIds.has(
               id
-            ) ||
-            relevantClaimIds.has(
-              claimId
             )
           );
         }
@@ -437,23 +458,19 @@ export function buildSectionScopedAuthorityContextV1(
 
   const requiredSourceIds =
     new Set<string>(
-      [
-        ...assignedEvidenceIds,
-
-        ...selectedClaimEvidence
-          .map(
-            (
-              evidence
-            ) =>
-              typeof evidence.sourceId ===
-                "string"
-                ? evidence.sourceId
-                : ""
-          )
-          .filter(
-            Boolean
-          ),
-      ]
+      selectedClaimEvidence
+        .map(
+          (
+            evidence
+          ) =>
+            typeof evidence.sourceId ===
+              "string"
+              ? evidence.sourceId
+              : ""
+        )
+        .filter(
+          Boolean
+        )
     );
 
 
@@ -506,8 +523,8 @@ export function buildSectionScopedAuthorityContextV1(
     ).map(
       (
         asset
-      ) =>
-        compactRecord(
+      ): UnknownRecord => ({
+        ...compactRecord(
           asset,
           [
             "id",
@@ -516,9 +533,21 @@ export function buildSectionScopedAuthorityContextV1(
             "description",
             "firstParty",
             "verified",
-            "evidenceIds",
           ]
-        )
+        ),
+
+        evidenceIds:
+          strings(
+            asset.evidenceIds
+          ).filter(
+            (
+              evidenceId
+            ) =>
+              assignedEvidenceIds.has(
+                evidenceId
+              )
+          ),
+      })
     );
 
 

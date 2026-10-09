@@ -167,5 +167,34 @@ describe("Content V1 final depth closure", () => {
     expect(prompt).toContain("Do not use filler");
 
     expect(repair).not.toContain("rewriteWholeArticle");
+
+
+    // DEPTH_MODEL_REPAIR_WIRING_V1 regression
+    //
+    // Presence of a DEPTH error code is not enough.
+    // Pure under-depth must route through the ONE existing
+    // bounded section repair call before the terminal gate.
+    expect(repair).toMatch(
+      /trigger\s*===\s*"RECONCILIATION"[\s\S]{0,160}trigger\s*===\s*"DEPTH"/
+    );
+
+    expect(repair).toMatch(
+      /repairSection\s*\(\s*\{[\s\S]{0,1800}?depthRepair\s*:/
+    );
+
+    const modelRepairCalls =
+      repair.match(
+        /\.repairSection\s*\(\s*\{/g
+      ) ?? [];
+
+    expect(
+      modelRepairCalls.length
+    ).toBeGreaterThanOrEqual(
+      1
+    );
+
+    expect(repair).toContain(
+      "SECTION_DEPTH_TERMINAL_GATE_V1"
+    );
   });
 });

@@ -924,22 +924,58 @@ export function buildKeywordDecisionShadow({
         item.eligible
     );
 
+  /*
+   * COLD_START_EXACT_INFORMATIONAL_MISSION_V2
+   *
+   * On a new site, missing GSC/rank/authority history must not let
+   * a modifier such as "free ..." displace the safe exact mission.
+   *
+   * Ownership, entity and intent hard gates already ran before here.
+   */
+  const exactTopicMissionCandidates =
+    eligible.filter(
+      (item) =>
+        analyzeQueryOwnership({
+          topic,
+
+          keyword:
+            item.keyword,
+        }).status ===
+        "EXACT_TOPIC"
+    );
+
+
   const exactInformationalMission =
     isExplicitInformationalTopic(
       topic
     )
-      ? eligible.find(
-          (item) =>
-            analyzeQueryOwnership({
-              topic,
-
-              keyword:
-                item.keyword,
-            }).status ===
-            "EXACT_TOPIC"
-        ) ??
+      ? exactTopicMissionCandidates[0] ??
         null
-      : null;
+      : exactTopicMissionCandidates.find(
+          (item) =>
+            isExplicitInformationalTopic(
+              item.keyword
+            ) &&
+            item.evidenceConfidence ===
+              "LOW" &&
+            item.metrics.impressions ===
+              0 &&
+            item.metrics.existingPosition ===
+              null &&
+            item.metrics.authorityStrength <
+              0.25 &&
+            (
+              (
+                item.metrics.searchVolume ??
+                0
+              ) >
+                0 ||
+              item.metrics.difficulty !==
+                null
+            )
+        ) ??
+        null;
+
 
   const best =
     exactInformationalMission ??

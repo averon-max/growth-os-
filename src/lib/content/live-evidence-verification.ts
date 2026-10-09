@@ -1551,12 +1551,62 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
       MAX_EVIDENCE_FALLBACK_CLAIMS
     )
   ) {
+    /*
+     * DEFINITION_EVIDENCE_QUERY_V1
+     *
+     * Claims shaped as:
+     *
+     *   X is a/an/the ...
+     *
+     * are definition jobs.
+     *
+     * Search those with the natural definition query BEFORE the
+     * existing lexical fallbacks. This keeps retrieval generic and
+     * avoids hard-coding industries, publishers or domains.
+     *
+     * Evidence authority does not change: discovered URLs must still
+     * pass fetch + deterministic claim-specific VERIFIED_EXCERPT
+     * verification before they can support the claim.
+     */
+    const definitionMatch =
+      claim.text
+        .trim()
+        .match(
+          /^(.+?)\s+is\s+(?:a|an|the)\s+/i
+        );
+
+
+    const definitionSubject =
+      definitionMatch?.[1]
+        ?.trim()
+        .toLocaleLowerCase(
+          "en-US"
+        ) ??
+      "";
+
+
+    const definitionQueries =
+      definitionSubject
+        ? [
+            `what is ${definitionSubject}`,
+            `${definitionSubject} definition`,
+          ]
+        : [];
+
+
     const queries =
-      buildClaimEvidenceFallbackQueriesV1({
-        primaryQuery,
-        claimText:
-          claim.text,
-      });
+      Array.from(
+        new Set([
+          ...definitionQueries,
+
+          ...buildClaimEvidenceFallbackQueriesV1({
+            primaryQuery,
+
+            claimText:
+              claim.text,
+          }),
+        ])
+      );
 
 
     let sourcesForClaim =
@@ -1724,6 +1774,1073 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
     diagnostics
   );
 
+
+  return output;
+}
+
+
+/*
+ * EVIDENCE_GROUNDED_CLAIM_RECONCILIATION_V1
+ *
+ * IMPORTANT:
+ * These excerpts are NOT VERIFIED_EXCERPT authority.
+ *
+ * They are real-page recovery candidates used only to help
+ * conservatively restate an unresolved canonical claim.
+ *
+ * A reconciled claim is accepted ONLY if it subsequently passes
+ * the normal findVerifiedExcerptCandidateV1 -> VERIFIED_EXCERPT
+ * pipeline without lower thresholds.
+ */
+
+export interface EvidenceClaimRecoveryCandidateV1 {
+  readonly claimId:
+    string;
+
+  readonly sourceId:
+    string;
+
+  readonly sourceUrl:
+    string;
+
+  readonly excerpt:
+    string;
+
+  readonly coverage:
+    number;
+}
+
+
+function sameStringSetV1(
+  left:
+    readonly string[],
+  right:
+    readonly string[]
+): boolean {
+  const a =
+    [
+      ...new Set(
+        left
+      ),
+    ].sort();
+
+  const b =
+    [
+      ...new Set(
+        right
+      ),
+    ].sort();
+
+  return (
+    a.length ===
+      b.length &&
+    a.every(
+      (
+        value,
+        index
+      ) =>
+        value ===
+        b[index]
+    )
+  );
+}
+
+
+function lexicalRecoveryCoverageV1({
+  claimText,
+  excerpt,
+}: {
+  claimText:
+    string;
+
+  excerpt:
+    string;
+}): number {
+  const claimTokens =
+    evidenceVerificationTokensV1(
+      claimText
+    );
+
+  if (
+    claimTokens.length ===
+    0
+  ) {
+    return 0;
+  }
+
+  const excerptTokens =
+    new Set(
+      evidenceVerificationTokensV1(
+        excerpt
+      )
+    );
+
+  const shared =
+    claimTokens.filter(
+      (
+        token
+      ) =>
+        excerptTokens.has(
+          token
+        )
+    ).length;
+
+  return (
+    shared /
+    claimTokens.length
+  );
+}
+
+
+
+/*
+ * COMPOUND_NEGATIVE_CLAIM_NARROWING_V1
+ *
+ * Stage-plan models are instructed to emit atomic claims, but a
+ * bounded recovery still has to defend against an occasional compound
+ * negative claim such as:
+ *
+ *   "X does not resolve A or B."
+ *
+ * A conservative reconciliation is allowed to narrow that claim to
+ * one ORIGINAL negative target:
+ *
+ *   "X does not resolve A."
+ *
+ * This helper is ONLY a reconciliation-safety exception.
+ *
+ * It does NOT create VERIFIED_EXCERPT evidence.
+ * It does NOT change findVerifiedExcerptCandidateV1().
+ * It does NOT lower lexical evidence thresholds.
+ *
+ * The candidate must still pass the normal strict
+ * enrichLiveEvidenceGraphV1() verification before it can become
+ * publication authority.
+ */
+export function isSafeCompoundNegativeClaimNarrowingV1(
+  input:
+    Readonly<Record<string, unknown>>
+): boolean {
+  const entries =
+    Object.entries(
+      input
+    );
+
+
+  const explicitOriginal =
+    [
+      "originalText",
+      "originalClaimText",
+      "claimText",
+    ]
+      .map(
+        (key) =>
+          input[key]
+      )
+      .find(
+        (value):
+          value is string =>
+            typeof value ===
+              "string"
+      );
+
+
+  const explicitCandidate =
+    [
+      "candidateText",
+      "candidateClaimText",
+      "proposedText",
+      "reconciledText",
+    ]
+      .map(
+        (key) =>
+          input[key]
+      )
+      .find(
+        (value):
+          value is string =>
+            typeof value ===
+              "string"
+      );
+
+
+  const stringEntries =
+    entries.filter(
+      (
+        entry
+      ): entry is [
+        string,
+        string,
+      ] =>
+        typeof entry[1] ===
+          "string"
+    );
+
+
+  const originalText =
+    explicitOriginal ??
+    stringEntries.find(
+      ([key]) =>
+        /original|claim/i.test(
+          key
+        ) &&
+        !/candidate|proposed|reconciled/i.test(
+          key
+        )
+    )?.[1] ??
+    null;
+
+
+  const candidateText =
+    explicitCandidate ??
+    stringEntries.find(
+      ([key]) =>
+        /candidate|proposed|reconciled/i.test(
+          key
+        )
+    )?.[1] ??
+    null;
+
+
+  if (
+    !originalText ||
+    !candidateText
+  ) {
+    return false;
+  }
+
+
+  const original =
+    originalText.trim();
+
+  const candidate =
+    candidateText.trim();
+
+
+  if (
+    !original ||
+    !candidate ||
+    candidate.length >
+      500 ||
+    candidate ===
+      original
+  ) {
+    return false;
+  }
+
+
+  /*
+   * This recovery is deliberately limited to OR-coordinated
+   * negative targets. "not A and B" can be scope-ambiguous and is
+   * therefore not eligible for this deterministic exception.
+   */
+  const originalNegation =
+    NEGATIVE_CLAIM_PATTERN_V1.exec(
+      original
+    );
+
+
+  const candidateNegation =
+    NEGATIVE_CLAIM_PATTERN_V1.exec(
+      candidate
+    );
+
+
+  if (
+    !originalNegation ||
+    originalNegation.index ===
+      undefined ||
+    !candidateNegation ||
+    candidateNegation.index ===
+      undefined ||
+    hasNegation(
+      original
+    ) !==
+      hasNegation(
+        candidate
+      )
+  ) {
+    return false;
+  }
+
+
+  const originalTail =
+    original.slice(
+      originalNegation.index +
+        originalNegation[0].length
+    );
+
+
+  if (
+    !/\bor\b/i.test(
+      originalTail
+    )
+  ) {
+    return false;
+  }
+
+
+  /*
+   * Preserve every numeric condition exactly.
+   */
+  const originalNumbers =
+    [
+      ...new Set(
+        numericTokens(
+          original
+        )
+      ),
+    ].sort();
+
+
+  const candidateNumbers =
+    [
+      ...new Set(
+        numericTokens(
+          candidate
+        )
+      ),
+    ].sort();
+
+
+  if (
+    originalNumbers.length !==
+      candidateNumbers.length ||
+    originalNumbers.some(
+      (
+        value,
+        index
+      ) =>
+        value !==
+        candidateNumbers[
+          index
+        ]
+    )
+  ) {
+    return false;
+  }
+
+
+  /*
+   * Preserve substantial semantic identity.
+   * This is candidate-safety only; it is NOT evidence verification.
+   */
+  const originalTokens =
+    evidenceVerificationTokensV1(
+      original
+    );
+
+
+  const candidateTokens =
+    evidenceVerificationTokensV1(
+      candidate
+    );
+
+
+  if (
+    originalTokens.length <
+      3 ||
+    candidateTokens.length <
+      3 ||
+    candidateTokens.length >
+      originalTokens.length +
+        4
+  ) {
+    return false;
+  }
+
+
+  const originalTokenSet =
+    new Set(
+      originalTokens
+    );
+
+
+  const shared =
+    candidateTokens.filter(
+      (token) =>
+        originalTokenSet.has(
+          token
+        )
+    ).length;
+
+
+  if (
+    shared <
+      Math.min(
+        3,
+        originalTokens.length
+      ) ||
+    shared /
+      candidateTokens.length <
+      0.5
+  ) {
+    return false;
+  }
+
+
+  const anchorsForBranch =
+    ({
+      fullText,
+      branch,
+      negationIndex,
+    }: {
+      fullText:
+        string;
+
+      branch:
+        string;
+
+      negationIndex:
+        number;
+    }): readonly string[] => {
+      const prefixTokens =
+        new Set(
+          semanticTokens(
+            fullText.slice(
+              0,
+              negationIndex
+            )
+          )
+            .map(
+              (token) =>
+                normalizeNegativeTargetTokenV1(
+                  token
+                )
+            )
+            .filter(
+              Boolean
+            )
+        );
+
+
+      const anchors =
+        semanticTokens(
+          branch
+        )
+          .map(
+            (token) =>
+              normalizeNegativeTargetTokenV1(
+                token
+              )
+          )
+          .filter(
+            (token) =>
+              Boolean(
+                token
+              ) &&
+              !NEGATIVE_CLAIM_NON_TARGET_TOKENS_V1.has(
+                token
+              ) &&
+              !prefixTokens.has(
+                token
+              )
+          );
+
+
+      return anchors.slice(
+        -2
+      );
+    };
+
+
+  const originalBranches =
+    originalTail
+      .split(
+        /\bor\b/i
+      )
+      .map(
+        (branch) =>
+          branch.trim()
+      )
+      .filter(
+        Boolean
+      )
+      .map(
+        (branch) =>
+          anchorsForBranch({
+            fullText:
+              original,
+
+            branch,
+
+            negationIndex:
+              originalNegation.index!,
+          })
+      )
+      .filter(
+        (anchors) =>
+          anchors.length >
+            0
+      );
+
+
+  const candidateTail =
+    candidate.slice(
+      candidateNegation.index +
+        candidateNegation[0].length
+    );
+
+
+  /*
+   * A narrowing candidate should describe one negative target.
+   * A newly compound candidate is not a narrowing.
+   */
+  if (
+    /\bor\b/i.test(
+      candidateTail
+    )
+  ) {
+    return false;
+  }
+
+
+  const candidateAnchors =
+    anchorsForBranch({
+      fullText:
+        candidate,
+
+      branch:
+        candidateTail,
+
+      negationIndex:
+        candidateNegation.index!,
+    });
+
+
+  if (
+    candidateAnchors.length ===
+      0
+  ) {
+    return false;
+  }
+
+
+  /*
+   * The new target must be wholly contained in one original target
+   * branch. No target substitution is allowed.
+   */
+  return originalBranches.some(
+    (
+      originalAnchors
+    ) =>
+      candidateAnchors.every(
+        (anchor) =>
+          originalAnchors.includes(
+            anchor
+          )
+      )
+  );
+}
+
+
+export function isSafeClaimReconciliationCandidateV1({
+  originalText,
+  candidateText,
+}: {
+  originalText:
+    string;
+
+  candidateText:
+    string;
+}): boolean {
+  const original =
+    originalText.trim();
+
+  const candidate =
+    candidateText.trim();
+
+  if (
+    !original ||
+    !candidate ||
+    candidate.length >
+      500
+  ) {
+    return false;
+  }
+
+  /*
+   * Polarity is immutable during this recovery.
+   *
+   * A negative claim cannot silently become positive, or vice versa.
+   */
+  if (
+    hasNegation(
+      original
+    ) !==
+    hasNegation(
+      candidate
+    )
+  ) {
+    return false;
+  }
+
+  /*
+   * Numeric identity is immutable.
+   *
+   * Reconciliation cannot add, remove, or alter a number.
+   */
+  if (
+    !sameStringSetV1(
+      numericTokens(
+        original
+      ),
+      numericTokens(
+        candidate
+      )
+    )
+  ) {
+    return false;
+  }
+
+  const originalTokens =
+    evidenceVerificationTokensV1(
+      original
+    );
+
+  const candidateTokens =
+    evidenceVerificationTokensV1(
+      candidate
+    );
+
+  if (
+    originalTokens.length ===
+      0 ||
+    candidateTokens.length ===
+      0
+  ) {
+    return false;
+  }
+
+  const originalTokenSet =
+    new Set(
+      originalTokens
+    );
+
+  const shared =
+    candidateTokens.filter(
+      (
+        token
+      ) =>
+        originalTokenSet.has(
+          token
+        )
+    ).length;
+
+  /*
+   * Claim recovery may narrow or conservatively paraphrase.
+   * It may not jump to an unrelated proposition.
+   */
+  if (
+    shared <
+      Math.min(
+        3,
+        originalTokens.length
+      )
+  ) {
+    return false;
+  }
+
+  if (
+    shared /
+      candidateTokens.length <
+    0.5
+  ) {
+    return false;
+  }
+
+  /*
+   * Do not permit a "narrowing" that materially expands
+   * semantic surface area.
+   */
+  if (
+    candidateTokens.length >
+      originalTokens.length +
+        4
+  ) {
+    return false;
+  }
+
+  /*
+   * For negative claims preserve the denied material target.
+   *
+   * Example:
+   *   does not create a hard inquiry
+   *
+   * must not become:
+   *   does not change account information
+   */
+  const negativeTargets =
+    negativeClaimTargetAnchorsV1(
+      original
+    );
+
+  if (
+    negativeTargets.length >
+    0
+  ) {
+    const candidateTokenSet =
+      new Set(
+        candidateTokens
+      );
+
+    if (
+      !negativeTargets.every(
+        (
+          token
+        ) =>
+          candidateTokenSet.has(
+            token
+          )
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
+export function rankEvidenceRecoveryExcerptsV1({
+  claimText,
+  bodyText,
+  maxCandidates = 3,
+}: {
+  claimText:
+    string;
+
+  bodyText:
+    string;
+
+  maxCandidates?:
+    number;
+}): readonly Readonly<{
+  excerpt:
+    string;
+
+  coverage:
+    number;
+}>[] {
+  const claimNumeric =
+    numericTokens(
+      claimText
+    );
+
+  const claimNegated =
+    hasNegation(
+      claimText
+    );
+
+  const negativeTargets =
+    negativeClaimTargetAnchorsV1(
+      claimText
+    );
+
+  const candidates =
+    sentenceWindows(
+      bodyText
+    )
+      .map(
+        (
+          excerpt
+        ) => {
+          const coverage =
+            lexicalRecoveryCoverageV1({
+              claimText,
+              excerpt,
+            });
+
+          return {
+            excerpt,
+            coverage,
+          };
+        }
+      )
+      .filter(
+        (
+          candidate
+        ) => {
+          /*
+           * This is only discovery for a possible conservative
+           * restatement, so 0.35 is NOT a verification threshold.
+           *
+           * Final verification still uses the unchanged strict
+           * VERIFIED_EXCERPT matcher.
+           */
+          if (
+            candidate.coverage <
+            0.35
+          ) {
+            return false;
+          }
+
+          if (
+            claimNegated !==
+            hasNegation(
+              candidate.excerpt
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            !claimNumeric.every(
+              (
+                token
+              ) =>
+                numericTokens(
+                  candidate.excerpt
+                ).includes(
+                  token
+                )
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            negativeTargets.length >
+            0
+          ) {
+            const excerptTokens =
+              new Set(
+                evidenceVerificationTokensV1(
+                  candidate.excerpt
+                )
+              );
+
+            /*
+             * Candidate discovery needs at least one target anchor.
+             * Final strict verification still decides authority.
+             */
+            if (
+              !negativeTargets.some(
+                (
+                  token
+                ) =>
+                  excerptTokens.has(
+                    token
+                  )
+              )
+            ) {
+              return false;
+            }
+          }
+
+          return true;
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.coverage -
+          a.coverage
+      );
+
+  const unique:
+    {
+      excerpt:
+        string;
+
+      coverage:
+        number;
+    }[] =
+      [];
+
+  const seen =
+    new Set<
+      string
+    >();
+
+  for (
+    const candidate
+    of candidates
+  ) {
+    const key =
+      normalize(
+        candidate.excerpt
+      );
+
+    if (
+      !key ||
+      seen.has(
+        key
+      )
+    ) {
+      continue;
+    }
+
+    seen.add(
+      key
+    );
+
+    unique.push(
+      candidate
+    );
+
+    if (
+      unique.length >=
+      Math.max(
+        1,
+        Math.min(
+          5,
+          maxCandidates
+        )
+      )
+    ) {
+      break;
+    }
+  }
+
+  return unique;
+}
+
+
+export async function collectEvidenceClaimRecoveryCandidatesV1({
+  graph,
+  claims,
+  maxPerClaim = 3,
+}: {
+  graph:
+    EvidenceGraphInput;
+
+  claims:
+    readonly MinimalClaim[];
+
+  maxPerClaim?:
+    number;
+}): Promise<
+  readonly Readonly<
+    EvidenceClaimRecoveryCandidateV1
+  >[]
+> {
+  const bodies =
+    await fetchSourceBodies(
+      graph
+    );
+
+  const output:
+    EvidenceClaimRecoveryCandidateV1[] =
+      [];
+
+  for (
+    const claim
+    of claims
+  ) {
+    const ranked:
+      EvidenceClaimRecoveryCandidateV1[] =
+        [];
+
+    for (
+      const source
+      of graph.sources
+    ) {
+      const bodyText =
+        bodies.get(
+          source.id
+        );
+
+      if (!bodyText) {
+        continue;
+      }
+
+      const candidates =
+        rankEvidenceRecoveryExcerptsV1({
+          claimText:
+            claim.text,
+
+          bodyText,
+
+          maxCandidates:
+            maxPerClaim,
+        });
+
+      for (
+        const candidate
+        of candidates
+      ) {
+        ranked.push({
+          claimId:
+            claim.id,
+
+          sourceId:
+            source.id,
+
+          sourceUrl:
+            source.url,
+
+          excerpt:
+            candidate.excerpt,
+
+          coverage:
+            candidate.coverage,
+        });
+      }
+    }
+
+    ranked.sort(
+      (
+        a,
+        b
+      ) =>
+        b.coverage -
+        a.coverage
+    );
+
+    const seenExcerpt =
+      new Set<
+        string
+      >();
+
+    let count =
+      0;
+
+    for (
+      const candidate
+      of ranked
+    ) {
+      const key =
+        normalize(
+          candidate.excerpt
+        );
+
+      if (
+        !key ||
+        seenExcerpt.has(
+          key
+        )
+      ) {
+        continue;
+      }
+
+      seenExcerpt.add(
+        key
+      );
+
+      output.push(
+        candidate
+      );
+
+      count +=
+        1;
+
+      if (
+        count >=
+        Math.max(
+          1,
+          Math.min(
+            5,
+            maxPerClaim
+          )
+        )
+      ) {
+        break;
+      }
+    }
+  }
 
   return output;
 }

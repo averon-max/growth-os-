@@ -511,6 +511,7 @@ model ContentBrief {
 
 enum ContentArticleStatus {
   GENERATING
+  BLOCKED_EXTERNAL
   DRAFT
   IN_REVIEW
   APPROVED

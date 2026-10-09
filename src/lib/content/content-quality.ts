@@ -1,4 +1,8 @@
 import {
+  normalizeHeadingKeyV1,
+} from "./article-structure-stats-v1";
+
+import {
   ContentGenerationError,
 } from "./generator";
 
@@ -119,8 +123,13 @@ export function repairArticleMarkdown(
     const heading =
       match[2].trim();
 
-    const key =
-      normalize(heading);
+    let repairedHeading =
+      heading;
+
+    let key =
+      normalizeHeadingKeyV1(
+        repairedHeading
+      );
 
     if (!key) {
       continue;
@@ -131,7 +140,9 @@ export function repairArticleMarkdown(
     ) {
       if (
         key ===
-        normalize(h1)
+        normalizeHeadingKeyV1(
+          h1
+        )
       ) {
         continue;
       }
@@ -156,9 +167,39 @@ export function repairArticleMarkdown(
     }
 
     if (
-      headings.has(key)
+      headings.has(
+        key
+      )
     ) {
-      continue;
+      /*
+       * DUPLICATE_HEADING_DETERMINISTIC_REPAIR_V1
+       *
+       * Do not delete the section/subsection.
+       * Keep its content and deterministically make the
+       * reader-facing heading unique.
+       */
+      let suffix =
+        1;
+
+      do {
+        repairedHeading =
+          suffix ===
+            1
+            ? `${heading} — Additional Detail`
+            : `${heading} — Additional Detail ${suffix}`;
+
+        key =
+          normalizeHeadingKeyV1(
+            repairedHeading
+          );
+
+        suffix +=
+          1;
+      } while (
+        headings.has(
+          key
+        )
+      );
     }
 
     if (
@@ -173,7 +214,7 @@ export function repairArticleMarkdown(
     output.push(
       `${"#".repeat(
         level
-      )} ${heading}`
+      )} ${repairedHeading}`
     );
   }
 

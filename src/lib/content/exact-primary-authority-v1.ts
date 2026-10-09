@@ -120,16 +120,64 @@ export function applyExactPrimaryAuthorityV1({
   }
 
 
-  const pool =
-    uniqueKeywords([
-      strategy.primary,
-      ...strategy.secondary,
-      ...strategy.supporting,
-    ]);
+    /*
+     * EXACT_PRIMARY_ELIGIBLE_EXCLUDED_AUTHORITY_V3
+     *
+     * EXACT prefers active ContentStrategyKeyword candidates.
+     *
+     * A real typed candidate currently in strategy.excluded may
+     * also be promoted, but ONLY when KeywordDecision.ranked
+     * independently confirms the same query as eligible=true.
+     *
+     * This preserves hard query-ownership / brand / intent gates
+     * while allowing EXACT to honor a legitimate requested query.
+     */
+    const activePool =
+      uniqueKeywords([
+        strategy.primary,
+        ...strategy.secondary,
+        ...strategy.supporting,
+      ]);
+
+
+    const eligibleExcluded =
+      uniqueKeywords(
+        (
+          strategy.excluded ??
+          []
+        ).filter(
+          (
+            candidate
+          ) =>
+            Boolean(
+              strategy
+                .decisionIntelligence
+                ?.ranked
+                .some(
+                  (
+                    decision
+                  ) =>
+                    decision.eligible ===
+                      true &&
+                    sameQuery(
+                      decision.keyword,
+                      candidate.keyword
+                    )
+                )
+            )
+        )
+      );
+
+
+    const candidatePool =
+      uniqueKeywords([
+        ...activePool,
+        ...eligibleExcluded,
+      ]);
 
 
   const exact =
-    pool.find(
+    candidatePool.find(
       (
         candidate
       ) =>
@@ -159,7 +207,7 @@ export function applyExactPrimaryAuthorityV1({
 
 
   const remaining =
-    pool.filter(
+    activePool.filter(
       (
         candidate
       ) =>
@@ -217,6 +265,23 @@ export function applyExactPrimaryAuthorityV1({
     );
 
 
+    const excluded =
+      uniqueKeywords(
+        (
+          strategy.excluded ??
+          []
+        ).filter(
+          (
+            candidate
+          ) =>
+            !sameQuery(
+              candidate.keyword,
+              required
+            )
+        )
+      );
+
+
   return {
     ...strategy,
 
@@ -229,5 +294,7 @@ export function applyExactPrimaryAuthorityV1({
       uniqueKeywords(
         supporting
       ),
+
+      excluded,
   };
 }

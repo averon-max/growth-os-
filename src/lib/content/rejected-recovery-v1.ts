@@ -117,7 +117,7 @@ export function classifyRejectedRecoveryV1(
     /(?:OPENAI|GEMINI|GROQ) API ERROR (408|409|429|500|502|503|504)\b/i.test(
       message,
     ) ||
-    /ABORTERROR|ABORTED|TIMEOUT|TIMED OUT|FETCH FAILED|NETWORK|ECONN|ENET|EAI_AGAIN|ECONNREFUSED/i.test(
+    /ABORTERROR|ABORTED|TIMEOUT|TIMED OUT|FETCH FAILED|CONNECTION ERROR|CONNECTION FAILED|CONNECTION RESET|CONNECTION REFUSED|SOCKET HANG UP|NETWORK|ECONN|ENET|EAI_AGAIN|ECONNREFUSED/i.test(
       message,
     ) ||
     /\bP1001\b|\bP1002\b/i.test(message)
@@ -210,6 +210,50 @@ export function classifyRejectedRecoveryV1(
     });
   }
 
+  /*
+   * DEPTH_FAILURE_CLASSIFICATION_V1
+   *
+   * Local section depth recovery normally owns this failure.
+   *
+   * If that bounded local recovery exhausts and the complete
+   * production pass persists REJECTED, Tier-2 may perform its
+   * single fresh production retry.
+   *
+   * Budget errors are classified earlier and therefore cannot
+   * be converted into depth recovery here.
+   */
+  if (
+    upper.includes(
+      ":DEPTH:"
+    ) ||
+    upper.includes(
+      "SECTION_DEPTH_"
+    ) ||
+    upper.includes(
+      "DEPTH_FAILURE"
+    )
+  ) {
+    return Object.freeze({
+      version:
+        "REJECTED_RECOVERY_V1",
+
+      failureClass:
+        "DEPTH_FAILURE",
+
+      owner:
+        "DEPTH",
+
+      nextAction:
+        "REPAIR_OWNING_STAGE",
+
+      autoRetryAllowed:
+        false,
+
+      message,
+    });
+  }
+
+
   if (upper.includes("SECTION_DETERMINISTIC_SEMANTIC_")) {
     return Object.freeze({
       version: "REJECTED_RECOVERY_V1",
@@ -222,6 +266,29 @@ export function classifyRejectedRecoveryV1(
 
       autoRetryAllowed: false,
 
+      message,
+    });
+  }
+
+  /*
+   * MASTER_CRITIC_REPAIR_BLOCKED_UNREPAIRABLE_ROUTING_V1
+   *
+   * INTENT/MISSING_REQUIRED_TOPIC findings are content-quality
+   * defects, not engineering contract violations.
+   *
+   * Route to SEMANTIC owner so targeted repair can be attempted.
+   */
+  if (
+    upper.includes("MASTER_CRITIC_REPAIR_BLOCKED_UNREPAIRABLE") ||
+    upper.includes("MISSING_REQUIRED_TOPIC") ||
+    upper.includes(":INTENT:")
+  ) {
+    return Object.freeze({
+      version: "REJECTED_RECOVERY_V1",
+      failureClass: "SEMANTIC_REQUIRED_FAILURE",
+      owner: "SEMANTIC",
+      nextAction: "RETURN_TO_EVIDENCE_OR_RECONCILIATION",
+      autoRetryAllowed: false,
       message,
     });
   }

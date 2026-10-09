@@ -1,4 +1,8 @@
 import {
+  assertArticlePreWriterAnswerSupportV2,
+  assertArticlePreWriterRequiredCoverageV1,
+} from "./article-prewriter-evidence-gate-v1";
+import {
   assertArticlePreWriterEvidenceReadyV1,
 } from "./article-prewriter-evidence-gate-v1";
 
@@ -405,23 +409,23 @@ function strategyPrompt(
       )
       .join(", ");
 
-  const supporting =
-    strategy.supporting
-      .map(
-        (item) =>
-          item.keyword
-      )
-      .join(", ");
-
+  /*
+   * SECONDARY_CLUSTER_PRODUCTION_PROJECTION_V2
+   *
+   * Supporting discovery candidates remain research-only.
+   * They are not promoted into article keywords.
+   *
+   * Production keyword authority:
+   * primary + Keyword Decision secondary.
+   *
+   * QueryGraph remains downstream SAME_PAGE authority.
+   */
   return [
     "CONTENT STRATEGY:",
     `Intent: ${strategy.searchIntent}`,
     `Primary keyword: ${strategy.primary.keyword}`,
     secondary
       ? `Secondary keywords: ${secondary}`
-      : "",
-    supporting
-      ? `Supporting concepts: ${supporting}`
       : "",
     `Page decision: ${strategy.action.type}`,
     "Use exactly one page-level H1.",
@@ -545,10 +549,17 @@ export async function createContentBrief(
 
   const relatedKeywords:
     ContentBriefInput["relatedKeywords"] =
+      /*
+       * SECONDARY_CLUSTER_PRODUCTION_PROJECTION_V2
+       *
+       * Related keywords contain only canonical primary
+       * plus approved secondary queries.
+       *
+       * Supporting discovery candidates are excluded here.
+       */
       [
         strategy.primary,
         ...strategy.secondary,
-        ...strategy.supporting,
       ]
         .slice(0, 15)
         .map(
@@ -638,6 +649,132 @@ export async function createContentBrief(
   );
 
   /*
+   * BEST_OPPORTUNITY_NO_GO_EARLY_STOP_V2
+   *
+   * A NO_GO research decision must never enter the expensive
+   * Evidence -> Writer -> Critic article pipeline.
+   *
+   * BEST_OPPORTUNITY may continue only with a SELECTED
+   * Keyword Decision winner.
+   */
+  if (
+    input.generationPolicy?.mode ===
+      "BEST_OPPORTUNITY" &&
+    searchBlueprintShadow
+      .decision
+      .keywordDecisionStatus !==
+      "SELECTED"
+  ) {
+    /*
+       * BEST_OPPORTUNITY_COLD_START_BLUEPRINT_REVIEW_V2
+       *
+       * KeywordDecision intentionally remains fail-closed when a new
+       * site has no GSC/rank/authority evidence.
+       *
+       * A later SearchBlueprint may continue ONLY when live SERP
+       * evidence independently confirms the exact production mission:
+       *
+       * - LOW-confidence NO_GO only
+       * - exact production mission preserved
+       * - CREATE_NEW only
+       * - FAVORABLE / HIGH live SERP
+       * - zero governance blockers
+       *
+       * This is NOT a global NO_GO bypass.
+       */
+      const bestOpportunityColdStartReviewV2 =
+        searchBlueprintShadow.readiness ===
+          "REVIEW" &&
+        searchBlueprintShadow.decision
+          .keywordDecisionStatus ===
+          "NO_GO" &&
+        searchBlueprintShadow.decision
+          .keywordDecisionConfidence ===
+          "LOW" &&
+        /*
+         * BEST_OPPORTUNITY_COLD_START_MERGE_UPDATE_V3
+         *
+         * CREATE_NEW and MERGE_OR_UPDATE are both legal continuation
+         * actions for the already-proven cold-start mission path.
+         *
+         * MERGE_OR_UPDATE is especially important when SearchBlueprint
+         * detected existing-content overlap and explicitly prevents a
+         * competing URL.
+         *
+         * All other cold-start safety conditions remain mandatory.
+         */
+        (
+          searchBlueprintShadow
+            .decision
+            .action ===
+            "CREATE_NEW" ||
+          searchBlueprintShadow
+            .decision
+            .action ===
+            "MERGE_OR_UPDATE"
+        ) &&
+        searchBlueprintShadow.decision
+          .primaryChanged ===
+          false &&
+        searchBlueprintShadow.decision
+          .productionPrimaryKeyword ===
+          strategy.primary.keyword &&
+        searchBlueprintShadow.decision
+          .recommendedPrimaryKeyword ===
+          strategy.primary.keyword &&
+        searchBlueprintShadow.decision
+          .serpFeasibility ===
+          "FAVORABLE" &&
+        searchBlueprintShadow.decision
+          .serpConfidence ===
+          "HIGH" &&
+        searchBlueprintShadow.governance
+          .blockers.length ===
+          0 &&
+        searchBlueprintShadow.governance
+          .reviews.includes(
+            "LOW_CONFIDENCE_PRIMARY_MISSION_PRESERVED"
+          );
+
+
+      if (
+        !bestOpportunityColdStartReviewV2
+      ) {
+        throw new Error(
+          "CONTENT_BEST_OPPORTUNITY_NO_ELIGIBLE_WINNER"
+        );
+      }
+
+
+      console.info(
+        "[content best opportunity cold start review]",
+        {
+          marker:
+            "BEST_OPPORTUNITY_COLD_START_BLUEPRINT_REVIEW_V2",
+
+          productionPrimary:
+            strategy.primary.keyword,
+
+          serpFeasibility:
+            searchBlueprintShadow
+              .decision
+              .serpFeasibility,
+
+          serpConfidence:
+            searchBlueprintShadow
+              .decision
+              .serpConfidence,
+
+          blockers:
+            searchBlueprintShadow
+              .governance
+              .blockers,
+        }
+      );
+  }
+
+
+  /*
    * STAGE 9N-B4
    * -----------
    *
@@ -689,13 +826,24 @@ export async function createContentBrief(
               input.websiteId,
 
             /*
-             * Topic is the acquisition seed only.
-             * The Stage planner decides the semantic query graph
-             * from live research; this does not reconstruct the
-             * Master Runtime from finalPlan.
+             * PRODUCTION_PRIMARY_LIVE_RESEARCH_AUTHORITY_V1
+             *
+             * input.topic remains the broad semantic mission seed.
+             *
+             * Live keyword/SERP research MUST run against the
+             * already-selected Content Strategy production primary.
+             *
+             * This prevents:
+             *   brief.primaryKeyword != research.keyword
+             *   research.keyword != ArticleExecutionPlan.primaryQuery
+             *
+             * EXACT_KEYWORD is already locked into strategy.primary.
+             * BEST_OPPORTUNITY is already selected into strategy.primary.
+             *
+             * Therefore this does not create a second keyword authority.
              */
             keyword:
-              input.topic,
+              strategy.primary.keyword,
 
             ...(
               explicitSearchMission
@@ -1202,6 +1350,31 @@ export async function generateArticleFromBrief(
   assertArticlePreWriterEvidenceReadyV1(
     persistedArticleExecutionPlan
   );
+
+  /*
+   * ARTICLE_PREWRITER_REQUIRED_COVERAGE_PRODUCTION_WIRING_V1
+   *
+   * Evidence contraction may shrink optional scope,
+   * but MUST coverage must still have a WRITABLE owner.
+   *
+   * Fail BEFORE ArticleGenerationContract / Writer creation.
+   */
+  assertArticlePreWriterRequiredCoverageV1(
+    persistedArticleExecutionPlan
+  );
+
+  /*
+   * ARTICLE_PREWRITER_ANSWER_SUPPORT_PRODUCTION_WIRING_V2
+   *
+   * Coverage ownership alone does not authorize Writer.
+   *
+   * A MUST question whose post-contraction section has lost
+   * its required claim/evidence authority is routed as a typed
+   * upstream evidence defect before any Writer tokens are spent.
+   */
+  assertArticlePreWriterAnswerSupportV2(
+    persistedArticleExecutionPlan
+  );
 /*
    * EVIDENCE_DEFERRED_EFFECTIVE_RUNTIME_V1
    *
@@ -1309,13 +1482,233 @@ export async function generateArticleFromBrief(
    * 2. Evidence Graph MUST defer any section whose required claim
    *    lacks SUPPORTS + VERIFIED_EXCERPT authority.
    */
+
+  /*
+   * ARTICLE_EXECUTION_PLAN_POST_LOCK_SCOPE_PROJECTION_V1
+   *
+   * Stage planning occurs before final evidence closure.
+   *
+   * ArticleExecutionPlan is persisted AFTER evidence closure and
+   * EVIDENCE_AWARE_EXECUTION_SCOPE_CONTRACTION_V1.
+   *
+   * Therefore runtime section blueprints may still contain the
+   * PRE-contraction requiredClaims/evidenceIds.
+   *
+   * After the execution-plan lock:
+   *
+   * - runtime research/evidence graph remains authoritative data
+   * - ArticleExecutionPlan is the sole SECTION-SCOPE authority
+   * - requiredClaims/evidenceIds are projected from the locked plan
+   * - DEFERRED/WRITABLE state comes only from the locked plan
+   *
+   * This does NOT promote missing evidence.
+   * Every retained required claim is revalidated below against
+   * SUPPORTS + VERIFIED_EXCERPT evidence in the persisted graph.
+   */
+  const postLockRuntimeSections =
+    masterRuntimeInspection
+      .runtime
+      .sectionBlueprints
+      .sections
+      .map(
+        (
+          runtimeSection,
+          index
+        ) => {
+          const executionSection =
+            persistedArticleExecutionPlan
+              .sections[
+                index
+              ];
+
+          if (!executionSection) {
+            throw new ContentGenerationError(
+              `ARTICLE_EXECUTION_PLAN_RUNTIME_SECTION_COUNT_DRIFT:${index}`
+            );
+          }
+
+          if (
+            runtimeSection
+              .heading
+              .trim()
+              .toLowerCase() !==
+            executionSection
+              .heading
+              .trim()
+              .toLowerCase()
+          ) {
+            throw new ContentGenerationError(
+              `ARTICLE_EXECUTION_PLAN_RUNTIME_HEADING_DRIFT:${index}:${executionSection.heading}`
+            );
+          }
+
+          const evidenceById =
+            new Map(
+              masterRuntimeInspection
+                .runtime!
+                .evidenceGraph
+                .claimEvidence
+                .map(
+                  (evidence) =>
+                    [
+                      evidence.id,
+                      evidence,
+                    ] as const
+                )
+            );
+
+          const claimById =
+            new Map(
+              masterRuntimeInspection
+                .runtime!
+                .claimLedger
+                .claims
+                .map(
+                  (claim) =>
+                    [
+                      claim.id,
+                      claim,
+                    ] as const
+                )
+            );
+
+          /*
+           * REAL post-lock evidence conflict check.
+           *
+           * A WRITABLE section is legal only when every retained
+           * required claim still has publication-grade evidence
+           * selected by the locked ArticleExecutionPlan.
+           */
+          if (
+            executionSection.state ===
+            "WRITABLE"
+          ) {
+            for (
+              const claimId
+              of executionSection
+                .requiredClaimIds
+            ) {
+              const claim =
+                claimById.get(
+                  claimId
+                );
+
+              if (
+                !claim ||
+                claim.status !==
+                  "VERIFIED"
+              ) {
+                throw new ContentGenerationError(
+                  `ARTICLE_EXECUTION_PLAN_POST_LOCK_EVIDENCE_CONFLICT:${index}:${executionSection.heading}:CLAIM_NOT_VERIFIED:${claimId}`
+                );
+              }
+
+              const hasPublicationEvidence =
+                executionSection
+                  .evidenceIds
+                  .some(
+                    (
+                      evidenceId
+                    ) => {
+                      const evidence =
+                        evidenceById.get(
+                          evidenceId
+                        );
+
+                      return Boolean(
+                        evidence &&
+                        evidence.claimId ===
+                          claimId &&
+                        evidence.relation ===
+                          "SUPPORTS" &&
+                        evidence.kind ===
+                          "VERIFIED_EXCERPT" &&
+                        typeof evidence.excerpt ===
+                          "string" &&
+                        evidence.excerpt
+                          .trim()
+                          .length >
+                          0
+                      );
+                    }
+                  );
+
+              if (
+                !hasPublicationEvidence
+              ) {
+                throw new ContentGenerationError(
+                  `ARTICLE_EXECUTION_PLAN_POST_LOCK_EVIDENCE_CONFLICT:${index}:${executionSection.heading}:MISSING_VERIFIED_EVIDENCE:${claimId}`
+                );
+              }
+            }
+
+            for (
+              const evidenceId
+              of executionSection
+                .evidenceIds
+            ) {
+              const evidence =
+                evidenceById.get(
+                  evidenceId
+                );
+
+              if (
+                !evidence ||
+                evidence.relation !==
+                  "SUPPORTS" ||
+                evidence.kind !==
+                  "VERIFIED_EXCERPT" ||
+                !executionSection
+                  .requiredClaimIds
+                  .includes(
+                    evidence.claimId
+                  )
+              ) {
+                throw new ContentGenerationError(
+                  `ARTICLE_EXECUTION_PLAN_POST_LOCK_EVIDENCE_CONFLICT:${index}:${executionSection.heading}:INVALID_EVIDENCE_BINDING:${evidenceId}`
+                );
+              }
+            }
+          }
+
+          return Object.freeze({
+            ...runtimeSection,
+
+            /*
+             * POST-EVIDENCE SECTION AUTHORITY.
+             */
+            requiredClaims:
+              Object.freeze([
+                ...executionSection
+                  .requiredClaimIds,
+              ]),
+
+            evidenceIds:
+              Object.freeze([
+                ...executionSection
+                  .evidenceIds,
+              ]),
+          });
+        }
+      );
+
+
+  if (
+    postLockRuntimeSections.length !==
+    persistedArticleExecutionPlan
+      .sections
+      .length
+  ) {
+    throw new ContentGenerationError(
+      "ARTICLE_EXECUTION_PLAN_RUNTIME_SECTION_COUNT_DRIFT"
+    );
+  }
+
+
   const publicationEvidenceDeferredScope =
     resolvePublicationEvidenceSectionScopeV1({
       sections:
-        masterRuntimeInspection
-          .runtime
-          .sectionBlueprints
-          .sections,
+        postLockRuntimeSections,
 
       claimEvidence:
         masterRuntimeInspection
@@ -1428,8 +1821,16 @@ export async function generateArticleFromBrief(
     }
   }
 
+  /*
+   * ARTICLE_EXECUTION_PLAN_POST_LOCK_DEFER_AUTHORITY_V1
+   *
+   * Legacy outline/evidence resolvers remain diagnostics only.
+   *
+   * The only structural DEFER authority after persistence is the
+   * ArticleExecutionPlan generated from final evidence closure.
+   */
   const deferredMasterIndexes =
-    new Set<number>(
+    new Set(
       persistedArticleExecutionPlan
         .sections
         .flatMap(
@@ -1438,58 +1839,82 @@ export async function generateArticleFromBrief(
             index
           ) =>
             section.state ===
-            "WRITABLE"
-              ? []
-              : [
-                  index,
-                ]
-        )
-    );
-
-/*
-   * ARTICLE_EXECUTION_PLAN_POST_LOCK_DEFER_AUTHORITY_V1
-   *
-   * After ArticleExecutionPlan has been persisted, legacy
-   * brief.outline/evidence-aware planning is DIAGNOSTIC ONLY.
-   *
-   * The only structural DEFER authority is the persisted plan.
-   */
-  const effectiveEvidenceDeferredSections =
-    Object.freeze(
-      persistedArticleExecutionPlan
-        .sections
-        .flatMap(
-          (
-            section
-          ) =>
-            section.state ===
-            "DEFERRED_NO_EVIDENCE"
+              "DEFERRED_NO_EVIDENCE"
               ? [
-                  Object.freeze({
-                    heading:
-                      section.heading,
-
-                    sourceDeferredHeading:
-                      section.heading,
-
-                    summary:
-                      section.mission ??
-                      null,
-
-                    reason:
-                      "MISSING_PUBLICATION_GRADE_EVIDENCE" as const,
-                  }),
+                  index,
                 ]
               : []
         )
     );
 
 
+  /*
+   * Diagnostics can explain WHY a locked-plan section was
+   * deferred, but they may not defer an additional section.
+   */
+  const effectiveEvidenceDeferredSections =
+    [
+      ...evidenceDeferredMasterScope
+        .deferredSections,
+
+      ...publicationEvidenceDeferredScope
+        .deferredSections,
+    ]
+      .filter(
+        (
+          section
+        ) => {
+          const index =
+            postLockRuntimeSections
+              .findIndex(
+                (
+                  runtimeSection
+                ) =>
+                  runtimeSection
+                    .heading
+                    .trim()
+                    .toLowerCase() ===
+                  section
+                    .heading
+                    .trim()
+                    .toLowerCase()
+              );
+
+          return (
+            index >=
+              0 &&
+            deferredMasterIndexes
+              .has(
+                index
+              )
+          );
+        }
+      )
+      .filter(
+        (
+          section,
+          index,
+          all
+        ) =>
+          all.findIndex(
+            (
+              candidate
+            ) =>
+              candidate
+                .heading
+                .trim()
+                .toLowerCase() ===
+              section
+                .heading
+                .trim()
+                .toLowerCase()
+          ) ===
+          index
+      );
+
+
   const effectiveMasterSections =
-    masterRuntimeInspection
-      .runtime
-      .sectionBlueprints
-      .sections
+    postLockRuntimeSections
       .filter(
         (
           _section,
@@ -1533,28 +1958,32 @@ export async function generateArticleFromBrief(
    * correct publication defer but then accidentally execute the
    * original unfiltered runtime.
    */
+  /*
+   * POST_LOCK_PROJECTED_RUNTIME_V1
+   *
+   * Never fall back to the untouched pre-contraction runtime,
+   * even when zero whole sections are deferred.
+   *
+   * Mixed-section claim contraction still needs the projected
+   * requiredClaims/evidenceIds.
+   */
   const effectiveMasterRuntime =
-    deferredMasterIndexes
-      .size ===
-    0
-      ? masterRuntimeInspection
-          .runtime
-      : Object.freeze({
+    Object.freeze({
+      ...masterRuntimeInspection
+        .runtime,
+
+      sectionBlueprints:
+        Object.freeze({
           ...masterRuntimeInspection
-            .runtime,
+            .runtime
+            .sectionBlueprints,
 
-          sectionBlueprints:
-            Object.freeze({
-              ...masterRuntimeInspection
-                .runtime
-                .sectionBlueprints,
-
-              sections:
-                Object.freeze([
-                  ...effectiveMasterSections,
-                ]),
-            }),
-        });
+          sections:
+            Object.freeze([
+              ...effectiveMasterSections,
+            ]),
+        }),
+    });
 
 
   /*
@@ -1785,7 +2214,7 @@ export async function generateArticleFromBrief(
    * A retry of a REJECTED generation reuses the same logical
    * Article row instead of spawning another top-level row.
    *
-   * Only REJECTED rows are reusable. GENERATING (in flight),
+   * REJECTED and BLOCKED_EXTERNAL rows are reusable. GENERATING (in flight),
    * IN_REVIEW, APPROVED, PUBLISHED and PUBLISH_FAILED are never
    * overwritten.
    */
@@ -1795,8 +2224,12 @@ export async function generateArticleFromBrief(
         briefId:
           brief.id,
 
-        status:
-          "REJECTED",
+        status: {
+          in: [
+            "REJECTED",
+            "BLOCKED_EXTERNAL",
+          ],
+        },
       },
 
       orderBy: {
@@ -1876,6 +2309,53 @@ export async function generateArticleFromBrief(
         generator,
       });
 
+
+    /*
+     * POST_WRITER_ARTICLE_CHECKPOINT_V1
+     *
+     * REAL boundary:
+     *
+     * Master Writer completed
+     * -> persist paid-for article immediately
+     * -> critics / critic repair / SERP replay / final gates
+     *
+     * No later engineering, provider or budget failure may erase
+     * the already generated article body.
+     *
+     * Status stays GENERATING until final readiness authorizes
+     * IN_REVIEW.
+     */
+    await prisma.contentArticle.update({
+      where: {
+        id:
+          pendingArticle.id,
+      },
+
+      data: {
+        title:
+          masterWriterRun
+            .article
+            .title,
+
+        metaDescription:
+          masterWriterRun
+            .article
+            .metaDescription,
+
+        h1:
+          masterWriterRun
+            .article
+            .h1,
+
+        bodyMarkdown:
+          masterWriterRun
+            .article
+            .bodyMarkdown,
+      },
+    });
+
+
+
     /*
      * Stage 9J production critic boundary.
      *
@@ -1927,6 +2407,36 @@ export async function generateArticleFromBrief(
     const masterCriticContext =
       Object.freeze({
         ...persistedMasterCriticContext,
+
+        /*
+         * RANK_READY_KEYWORD_CONTEXT_BINDING_V1
+         *
+         * Brief already owns final production keyword authority.
+         * Do not reselect keywords here.
+         */
+        rankReadyKeywords:
+          Object.freeze(
+            Array.from(
+              new Set(
+                [
+                  brief.primaryKeyword,
+                  ...(
+                    brief.secondaryKeywords ??
+                    []
+                  ),
+                ]
+                  .map(
+                    (keyword) =>
+                      keyword.trim()
+                  )
+                  .filter(
+                    (keyword) =>
+                      keyword.length >
+                      0
+                  )
+              )
+            )
+          ),
 
         cannibalizationCandidates:
           persistedMasterCriticContext
@@ -2186,6 +2696,49 @@ export async function generateArticleFromBrief(
 
 
     try {
+      /*
+       * SERP_REPLAY_PRIOR_CRITIC_BLOCK_SHORT_CIRCUIT_V2
+       *
+       * Competitive replay is useful only for an article that
+       * already survived the final master critic boundary.
+       *
+       * BLOCK means the article is semantically unfit for
+       * competitive comparison/publish readiness.
+       *
+       * Do not spend another pairwise model call on a version that
+       * is already known to be blocked.
+       */
+      if (
+        finalMasterCriticExecution
+          .suite
+          .status ===
+        "BLOCK"
+      ) {
+        masterSerpReplayWarning =
+          "SERP_REPLAY_SKIPPED_PRIOR_MASTER_CRITIC_BLOCK";
+
+        console.info(
+          "[content serp replay skipped]",
+          {
+            briefId:
+              brief.id,
+
+            articleId:
+              pendingArticle.id,
+
+            reason:
+              masterSerpReplayWarning,
+
+            finalCriticStatus:
+              finalMasterCriticExecution
+                .suite
+                .status,
+
+            compareSerpReplayPairCalls:
+              0,
+          }
+        );
+      } else {
       const competitiveReplayExecution =
         await executeCompetitiveSerpReplayRepairV2({
           contract:
@@ -2397,6 +2950,8 @@ export async function generateArticleFromBrief(
               ),
         }
       );
+      }
+
     } catch (
       replayError
     ) {
@@ -3000,7 +3555,10 @@ export async function generateArticleFromBrief(
 
         data: {
           status:
-            "REJECTED",
+            recovery.owner ===
+            "TRANSPORT"
+              ? "BLOCKED_EXTERNAL"
+              : "REJECTED",
 
           publishError:
             formatRejectedRecoveryForPersistenceV1(
@@ -3014,7 +3572,7 @@ export async function generateArticleFromBrief(
      * Only genuine temporary infrastructure failures bubble to the
      * HTTP layer for retry behavior.
      *
-     * The REJECTED attempt has already been persisted.
+     * The failed attempt has already been persisted; transport failures use BLOCKED_EXTERNAL.
      */
     if (
       recovery.autoRetryAllowed

@@ -38,6 +38,20 @@ export interface ExpectedCoverageTopicInput {
   queryNodeIds?:
     string[];
 
+
+  /*
+   * OBSERVED_QUERY_IDENTITY_BRIDGE_V1
+   *
+   * Upstream semantic planning owns exact observed query strings.
+   * QueryGraph owns canonical node identity.
+   *
+   * ExpectedCoverage resolves those strings against the canonical
+   * QueryGraph instead of requiring upstream code to manufacture
+   * query-node IDs before the graph exists.
+   */
+  queryIdentities?:
+    string[];
+
   serpOccurrences?:
     number | null;
 
@@ -231,14 +245,6 @@ function inferArticleFit({
 
   if (
     decisions.includes(
-      "SEPARATE_PAGE"
-    )
-  ) {
-    return "SEPARATE_PAGE";
-  }
-
-  if (
-    decisions.includes(
       "SAME_PAGE"
     ) ||
     decisions.includes(
@@ -246,6 +252,14 @@ function inferArticleFit({
     )
   ) {
     return "SAME_PAGE";
+  }
+
+  if (
+    decisions.includes(
+      "SEPARATE_PAGE"
+    )
+  ) {
+    return "SEPARATE_PAGE";
   }
 
   if (
@@ -428,12 +442,85 @@ export function buildExpectedCoverageModel({
       );
     }
 
-    const queryNodeIds = [
-      ...new Set(
-        input.queryNodeIds ??
-        []
-      ),
-    ];
+    /*
+     * OBSERVED_QUERY_IDENTITY_RESOLUTION_V1
+     *
+     * Resolve semantic query strings only against the FINAL
+     * canonical QueryGraph supplied to ExpectedCoverage.
+     *
+     * No synthetic IDs.
+     * No fuzzy matching.
+     * No invented demand.
+     */
+    const queryIdentityNodeIds =
+      [
+        ...new Set(
+          (
+            input.queryIdentities ??
+            []
+          )
+            .map(
+              (
+                identity
+              ) =>
+                identity.trim()
+            )
+            .filter(
+              Boolean
+            )
+            .map(
+              (
+                identity
+              ) => {
+                const normalizedIdentity =
+                  normalize(
+                    identity
+                  );
+
+
+                const node =
+                  queryGraph.nodes.find(
+                    (
+                      candidate
+                    ) =>
+                      normalize(
+                        candidate.query
+                      ) ===
+                        normalizedIdentity ||
+                      normalize(
+                        candidate
+                          .normalizedQuery
+                      ) ===
+                        normalizedIdentity
+                  );
+
+
+                if (!node) {
+                  throw new Error(
+                    `EXPECTED_COVERAGE_QUERY_IDENTITY_UNKNOWN:${identity}`
+                  );
+                }
+
+
+                return node.id;
+              }
+            )
+        ),
+      ];
+
+
+    const queryNodeIds =
+      [
+        ...new Set([
+          ...(
+            input.queryNodeIds ??
+            []
+          ),
+
+          ...queryIdentityNodeIds,
+        ]),
+      ];
+
 
     const queryNodes =
       queryGraph.nodes.filter(
@@ -458,6 +545,63 @@ export function buildExpectedCoverageModel({
         queryGraph,
         queryNodeIds,
       });
+
+    /*
+     * EXPECTED_COVERAGE_BOUNDARY_SCOPED_DEMAND_V1
+     *
+     * QueryGraph retains ALL observed demand.
+     *
+     * ExpectedCoverage is page-scoped, therefore its reported
+     * demand may include only query nodes whose canonical boundary
+     * matches this topic's final articleFit.
+     *
+     * This prevents a SEPARATE_PAGE or CLUSTER query from inflating
+     * the SAME_PAGE demand reported for the current article.
+     */
+    const boundaryByNodeIdV1 =
+      new Map(
+        queryGraph
+          .boundaries
+          .map(
+            (
+              boundary
+            ) => [
+              boundary.nodeId,
+              boundary.decision,
+            ] as const
+          )
+      );
+
+
+    const coverageQueryNodesV1 =
+      queryNodes.filter(
+        (
+          node
+        ) => {
+          const decision =
+            boundaryByNodeIdV1.get(
+              node.id
+            );
+
+          if (
+            articleFit ===
+              "SAME_PAGE"
+          ) {
+            return (
+              decision ===
+                "SAME_PAGE" ||
+              decision ===
+                "MERGE"
+            );
+          }
+
+          return (
+            decision ===
+              articleFit
+          );
+        }
+      );
+
 
     let serpFrequency:
       number |
@@ -524,11 +668,11 @@ export function buildExpectedCoverageModel({
     const demand:
       ExpectedCoverageDemand = {
         queryNodes:
-          queryNodes.length,
+          coverageQueryNodesV1.length,
 
         knownSearchVolume:
           sumKnown(
-            queryNodes.map(
+            coverageQueryNodesV1.map(
               (node) =>
                 node.searchVolume
             )
@@ -536,7 +680,7 @@ export function buildExpectedCoverageModel({
 
         knownGscImpressions:
           sumKnown(
-            queryNodes.map(
+            coverageQueryNodesV1.map(
               (node) =>
                 node.gscImpressions
             )
@@ -553,7 +697,7 @@ export function buildExpectedCoverageModel({
         articleFit,
 
         queryNodes:
-          queryNodes.length,
+          coverageQueryNodesV1.length,
 
         serpFrequency,
 
@@ -564,7 +708,7 @@ export function buildExpectedCoverageModel({
       new Set<string>();
 
     if (
-      queryNodes.length >
+      coverageQueryNodesV1.length >
       0
     ) {
       evidence.add(
@@ -623,7 +767,12 @@ export function buildExpectedCoverageModel({
 
         queryNodeIds:
           Object.freeze(
-            queryNodeIds
+            coverageQueryNodesV1.map(
+              (
+                node
+              ) =>
+                node.id
+            )
           ),
 
         evidence:

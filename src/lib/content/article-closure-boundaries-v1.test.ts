@@ -108,7 +108,7 @@ describe(
     );
 
     it(
-      "Stage planner enforces the template H2 floor through the existing bounded retry",
+      "Stage planner keeps the template H2 range as planning guidance",
       () => {
         const planner =
           source(
@@ -116,7 +116,7 @@ describe(
           );
 
         expect(planner).toContain(
-          "TEMPLATE_H2_PLANNING_MINIMUM_RECOVERY_V1"
+          "TEMPLATE_H2_PLANNING_GUIDANCE_ONLY_V2"
         );
 
         expect(planner).toContain(
