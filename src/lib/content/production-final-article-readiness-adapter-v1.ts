@@ -593,6 +593,13 @@ function mapSerpReplayStatus({
     return rawStatus;
   }
 
+  if (
+    rawStatus ===
+    "INSUFFICIENT_CONTEXT"
+  ) {
+    return "INSUFFICIENT_DATA";
+  }
+
   const warningText =
     stringValue(
       warning
@@ -781,11 +788,18 @@ export function buildProductionFinalArticleReadinessV1({
         coverage.entities,
     });
 
+  /*
+   * Claim support must not be inferred from all semantic BLOCKs.
+   *
+   * A missing planned SEO keyword is not an unsupported factual
+   * claim. The existing semantic BLOCK count is independently
+   * enforced by majorSemanticFindingCount below.
+   *
+   * Content Gate and Publication Policy remain mandatory.
+   */
   const upstreamSafetyPass =
     contentGatePass &&
-    publicationPolicyPass &&
-    semanticBlockCount ===
-      0;
+    publicationPolicyPass;
 
   return evaluateFinalArticleReadinessV1({
     plan,

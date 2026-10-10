@@ -991,6 +991,42 @@ export function findVerifiedExcerptCandidateV1({
       continue;
     }
 
+    /*
+     * NEGATIVE_CLAIM_LOCAL_POLARITY_V2
+     * A negation elsewhere in a long source window
+     * must not verify an unrelated negative claim.
+     */
+    if (claimNegation) {
+      const anchors =
+        negativeClaimTargetAnchorsV1(claimText);
+
+      const localStatements =
+        excerpt.split(
+          /(?<=[.!?])(?=\s|[A-Z])/
+        );
+
+      const locallySupported =
+        localStatements.some((statement) => {
+          if (!hasNegation(statement)) {
+            return false;
+          }
+
+          const tokens = new Set(
+            semanticTokens(statement)
+              .map(normalizeNegativeTargetTokenV1)
+              .filter(Boolean)
+          );
+
+          return anchors.every((anchor) =>
+            tokens.has(anchor)
+          );
+        });
+
+      if (!locallySupported) {
+        continue;
+      }
+    }
+
 
     if (
       !best ||

@@ -319,6 +319,42 @@ function validateSectionAgainstContract({
 }
 
 
+
+/* CONTENT_V1_H1_H2_COMPOSITION_GUARD */
+export function assertDistinctArticleHeadingsV1(
+  shell: Readonly<ArticleShellV1>,
+  contract: Readonly<ArticleGenerationContractV1>
+): void {
+  const normalize = (value: string): string =>
+    value.normalize("NFKC")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+
+  const h1 = normalize(shell.h1);
+  const seen = new Set<string>();
+
+  for (const section of contract.sectionContracts) {
+    const heading = section.blueprint.heading;
+    const key = normalize(heading);
+
+    if (!key) {
+      throw new ContentGenerationError("ARTICLE_COMPOSER_EMPTY_H2");
+    }
+
+    if (key === h1) {
+      throw new ContentGenerationError("ARTICLE_COMPOSER_DUPLICATE_H1_H2");
+    }
+
+    if (seen.has(key)) {
+      throw new ContentGenerationError("ARTICLE_COMPOSER_DUPLICATE_H2");
+    }
+
+    seen.add(key);
+  }
+}
+
 export function composeMasterArticleV1({
   contract,
   shell,
@@ -333,6 +369,8 @@ export function composeMasterArticleV1({
   sections:
     readonly Readonly<GeneratedSectionV1>[];
 }): Readonly<ComposedMasterArticleV1> {
+  assertDistinctArticleHeadingsV1(shell, contract);
+
   if (
     contract.version !==
     "ARTICLE_GENERATION_CONTRACT_V1"

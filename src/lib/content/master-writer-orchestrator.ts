@@ -21,10 +21,12 @@ import {
 } from "./master-article-shell-generator";
 
 import type {
+  ArticleShellV1,
   ComposedMasterArticleV1,
 } from "./master-article-composer";
 
 import {
+  assertDistinctArticleHeadingsV1,
   composeMasterArticleV1,
 } from "./master-article-composer";
 
@@ -389,6 +391,33 @@ export function supportsMasterWriterGenerator(
 }
 
 
+export function recoverConflictingArticleH1V1<
+  T extends ArticleShellV1
+>(
+  shell: Readonly<T>,
+  contract: Readonly<ArticleGenerationContractV1>
+): Readonly<T> {
+  try {
+    assertDistinctArticleHeadingsV1(shell, contract);
+    return shell;
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      error.message !== "ARTICLE_COMPOSER_DUPLICATE_H1_H2"
+    ) {
+      throw error;
+    }
+
+    const recovered = {
+      ...shell,
+      h1: shell.title,
+    } as T;
+
+    assertDistinctArticleHeadingsV1(recovered, contract);
+    return recovered;
+  }
+}
+
 export async function executeMasterWriterV1({
   contract,
   generator,
@@ -458,6 +487,18 @@ export async function executeMasterWriterV1({
     contract,
     generator,
   });
+
+  /*
+   * Validate heading uniqueness before generating expensive sections.
+   * Composer retains its independent final integrity check.
+   */
+  /*
+   * Recover a conflicting generated H1 without changing the
+   * authoritative H2 section plan or its execution bindings.
+   * The article title is an existing shell value, not a new
+   * generated claim or heading.
+   */
+  shell = recoverConflictingArticleH1V1(shell, contract);
 
 
   // ========================================================

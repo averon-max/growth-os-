@@ -510,6 +510,33 @@ export function ContentCreateButton({
       const articleJson =
         await articleResponse.json();
 
+      // GROWTH_OS_EXISTING_ARTICLE_RECOVERY_UI_V1
+      // A failed generation response may be stale after a
+      // separate successful production recovery.
+      if (!articleResponse.ok && articleJson?.articleId) {
+        try {
+          const currentResponse = await fetch(
+            `/api/content/articles/${encodeURIComponent(String(articleJson.articleId))}`,
+            { cache: "no-store" }
+          );
+
+          if (currentResponse.ok) {
+            const currentData = await currentResponse.json();
+            const currentArticle = currentData.article ?? currentData;
+
+            if (currentArticle?.status === "IN_REVIEW") {
+              window.location.assign(
+                `/dashboard/content/articles/${encodeURIComponent(String(articleJson.articleId))}`
+              );
+              return;
+            }
+          }
+        } catch {
+          // Preserve the original API error if the status check fails.
+        }
+      }
+
+
       if (
         !articleResponse.ok
       ) {

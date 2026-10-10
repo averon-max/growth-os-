@@ -1191,6 +1191,10 @@ export function buildKeywordDecisionShadow({
     }
 
 
+    if (secondary.length >= 8) {
+      break;
+    }
+
     secondary.push(
       item
     );
@@ -1204,6 +1208,72 @@ export function buildKeywordDecisionShadow({
         term
       );
     }
+  }
+
+  /*
+   * SECONDARY_QUERY_COVERAGE_V2
+   *
+   * Preserve concept-first selection above, then allow distinct
+   * same-intent search formulations even when all individual
+   * tokens have already appeared. Never add ineligible queries,
+   * different intents, or weakly related topics.
+   */
+  const maxSecondaryKeywords = 8;
+
+  const selectedNormalizedKeywords =
+    new Set(
+      [best, ...secondary].map(
+        (item) =>
+          item.keyword
+            .normalize("NFKC")
+            .toLowerCase()
+            .replace(/\\s+/g, " ")
+            .trim()
+      )
+    );
+
+  for (const item of eligible) {
+    if (secondary.length >= maxSecondaryKeywords) {
+      break;
+    }
+
+    if (
+      item.keyword === best.keyword ||
+      item.intent !== best.intent ||
+      topicAffinity(best.keyword, item.keyword) < 0.34
+    ) {
+      continue;
+    }
+
+    const normalized =
+      item.keyword
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/\\s+/g, " ")
+        .trim();
+
+    if (selectedNormalizedKeywords.has(normalized)) {
+      continue;
+    }
+
+    const terms = coverageTerms(item.keyword);
+
+    if (terms.length < 2) {
+      continue;
+    }
+
+    // Keep alternative formulations that have meaningful
+    // evidence, rather than adding weak suggestions to fill a quota.
+    const hasObservedDemand =
+      (item.metrics.searchVolume ?? 0) > 0 ||
+      item.metrics.impressions > 0;
+
+    if (!hasObservedDemand) {
+      continue;
+    }
+
+    secondary.push(item);
+    selectedNormalizedKeywords.add(normalized);
   }
 
   return {

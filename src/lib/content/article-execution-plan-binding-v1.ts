@@ -1071,6 +1071,7 @@ export function bindArticleExecutionPlanToGenerationContractV1({
     );
 
 
+
   return Object.freeze({
     ...contract,
 

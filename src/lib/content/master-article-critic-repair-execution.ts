@@ -3,6 +3,10 @@ import type {
 } from "./article-generation-contract";
 
 import {
+  tryRecoverMissingKeywordV1,
+} from "./rank-ready-keyword-recovery-v1";
+
+import {
   composeMasterArticleV1,
 } from "./master-article-composer";
 
@@ -608,6 +612,19 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
 
     try {
+      const deterministicMarkdown =
+        tryRecoverMissingKeywordV1({
+          markdown: currentSection.bodyMarkdown,
+          findings: task.findings,
+          maxWords: criticTargetWords?.max,
+        });
+
+      if (deterministicMarkdown !== null) {
+        repairedSection = Object.freeze({
+          ...currentSection,
+          bodyMarkdown: deterministicMarkdown,
+        });
+      } else {
       repairedSection =
         await repairGenerator
           .repairSection({
@@ -632,6 +649,7 @@ export async function executeMasterArticleCriticRepairReplayV1({
             criticFindings:
               task.findings,
           });
+      }
     } catch (
       error
     ) {

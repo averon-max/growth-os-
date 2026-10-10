@@ -1,4 +1,8 @@
 import {
+  assertFinalArticleVersionIntegrityV1,
+} from "./final-article-version-integrity-v1";
+
+import {
   assertArticlePreWriterAnswerSupportV2,
   assertArticlePreWriterRequiredCoverageV1,
 } from "./article-prewriter-evidence-gate-v1";
@@ -47,6 +51,12 @@ import {
 import {
   executeMasterWriterV1,
 } from "./master-writer-orchestrator";
+
+import {
+  writeArticleRecoveryCheckpointV1,
+} from "./article-recovery-checkpoint-v1";
+
+
 
 import {
   buildMasterArticleSemanticCriticContextV1,
@@ -207,6 +217,10 @@ import {
   assertExplicitPublishGatePassedV1,
   evaluateExplicitPublishGateV1,
 } from "./publish-gate";
+
+import {
+  assertStoredPublicationEvidenceV1,
+} from "./stored-publication-evidence-gate-v1";
 
 
 function isTransientContentProviderFailure(
@@ -984,6 +998,20 @@ export async function createContentBrief(
     productionMaster
   );
 
+
+  /* BRIEF_PRE_PERSIST_ANSWER_SUPPORT_GATE_V1 */
+  if (!liveMaster?.articleExecutionPlan) {
+    throw new Error("BRIEF_ARTICLE_EXECUTION_PLAN_MISSING");
+  }
+  assertArticlePreWriterEvidenceReadyV1(
+    liveMaster.articleExecutionPlan
+  );
+  assertArticlePreWriterRequiredCoverageV1(
+    liveMaster.articleExecutionPlan
+  );
+  assertArticlePreWriterAnswerSupportV2(
+    liveMaster.articleExecutionPlan
+  );
 
   const briefInput:
     ContentBriefInput = {
@@ -2357,6 +2385,24 @@ export async function generateArticleFromBrief(
 
 
     /*
+     * REAL_RECOVERY_POST_WRITER_CHECKPOINT_V1
+     * Best-effort local checkpoint, explicitly opt-in.
+     * Never lose a generated article because local disk fails.
+     */
+    try {
+      await writeArticleRecoveryCheckpointV1({
+        articleId: pendingArticle.id,
+        briefId: brief.id,
+        stage: "POST_WRITER",
+        writerRun: masterWriterRun,
+      });
+    } catch {
+      console.warn(
+        "[content recovery checkpoint] POST_WRITER unavailable"
+      );
+    }
+
+    /*
      * Stage 9J production critic boundary.
      *
      * Critic context is derived only from the same validated,
@@ -2542,6 +2588,26 @@ export async function generateArticleFromBrief(
     let finalMasterCriticExecution =
       masterCriticRepairExecution
         .finalCritics;
+
+    /*
+     * REAL_RECOVERY_POST_MASTER_CRITIC_CHECKPOINT_V1
+     * Preserve the canonical repaired writer run and critic result.
+     * No status transition is authorized by this checkpoint.
+     */
+    try {
+      await writeArticleRecoveryCheckpointV1({
+        articleId: pendingArticle.id,
+        briefId: brief.id,
+        stage: "POST_MASTER_CRITIC",
+        writerRun: acceptedMasterWriterRun,
+        finalCritics: finalMasterCriticExecution,
+      });
+    } catch {
+      console.warn(
+        "[content recovery checkpoint] POST_MASTER_CRITIC unavailable"
+      );
+    }
+
 
 
     console.info(
@@ -3039,6 +3105,29 @@ export async function generateArticleFromBrief(
     }
 
 
+    /*
+     * POST_FINAL_REPLAY_CHECKPOINT_V1
+     *
+     * Save the final MasterWriterRun after all competitive
+     * repair operations. This is the version entering
+     * Content Gate and Final Readiness.
+     *
+     * Checkpoint writing remains explicit opt-in.
+     */
+    try {
+      await writeArticleRecoveryCheckpointV1({
+        articleId: pendingArticle.id,
+        briefId: brief.id,
+        stage: "POST_FINAL_REPLAY",
+        writerRun: acceptedMasterWriterRun,
+        finalCritics: finalMasterCriticExecution,
+      });
+    } catch {
+      console.warn(
+        "[content recovery checkpoint] POST_FINAL_REPLAY unavailable"
+      );
+    }
+
     const generated = {
       title:
         acceptedMasterWriterRun
@@ -3405,6 +3494,18 @@ export async function generateArticleFromBrief(
      * WARN -> IN_REVIEW with non-blocking diagnostics
      * FAIL -> fail closed
      */
+    /*
+     * FINAL_ARTICLE_VERSION_INTEGRITY_V1
+     * Fail closed: final text must match the latest verified
+     * MasterWriterRun. Never promote a different version.
+     */
+    assertFinalArticleVersionIntegrityV1({
+      writerMarkdown:
+        acceptedMasterWriterRun.article.bodyMarkdown,
+      finalMarkdown:
+        repaired.bodyMarkdown,
+    });
+
     const finalArticleReadiness =
       buildProductionFinalArticleReadinessV1({
         plan:
@@ -3627,6 +3728,8 @@ export async function approveArticle(
                   true,
               },
             },
+            evidenceSnapshot:
+              true,
           },
         },
       },
@@ -3646,6 +3749,10 @@ export async function approveArticle(
       `Cannot approve article with status ${article.status}`
     );
   }
+
+  assertStoredPublicationEvidenceV1(
+    article.brief.evidenceSnapshot?.plan
+  );
 
   const intelligence =
     await analyzeStoredContentPlan({
@@ -3875,6 +3982,8 @@ export async function publishArticle(
                   true,
               },
             },
+            evidenceSnapshot:
+              true,
           },
         },
       },
@@ -3894,6 +4003,10 @@ export async function publishArticle(
       "Only approved articles can be published"
     );
   }
+
+  assertStoredPublicationEvidenceV1(
+    article.brief.evidenceSnapshot?.plan
+  );
 
   const intelligence =
     await analyzeStoredContentPlan({

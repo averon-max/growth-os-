@@ -1,7 +1,7 @@
 import {
   buildSerpReplayArticleFingerprintV1,
   type SerpReplayArticleFingerprintInputV1,
-} from "./serp-replay-artifact";
+} from "./serp-replay-fingerprint";
 
 
 export const EXPLICIT_PUBLISH_GATE_VERSION =

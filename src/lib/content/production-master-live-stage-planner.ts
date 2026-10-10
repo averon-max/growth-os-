@@ -4825,13 +4825,17 @@ function inspectStagePlanCompleteness(
       (
         claim
       ) => {
-        if (
-          !finallyVerifiedClaimIds.has(
-            claim.id
-          )
-        ) {
-          return [];
-        }
+        /*
+           * REQUIRED_QUESTION_UNVERIFIED_RECOVERY_V3
+           *
+           * Missing verification is a reason to discover
+           * question-specific evidence, not to skip recovery.
+           *
+           * Required-role ownership and actual section
+           * questions are checked below.
+           *
+           * This grants NO publication authority.
+           */
 
 
         const ownerSection =
@@ -4896,9 +4900,14 @@ function inspectStagePlanCompleteness(
           });
 
 
-        if (aligned) {
-          return [];
-        }
+        if (
+            aligned &&
+            finallyVerifiedClaimIds.has(
+              claim.id
+            )
+          ) {
+            return [];
+          }
 
 
         return [
@@ -5149,10 +5158,40 @@ function inspectStagePlanCompleteness(
                     ?.trim()
                 )
             )
-            .slice(
-              0,
-              8
-            );
+
+            /*
+             * DEFINITION_CANDIDATE_PRIORITY_V1
+             *
+             * Prioritize source excerpts that satisfy the existing
+             * definition selector BEFORE applying the candidate cap.
+             * This does not grant evidence authority.
+             */
+            .map((candidate, index) => ({
+              candidate,
+              index,
+              definitionMatch: ownerSection
+                ? Boolean(
+                    selectDeterministicDefinitionReplanCandidateV1({
+                      originalText: claim.text,
+                      primaryQuery: research.keyword,
+                      sectionHeading: ownerSection.heading,
+                      sectionMission: ownerSection.mission,
+                      sectionQuestions: ownerSection.questions,
+                      sectionExpectedOutcome: ownerSection.expectedOutcome,
+                      candidates: [{
+                        sourceId: candidate.sourceId,
+                        excerpt: candidate.excerpt,
+                      }],
+                    })
+                  )
+                : false,
+            }))
+            .sort((a, b) =>
+              Number(b.definitionMatch) - Number(a.definitionMatch) ||
+              a.index - b.index
+            )
+            .slice(0, 8)
+            .map(({ candidate }) => candidate);
 
         if (
           !ownerSection ||
@@ -5251,8 +5290,21 @@ function inspectStagePlanCompleteness(
 
 
       if (!deterministicCandidate) {
-        continue;
-      }
+          console.info(
+            "[content definition selector no candidate]",
+            {
+              claimId: target.claim.id,
+              candidateCount: target.candidates.length,
+              candidateSamples: target.candidates
+                .slice(0, 5)
+                .map((candidate) => ({
+                  sourceId: candidate.sourceId,
+                  excerpt: candidate.excerpt.slice(0, 350),
+                })),
+            }
+          );
+          continue;
+        }
 
 
       const deterministicClaims =

@@ -169,6 +169,22 @@ export function buildMasterSectionRepairPrompt(
           "CRITIC REPAIR RULES:",
           "- Repair ONLY this section.",
           "- Resolve the supplied localized critic findings.",
+          /* CONTENT_V1_QUALITY_REPAIR_CLOSURE */
+          "EDITORIAL REPAIR — DIRECT ANSWER:",
+          "- For an evasive answer, provide the clearest evidence-supported answer early in this section.",
+          "- Distinguish the direct answer from explanation, limitations and practical next steps.",
+          "- Do not replace an answer with generic advice or repeated definitions.",
+          "- If existing evidence cannot support a material answer, do not invent one.",
+          "EDITORIAL REPAIR — REDUNDANCY:",
+          "- Remove circular explanations and repeated semantic points.",
+          "- Do not replace removed filler with synonyms or padding.",
+          "EDITORIAL REPAIR — INFORMATION GAIN:",
+          "- Each paragraph must contribute to the assigned section mission.",
+          "- Preserve supported facts, required claims, useful distinctions and actionable guidance.",
+          "- Never add unsupported examples, comparisons, numbers, capabilities or claims.",
+          "EDITORIAL REPAIR — STRUCTURAL LIMITS:",
+          "- Never change the canonical H2 or invent a new H2.",
+          "- Body-only repair cannot fix a heading defect requiring another section or the article shell to change.",
           "- Preserve correct material that is unrelated to those findings.",
           "- Do not change the canonical H2 heading.",
           "- Do not create new query IDs, claim IDs, evidence IDs, source IDs, metrics, facts, or links.",
@@ -209,6 +225,31 @@ export function buildMasterSectionRepairPrompt(
 
   return [
     ...criticFindingsBlock,
+    /*
+     * CRITIC_REPAIR_COMPLETENESS_V1
+     *
+     * Complete all supplied section findings in the one
+     * permitted model mutation. Never weaken evidence gates.
+     */
+    ...(criticFindings.length > 0
+      ? [
+          "",
+          "CRITIC REPAIR COMPLETENESS:",
+          "- Treat EVERY supplied critic finding as a separate requirement.",
+          "- Resolve all compatible findings together in this single section revision.",
+          "- Do not fix one finding by removing coverage required by another.",
+          "- For RANK_READY_PLANNED_KEYWORD_MISSING, integrate the exact planned phrase naturally into useful reader-facing prose.",
+          "- Do not place missing keywords only in headings, metadata, citations or SEO filler.",
+          "- For REQUIRED_TOPIC_TOO_THIN, answer the reader's question directly before providing supporting explanation.",
+          "- State a factual answer only when the supplied approved claim and evidence support it.",
+          "- If the evidence is insufficient, do not invent facts or pretend the requirement is satisfied.",
+          "- Preserve approved heading identity, section mission, required claims and factual qualifications.",
+          "- Preserve useful depth within the provided word budget; remove repetition rather than necessary information.",
+          "- Do not add unrelated sections, rankings, comparisons or unsupported promises.",
+          "- Return the complete revised section, not a description of the changes.",
+        ]
+      : []),
+
     ...competitiveReplayFindingsBlock,
 
     ...(depthRepair

@@ -1,6 +1,9 @@
-import {
-  createHash,
-} from "node:crypto";
+import { buildSerpReplayArticleFingerprintV1 } from "./serp-replay-fingerprint";
+import type { SerpReplayArticleFingerprintInputV1 } from "./serp-replay-fingerprint";
+export { buildSerpReplayArticleFingerprintV1 };
+export type { SerpReplayArticleFingerprintInputV1 };
+
+
 
 import {
   Prisma,
@@ -13,21 +16,6 @@ import {
 import type {
   SerpReplayV1,
 } from "./serp-replay";
-
-
-export interface SerpReplayArticleFingerprintInputV1 {
-  title:
-    string;
-
-  metaDescription:
-    string;
-
-  h1:
-    string;
-
-  bodyMarkdown:
-    string;
-}
 
 
 export interface PersistSerpReplayArtifactInputV1 {
@@ -105,50 +93,6 @@ function cleanOptional(
 
   return clean ||
     null;
-}
-
-
-export function buildSerpReplayArticleFingerprintV1(
-  article:
-    Readonly<
-      SerpReplayArticleFingerprintInputV1
-    >
-): string {
-  /*
-   * Fixed field order is intentional.
-   *
-   * The fingerprint binds a replay artifact to the exact article
-   * representation that was compared.
-   */
-  const canonical =
-    JSON.stringify({
-      version:
-        "SERP_REPLAY_ARTICLE_FINGERPRINT_V1",
-
-      title:
-        article.title,
-
-      metaDescription:
-        article.metaDescription,
-
-      h1:
-        article.h1,
-
-      bodyMarkdown:
-        article.bodyMarkdown,
-    });
-
-
-  return createHash(
-    "sha256"
-  )
-    .update(
-      canonical,
-      "utf8"
-    )
-    .digest(
-      "hex"
-    );
 }
 
 

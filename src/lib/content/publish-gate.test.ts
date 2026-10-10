@@ -6,7 +6,7 @@ import {
 
 import {
   buildSerpReplayArticleFingerprintV1,
-} from "./serp-replay-artifact";
+} from "./serp-replay-fingerprint";
 
 import {
   assertExplicitPublishGatePassedV1,
