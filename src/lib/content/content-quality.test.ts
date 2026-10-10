@@ -107,6 +107,45 @@ describe(
 );
 
 
+describe("production page-level article integrity", () => {
+  const base = {
+    title: "Credit Monitoring Guide",
+    h1: "What Is Credit Monitoring?",
+    metaDescription: "A practical guide to understanding credit monitoring, report changes and alerts.",
+    bodyMarkdown: "## Definition\\nAn alert flags report changes.\\n\\n## Limitations\\nReview the report.",
+  };
+
+  it("blocks H1 duplicated as a body H2 even without a markdown body H1", () => {
+    const a = auditArticle({
+      article: { ...base, bodyMarkdown: "## What Is Credit Monitoring?\\nAn explanation.\\n\\n## Limitations\\nDetails." },
+      primaryKeyword: "credit monitoring",
+    });
+    expect(a.issues).toContain("DUPLICATE_H1_BODY_HEADING");
+    expect(a.issues).not.toContain("BODY_CONTAINS_H1");
+  });
+
+  it("flags identical body headings and obvious spacing damage", () => {
+    const a = auditArticle({
+      article: { ...base, bodyMarkdown: "## Overview\\nThis has   three spaces.\\n\\n## Overview\\nDo not recognize,and investigate." },
+      primaryKeyword: "credit monitoring",
+    });
+    expect(a.issues).toContain("DUPLICATE_BODY_HEADING");
+    expect(a.issues).toContain("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+    expect(a.issues).toContain("BROKEN_ARTICLE_COMMA_SPACING");
+  });
+
+  it("does not misclassify normal subheadings, URLs, and code samples", () => {
+    const a = auditArticle({
+      article: { ...base, bodyMarkdown: "## How It Works\\nReview changes, and compare alerts.\\n\\n### Sources\\nSee https://example.com/a,b for details.\\n\\n\`Example   spacing\`" },
+      primaryKeyword: "credit monitoring",
+    });
+    expect(a.issues).not.toContain("DUPLICATE_H1_BODY_HEADING");
+    expect(a.issues).not.toContain("DUPLICATE_BODY_HEADING");
+    expect(a.issues).not.toContain("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+    expect(a.issues).not.toContain("BROKEN_ARTICLE_COMMA_SPACING");
+  });
+});
+
 describe(
   "high-confidence article text integrity",
   () => {
