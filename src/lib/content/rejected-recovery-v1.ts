@@ -295,6 +295,7 @@ export function classifyRejectedRecoveryV1(
 
   if (
     upper.includes(":SEMANTIC:") ||
+    upper.endsWith(":SEMANTIC") ||
     upper.includes("SECTION_SEMANTIC_") ||
     upper.includes("SEMANTIC_VERIFICATION")
   ) {
