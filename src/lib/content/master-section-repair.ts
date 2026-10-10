@@ -1728,7 +1728,13 @@ const trigger: SectionRepairTriggerV1 =
   /*
    * SECTION_DEPTH_SINGLE_MODEL_PASS_V1
    *
-   * One useful expansion attempt per section.
+   * One useful expansion attempt per section, even when a prior
+   * reconciliation/semantic model repair was necessary.
+   *
+   * Skipping depth simply because modelRepairUsed was true allowed a
+   * factually repaired but short section to reach final readiness.
+   * Depth expansion must independently re-run identity, reconciliation,
+   * and semantic checks below. The global run budget still applies.
    *
    * If it remains slightly below the section soft target, do not
    * burn repeated LLM calls. Whole-article readiness remains the
@@ -1742,7 +1748,6 @@ const trigger: SectionRepairTriggerV1 =
       1;
     depthPass <=
       MAX_DEPTH_MODEL_REPAIR_PASSES &&
-    !modelRepairUsed &&
     terminalDepthRepair;
     depthPass +=
       1
