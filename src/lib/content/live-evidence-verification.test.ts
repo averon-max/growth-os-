@@ -7,6 +7,7 @@ import {
 import {
   assignVerifiedEvidenceToSectionsV1,
   findVerifiedExcerptCandidateV1,
+  selectVerifiedClaimSourcesV1,
 } from "./live-evidence-verification";
 
 
@@ -46,6 +47,41 @@ describe(
       }
     );
 
+
+    it("retains independent verified sources but deduplicates the same host", () => {
+      const claimText = "Credit monitoring tracks changes in your credit report.";
+      const body = "Credit monitoring tracks changes in your credit report. Credit monitoring helps readers notice report updates.";
+      const sources = [
+        { id: "a", url: "https://one.example.org/guide" },
+        { id: "b", url: "https://one.example.org/other" },
+        { id: "c", url: "https://two.example.org/guide" },
+        { id: "d", url: "https://three.example.org/guide" },
+      ];
+      const bodies = new Map(sources.map((source) => [source.id, body]));
+      const selected = selectVerifiedClaimSourcesV1({
+        claimText, sources, bodies, maxSources: 3,
+      });
+      expect(selected).toHaveLength(3);
+      expect(new Set(selected.map((item) => item.sourceHost)).size).toBe(3);
+      expect(selected.map((item) => item.sourceId)).toEqual(["a", "d", "c"]);
+    });
+
+    it("does not promote contradictory evidence from multiple sources", () => {
+      const sources = [
+        { id: "a", url: "https://one.example.org/guide" },
+        { id: "b", url: "https://two.example.org/guide" },
+      ];
+      const bodies = new Map([
+        ["a", "Credit monitoring does not track changes in your credit report."],
+        ["b", "Credit monitoring tracks changes in your credit report."],
+      ]);
+      const selected = selectVerifiedClaimSourcesV1({
+        claimText: "Credit monitoring tracks changes in your credit report.",
+        sources,
+        bodies,
+      });
+      expect(selected.map((item) => item.sourceId)).toEqual(["b"]);
+    });
 
     it(
       "fails closed on opposite negation",
