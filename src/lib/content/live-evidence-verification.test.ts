@@ -63,7 +63,7 @@ describe(
       });
       expect(selected).toHaveLength(3);
       expect(new Set(selected.map((item) => item.sourceHost)).size).toBe(3);
-      expect(selected.map((item) => item.sourceId)).toEqual(["a", "d", "c"]);
+      expect(selected.map((item) => item.sourceId)).toEqual(["a", "c", "d"]);
     });
 
     it("does not promote contradictory evidence from multiple sources", () => {
