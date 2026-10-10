@@ -1,0 +1,216 @@
+=== GIT BRANCH & STATUS ===
+wip/checkpoint-before-security
+M src/components/dashboard/content-create-button.tsx
+ M src/lib/content/article-execution-plan-binding-v1.ts
+ D src/lib/content/article-generation-contract.test.ts.backup_20260921_162207
+ D src/lib/content/article-generation-contract.ts.backup_20260921_162207
+ D src/lib/content/business-fact-repository.ts.backup_finish_stage3d1_20260915_213529
+ D src/lib/content/business-fact-repository.ts.backup_stage3d1_20260915_213224
+ D src/lib/content/business-facts.ts.backup_stage2a_20260914_233820
+ D src/lib/content/content-quality.ts.backup_content_gate_20260914_232336
+ D src/lib/content/content-quality.ts.backup_dynamic_final_20260914_191150
+ M src/lib/content/deterministic-definition-replan-v1.test.ts
+ D src/lib/content/evidence-snapshot.ts.backup_stage2b_20260914_234511
+ D src/lib/content/fact-discovery-batch.test.ts.backup_atomic_20260915_131308
+ D src/lib/content/fact-discovery.ts.backup_503_20260915_125840
+ D src/lib/content/fact-discovery.ts.backup_atomic_20260915_131308
+ D src/lib/content/fact-discovery.ts.backup_batch_20260915_130516
+ D src/lib/content/fact-discovery.ts.backup_stage3c_20260915_132016
+ D src/lib/content/fact-discovery.ts.backup_stage3c_v2_20260915_132417
+ D src/lib/content/fact-discovery.ts.backup_stage3c_v2_20260915_132742
+ D src/lib/content/fact-discovery.ts.backup_stage3c_v2_20260915_132932
+ D src/lib/content/final-content-plan.test.ts.backup_testfix2_20260914_190609
+ D src/lib/content/final-content-plan.ts.backup_dynamic_headings_20260914_191005
+ D src/lib/content/final-content-plan.ts.backup_intelligence_ui_20260914_191754
+ D src/lib/content/final-content-plan.ts.backup_testfix2_20260914_190609
+ D src/lib/content/gemini-generator.ts.backup_20260921_161001
+ D src/lib/content/gemini-generator.ts.backup_20260921_162207
+ D src/lib/content/gemini-generator.ts.backup_20260921_172409
+ D src/lib/content/gemini-generator.ts.backup_20260921_173445
+ D src/lib/content/gemini-generator.ts.backup_20260921_175517
+ D src/lib/content/gemini-generator.ts.backup_20260921_190336
+ D src/lib/content/gemini-generator.ts.backup_content_gate_20260914_232336
+ D src/lib/content/gemini-generator.ts.backup_dynamic_final_20260914_191150
+ D src/lib/content/gemini-generator.ts.backup_provider_20260919_164552
+ D src/lib/content/gemini-generator.ts.backup_transient_20260919_164812
+ D src/lib/content/gemini-master-section-capability.test.ts.backup_20260921_162207
+ M src/lib/content/live-evidence-negative-claim-target-v1.test.ts
+ M src/lib/content/live-evidence-verification.ts
+ M src/lib/content/master-article-composer.ts
+ M src/lib/content/master-article-critic-repair-execution.ts
+ M src/lib/content/master-article-semantic-critic-prompt.ts
+ D src/lib/content/master-article-semantic-critic-prompt.ts.backup_20260921_181612
+ D src/lib/content/master-article-semantic-critics.test.ts.backup_20260921_175706
+ D src/lib/content/master-article-semantic-critics.ts.backup_20260921_181612
+ D src/lib/content/master-runtime-adapter.ts.backup_20260921_180919
+ D src/lib/content/master-runtime-adapter.ts.backup_20260921_181219
+ D src/lib/content/master-runtime-orchestrator.ts.backup_20260921_180919
+ M src/lib/content/master-section-repair-prompt.ts
+ D src/lib/content/master-section-repair-prompt.ts.backup_20260921_183712
+ D src/lib/content/master-section-repair.test.ts.backup_20260921_173843
+ D src/lib/content/master-section-repair.test.ts.backup_20260921_174012
+ D src/lib/content/master-section-repair.test.ts.backup_20260921_174222
+Modified file count: 132
+
+=== CONTENT DIR FILE COUNT ===
+Total .ts/.tsx files in src/lib/content: 436
+Test files: 289
+Non-test files: 147
+
+=== QUARANTINE STATUS ===
+Quarantine exists: True
+Quarantine file count: 266
+
+=== KNOWN PRODUCTION FILES — SIZE & EXISTS ===
+  FOUND src/lib/content/service.ts (4246 lines)
+  FOUND src/lib/content/gemini-generator.ts (2641 lines)
+  FOUND src/lib/content/master-section-prompt.ts (153 lines)
+  FOUND src/lib/content/master-section-repair-prompt.ts (347 lines)
+  FOUND src/lib/content/master-section-context.ts (779 lines)
+  FOUND src/lib/content/master-section-repair.ts (2296 lines)
+  FOUND src/lib/content/article-generation-contract.ts (378 lines)
+  FOUND src/lib/content/article-template-policy-v1.ts (1404 lines)
+  FOUND src/lib/content/serp-replay.ts (2779 lines)
+  FOUND src/lib/content/publish-gate.ts (471 lines)
+  FOUND src/lib/content/production-final-article-readiness-adapter-v1.ts (908 lines)
+  FOUND src/lib/content/article-recovery-orchestrator-v1.ts (398 lines)
+  FOUND src/lib/content/serp-replay-artifact.ts (268 lines)
+  FOUND src/lib/content/article-analyzer.ts (953 lines)
+  MISSING article-structure-canonical-v1.ts
+  FOUND src/lib/content/production-master-live-stage-planner.ts (7468 lines)
+  FOUND src/lib/content/content-run-budget-v1.ts (614 lines)
+
+=== PUBLISH-GATE IMPORT CHAIN (prisma coupling check) ===
+publish-gate.ts found at: src/lib/content/publish-gate.ts
+-> src/lib/content/serp-replay-fingerprint.ts
+
+=== SERP-REPLAY-ARTIFACT PRISMA IMPORTS ===
+File: src/lib/content/serp-replay-artifact.ts
+  L9: Prisma,
+  L10: } from "@prisma/client";
+  L13: prisma,
+  L14: } from "@/lib/prisma";
+  L71: ): Prisma.InputJsonValue {
+  L76: ) as Prisma.InputJsonValue;
+  L119: return prisma.serpReplayArtifact.create({
+  L212: return prisma.serpReplayArtifact.create({
+  L250: Prisma.DbNull,
+  L253: Prisma.DbNull,
+  L256: Prisma.DbNull,
+  L263: : Prisma.DbNull,
+
+=== ARTICLE-RECOVERY-ORCHESTRATOR RECOVERABLE SET ===
+  L210:  */
+  L211: const RECOVERABLE_ARTICLE_FAILURES_V2 =
+  L212:   new Set<string>();
+  L213: 
+
+=== EXISTING CONTINUITY DOCS ===
+  STATE.md: MISSING
+  NEXT.md: MISSING
+  DECISIONS.md: MISSING
+  CLEANUP-MANIFEST.md: MISSING
+  TEST-RESULTS.md: MISSING
+
+=== TSCONFIG PATHS ===
+  strict: True
+  target: ES2017
+  moduleResolution: bundler
+  path aliases: ['@/*']
+
+=== API ROUTE ENTRYPOINT ===
+  src/app/api/content/briefs/route.ts
+  src/app/api/content/briefs/[id]/evidence/route.ts
+  src/app/api/content/briefs/[id]/generate-article/route.ts
+
+=== DONE ===
+
+
+=== PHASE 2 DIAGNOSTIC: FINGERPRINT FILE ===
+Lines: 58
+  L1: import { createHash } from "node:crypto";
+  L3: export interface SerpReplayArticleFingerprintInputV1 {
+  L17: export function buildSerpReplayArticleFingerprintV1(
+--- first 60 lines ---
+L1: import { createHash } from "node:crypto";
+L2: 
+L3: export interface SerpReplayArticleFingerprintInputV1 {
+L4:   title:
+L5:     string;
+L6: 
+L7:   metaDescription:
+L8:     string;
+L9: 
+L10:   h1:
+L11:     string;
+L12: 
+L13:   bodyMarkdown:
+L14:     string;
+L15: }
+L16: 
+L17: export function buildSerpReplayArticleFingerprintV1(
+L18:   article:
+L19:     Readonly<
+L20:       SerpReplayArticleFingerprintInputV1
+L21:     >
+L22: ): string {
+L23:   /*
+L24:    * Fixed field order is intentional.
+L25:    *
+L26:    * The fingerprint binds a replay artifact to the exact article
+L27:    * representation that was compared.
+L28:    */
+L29:   const canonical =
+L30:     JSON.stringify({
+L31:       version:
+L32:         "SERP_REPLAY_ARTICLE_FINGERPRINT_V1",
+L33: 
+L34:       title:
+L35:         article.title,
+L36: 
+L37:       metaDescription:
+L38:         article.metaDescription,
+L39: 
+L40:       h1:
+L41:         article.h1,
+L42: 
+L43:       bodyMarkdown:
+L44:         article.bodyMarkdown,
+L45:     });
+L46: 
+L47: 
+L48:   return createHash(
+L49:     "sha256"
+L50:   )
+L51:     .update(
+L52:       canonical,
+L53:       "utf8"
+L54:     )
+L55:     .digest(
+L56:       "hex"
+L57:     );
+L58: }
+
+=== WHO IMPORTS serp-replay-artifact.ts ===
+  src/lib/content/serp-replay-artifact.test.ts
+  src/lib/content/service.ts
+  src/lib/content/stage9m-final-e2e-audit.test.ts
+
+=== WHO IMPORTS prisma DIRECTLY in src/lib/content ===
+  src/lib/content/business-fact-repository.ts
+  src/lib/content/repository.ts
+  src/lib/content/evidence-drift.ts
+  src/lib/content/fact-discovery.ts
+  src/lib/content/content-suggestions-v1.ts
+  src/lib/content/crawl-cannibalization-context.ts
+  src/lib/content/evidence-snapshot.ts
+  src/lib/content/seo-strategy.ts
+  src/lib/content/serp-replay-artifact.ts
+  src/lib/content/internal-link-candidates-v1.ts
+  src/lib/content/keyword-context.ts
+  src/lib/content/service.ts
+
+=== PUBLISH-GATE TEST FILE EXISTS? ===
+  src/lib/content/publish-gate.test.ts (385 lines)
+
+=== DONE ===
