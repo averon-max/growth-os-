@@ -939,6 +939,15 @@ const trigger: SectionRepairTriggerV1 =
   // CLEAN SECTION — NO REPAIR
   // ========================================================
 
+  console.info("[writer section decision]", {
+    index: contract.sectionIndex,
+    trigger,
+    generatedWords: countSectionWordsV1(section.bodyMarkdown),
+    targetMinWords: sectionTargetWords?.min ?? null,
+    reconciliation: initialReconciliation.status,
+    initialSemantic: initialSemantic?.status ?? null,
+  });
+
   if (/* DEPTH_MODEL_REPAIR_WIRING_V1 */
   trigger === "NONE") {
     if (!initialSemantic) {
@@ -2250,6 +2259,12 @@ const trigger: SectionRepairTriggerV1 =
   const boundedRepairAttemptCount =
     repairAttemptCount;
 
+  console.info("[writer section accepted]", {
+    index: contract.sectionIndex,
+    finalWords: countSectionWordsV1(repaired.bodyMarkdown),
+    repairOperations: repairAttemptCount,
+    semantic: finalSemantic.status,
+  });
 
   return Object.freeze({
     section: repaired,

@@ -11,6 +11,8 @@ export default defineConfig({
       // Integration tests — require live DATABASE_URL and real persisted data
       // Run separately with: DATABASE_URL=... npx vitest run --project=integration
       "**/node_modules/**",
+      "**/.growth-os-tmp/**",
+      ".growth-os-tmp/**",
       "**/saved-recovery-authority-audit.test.ts",
       "**/historical-claim-support-audit.test.ts",
       "**/historical-article-final-decision.test.ts",

@@ -8,6 +8,7 @@ import {
 } from "./content-provider-request-context-v1";
 
 import OpenAI from "openai";
+import { ContentRunBudgetExceededErrorV1 } from "./content-run-budget-v1";
 import type {
   SerpReplayPairwiseGeneratorV1,
 } from "./serp-replay";
@@ -702,6 +703,10 @@ async function callOpenAiApi(
     } catch (
       cause
     ) {
+      if (cause instanceof ContentRunBudgetExceededErrorV1) {
+        throw cause;
+      }
+
       const status =
         typeof cause ===
           "object" &&
