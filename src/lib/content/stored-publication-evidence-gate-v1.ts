@@ -1,153 +1,128 @@
-import {
-  findVerifiedExcerptCandidateV1,
-} from "./live-evidence-verification";
+import { findVerifiedExcerptCandidateV1 } from "./live-evidence-verification";
 
-type RecordValue = Record<string, unknown>;
+type JsonRecord = Record<string, unknown>;
 
-function asRecord(value: unknown): RecordValue | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as RecordValue)
-    : null;
+function fail(reason: string): never {
+  throw new Error("PUBLICATION_EVIDENCE_INVALID:" + reason);
+}
+
+function requireRecord(value: unknown, reason: string): JsonRecord {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return fail(reason);
+  }
+  return value as JsonRecord;
+}
+
+function requireArray(value: unknown, reason: string): readonly unknown[] {
+  if (!Array.isArray(value)) return fail(reason);
+  return value;
+}
+
+function requireString(value: unknown, reason: string): string {
+  if (typeof value !== "string" || !value.trim()) return fail(reason);
+  return value;
 }
 
 /**
- * The stored execution plan is the post-evidence-contraction authority.
- * Claims belonging only to DEFERRED_NO_EVIDENCE or NOT_APPLICABLE
- * sections are not part of the final article and must not veto approval.
- *
- * Fail closed for EVERY factual claim/evidence reference actually owned
- * by a WRITABLE section. Do not treat a loose graph excerpt as enough:
- * the section must reference the matching verified evidence ID.
+ * The persisted execution plan is authoritative for post-research section
+ * scope. Deferred claims cannot block an article that does not use them.
+ * Every claim and evidence referenced by a writable section must still
+ * have publication-grade evidence in the immutable stored runtime.
  */
 export function assertStoredPublicationEvidenceV1(plan: unknown): void {
-  const fail = (reason: string): never => {
-    throw new Error(`PUBLICATION_EVIDENCE_INVALID:${reason}`);
-  };
+  const snapshot = requireRecord(plan, "SNAPSHOT_MISSING");
+  const runtime = requireRecord(snapshot.masterRuntime, "EVIDENCE_GRAPH_MISSING");
+  const ledger = requireRecord(runtime.claimLedger, "EVIDENCE_GRAPH_MISSING");
+  const graph = requireRecord(runtime.evidenceGraph, "EVIDENCE_GRAPH_MISSING");
+  const execution = requireRecord(snapshot.articleExecutionPlan, "EXECUTION_PLAN_MISSING");
+  const claimEntries = requireArray(ledger.claims, "EVIDENCE_GRAPH_MISSING");
+  const evidenceEntries = requireArray(graph.claimEvidence, "EVIDENCE_GRAPH_MISSING");
+  const sourceEntries = requireArray(graph.sources, "EVIDENCE_GRAPH_MISSING");
+  const sectionEntries = requireArray(execution.sections, "EXECUTION_PLAN_MISSING");
 
-  const snapshot = asRecord(plan);
-  if (!snapshot) fail("SNAPSHOT_MISSING");
-
-  const runtime = asRecord(snapshot.masterRuntime);
-  const ledger = asRecord(runtime?.claimLedger);
-  const graph = asRecord(runtime?.evidenceGraph);
-  const execution = asRecord(snapshot.articleExecutionPlan);
-
-  if (
-    !Array.isArray(ledger?.claims) ||
-    !Array.isArray(graph?.claimEvidence) ||
-    !Array.isArray(graph?.sources)
-  ) {
-    fail("EVIDENCE_GRAPH_MISSING");
-  }
-  if (!execution || !Array.isArray(execution.sections)) {
-    fail("EXECUTION_PLAN_MISSING");
+  const claims = new Map<string, JsonRecord>();
+  for (const entry of claimEntries) {
+    const claim = requireRecord(entry, "CLAIM_INVALID");
+    const id = requireString(claim.id, "CLAIM_INVALID");
+    requireString(claim.text, "CLAIM_INVALID");
+    if (claims.has(id)) fail("CLAIM_ID_DUPLICATED");
+    claims.set(id, claim);
   }
 
-  const claims = new Map<string, RecordValue>();
-  for (const value of ledger.claims) {
-    const claim = asRecord(value);
-    if (!claim || typeof claim.id !== "string" ||
-        !claim.id.trim() || typeof claim.text !== "string") {
-      fail("CLAIM_INVALID");
-    }
-    if (claims.has(claim.id)) fail("CLAIM_ID_DUPLICATED");
-    claims.set(claim.id, claim);
-  }
-
-  const evidenceById = new Map<string, RecordValue>();
-  for (const value of graph.claimEvidence) {
-    const evidence = asRecord(value);
-    if (!evidence || typeof evidence.id !== "string" ||
-        !evidence.id.trim()) fail("EVIDENCE_INVALID");
-    if (evidenceById.has(evidence.id)) fail("EVIDENCE_ID_DUPLICATED");
-    evidenceById.set(evidence.id, evidence);
+  const evidenceById = new Map<string, JsonRecord>();
+  for (const entry of evidenceEntries) {
+    const evidence = requireRecord(entry, "EVIDENCE_INVALID");
+    const id = requireString(evidence.id, "EVIDENCE_INVALID");
+    if (evidenceById.has(id)) fail("EVIDENCE_ID_DUPLICATED");
+    evidenceById.set(id, evidence);
   }
 
   const sourceIds = new Set<string>();
-  for (const value of graph.sources) {
-    const source = asRecord(value);
-    if (!source || typeof source.id !== "string" ||
-        !source.id.trim() || typeof source.url !== "string") {
-      fail("SOURCE_INVALID");
-    }
+  for (const entry of sourceEntries) {
+    const source = requireRecord(entry, "SOURCE_INVALID");
+    const id = requireString(source.id, "SOURCE_INVALID");
+    const url = requireString(source.url, "SOURCE_INVALID");
     let parsed: URL;
     try {
-      parsed = new URL(source.url);
+      parsed = new URL(url);
     } catch {
       fail("SOURCE_URL_INVALID");
     }
-    if (!["http:", "https:"].includes(parsed.protocol)) {
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
       fail("SOURCE_URL_INVALID");
     }
-    sourceIds.add(source.id);
+    if (sourceIds.has(id)) fail("SOURCE_ID_DUPLICATED");
+    sourceIds.add(id);
   }
 
-  const writable = execution.sections.filter((value: unknown) => {
-    const section = asRecord(value);
-    if (!section || typeof section.state !== "string") {
-      fail("SECTION_INVALID");
+  const writable: JsonRecord[] = [];
+  for (const entry of sectionEntries) {
+    const section = requireRecord(entry, "SECTION_INVALID");
+    const state = requireString(section.state, "SECTION_INVALID");
+    if (state === "WRITABLE") {
+      writable.push(section);
+    } else if (state !== "DEFERRED_NO_EVIDENCE" && state !== "NOT_APPLICABLE") {
+      fail("SECTION_STATE_INVALID");
     }
-    return section.state === "WRITABLE";
-  });
-
+  }
   if (writable.length === 0) fail("NO_WRITABLE_SECTIONS");
 
   const requiredClaimIds = new Set<string>();
   const referencedEvidenceIds = new Set<string>();
-
-  for (const value of writable) {
-    const section = asRecord(value);
-    if (!section || !Array.isArray(section.requiredClaimIds) ||
-        !Array.isArray(section.evidenceIds)) {
-      fail("SECTION_AUTHORITY_INVALID");
+  for (const section of writable) {
+    for (const value of requireArray(section.requiredClaimIds, "SECTION_AUTHORITY_INVALID")) {
+      requiredClaimIds.add(requireString(value, "CLAIM_REFERENCE_INVALID"));
     }
-
-    for (const id of section.requiredClaimIds) {
-      if (typeof id !== "string" || !id.trim()) fail("CLAIM_REFERENCE_INVALID");
-      requiredClaimIds.add(id);
-    }
-    for (const id of section.evidenceIds) {
-      if (typeof id !== "string" || !id.trim()) fail("EVIDENCE_REFERENCE_INVALID");
-      referencedEvidenceIds.add(id);
+    for (const value of requireArray(section.evidenceIds, "SECTION_AUTHORITY_INVALID")) {
+      referencedEvidenceIds.add(requireString(value, "EVIDENCE_REFERENCE_INVALID"));
     }
   }
 
-  const validReferencedClaims = new Set<string>();
-
+  const verifiedReferencedClaims = new Set<string>();
   for (const evidenceId of referencedEvidenceIds) {
     const evidence = evidenceById.get(evidenceId);
-    if (!evidence || typeof evidence.claimId !== "string" ||
-        typeof evidence.sourceId !== "string" ||
-        !sourceIds.has(evidence.sourceId)) {
-      fail(`EVIDENCE_REFERENCE_INVALID:${evidenceId}`);
-    }
+    if (!evidence) fail("EVIDENCE_REFERENCE_INVALID:" + evidenceId);
+    const claimId = requireString(evidence.claimId, "EVIDENCE_REFERENCE_INVALID:" + evidenceId);
+    const sourceId = requireString(evidence.sourceId, "EVIDENCE_REFERENCE_INVALID:" + evidenceId);
+    if (!sourceIds.has(sourceId)) fail("EVIDENCE_REFERENCE_INVALID:" + evidenceId);
 
-    const claim = claims.get(evidence.claimId);
-    if (!claim || claim.status !== "VERIFIED" ||
-        typeof claim.text !== "string") {
-      fail(`CLAIM_UNVERIFIED:${evidence.claimId}`);
+    const claim = claims.get(claimId);
+    if (!claim || claim.status !== "VERIFIED") fail("CLAIM_UNVERIFIED:" + claimId);
+    const claimText = requireString(claim.text, "CLAIM_UNVERIFIED:" + claimId);
+    if (evidence.relation !== "SUPPORTS" || evidence.kind !== "VERIFIED_EXCERPT") {
+      fail("EVIDENCE_UNSUPPORTED:" + evidenceId);
     }
-
-    if (
-      evidence.relation !== "SUPPORTS" ||
-      evidence.kind !== "VERIFIED_EXCERPT" ||
-      typeof evidence.excerpt !== "string" ||
-      findVerifiedExcerptCandidateV1({
-        claimText: claim.text,
-        bodyText: evidence.excerpt,
-      }) === null
-    ) {
-      fail(`EVIDENCE_UNSUPPORTED:${evidenceId}`);
+    const excerpt = requireString(evidence.excerpt, "EVIDENCE_UNSUPPORTED:" + evidenceId);
+    if (findVerifiedExcerptCandidateV1({ claimText, bodyText: excerpt }) === null) {
+      fail("EVIDENCE_UNSUPPORTED:" + evidenceId);
     }
-
-    validReferencedClaims.add(evidence.claimId);
+    verifiedReferencedClaims.add(claimId);
   }
 
   for (const claimId of requiredClaimIds) {
     const claim = claims.get(claimId);
-    if (!claim || claim.status !== "VERIFIED" ||
-        !validReferencedClaims.has(claimId)) {
-      fail(`REQUIRED_CLAIM_UNSUPPORTED:${claimId}`);
+    if (!claim || claim.status !== "VERIFIED" || !verifiedReferencedClaims.has(claimId)) {
+      fail("REQUIRED_CLAIM_UNSUPPORTED:" + claimId);
     }
   }
 }
