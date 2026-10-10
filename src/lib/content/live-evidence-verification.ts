@@ -2882,6 +2882,84 @@ export async function collectEvidenceClaimRecoveryCandidatesV1({
 }
 
 
+/*
+ * Preserve more than one independently fetched, deterministically
+ * verified source per factual claim. The previous single-winner
+ * selection discarded all but one valid excerpt even when real
+ * independent sources were present.
+ *
+ * This ranks existing VERIFIED candidates; it does not alter the
+ * strict numeric, negation or lexical evidence verifier.
+ */
+function evidenceHostV1(url: string): string | null {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
+export function selectVerifiedClaimSourcesV1({
+  claimText,
+  sources,
+  bodies,
+  maxSources = 3,
+}: {
+  claimText: string;
+  sources: readonly Readonly<{ id: string; url: string }>[];
+  bodies: ReadonlyMap<string, string>;
+  maxSources?: number;
+}): readonly Readonly<{
+  sourceId: string;
+  sourceHost: string;
+  excerpt: string;
+  coverage: number;
+}>[] {
+  const candidates: {
+    sourceId: string;
+    sourceHost: string;
+    excerpt: string;
+    coverage: number;
+  }[] = [];
+
+  for (const source of sources) {
+    const bodyText = bodies.get(source.id);
+    const sourceHost = evidenceHostV1(source.url);
+    if (!bodyText || !sourceHost) continue;
+
+    const candidate = findVerifiedExcerptCandidateV1({
+      claimText,
+      bodyText,
+    });
+    if (!candidate) continue;
+
+    candidates.push({
+      sourceId: source.id,
+      sourceHost,
+      excerpt: candidate.excerpt,
+      coverage: candidate.coverage,
+    });
+  }
+
+  candidates.sort((left, right) =>
+    right.coverage - left.coverage ||
+    left.sourceId.localeCompare(right.sourceId)
+  );
+
+  const selected: typeof candidates = [];
+  const seenHosts = new Set<string>();
+  const limit = Math.max(1, Math.min(3, Math.floor(maxSources) || 1));
+
+  for (const candidate of candidates) {
+    if (seenHosts.has(candidate.sourceHost)) continue;
+    selected.push(candidate);
+    seenHosts.add(candidate.sourceHost);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}
+
 export async function enrichLiveEvidenceGraphV1({
   graph,
   claims,
@@ -2916,124 +2994,57 @@ export async function enrichLiveEvidenceGraphV1({
     ];
 
 
-  for (
-    const claim
-    of claims
-  ) {
-    let best:
-      | {
-          sourceId:
-            string;
-
-          excerpt:
-            string;
-
-          coverage:
-            number;
-        }
-      | null =
-        null;
-
-
-    for (
-      const source
-      of graph.sources
-    ) {
-      const bodyText =
-        bodies.get(
-          source.id
-        );
-
-
-      if (!bodyText) {
-        continue;
-      }
-
-
-      const candidate =
-        findVerifiedExcerptCandidateV1({
-          claimText:
-            claim.text,
-
-          bodyText,
-        });
-
-
-      if (!candidate) {
-        continue;
-      }
-
-
-      if (
-        !best ||
-        candidate.coverage >
-          best.coverage
-      ) {
-        best = {
-          sourceId:
-            source.id,
-
-          excerpt:
-            candidate.excerpt,
-
-          coverage:
-            candidate.coverage,
-        };
-      }
-    }
-
-
-    if (!best) {
-      continue;
-    }
-
-
-    const id =
-      `verified-excerpt-${stableHash(
-        [
-          claim.id,
-          best.sourceId,
-          best.excerpt,
-        ].join(
-          "\u0000"
+  for (const claim of claims) {
+    const priorVerifiedHosts = new Set(
+      verified
+        .filter(
+          (item) =>
+            item.claimId === claim.id &&
+            item.kind === "VERIFIED_EXCERPT" &&
+            item.relation === "SUPPORTS" &&
+            Boolean(item.excerpt?.trim())
         )
-      )}`;
-
-
-    if (
-      existingIds.has(
-        id
-      )
-    ) {
-      continue;
-    }
-
-
-    existingIds.add(
-      id
+        .map((item) => {
+          const source = graph.sources.find(
+            (candidate) => candidate.id === item.sourceId
+          );
+          return source ? evidenceHostV1(source.url) : null;
+        })
+        .filter((host): host is string => Boolean(host))
     );
 
+    if (priorVerifiedHosts.size >= 3) continue;
 
-    verified.push({
-      id,
-
-      claimId:
-        claim.id,
-
-      sourceId:
-        best.sourceId,
-
-      relation:
-        "SUPPORTS",
-
-      kind:
-        "VERIFIED_EXCERPT",
-
-      excerpt:
-        best.excerpt,
+    const candidates = selectVerifiedClaimSourcesV1({
+      claimText: claim.text,
+      sources: graph.sources,
+      bodies,
+      maxSources: 3,
     });
-  }
 
+    for (const candidate of candidates) {
+      if (priorVerifiedHosts.has(candidate.sourceHost)) continue;
+
+      const id = `verified-excerpt-${stableHash(
+        [claim.id, candidate.sourceId, candidate.excerpt].join("\u0000")
+      )}`;
+
+      if (existingIds.has(id)) continue;
+
+      existingIds.add(id);
+      priorVerifiedHosts.add(candidate.sourceHost);
+      verified.push({
+        id,
+        claimId: claim.id,
+        sourceId: candidate.sourceId,
+        relation: "SUPPORTS",
+        kind: "VERIFIED_EXCERPT",
+        excerpt: candidate.excerpt,
+      });
+
+      if (priorVerifiedHosts.size >= 3) break;
+    }
+  }
 
   return {
     sources:
