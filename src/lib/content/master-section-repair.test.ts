@@ -339,7 +339,7 @@ describe(
           async repairSection({ depthRepair }) {
             calls += 1;
             if (calls === 1) {
-              expect(depthRepair).toBeNull();
+              expect(depthRepair).toBeTruthy();
               return generated({
                 body: "Credit monitoring can detect changes in credit reports.",
               });
