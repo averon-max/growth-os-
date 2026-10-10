@@ -328,9 +328,9 @@ export function auditArticle({
    */
   const proseOnly =
     article.bodyMarkdown
-      .replace(/```[\s\S]*?```/g, " ")
-      .replace(/`[^`\n]*`/g, " ")
-      .replace(/https?:\/\/[^\s)]+/g, " ");
+      .replace(/```[\s\S]*?```/g, "[code]")
+      .replace(/`[^`\n]*`/g, "[code]")
+      .replace(/https?:\/\/[^\s)]+/g, "[url]");
 
   if (/ {3,}/.test(proseOnly)) {
     issues.push("BROKEN_ARTICLE_EXCESSIVE_SPACES");
@@ -372,6 +372,10 @@ export function auditArticle({
 
   let score =
     100;
+
+  // Structural/spacing defects are blockers in Content Gate.
+  // Their diagnostic score must not remain a misleading 100.
+  score -= issues.length * 15;
 
 
   const fullArticleText =
