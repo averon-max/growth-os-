@@ -315,6 +315,51 @@ function semantic({
 describe(
   "Targeted Section Repair V1",
   () => {
+    it("expands a short section after a prior reconciliation model repair", async () => {
+      const base = contract();
+      const withDepth = {
+        ...base,
+        executionPlanAuthority: {
+          targetWords: { min: 40, preferred: 55, max: 110 },
+        },
+      } as SectionGenerationContractV1;
+
+      let calls = 0;
+      const result = await verifyAndRepairGeneratedSectionV1({
+        contract: withDepth,
+        section: generated({
+          body: "Credit monitoring detects report changes.",
+          evidence: [],
+        }),
+        generator: {
+          modelName: "test-model",
+          async verifySectionClaims({ section }) {
+            return semantic({ section, classification: "SUPPORTED" });
+          },
+          async repairSection({ depthRepair }) {
+            calls += 1;
+            if (calls === 1) {
+              expect(depthRepair).toBeNull();
+              return generated({
+                body: "Credit monitoring can detect changes in credit reports.",
+              });
+            }
+            expect(depthRepair).toBeTruthy();
+            return generated({
+              body: Array.from({ length: 9 }, () =>
+                "Credit monitoring can detect changes in a credit report."
+              ).join(" "),
+            });
+          },
+        },
+      });
+
+      expect(calls).toBe(2);
+      expect(result.reconciliation.status).toBe("PASS");
+      expect(result.semanticVerification.status).not.toBe("BLOCK");
+      expect(result.repair.attemptCount).toBeGreaterThanOrEqual(2);
+    });
+
     it(
       "does not repair an already clean section",
       async () => {
