@@ -293,6 +293,53 @@ export function auditArticle({
         )
     ).length;
 
+  /*
+   * FINAL_ARTICLE_TEXT_INTEGRITY_V1
+   *
+   * Audit the persisted page-level H1 together with rendered body
+   * headings. Comparing H2 headings only with each other previously
+   * allowed an H1/H2 duplicate to score 100 and reach IN_REVIEW.
+   */
+  const normalizedPageH1 =
+    normalizeHeadingKeyV1(article.h1);
+
+  const bodyHeadingKeys =
+    lines
+      .map((line) => /^#{1,6}\s+(.+)$/.exec(line.trim()))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => normalizeHeadingKeyV1(match[1]))
+      .filter(Boolean);
+
+  if (
+    normalizedPageH1 &&
+    bodyHeadingKeys.includes(normalizedPageH1)
+  ) {
+    issues.push("DUPLICATE_H1_BODY_HEADING");
+  }
+
+  if (new Set(bodyHeadingKeys).size !== bodyHeadingKeys.length) {
+    issues.push("DUPLICATE_BODY_HEADING");
+  }
+
+  /*
+   * Detect unambiguous spacing defects, not dictionary-based
+   * spelling guesses. Strip fenced/inline code and URLs so a URL or
+   * code literal cannot be misclassified as broken prose.
+   */
+  const proseOnly =
+    article.bodyMarkdown
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`[^`\n]*`/g, " ")
+      .replace(/https?:\/\/[^\s)]+/g, " ");
+
+  if (/ {3,}/.test(proseOnly)) {
+    issues.push("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+  }
+
+  if (/\p{L},(?=\p{Ll})/u.test(proseOnly)) {
+    issues.push("BROKEN_ARTICLE_COMMA_SPACING");
+  }
+
   const words =
     countWords(
       article.bodyMarkdown
