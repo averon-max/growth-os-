@@ -171,6 +171,18 @@ describe(
     );
 
 
+    it("classifies terminal semantic exhaustion correctly", () => {
+      expect(
+        classifyRejectedRecoveryV1(
+          new Error("SECTION_TARGETED_REPAIR_EXHAUSTED:SEMANTIC")
+        )
+      ).toMatchObject({
+        failureClass: "SEMANTIC_REQUIRED_FAILURE",
+        owner: "SEMANTIC",
+        autoRetryAllowed: false,
+      });
+    });
+
     it(
       "routes Final Readiness to its owning stage",
       () => {
