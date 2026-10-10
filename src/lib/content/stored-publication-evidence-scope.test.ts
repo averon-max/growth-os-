@@ -70,8 +70,7 @@ describe("Stored publication evidence must match writable scope", () => {
   });
 
   it("fails closed when the scoped execution plan is unavailable", () => {
-    const input: { articleExecutionPlan?: unknown } & ReturnType<typeof snapshot> =
-      snapshot();
+    const input: { articleExecutionPlan?: unknown } = snapshot();
     delete input.articleExecutionPlan;
     expect(() => assertStoredPublicationEvidenceV1(input)).toThrow(
       "PUBLICATION_EVIDENCE_INVALID:EXECUTION_PLAN_MISSING"
