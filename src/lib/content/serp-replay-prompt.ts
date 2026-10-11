@@ -407,8 +407,15 @@ function articlePayload(
           heading:
             section.heading,
 
-          bodyMarkdown:
-            section.bodyMarkdown,
+          // The canonical composed article already contains this
+          // section beneath its H2. Avoid sending the same prose twice.
+          // Preserve the section body separately when the canonical
+          // article does not contain it.
+          ...(input.article.bodyMarkdown.includes(
+            `## ${section.heading}\n\n${section.bodyMarkdown.trim()}`
+          )
+            ? {}
+            : { bodyMarkdown: section.bodyMarkdown }),
 
           coveredQueryNodeIds:
             section.coveredQueryNodeIds,
@@ -544,22 +551,10 @@ export function buildSerpReplayPairwisePrompt(
     "- More headings or more media is not automatically better.",
     "",
     "ARTICLE:",
-    JSON.stringify(
-      articlePayload(
-        input
-      ),
-      null,
-      2
-    ),
+    JSON.stringify(articlePayload(input)),
     "",
     "COMPETITOR OBSERVATIONS:",
-    JSON.stringify(
-      competitorPayload(
-        input
-      ),
-      null,
-      2
-    ),
+    JSON.stringify(competitorPayload(input)),
     "",
     "Return JSON only.",
     "Return exactly this top-level shape and no additional fields:",

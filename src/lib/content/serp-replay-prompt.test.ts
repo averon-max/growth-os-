@@ -169,6 +169,35 @@ describe(
   "SERP Replay Pairwise Prompt",
   () => {
     it(
+      "does not duplicate section prose already in canonical article",
+      () => {
+        const original = input();
+        const complete = {
+          ...original,
+          article: {
+            ...original.article,
+            bodyMarkdown:
+              ["## How Credit Monitoring Works", "", "Section body."].join(String.fromCharCode(10)),
+          },
+        };
+
+        const prompt = buildSerpReplayPairwisePrompt(complete);
+
+        expect(prompt.split("Section body.").length - 1).toBe(1);
+        expect(prompt).toContain('"sectionIndex":0');
+        expect(prompt).toContain('"evidenceCatalog"');
+      }
+    );
+
+    it(
+      "retains section prose missing from the canonical article",
+      () => {
+        const prompt = buildSerpReplayPairwisePrompt(input());
+        expect(prompt).toContain('"bodyMarkdown":"Section body."');
+      }
+    );
+
+    it(
       "withholds SERP rank from the comparison payload",
       () => {
         const prompt =
