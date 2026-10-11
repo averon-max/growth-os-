@@ -156,6 +156,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
 
   const result = {
     version: "KEYWORD_INTELLIGENCE_RESEARCH_V2" as const,
+    approvedResearchKey: cacheKey,
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
     observed: cleanup.observed,
