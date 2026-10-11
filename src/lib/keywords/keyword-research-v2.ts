@@ -116,7 +116,18 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const cleanup = prepareKeywordOpportunitiesV2({
     seed, industry: website.business.industry, observations, publishedKeywords: published, limit,
   });
-  const shortlist = cleanup.clusters.slice(0, 10);
+  const cheapSerpByKeyword = new Map(related.map(row => [
+    row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
+  ] as const));
+  const shortlist = cleanup.clusters
+    .slice(0, 30)
+    .sort((a, b) => {
+      const aInfo = cheapSerpByKeyword.get(a.primary.keyword.trim().toLowerCase());
+      const bInfo = cheapSerpByKeyword.get(b.primary.keyword.trim().toLowerCase());
+      const aEvidence = (aInfo?.features.length ?? 0) + (aInfo?.resultCount !== null && aInfo?.resultCount !== undefined ? 1 : 0);
+      const bEvidence = (bInfo?.features.length ?? 0) + (bInfo?.resultCount !== null && bInfo?.resultCount !== undefined ? 1 : 0);
+      return b.opportunityScore - a.opportunityScore || bEvidence - aEvidence;
+    }).slice(0, 10);
   const serpResults: SerpOpportunityV2[] = [];
   for (const cluster of shortlist.slice(0, deepSerpLimit)) {
     try {
