@@ -1,3 +1,4 @@
+import type { RelatedKeywordResult } from "./dataforseo-provider";
 import {
   validateKeywordOpportunityChoiceV2,
   type KeywordCandidateV2,
@@ -140,4 +141,47 @@ export function parseCachedKeywordResearchV2(
     cacheHit: true,
     aiUsed: v.aiUsed,
   };
+}
+
+/**
+ * Project approved, actually observed candidate metrics into the existing
+ * Content Strategy's bounded 80-keyword input. Winner always goes first,
+ * even when its original score ranks below 80 other candidates.
+ *
+ * No new keyword, difficulty, search volume or trend is synthesized.
+ */
+export function projectApprovedKeywordEvidenceV2(
+  research: KeywordResearchResultV2,
+  max = 80,
+): RelatedKeywordResult[] {
+  const selected = research.selectedKeyword?.trim();
+  if (research.decision.status !== "SELECTED" || !selected) {
+    throw new Error("KEYWORD_V2_WINNER_NOT_SELECTED");
+  }
+  if (!Number.isInteger(max) || max < 1 || max > 80) {
+    throw new Error("KEYWORD_V2_PROJECTION_LIMIT_INVALID");
+  }
+  const normalize = (value: string) => value.trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
+  const key = normalize(selected);
+  const winner = research.candidateSnapshots.find(candidate => normalize(candidate.keyword) === key);
+  if (!winner) throw new Error("KEYWORD_V2_WINNER_NOT_OBSERVED");
+
+  const toRelated = (candidate: KeywordCandidateV2): RelatedKeywordResult => ({
+    keyword: candidate.keyword,
+    searchVolume: candidate.searchVolume,
+    keywordDifficulty: candidate.keywordDifficulty,
+    cpc: candidate.cpc,
+    competitionLevel: null,
+    monthlySearches: [],
+    trend: null,
+  });
+  const remaining = research.candidateSnapshots
+    .filter(candidate => normalize(candidate.keyword) !== key);
+  const seen = new Set<string>();
+  return [winner, ...remaining].filter(candidate => {
+    const normalized = normalize(candidate.keyword);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  }).slice(0, max).map(toRelated);
 }
