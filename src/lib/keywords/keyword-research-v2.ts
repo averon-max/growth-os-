@@ -85,13 +85,6 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const context = await getWebsiteKeywordContext(website.id).catch(() => null);
   const observations: KeywordObservationV2[] = [
     { keyword: seed, searchVolume: null, keywordDifficulty: null, cpc: null, source: "SEED" },
-    ...related.map(keyword => ({
-      keyword: keyword.keyword,
-      searchVolume: keyword.searchVolume,
-      keywordDifficulty: keyword.keywordDifficulty,
-      cpc: keyword.cpc,
-      source: "DATAFORSEO" as const,
-    })),
     ...(context?.topKeywords ?? []).map(keyword => ({
       keyword: keyword.keyword,
       searchVolume: keyword.volume,
@@ -101,6 +94,13 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       position: keyword.position,
       impressions: keyword.impressions,
       clicks: keyword.clicks,
+    })),
+    ...related.map(keyword => ({
+      keyword: keyword.keyword,
+      searchVolume: keyword.searchVolume,
+      keywordDifficulty: keyword.keywordDifficulty,
+      cpc: keyword.cpc,
+      source: "DATAFORSEO" as const,
     })),
   ];
 
