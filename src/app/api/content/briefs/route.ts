@@ -21,6 +21,8 @@ import {
   parseArticleTemplateOverrideV1,
 } from "@/lib/content/article-template-policy-v1";
 
+import { resolveApprovedKeywordPrimaryV2 } from "@/lib/keywords/keyword-decision-authority-v2";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
      * Existing behavior defaults to EXACT_KEYWORD.
      * BEST_OPPORTUNITY must be explicitly requested.
      */
-    const generationPolicy =
+    let generationPolicy =
       parseContentGenerationPolicyV1(
         body
       );
@@ -114,6 +116,63 @@ export async function POST(req: NextRequest) {
     }
 
     const website = await requireWebsiteAccess(user.id, websiteId);
+
+    /*
+     * KEYWORD_INTELLIGENCE_V2_APPROVED_WINNER
+     * The client supplies only a cache key. The server loads the previously
+     * stored research decision and locks the existing EXACT primary gate.
+     * No client-supplied candidate keywords are trusted here.
+     */
+    const approvedResearchKey = (
+      body as { approvedResearchKey?: unknown }
+    ).approvedResearchKey;
+
+    if (approvedResearchKey !== undefined) {
+      if (generationPolicy.mode !== "BEST_OPPORTUNITY" ||
+          typeof approvedResearchKey !== "string" ||
+          approvedResearchKey.length > 512) {
+        return NextResponse.json(
+          { error: "Invalid BEST_OPPORTUNITY research reference",
+            code: "KEYWORD_V2_REFERENCE_INVALID" },
+          { status: 400 }
+        );
+      }
+      const snapshot = await prisma.keywordSuggestionCache.findUnique({
+        where: {
+          normalized_source: {
+            normalized: approvedResearchKey,
+            source: "KEYWORD_INTELLIGENCE_V2",
+          },
+        },
+      });
+      if (!snapshot) {
+        return NextResponse.json(
+          { error: "Approved keyword research not found",
+            code: "KEYWORD_V2_RESEARCH_NOT_FOUND" },
+          { status: 422 }
+        );
+      }
+
+      let primary: string;
+      try {
+        primary = resolveApprovedKeywordPrimaryV2(
+          snapshot.payload, websiteId
+        );
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "Invalid research",
+            code: "KEYWORD_V2_RESEARCH_INVALID" },
+          { status: 422 }
+        );
+      }
+      // Reuse the EXISTING exact keyword lock, which already asserts
+      // downstream primary identity and prevents StagePlanner drift.
+      generationPolicy = parseContentGenerationPolicyV1({
+        generationMode: "EXACT_KEYWORD",
+        topic: primary,
+        exactKeyword: primary,
+      });
+    }
 
     let topic: string;
     let reason: string;
