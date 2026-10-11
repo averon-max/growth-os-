@@ -56,8 +56,6 @@ export function normalizeKeywordV2(value: string): string {
     .replace(/\s+/g, " ").trim();
 }
 
-const KNOWN_CREDIT_BRANDS = new Set(["experian", "equifax", "transunion", "myfico", "lifelock", "identityguard", "aura"]);
-
 const STOP = new Set(["a", "an", "the", "for", "to", "of", "in", "on", "how", "what",
   "is", "are", "do", "does", "i", "my", "vs", "versus", "compare", "comparison",
   "difference", "between", "best", "top", "guide", "review", "reviews", "online"]);
@@ -114,8 +112,12 @@ export function prepareKeywordOpportunitiesV2({
   const published = new Set(publishedKeywords.map(normalizeKeywordV2));
   const retained = new Map<string, KeywordCandidateV2>();
   const excluded: KeywordExclusionV2[] = [];
-
-  for (const item of observations.slice(0, limit)) {
+  let inspected = 0;
+  // Count accepted distinct candidates, not raw rows: seed and GSC rows
+  // must not arbitrarily discard relevant DataForSEO results.
+  for (const item of observations) {
+    if (retained.size >= limit) break;
+    inspected += 1;
     const normalized = normalizeKeywordV2(item.keyword ?? "");
     if (normalized.length < 3 || normalized.length > 180) {
       excluded.push({ keyword: item.keyword, reason: "INVALID_QUERY" });
@@ -137,12 +139,6 @@ export function prepareKeywordOpportunitiesV2({
     }
     if (published.has(normalized)) {
       excluded.push({ keyword: item.keyword, reason: "CANNIBALIZATION" });
-      continue;
-    }
-    const candidateWords = new Set(normalized.split(" "));
-    const seedWords = new Set(normalizeKeywordV2(seed).split(" "));
-    if ([...KNOWN_CREDIT_BRANDS].some(brand => candidateWords.has(brand) && !seedWords.has(brand))) {
-      excluded.push({ keyword: item.keyword, reason: "FOREIGN_BRAND" });
       continue;
     }
     const terms = semanticKey(item.keyword).split(" ").filter(Boolean);
@@ -187,7 +183,7 @@ export function prepareKeywordOpportunitiesV2({
     b.opportunityScore - a.opportunityScore ||
     a.primary.normalized.localeCompare(b.primary.normalized)
   );
-  return { version: "KEYWORD_CLEANUP_V2", observed: Math.min(observations.length, limit),
+  return { version: "KEYWORD_CLEANUP_V2", observed: inspected,
     candidates, clusters, excluded };
 }
 
