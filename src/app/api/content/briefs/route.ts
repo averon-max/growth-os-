@@ -22,7 +22,7 @@ import {
 } from "@/lib/content/article-template-policy-v1";
 
 import { resolveApprovedKeywordPrimaryV2 } from "@/lib/keywords/keyword-decision-authority-v2";
-import { parseCachedKeywordResearchV2 } from "@/lib/keywords/keyword-research-cache-v2";
+import { parseCachedKeywordResearchV2, projectApprovedKeywordEvidenceV2 } from "@/lib/keywords/keyword-research-cache-v2";
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -170,24 +170,7 @@ export async function POST(req: NextRequest) {
         });
         if (!parsed) throw new Error("KEYWORD_V2_RESEARCH_INVALID");
         primary = resolveApprovedKeywordPrimaryV2(parsed, websiteId);
-        relatedKeywordEvidence = parsed.candidateSnapshots
-          .filter(candidate => candidate.sources.includes("DATAFORSEO"))
-          .map(candidate => ({
-            keyword: candidate.keyword,
-            searchVolume: candidate.searchVolume,
-            keywordDifficulty: candidate.keywordDifficulty,
-            cpc: candidate.cpc,
-            competitionLevel: null,
-            monthlySearches: [],
-            trend: null,
-          }));
-        if (!relatedKeywordEvidence.some(candidate =>
-          candidate.keyword.trim().toLowerCase() === primary.toLowerCase())) {
-          relatedKeywordEvidence.unshift({
-            keyword: primary, searchVolume: null, keywordDifficulty: null,
-            cpc: null, competitionLevel: null, monthlySearches: [], trend: null,
-          });
-        }
+        relatedKeywordEvidence = projectApprovedKeywordEvidenceV2(parsed);
       } catch (error) {
         return NextResponse.json(
           { error: error instanceof Error ? error.message : "Invalid research",
