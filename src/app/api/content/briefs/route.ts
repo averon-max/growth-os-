@@ -145,9 +145,9 @@ export async function POST(req: NextRequest) {
           },
         },
       });
-      if (!snapshot) {
+      if (!snapshot || Date.now() - snapshot.fetchedAt.getTime() > 24 * 60 * 60 * 1000) {
         return NextResponse.json(
-          { error: "Approved keyword research not found",
+          { error: "Approved keyword research not found or expired",
             code: "KEYWORD_V2_RESEARCH_NOT_FOUND" },
           { status: 422 }
         );
