@@ -19,6 +19,29 @@ type Stage =
   | "PLANNING"
   | "WRITING";
 
+interface KeywordResearchReportV2 {
+  version: "KEYWORD_INTELLIGENCE_RESEARCH_V2";
+  approvedResearchKey: string;
+  observed: number;
+  excludedCount: number;
+  selectedKeyword: string | null;
+  decision: {
+    status: "SELECTED" | "REVIEW" | "NO_GO";
+    confidence: "HIGH" | "MEDIUM" | "LOW";
+    reasons: string[];
+    risks: string[];
+  };
+  clusters: Array<{
+    id: string;
+    primary: {
+      keyword: string;
+      searchVolume: number | null;
+      keywordDifficulty: number | null;
+    };
+    opportunityScore: number;
+  }>;
+}
+
 interface ContentSuggestionItemV1 {
   readonly keyword:
     string;
@@ -244,8 +267,14 @@ export function ContentCreateButton({
       string | null
     >(null);
 
+  const [researching, setResearching] = useState(false);
+  const [researchReport, setResearchReport] =
+    useState<KeywordResearchReportV2 | null>(null);
+  const [approvedResearchKey, setApprovedResearchKey] =
+    useState<string | null>(null);
+
   const busy =
-    stage !== "IDLE";
+    stage !== "IDLE" || researching;
 
   const [
     suggestions,
@@ -387,6 +416,49 @@ export function ContentCreateButton({
   );
 
 
+  async function runKeywordResearchV2() {
+    const seed = topic.trim();
+    if (seed.length < 3) {
+      setError("Enter a seed topic first.");
+      return;
+    }
+
+    setResearching(true);
+    setResearchReport(null);
+    setApprovedResearchKey(null);
+    setError(null);
+    try {
+      // This request is user-triggered only; it authorizes paid research.
+      const response = await fetch("/api/keywords/opportunities-v2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          websiteId, seed, market: "US", limit: 500,
+          deepSerpLimit: 5, authorizePaidResearch: true,
+          useGptDecision: true,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error ?? "Keyword research failed.");
+      }
+      if (result.version !== "KEYWORD_INTELLIGENCE_RESEARCH_V2") {
+        throw new Error("Unexpected keyword research response.");
+      }
+      const report = result as KeywordResearchReportV2;
+      setResearchReport(report);
+      if (report.decision.status === "SELECTED" &&
+          typeof report.selectedKeyword === "string" &&
+          typeof report.approvedResearchKey === "string") {
+        setApprovedResearchKey(report.approvedResearchKey);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Keyword research failed.");
+    } finally {
+      setResearching(false);
+    }
+  }
+
   async function createArticle(
     event:
       FormEvent
@@ -407,6 +479,10 @@ export function ContentCreateButton({
       return;
     }
 
+    if (!useExactKeyword && !approvedResearchKey) {
+      setError("Run keyword research and approve an eligible winner before writing.");
+      return;
+    }
     setError(null);
 
     try {
@@ -437,6 +513,11 @@ export function ContentCreateButton({
                   useExactKeyword
                     ? "EXACT_KEYWORD"
                     : "BEST_OPPORTUNITY",
+
+                approvedResearchKey:
+                  useExactKeyword
+                    ? undefined
+                    : approvedResearchKey,
 
                 exactKeyword:
                   useExactKeyword
@@ -756,15 +837,11 @@ export function ContentCreateButton({
                 value={
                   topic
                 }
-                onChange={(
-                  event
-                ) =>
-                  setTopic(
-                    event
-                      .target
-                      .value
-                  )
-                }
+                onChange={(event) => {
+                  setTopic(event.target.value);
+                  setResearchReport(null);
+                  setApprovedResearchKey(null);
+                }}
                 placeholder="e.g. credit monitoring"
                 className={
                   styles.input
@@ -964,14 +1041,11 @@ export function ContentCreateButton({
                   checked={
                     useExactKeyword
                   }
-                  onChange={(
-                    event
-                  ) =>
-                    setUseExactKeyword(
-                      event.target
-                        .checked
-                    )
-                  }
+                  onChange={(event) => {
+                    setUseExactKeyword(event.target.checked);
+                    setResearchReport(null);
+                    setApprovedResearchKey(null);
+                  }}
                   disabled={
                     busy
                   }
@@ -996,6 +1070,55 @@ export function ContentCreateButton({
                   </span>
                 </span>
               </label>
+
+              {!useExactKeyword ? (
+                <div className={styles.suggestionsPanel}>
+                  <div className={styles.suggestionsHeader}>
+                    <span>Keyword Intelligence V2</span>
+                    <span className={styles.suggestionsSource}>
+                      Up to 500 queries · US · paid API
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.secondary}
+                    disabled={busy || topic.trim().length < 3}
+                    onClick={runKeywordResearchV2}
+                  >
+                    {researching ? "Researching keywords…" : "Run paid research + GPT selection"}
+                  </button>
+                  {researchReport ? (
+                    <div className={styles.suggestionGroup}>
+                      <div className={styles.suggestionGroupLabel}>
+                        {researchReport.observed} observed · {researchReport.excludedCount} excluded
+                      </div>
+                      <div className={styles.suggestionsSource}>
+                        {researchReport.decision.status} · {researchReport.decision.confidence} confidence
+                      </div>
+                      {researchReport.clusters.map((cluster, index) => (
+                        <div key={cluster.id} className={styles.suggestionChip}>
+                          <span>{index + 1}. {cluster.primary.keyword}</span>
+                          <small>
+                            Vol {cluster.primary.searchVolume ?? "?"} · KD {cluster.primary.keywordDifficulty ?? "?"}
+                          </small>
+                        </div>
+                      ))}
+                      {researchReport.selectedKeyword ? (
+                        <div className={styles.suggestionGroupLabel}>
+                          GPT selected: {researchReport.selectedKeyword}
+                        </div>
+                      ) : (
+                        <div className={styles.suggestionsEmpty}>
+                          No approved winner. Review keyword eligibility before writing.
+                        </div>
+                      )}
+                      {researchReport.decision.reasons.slice(0, 3).map((reason, i) => (
+                        <div key={i} className={styles.suggestionsSource}>{reason}</div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div
                 className={
@@ -1073,7 +1196,7 @@ export function ContentCreateButton({
                     styles.primary
                   }
                   disabled={
-                    busy
+                    busy || (!useExactKeyword && !approvedResearchKey)
                   }
                 >
                   {stage ===
