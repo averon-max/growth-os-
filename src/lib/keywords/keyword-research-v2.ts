@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { parseCachedKeywordResearchV2, type KeywordResearchResultV2 } from "./keyword-research-cache-v2";
 import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
@@ -21,11 +22,6 @@ export interface KeywordResearchRequestV2 {
 const MARKET: Record<string, string> = {
   US: "United States", CA: "Canada", GB: "United Kingdom", AU: "Australia",
 };
-
-function jsonRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown> : null;
-}
 
 function safeInteger(value: number | undefined, fallback: number, max: number): number {
   if (value === undefined) return fallback;
@@ -52,7 +48,7 @@ function reviewNeeded(reason: string): KeywordOpportunityChoiceV2 {
 }
 
 /** A bounded research session. Paid APIs are never called without authorization. */
-export async function researchKeywordOpportunitiesV2(input: KeywordResearchRequestV2) {
+export async function researchKeywordOpportunitiesV2(input: KeywordResearchRequestV2): Promise<KeywordResearchResultV2> {
   const seed = input.seed.trim();
   if (!seed || seed.length > 180) throw new Error("KEYWORD_V2_SEED_REQUIRED");
   const limit = safeInteger(input.limit, 500, 500);
@@ -74,10 +70,10 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   });
   // This snapshot is reproducible and prevents paying again for a recent identical request.
   if (cache && Date.now() - cache.fetchedAt.getTime() < 24 * 3600 * 1000) {
-    const snapshot = jsonRecord(cache.payload);
-    if (snapshot?.version === "KEYWORD_INTELLIGENCE_RESEARCH_V2") {
-      return { ...snapshot, cacheHit: true };
-    }
+    const snapshot = parseCachedKeywordResearchV2(cache.payload, {
+      websiteId: website.id, cacheKey, seed, market,
+    });
+    if (snapshot) return snapshot;
   }
 
   const locationName = MARKET[market]!;
@@ -196,8 +192,8 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     decision = validateKeywordOpportunityChoiceV2(JSON.parse(output), eligibleForGpt);
   }
 
-  const result = {
-    version: "KEYWORD_INTELLIGENCE_RESEARCH_V2" as const,
+  const result: KeywordResearchResultV2 = {
+    version: "KEYWORD_INTELLIGENCE_RESEARCH_V2",
     approvedResearchKey: cacheKey,
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
