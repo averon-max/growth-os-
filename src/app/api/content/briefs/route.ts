@@ -22,6 +22,8 @@ import {
 } from "@/lib/content/article-template-policy-v1";
 
 import { resolveApprovedKeywordPrimaryV2 } from "@/lib/keywords/keyword-decision-authority-v2";
+import { parseCachedKeywordResearchV2 } from "@/lib/keywords/keyword-research-cache-v2";
+import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
@@ -126,6 +128,7 @@ export async function POST(req: NextRequest) {
     const approvedResearchKey = (
       body as { approvedResearchKey?: unknown }
     ).approvedResearchKey;
+    let relatedKeywordEvidence: RelatedKeywordResult[] | undefined;
 
     if (approvedResearchKey !== undefined) {
       if (generationPolicy.mode !== "BEST_OPPORTUNITY" ||
@@ -155,9 +158,36 @@ export async function POST(req: NextRequest) {
 
       let primary: string;
       try {
-        primary = resolveApprovedKeywordPrimaryV2(
-          snapshot.payload, websiteId
-        );
+        const parts = approvedResearchKey.split(":");
+        const market = parts[1];
+        const expectedMarket = market === "US" || market === "CA" ||
+          market === "GB" || market === "AU" ? market : null;
+        if (!expectedMarket) throw new Error("KEYWORD_V2_RESEARCH_MARKET_INVALID");
+        const snapshotData = snapshot.payload as { seed?: unknown };
+        const seed = typeof snapshotData?.seed === "string" ? snapshotData.seed : "";
+        const parsed = parseCachedKeywordResearchV2(snapshot.payload, {
+          websiteId, cacheKey: approvedResearchKey, seed, market: expectedMarket,
+        });
+        if (!parsed) throw new Error("KEYWORD_V2_RESEARCH_INVALID");
+        primary = resolveApprovedKeywordPrimaryV2(parsed, websiteId);
+        relatedKeywordEvidence = parsed.candidateSnapshots
+          .filter(candidate => candidate.sources.includes("DATAFORSEO"))
+          .map(candidate => ({
+            keyword: candidate.keyword,
+            searchVolume: candidate.searchVolume,
+            keywordDifficulty: candidate.keywordDifficulty,
+            cpc: candidate.cpc,
+            competitionLevel: null,
+            monthlySearches: [],
+            trend: null,
+          }));
+        if (!relatedKeywordEvidence.some(candidate =>
+          candidate.keyword.trim().toLowerCase() === primary.toLowerCase())) {
+          relatedKeywordEvidence.unshift({
+            keyword: primary, searchVolume: null, keywordDifficulty: null,
+            cpc: null, competitionLevel: null, monthlySearches: [], trend: null,
+          });
+        }
       } catch (error) {
         return NextResponse.json(
           { error: error instanceof Error ? error.message : "Invalid research",
@@ -308,6 +338,7 @@ export async function POST(req: NextRequest) {
         undefined,
 
       generationPolicy,
+      relatedKeywordEvidence,
       }
     );
 
