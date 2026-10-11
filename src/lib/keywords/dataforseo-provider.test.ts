@@ -178,6 +178,40 @@ describe("fetchRelatedKeywords", () => {
     ]);
   });
 
+  it("parses DataForSEO string SERP result counts without inventing metrics", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status_code: 20000,
+        tasks: [{
+          status_code: 20000,
+          result: [{ items: [{
+            depth: 1,
+            keyword_data: {
+              keyword: "credit monitoring guide",
+              keyword_info: null,
+              keyword_properties: null,
+              serp_info: {
+                se_results_count: "1,234",
+                serp_item_types: ["organic", "people_also_ask"],
+                last_updated_time: "2026-10-11 00:00:00 +00:00",
+              },
+            },
+          }] }],
+        }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await fetchRelatedKeywords("credit monitoring", "United States", "English", 1, 20, true);
+    expect(result[0]?.serpInfo).toEqual({
+      resultCount: 1234,
+      features: ["organic", "people_also_ask"],
+      updatedAt: "2026-10-11 00:00:00 +00:00",
+    });
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request[0].include_serp_info).toBe(true);
+  });
+
   it("handles missing keyword_info/keyword_properties as nulls", async () => {
     vi.stubGlobal(
       "fetch",
