@@ -16,6 +16,28 @@ describe("keyword-intelligence-v2", () => {
     expect(result.candidates).toHaveLength(1);
     expect(result.excluded.map(x => x.reason).sort()).toEqual(["CANNIBALIZATION", "DUPLICATE_QUERY", "IRRELEVANT_BUSINESS"]);
   });
+  it("accepts 500 distinct candidates even with duplicates and irrelevant rows first", () => {
+    const observations = [
+      item("credit monitoring"),
+      item("CREDIT MONITORING"),
+      item("pizza delivery"),
+      ...Array.from({ length: 499 }, (_, index) => item("credit monitoring service " + index)),
+    ];
+    const result = prepareKeywordOpportunitiesV2({
+      seed: "credit monitoring", industry: "credit and identity",
+      observations, limit: 500,
+    });
+    expect(result.candidates).toHaveLength(500);
+    expect(result.excluded.map(row => row.reason)).toContain("DUPLICATE_QUERY");
+    expect(result.excluded.map(row => row.reason)).toContain("IRRELEVANT_BUSINESS");
+  });
+  it("works on unrelated industries without a hard-coded credit brand blacklist", () => {
+    const result = prepareKeywordOpportunitiesV2({
+      seed: "aura lighting", industry: "lighting",
+      observations: [item("aura lighting benefits")],
+    });
+    expect(result.candidates).toHaveLength(1);
+  });
   it("rejects fabricated cluster IDs from GPT", () => {
     const result = prepareKeywordOpportunitiesV2({ seed: "credit monitoring", industry: null, observations: [item("credit monitoring costs")] });
     expect(() => validateKeywordOpportunityChoiceV2({ status: "SELECTED", selectedClusterId: "fake", confidence: "HIGH", reasons: [], risks: [] }, result.clusters))
