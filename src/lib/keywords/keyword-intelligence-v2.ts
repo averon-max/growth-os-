@@ -1,4 +1,3 @@
-import { analyzeQueryOwnership } from "./query-ownership";
 import { classifySearchIntent } from "../content/seo-strategy";
 
 /** One real observed query, never model-invented. */
@@ -56,6 +55,8 @@ export function normalizeKeywordV2(value: string): string {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ").trim();
 }
+
+const KNOWN_CREDIT_BRANDS = new Set(["experian", "equifax", "transunion", "myfico", "lifelock", "identityguard", "aura"]);
 
 const STOP = new Set(["a", "an", "the", "for", "to", "of", "in", "on", "how", "what",
   "is", "are", "do", "does", "i", "my", "vs", "versus", "compare", "comparison",
@@ -138,8 +139,9 @@ export function prepareKeywordOpportunitiesV2({
       excluded.push({ keyword: item.keyword, reason: "CANNIBALIZATION" });
       continue;
     }
-    const ownership = analyzeQueryOwnership({ topic: seed, keyword: item.keyword });
-    if (ownership.status === "UNREQUESTED_ENTITY_MODIFIER") {
+    const candidateWords = new Set(normalized.split(" "));
+    const seedWords = new Set(normalizeKeywordV2(seed).split(" "));
+    if ([...KNOWN_CREDIT_BRANDS].some(brand => candidateWords.has(brand) && !seedWords.has(brand))) {
       excluded.push({ keyword: item.keyword, reason: "FOREIGN_BRAND" });
       continue;
     }
