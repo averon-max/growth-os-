@@ -1,0 +1,246 @@
+import { analyzeQueryOwnership } from "./query-ownership";
+import { classifySearchIntent } from "../content/seo-strategy";
+
+/** One real observed query, never model-invented. */
+export interface KeywordObservationV2 {
+  keyword: string;
+  searchVolume: number | null;
+  keywordDifficulty: number | null;
+  cpc: number | null;
+  impressions?: number;
+  clicks?: number;
+  position?: number | null;
+  source: "DATAFORSEO" | "GSC" | "SEED";
+}
+
+export type KeywordCleanupReasonV2 =
+  | "DUPLICATE_QUERY"
+  | "IRRELEVANT_BUSINESS"
+  | "FOREIGN_BRAND"
+  | "CANNIBALIZATION"
+  | "INVALID_QUERY";
+
+export interface KeywordCandidateV2 extends KeywordObservationV2 {
+  id: string;
+  normalized: string;
+  intent: ReturnType<typeof classifySearchIntent>;
+  clusterId: string;
+  opportunityScore: number;
+  sources: ("DATAFORSEO" | "GSC" | "SEED")[];
+}
+
+export interface KeywordExclusionV2 {
+  keyword: string;
+  reason: KeywordCleanupReasonV2;
+}
+
+export interface KeywordClusterV2 {
+  id: string;
+  intent: KeywordCandidateV2["intent"];
+  primary: KeywordCandidateV2;
+  keywords: KeywordCandidateV2[];
+  opportunityScore: number;
+}
+
+export interface KeywordCleanupResultV2 {
+  version: "KEYWORD_CLEANUP_V2";
+  observed: number;
+  candidates: KeywordCandidateV2[];
+  clusters: KeywordClusterV2[];
+  excluded: KeywordExclusionV2[];
+}
+
+export function normalizeKeywordV2(value: string): string {
+  return value.toLocaleLowerCase("en-US").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+
+const STOP = new Set(["a", "an", "the", "for", "to", "of", "in", "on", "how", "what",
+  "is", "are", "do", "does", "i", "my", "vs", "versus", "compare", "comparison",
+  "difference", "between", "best", "top", "guide", "review", "reviews", "online"]);
+
+function semanticKey(value: string): string {
+  return [...new Set(normalizeKeywordV2(value).split(" ")
+    .filter(token => token.length > 1 && !STOP.has(token)))].sort().join(" ");
+}
+
+function stableId(value: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function validNumber(value: number | null | undefined): number | null {
+  return value !== null && value !== undefined && Number.isFinite(value) && value >= 0
+    ? value : null;
+}
+
+function score(candidate: KeywordObservationV2): number {
+  const volume = validNumber(candidate.searchVolume);
+  const kd = validNumber(candidate.keywordDifficulty);
+  const impressions = validNumber(candidate.impressions) ?? 0;
+  const position = validNumber(candidate.position);
+  // Unknown KD and volume remain UNKNOWN; neither becomes a fake easy/zero metric.
+  const demand = volume === null ? 0 : Math.min(30, Math.log1p(volume) / Math.log1p(10000) * 30);
+  const competition = kd === null ? 0 : Math.max(-18, 20 - kd * 0.4);
+  const gsc = Math.min(24, Math.log1p(impressions) / Math.log1p(5000) * 18);
+  const nearWin = position !== null && position >= 4 && position <= 20 ? 12 : 0;
+  const evidence = (volume !== null ? 4 : 0) + (kd !== null ? 4 : 0) +
+    (impressions > 0 ? 6 : 0);
+  return Math.round((20 + demand + competition + gsc + nearWin + evidence) * 100) / 100;
+}
+
+export function prepareKeywordOpportunitiesV2({
+  seed, industry, observations, publishedKeywords = [], limit = 500,
+}: {
+  seed: string;
+  industry: string | null;
+  observations: readonly KeywordObservationV2[];
+  publishedKeywords?: readonly string[];
+  limit?: number;
+}): KeywordCleanupResultV2 {
+  if (!seed.trim()) throw new Error("KEYWORD_V2_SEED_REQUIRED");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    throw new Error("KEYWORD_V2_LIMIT_INVALID");
+  }
+  const seedTerms = new Set(semanticKey(seed).split(" ").filter(Boolean));
+  const industryTerms = new Set(semanticKey(industry ?? "").split(" ").filter(Boolean));
+  const relevantTerms = new Set([...seedTerms, ...industryTerms]);
+  const published = new Set(publishedKeywords.map(normalizeKeywordV2));
+  const retained = new Map<string, KeywordCandidateV2>();
+  const excluded: KeywordExclusionV2[] = [];
+
+  for (const item of observations.slice(0, limit)) {
+    const normalized = normalizeKeywordV2(item.keyword ?? "");
+    if (normalized.length < 3 || normalized.length > 180) {
+      excluded.push({ keyword: item.keyword, reason: "INVALID_QUERY" });
+      continue;
+    }
+    const already = retained.get(normalized);
+    if (already) {
+      already.sources = [...new Set([...already.sources, item.source])];
+      if (already.searchVolume === null) already.searchVolume = validNumber(item.searchVolume);
+      if (already.keywordDifficulty === null) already.keywordDifficulty = validNumber(item.keywordDifficulty);
+      if (already.cpc === null) already.cpc = validNumber(item.cpc);
+      if ((item.impressions ?? 0) > (already.impressions ?? 0)) {
+        already.impressions = item.impressions;
+        already.clicks = item.clicks;
+        already.position = item.position;
+      }
+      excluded.push({ keyword: item.keyword, reason: "DUPLICATE_QUERY" });
+      continue;
+    }
+    if (published.has(normalized)) {
+      excluded.push({ keyword: item.keyword, reason: "CANNIBALIZATION" });
+      continue;
+    }
+    const ownership = analyzeQueryOwnership({ topic: seed, keyword: item.keyword });
+    if (ownership.status === "UNREQUESTED_ENTITY_MODIFIER") {
+      excluded.push({ keyword: item.keyword, reason: "FOREIGN_BRAND" });
+      continue;
+    }
+    const terms = semanticKey(item.keyword).split(" ").filter(Boolean);
+    if (!terms.some(term => relevantTerms.has(term))) {
+      excluded.push({ keyword: item.keyword, reason: "IRRELEVANT_BUSINESS" });
+      continue;
+    }
+    const intent = classifySearchIntent(item.keyword);
+    const canonical = semanticKey(item.keyword) || normalized;
+    const candidate: KeywordCandidateV2 = {
+      ...item,
+      searchVolume: validNumber(item.searchVolume),
+      keywordDifficulty: validNumber(item.keywordDifficulty),
+      cpc: validNumber(item.cpc),
+      normalized, intent,
+      id: `kw_${stableId(normalized)}`,
+      clusterId: `cl_${stableId(`${intent}:${canonical}`)}`,
+      opportunityScore: score(item),
+      sources: [item.source],
+    };
+    retained.set(normalized, candidate);
+  }
+  const candidates = [...retained.values()].map(candidate => ({
+    ...candidate,
+    opportunityScore: score(candidate),
+  })).sort((a, b) =>
+    b.opportunityScore - a.opportunityScore || a.normalized.localeCompare(b.normalized)
+  );
+  const clustersById = new Map<string, KeywordCandidateV2[]>();
+  for (const candidate of candidates) {
+    const list = clustersById.get(candidate.clusterId) ?? [];
+    list.push(candidate);
+    clustersById.set(candidate.clusterId, list);
+  }
+  const clusters = [...clustersById.entries()].map(([id, keywords]) => ({
+    id,
+    intent: keywords[0]!.intent,
+    primary: keywords[0]!,
+    keywords,
+    opportunityScore: keywords[0]!.opportunityScore,
+  })).sort((a, b) =>
+    b.opportunityScore - a.opportunityScore ||
+    a.primary.normalized.localeCompare(b.primary.normalized)
+  );
+  return { version: "KEYWORD_CLEANUP_V2", observed: Math.min(observations.length, limit),
+    candidates, clusters, excluded };
+}
+
+export interface SerpOpportunityV2 {
+  clusterId: string;
+  query: string;
+  organicResults: number;
+  uniqueDomains: number;
+  dominantPageType: string | null;
+  pagesAnalyzed: number;
+  features: string[];
+  error?: string;
+}
+
+export interface KeywordOpportunityChoiceV2 {
+  status: "SELECTED" | "REVIEW" | "NO_GO";
+  selectedClusterId: string | null;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  reasons: string[];
+  risks: string[];
+}
+
+/** JSON from GPT never creates its own keyword, metric, or candidate ID. */
+export function validateKeywordOpportunityChoiceV2(
+  value: unknown,
+  candidates: readonly KeywordClusterV2[],
+): KeywordOpportunityChoiceV2 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("KEYWORD_V2_MODEL_RESPONSE_INVALID");
+  }
+  const row = value as Record<string, unknown>;
+  if (row.status !== "SELECTED" && row.status !== "REVIEW" && row.status !== "NO_GO") {
+    throw new Error("KEYWORD_V2_MODEL_STATUS_INVALID");
+  }
+  if (row.confidence !== "HIGH" && row.confidence !== "MEDIUM" &&
+      row.confidence !== "LOW") {
+    throw new Error("KEYWORD_V2_MODEL_CONFIDENCE_INVALID");
+  }
+  if (!Array.isArray(row.reasons) || !row.reasons.every(x => typeof x === "string") ||
+      !Array.isArray(row.risks) || !row.risks.every(x => typeof x === "string")) {
+    throw new Error("KEYWORD_V2_MODEL_REASONS_INVALID");
+  }
+  if (row.status === "SELECTED") {
+    if (typeof row.selectedClusterId !== "string" ||
+        !candidates.some(candidate => candidate.id === row.selectedClusterId)) {
+      throw new Error("KEYWORD_V2_MODEL_INVENTED_CLUSTER");
+    }
+  } else if (row.selectedClusterId !== null) {
+    throw new Error("KEYWORD_V2_NON_SELECTED_MUST_HAVE_NULL_CLUSTER");
+  }
+  return {
+    status: row.status,
+    selectedClusterId: row.status === "SELECTED" ? row.selectedClusterId as string : null,
+    confidence: row.confidence,
+    reasons: row.reasons.slice(0, 6) as string[],
+    risks: row.risks.slice(0, 6) as string[],
+  };
+}
