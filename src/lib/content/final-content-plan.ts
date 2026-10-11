@@ -2,6 +2,7 @@ import {
   buildContentStrategy,
   keywordSimilarity,
 } from "./seo-strategy";
+import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 
 import {
   buildSerpIntelligence,
@@ -1027,6 +1028,7 @@ export async function buildFinalContentPlan({
   topic,
   businessName,
   requiredPrimaryKeyword,
+  relatedKeywordEvidence,
 }: {
   websiteId:
     string;
@@ -1039,12 +1041,16 @@ export async function buildFinalContentPlan({
 
   requiredPrimaryKeyword?:
     string;
+
+  /** Previously collected, server-approved keyword evidence. */
+  relatedKeywordEvidence?: readonly RelatedKeywordResult[];
 }): Promise<FinalContentPlan> {
   const discoveredStrategy =
     await buildContentStrategy({
       websiteId,
       topic,
       businessName,
+      relatedKeywordEvidence,
     });
 
 
