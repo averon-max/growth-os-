@@ -81,7 +81,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
 
   const locationName = MARKET[market]!;
   // Depth=3 surfaces broader intent variants; one bounded provider call.
-  const related = await fetchRelatedKeywords(seed, locationName, "English", 3, limit);
+  const related = await fetchRelatedKeywords(seed, locationName, "English", 3, limit, true);
   const context = await getWebsiteKeywordContext(website.id).catch(() => null);
   const observations: KeywordObservationV2[] = [
     { keyword: seed, searchVolume: null, keywordDifficulty: null, cpc: null, source: "SEED" },
@@ -174,6 +174,12 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     // Preserve the complete observed candidate set for replay and audit;
     // the response UI can render only the ten strongest clusters.
     candidateSnapshots: cleanup.candidates,
+    serpMetadata: related.map(row => ({
+      keyword: row.keyword,
+      resultCount: row.serpInfo?.resultCount ?? null,
+      features: row.serpInfo?.features ?? [],
+      updatedAt: row.serpInfo?.updatedAt ?? null,
+    })),
     totalClusters: cleanup.clusters.length,
     serpResults,
     decision,
