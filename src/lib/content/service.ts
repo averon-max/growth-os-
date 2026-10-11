@@ -1,3 +1,4 @@
+import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 import {
   assertFinalArticleVersionIntegrityV1,
 } from "./final-article-version-integrity-v1";
@@ -397,6 +398,8 @@ function logContentIntelligence(
 export interface CreateBriefInput {
   outcomeActionId?: string;
   requiredPrimaryKeyword?: string;
+  /** Server-validated V2 research observations (never client JSON). */
+  relatedKeywordEvidence?: readonly RelatedKeywordResult[];
   websiteId: string;
   opportunityId?: string;
   topic: string;
@@ -518,6 +521,8 @@ export async function createContentBrief(
          */
         requiredPrimaryKeyword:
           input.requiredPrimaryKeyword,
+        relatedKeywordEvidence:
+          input.relatedKeywordEvidence,
       }),
 
       getWebsiteKeywordContext(
