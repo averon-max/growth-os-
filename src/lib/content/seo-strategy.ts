@@ -1242,10 +1242,16 @@ export async function buildContentStrategy({
   websiteId,
   topic,
   businessName,
+  relatedKeywordEvidence,
 }: {
   websiteId: string;
   topic: string;
   businessName: string;
+  /**
+   * Already-paid, server-validated discovery evidence from Keyword Intelligence.
+   * When provided, do NOT pay DataForSEO again to re-discover the same queries.
+   */
+  relatedKeywordEvidence?: readonly RelatedKeywordResult[];
 }): Promise<ContentStrategy> {
   const [
     context,
@@ -1319,14 +1325,9 @@ export async function buildContentStrategy({
 
   try {
     related =
-      (
-        await fetchRelatedKeywords(
-          topic
-        )
-      ).slice(
-        0,
-        80
-      );
+      relatedKeywordEvidence !== undefined
+        ? relatedKeywordEvidence.slice(0, 80)
+        : (await fetchRelatedKeywords(topic)).slice(0, 80);
   } catch (error) {
     console.warn(
       "[content strategy] related keywords unavailable:",
