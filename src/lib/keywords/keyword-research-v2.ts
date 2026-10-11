@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
@@ -81,7 +82,14 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
 
   const locationName = MARKET[market]!;
   // Depth=3 surfaces broader intent variants; one bounded provider call.
-  const related = await fetchRelatedKeywords(seed, locationName, "English", 3, limit, true);
+  const related = await withKeywordResearchCheckpointV2({
+    stage: "DISCOVERY",
+    key: [website.id, market, seed.toLowerCase(), limit, "depth3"].join(":"),
+    isValid: (value): value is Awaited<ReturnType<typeof fetchRelatedKeywords>> =>
+      Array.isArray(value) && value.every(row =>
+        row && typeof row === "object" && typeof row.keyword === "string"),
+    produce: () => fetchRelatedKeywords(seed, locationName, "English", 3, limit, true),
+  });
   const context = await getWebsiteKeywordContext(website.id).catch(() => null);
   const observations: KeywordObservationV2[] = [
     { keyword: seed, searchVolume: null, keywordDifficulty: null, cpc: null, source: "SEED" },
@@ -131,9 +139,24 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const serpResults: SerpOpportunityV2[] = [];
   for (const cluster of shortlist.slice(0, deepSerpLimit)) {
     try {
-      const serp = await buildSerpIntelligence({ keyword: cluster.primary.keyword,
-        locationName, languageName: "English" });
-      serpResults.push(summarizeSerp(cluster.primary.keyword, cluster.id, serp));
+      const serpSummary = await withKeywordResearchCheckpointV2({
+        stage: "SERP",
+        key: [website.id, market, cluster.id, cluster.primary.keyword].join(":"),
+        isValid: (value): value is SerpOpportunityV2 => {
+          if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+          const row = value as Record<string, unknown>;
+          return row.clusterId === cluster.id && row.query === cluster.primary.keyword &&
+            typeof row.organicResults === "number" && row.organicResults >= 0 &&
+            typeof row.uniqueDomains === "number" && row.uniqueDomains >= 0 &&
+            Array.isArray(row.features);
+        },
+        produce: async () => {
+          const serp = await buildSerpIntelligence({ keyword: cluster.primary.keyword,
+            locationName, languageName: "English" });
+          return summarizeSerp(cluster.primary.keyword, cluster.id, serp);
+        },
+      });
+      serpResults.push(serpSummary);
     } catch (error) {
       serpResults.push({ query: cluster.primary.keyword, clusterId: cluster.id, organicResults: 0,
         uniqueDomains: 0, dominantPageType: null, pagesAnalyzed: 0, features: [],
