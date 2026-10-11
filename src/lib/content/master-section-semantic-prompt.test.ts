@@ -132,6 +132,55 @@ describe(
   "Master Section Semantic Verification Prompt",
   () => {
     it(
+      "minifies provider context without removing factual evidence",
+      () => {
+        const prompt =
+          buildMasterSectionSemanticVerificationPrompt({
+            contract,
+            section,
+          });
+
+        const context = prompt
+          .split("AUTHORITATIVE CONTEXT:")[1]
+          ?.trimStart()
+          .split(/\r?\n/)[0];
+
+        expect(context).toBeDefined();
+
+        const parsed = JSON.parse(context!);
+
+        expect(context).toBe(JSON.stringify(parsed));
+
+        expect(parsed.section.requiredClaims).toEqual([
+          "claim-1",
+        ]);
+
+        expect(parsed.section.forbiddenClaims).toEqual([
+          "claim-2",
+        ]);
+
+        expect(parsed.claims.map((x: { id: string }) => x.id))
+          .toEqual(["claim-1", "claim-2"]);
+
+        expect(parsed.evidence[0].id).toBe("ev-1");
+        expect(parsed.evidence[0].kind)
+          .toBe("VERIFIED_EXCERPT");
+        expect(parsed.sources[0].id).toBe("source-1");
+
+        expect(
+          parsed.proseUnits.map((x: { id: string }) => x.id)
+        ).toEqual([
+          "section-0-unit-0",
+          "section-0-unit-1",
+        ]);
+
+        expect(context!.length).toBeLessThan(
+          JSON.stringify(parsed, null, 2).length
+        );
+      }
+    );
+
+    it(
       "requires classification of every deterministic prose unit",
       () => {
         const prompt =
