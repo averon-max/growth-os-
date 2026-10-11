@@ -137,10 +137,20 @@ interface DataForSEORelatedKeywordProperties {
   keyword_difficulty: number | null;
 }
 
+/** DataForSEO declares se_results_count as a string; never expose it as a fake number. */
+function parseSerpResultCount(raw: string | number | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
+  const clean = typeof raw === "string" ? raw.trim().replace(/,/g, "") : raw;
+  if (clean === "") return null;
+  const parsed = typeof clean === "number" ? clean : Number(clean);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 interface DataForSEORelatedKeywordData {
   keyword: string;
   serp_info?: {
-    se_results_count: number | null;
+    se_results_count: string | number | null;
     serp_item_types: string[] | null;
     last_updated_time: string | null;
   } | null;
@@ -262,7 +272,7 @@ export async function fetchRelatedKeywords(
         keyword: item.keyword_data.keyword,
         ...(includeSerpInfo ? {
           serpInfo: item.keyword_data.serp_info ? {
-            resultCount: item.keyword_data.serp_info.se_results_count ?? null,
+            resultCount: parseSerpResultCount(item.keyword_data.serp_info.se_results_count),
             features: item.keyword_data.serp_info.serp_item_types ?? [],
             updatedAt: item.keyword_data.serp_info.last_updated_time ?? null,
           } : null,
