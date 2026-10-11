@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const store = new Map<string, { payload: unknown; fetchedAt: Date }>();
-const findUnique = vi.fn(async ({ where }: { where: { normalized_source: { normalized: string; source: string } } }) =>
-  store.get(where.normalized_source.source + ":" + where.normalized_source.normalized) ?? null);
-const upsert = vi.fn(async ({ where, create }: {
-  where: { normalized_source: { normalized: string; source: string } };
-  create: { payload: unknown };
-}) => {
-  store.set(where.normalized_source.source + ":" + where.normalized_source.normalized,
-    { payload: create.payload, fetchedAt: new Date() });
+const { store, findUnique, upsert } = vi.hoisted(() => {
+  const store = new Map<string, { payload: unknown; fetchedAt: Date }>();
+  const findUnique = vi.fn(async ({ where }: { where: { normalized_source: { normalized: string; source: string } } }) =>
+    store.get(where.normalized_source.source + ":" + where.normalized_source.normalized) ?? null);
+  const upsert = vi.fn(async ({ where, create }: {
+    where: { normalized_source: { normalized: string; source: string } };
+    create: { payload: unknown };
+  }) => {
+    store.set(where.normalized_source.source + ":" + where.normalized_source.normalized,
+      { payload: create.payload, fetchedAt: new Date() });
+  });
+  return { store, findUnique, upsert };
 });
 vi.mock("@/lib/prisma", () => ({
   prisma: { keywordSuggestionCache: { findUnique, upsert } },
