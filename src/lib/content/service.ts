@@ -55,6 +55,11 @@ import {
 import {
   writeArticleRecoveryCheckpointV1,
 } from "./article-recovery-checkpoint-v1";
+import {
+  fingerprintMasterWriterContractV1,
+  readMasterWriterSectionProgressV1,
+  writeMasterWriterSectionProgressV1,
+} from "./master-writer-section-progress-v1";
 
 
 
@@ -2329,12 +2334,38 @@ export async function generateArticleFromBrief(
     });
 
   try {
+    // Opt-in for local CLI only. Never treat ephemeral disk as SaaS durability.
+    const checkpointDirectory = process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim();
+    const contractHash = checkpointDirectory
+      ? fingerprintMasterWriterContractV1(articleGenerationContract, generator.modelName)
+      : "";
+    const savedProgress = checkpointDirectory
+      ? await readMasterWriterSectionProgressV1({
+          directory: checkpointDirectory,
+          articleId: pendingArticle.id,
+          briefId: brief.id,
+          contractHash,
+          modelName: generator.modelName,
+        })
+      : null;
     const masterWriterRun =
       await executeMasterWriterV1({
-        contract:
-          articleGenerationContract,
-
+        contract: articleGenerationContract,
         generator,
+        resumeProgress: savedProgress,
+        onProgress: checkpointDirectory
+          ? async ({ shell, accepted }) => {
+              await writeMasterWriterSectionProgressV1({
+                directory: checkpointDirectory,
+                articleId: pendingArticle.id,
+                briefId: brief.id,
+                contractHash,
+                modelName: generator.modelName,
+                shell,
+                accepted,
+              });
+            }
+          : undefined,
       });
 
 

@@ -155,6 +155,12 @@ async function main(): Promise<void> {
     if (hasReadyArticle) throw new Error("ALREADY_HAS_REVIEW_OR_PUBLISHED_ARTICLE");
     if (hasActiveGeneration) throw new Error("EXISTING_GENERATING_ARTICLE: do not overlap");
 
+    // Preserve each verified section across a failed local CLI attempt.
+    if (!process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR) {
+      process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR =
+        join(process.cwd(), ".growth-os-tmp", "master-writer-section-checkpoints");
+    }
+
     // The production service reuses the latest rejected article row. Back
     // up its current contents locally before invoking that mutating service.
     const priorRejected = await prisma.contentArticle.findFirst({

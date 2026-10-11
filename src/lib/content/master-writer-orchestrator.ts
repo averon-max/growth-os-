@@ -56,6 +56,19 @@ import {
 import {
   ContentGenerationError,
 } from "./generator";
+import {
+  assertSectionClaimReconciliationPassed,
+  reconcileGeneratedSectionClaimsV1,
+} from "./section-claim-reconciliation";
+import {
+  assertSectionSemanticVerificationPassed,
+  finalizeSectionSemanticVerificationV1,
+} from "./master-section-semantic-verifier";
+import type { VerifiedMasterSectionV1 } from "./master-section-repair";
+import {
+  fingerprintMasterWriterContractV1,
+  type MasterWriterSectionProgressV1,
+} from "./master-writer-section-progress-v1";
 
 
 export interface MasterWriterGenerator
@@ -421,12 +434,19 @@ export function recoverConflictingArticleH1V1<
 export async function executeMasterWriterV1({
   contract,
   generator,
+  resumeProgress = null,
+  onProgress,
 }: {
   contract:
     Readonly<ArticleGenerationContractV1>;
 
   generator:
     unknown;
+  resumeProgress?: Readonly<MasterWriterSectionProgressV1> | null;
+  onProgress?: (state: {
+    shell: Readonly<GeneratedArticleShellV1>;
+    accepted: readonly Readonly<VerifiedMasterSectionV1>[];
+  }) => Promise<void>;
 }): Promise<
   Readonly<MasterWriterRunV1>
 > {
@@ -458,28 +478,26 @@ export async function executeMasterWriterV1({
   // ARTICLE SHELL
   // ========================================================
 
-  let shell:
-    Readonly<GeneratedArticleShellV1>;
+  if (resumeProgress && (
+    resumeProgress.version !== "MASTER_WRITER_SECTION_PROGRESS_V1" ||
+    resumeProgress.contractHash !== fingerprintMasterWriterContractV1(contract, generator.modelName) ||
+    resumeProgress.modelName !== generator.modelName ||
+    resumeProgress.accepted.length > contract.sectionContracts.length
+  )) {
+    throw new ContentGenerationError("MASTER_WRITER_PROGRESS_CONTRACT_MISMATCH");
+  }
 
-  try {
-    shell =
-      await generator
-        .generateArticleShell(
-          contract
-        );
-  } catch (
-    error
-  ) {
-    throw new ContentGenerationError(
-      [
-        "MASTER_WRITER_SHELL_GENERATION_FAILED",
-        failureMessage(
-          error
-        ),
-      ].join(
-        ":"
-      )
-    );
+  let shell: Readonly<GeneratedArticleShellV1>;
+  if (resumeProgress) {
+    shell = resumeProgress.shell;
+  } else {
+    try {
+      shell = await generator.generateArticleShell(contract);
+    } catch (error) {
+      throw new ContentGenerationError(
+        ["MASTER_WRITER_SHELL_GENERATION_FAILED", failureMessage(error)].join(":")
+      );
+    }
   }
 
   assertShellProvenance({
@@ -499,6 +517,11 @@ export async function executeMasterWriterV1({
    * generated claim or heading.
    */
   shell = recoverConflictingArticleH1V1(shell, contract);
+
+  const acceptedProgress: VerifiedMasterSectionV1[] = [];
+  if (onProgress && !resumeProgress) {
+    await onProgress({ shell, accepted: [] });
+  }
 
 
   // ========================================================
@@ -561,6 +584,52 @@ export async function executeMasterWriterV1({
       );
     }
 
+
+    // Reuse ONLY a fully verified contiguous prefix with matching
+    // immutable contract/evidence and model identity.
+    const cached = resumeProgress?.accepted[index];
+    if (cached) {
+      assertSectionProvenance({ section: cached.section, index, contract, generator });
+      if (cached.repair?.sectionIndex !== index ||
+          cached.semanticVerification?.sectionIndex !== index ||
+          cached.semanticVerification?.provenance?.modelName !== generator.modelName) {
+        throw new ContentGenerationError("MASTER_WRITER_PROGRESS_SECTION_INVALID");
+      }
+      const canonicalReconciliation = reconcileGeneratedSectionClaimsV1({
+        contract: sectionContract, section: cached.section,
+      });
+      assertSectionClaimReconciliationPassed(canonicalReconciliation);
+      // Recompute the semantic finalizer against CURRENT claim/evidence authority
+      // without a second paid verifier request.
+      const canonicalSemantic = finalizeSectionSemanticVerificationV1({
+        contract: sectionContract,
+        section: cached.section,
+        modelName: generator.modelName,
+        candidate: {
+          units: cached.semanticVerification.units.map((unit) => ({
+            unitId: unit.unitId,
+            classification: unit.classification,
+            matchedClaimId: unit.matchedClaimId,
+            evidenceIds: unit.evidenceIds,
+            rationale: unit.rationale,
+          })),
+        },
+      });
+      assertSectionSemanticVerificationPassed(canonicalSemantic);
+      const checked: VerifiedMasterSectionV1 = {
+        section: cached.section,
+        reconciliation: canonicalReconciliation,
+        semanticVerification: canonicalSemantic,
+        repair: cached.repair,
+      };
+      generatedSections.push(checked.section);
+      reconciliations.push(checked.reconciliation);
+      semanticVerifications.push(checked.semanticVerification);
+      repairs.push(checked.repair);
+      acceptedProgress.push(checked);
+      console.info("[writer resumed verified section]", { index });
+      continue;
+    }
 
     // ------------------------------------------------------
     // 1. GENERATE EXACTLY ONE SECTION
@@ -692,6 +761,11 @@ export async function executeMasterWriterV1({
       verifiedSection
         .repair
     );
+
+    acceptedProgress.push(verifiedSection);
+    if (onProgress) {
+      await onProgress({ shell, accepted: [...acceptedProgress] });
+    }
 
   }
 

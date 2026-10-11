@@ -24,6 +24,10 @@ import {
   supportsMasterWriterGenerator,
   type MasterWriterGenerator,
 } from "./master-writer-orchestrator";
+import {
+  fingerprintMasterWriterContractV1,
+  type MasterWriterSectionProgressV1,
+} from "./master-writer-section-progress-v1";
 
 
 import {
@@ -1818,5 +1822,48 @@ describe(
         );
       }
     );
+    it("resumes after a failed later section without regenerating verified prefix", async () => {
+      const plan = contract();
+      const firstCalls: string[] = [];
+      const initial = successfulGenerator({ calls: firstCalls });
+      const broken: MasterWriterGenerator = {
+        ...initial,
+        async generateSection(input) {
+          if (input.sectionIndex === 1) throw new Error("SIMULATED_SECTION_FAILURE");
+          return initial.generateSection(input);
+        },
+      };
+      let saved: MasterWriterSectionProgressV1 | null = null;
+      await expect(executeMasterWriterV1({
+        contract: plan,
+        generator: broken,
+        onProgress: async ({ shell, accepted }) => {
+          saved = {
+            version: "MASTER_WRITER_SECTION_PROGRESS_V1",
+            articleId: "test-article", briefId: "test-brief",
+            contractHash: fingerprintMasterWriterContractV1(plan, "test-model"),
+            modelName: "test-model", shell, accepted: [...accepted],
+          };
+        },
+      })).rejects.toThrow("SIMULATED_SECTION_FAILURE");
+      const resume = saved as MasterWriterSectionProgressV1 | null;
+      expect(resume?.accepted).toHaveLength(1);
+      const remainingCalls: string[] = [];
+      const result = await executeMasterWriterV1({
+        contract: plan,
+        generator: successfulGenerator({ calls: remainingCalls }),
+        resumeProgress: resume,
+      });
+      expect(result.sections).toHaveLength(2);
+      expect(remainingCalls).toEqual(["section:1"]);
+      const changed = contract(["Changed Heading", "What Credit Monitoring Doesn't Do"]);
+      await expect(executeMasterWriterV1({
+        contract: changed,
+        generator: successfulGenerator({ calls: remainingCalls }),
+        resumeProgress: resume,
+      })).rejects.toThrow("MASTER_WRITER_PROGRESS_CONTRACT_MISMATCH");
+      expect(remainingCalls).toEqual(["section:1"]);
+    });
+
   }
 );
