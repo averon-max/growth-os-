@@ -45,15 +45,15 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
   };
 }
 
-function scoreFallback(clusterId: string): KeywordOpportunityChoiceV2 {
-  return { status: "SELECTED", selectedClusterId: clusterId,
-    confidence: "LOW", reasons: ["Deterministic pre-ranking; GPT not requested"], risks: ["SERP and metrics require human review"] };
+function reviewNeeded(reason: string): KeywordOpportunityChoiceV2 {
+  return { status: "REVIEW", selectedClusterId: null,
+    confidence: "LOW", reasons: [reason], risks: ["Keyword winner is not validated for publication"] };
 }
 
 /** A bounded research session. Paid APIs are never called without authorization. */
 export async function researchKeywordOpportunitiesV2(input: KeywordResearchRequestV2) {
   const seed = input.seed.trim();
-  if (!seed) throw new Error("KEYWORD_V2_SEED_REQUIRED");
+  if (!seed || seed.length > 180) throw new Error("KEYWORD_V2_SEED_REQUIRED");
   const limit = safeInteger(input.limit, 500, 500);
   const deepSerpLimit = input.deepSerpLimit === 0 ? 0
     : safeInteger(input.deepSerpLimit, 5, 10);
@@ -130,10 +130,18 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     }
   }
 
-  let decision: KeywordOpportunityChoiceV2 =
-    shortlist.length ? scoreFallback(shortlist[0]!.id)
-      : { status: "NO_GO", selectedClusterId: null, confidence: "LOW", reasons: ["No eligible candidates"], risks: [] };
-  if (input.useGptDecision && shortlist.length) {
+  const verifiedSerp = serpResults.filter(result =>
+    !result.error && result.organicResults >= 3 && result.uniqueDomains >= 2
+  );
+  const verifiedClusterIds = new Set(verifiedSerp.map(result => result.clusterId));
+  const eligibleForGpt = shortlist.filter(cluster => verifiedClusterIds.has(cluster.id));
+  let decision: KeywordOpportunityChoiceV2 = shortlist.length
+    ? reviewNeeded(eligibleForGpt.length
+      ? "SERP-verified opportunities found. GPT decision not requested."
+      : "No SERP-verified opportunity: review source reliability before choosing a primary.")
+    : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
+      reasons: ["No eligible candidates"], risks: [] };
+  if (input.useGptDecision && eligibleForGpt.length) {
     const { default: OpenAI } = await import("openai");
     if (!process.env.OPENAI_API_KEY) throw new Error("KEYWORD_V2_OPENAI_KEY_REQUIRED");
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -143,7 +151,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       messages: [
         { role: "system", content: "Select an existing cluster ID based only on the supplied observations. Return JSON: status SELECTED or REVIEW or NO_GO, selectedClusterId string or null, confidence HIGH/MEDIUM/LOW, reasons string[], risks string[]. Do not invent search metrics." },
         { role: "user", content: JSON.stringify({ business: website.business.industry, market, seed,
-          shortlist: shortlist.map(cluster => ({ id: cluster.id, keyword: cluster.primary.keyword,
+          shortlist: eligibleForGpt.map(cluster => ({ id: cluster.id, keyword: cluster.primary.keyword,
             volume: cluster.primary.searchVolume, difficulty: cluster.primary.keywordDifficulty,
             gscImpressions: cluster.primary.impressions ?? null, score: cluster.opportunityScore,
             serp: serpResults.find(s => s.clusterId === cluster.id) ?? null })) }) },
@@ -151,7 +159,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     });
     const output = completion.choices[0]?.message?.content;
     if (!output) throw new Error("KEYWORD_V2_GPT_EMPTY");
-    decision = validateKeywordOpportunityChoiceV2(JSON.parse(output), shortlist);
+    decision = validateKeywordOpportunityChoiceV2(JSON.parse(output), eligibleForGpt);
   }
 
   const result = {
@@ -161,8 +169,12 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     collectedAt: new Date().toISOString(),
     observed: cleanup.observed,
     excludedCount: cleanup.excluded.length,
-    excluded: cleanup.excluded.slice(0, 100),
+    excluded: cleanup.excluded,
     clusters: shortlist,
+    // Preserve the complete observed candidate set for replay and audit;
+    // the response UI can render only the ten strongest clusters.
+    candidateSnapshots: cleanup.candidates,
+    totalClusters: cleanup.clusters.length,
     serpResults,
     decision,
     selectedKeyword: decision.status === "SELECTED"
