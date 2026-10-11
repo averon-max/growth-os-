@@ -99,6 +99,12 @@ export interface SearchVolumeTrend {
 
 export interface RelatedKeywordResult {
   keyword: string;
+  /** Optional lightweight SERP observations returned with the Labs query. */
+  serpInfo?: {
+    resultCount: number | null;
+    features: string[];
+    updatedAt: string | null;
+  } | null;
   searchVolume: number | null;
   competitionLevel: string | null;
   cpc: number | null;
@@ -133,6 +139,11 @@ interface DataForSEORelatedKeywordProperties {
 
 interface DataForSEORelatedKeywordData {
   keyword: string;
+  serp_info?: {
+    se_results_count: number | null;
+    serp_item_types: string[] | null;
+    last_updated_time: string | null;
+  } | null;
   keyword_info: DataForSEORelatedKeywordInfo | null;
   keyword_properties: DataForSEORelatedKeywordProperties | null;
 }
@@ -164,7 +175,8 @@ async function requestRelatedWithRetry(
   locationName: string,
   languageName: string,
   depth: number,
-  limit: number
+  limit: number,
+  includeSerpInfo: boolean
 ): Promise<Response> {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
@@ -185,6 +197,7 @@ async function requestRelatedWithRetry(
             language_name: languageName,
             depth,
             limit,
+            ...(includeSerpInfo ? { include_serp_info: true } : {}),
           },
         ]),
       });
@@ -215,12 +228,13 @@ export async function fetchRelatedKeywords(
   locationName = "United States",
   languageName = "English",
   depth = 1,
-  limit = 30
+  limit = 30,
+  includeSerpInfo = false
 ): Promise<RelatedKeywordResult[]> {
   if (!keyword.trim()) return [];
 
   const auth = buildAuthHeader();
-  const res = await requestRelatedWithRetry(auth, keyword, locationName, languageName, depth, limit);
+  const res = await requestRelatedWithRetry(auth, keyword, locationName, languageName, depth, limit, includeSerpInfo);
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -246,6 +260,13 @@ export async function fetchRelatedKeywords(
       const info = item.keyword_data.keyword_info;
       return {
         keyword: item.keyword_data.keyword,
+        ...(includeSerpInfo ? {
+          serpInfo: item.keyword_data.serp_info ? {
+            resultCount: item.keyword_data.serp_info.se_results_count ?? null,
+            features: item.keyword_data.serp_info.serp_item_types ?? [],
+            updatedAt: item.keyword_data.serp_info.last_updated_time ?? null,
+          } : null,
+        } : {}),
         searchVolume: info?.search_volume ?? null,
         competitionLevel: info?.competition_level ?? null,
         cpc: info?.cpc ?? null,
