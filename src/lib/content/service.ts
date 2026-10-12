@@ -1029,7 +1029,7 @@ export async function createContentBrief(
   );
   assertPreWriterMissionAuthorityV1({
     sections: liveMaster.articleExecutionPlan.sections,
-    blueprints: productionMaster.masterRuntime!.sectionBlueprints.sections,
+    blueprints: inspectMasterRuntimeSnapshot({ masterRuntime: productionMaster.masterRuntime }).runtime!.sectionBlueprints.sections,
   });
 
   const briefInput:
