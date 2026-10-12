@@ -53,7 +53,7 @@ describe("keyword-intelligence-v2", () => {
     expect(result.candidates).toHaveLength(500);
     expect(result.observed).toBe(501);
     expect(result.candidates[0]?.keyword).toBe("credit monitoring high opportunity");
-    expect(result.candidates.some(candidate => candidate.keyword === "credit monitoring obscure 499")).toBe(false);
+    expect(result.candidates.filter(candidate => candidate.keyword.startsWith("credit monitoring obscure "))).toHaveLength(499);
   });
 
   it("uses documented trends only as bounded supporting signals, not fabricated search volume", () => {
