@@ -391,6 +391,57 @@ describe(
       expect(result.semanticVerification.status).not.toBe("BLOCK");
     });
 
+    it("converges on successive unsupported prose units in critic verify-only without model repairs", async () => {
+      const { verifyGeneratedSectionOnlyV1 } = await import("./master-section-repair");
+      const first = "Credit monitoring can detect changes in a credit report.";
+      const badOne = "Unsupported detail one.";
+      const badTwo = "Unsupported detail two.";
+      let verificationCalls = 0;
+      let modelRepairs = 0;
+      const result = await verifyGeneratedSectionOnlyV1({
+        contract: contract(),
+        section: generated({ body: [first, badOne, badTwo].join("\n\n") }),
+        generator: {
+          modelName: "test-model",
+          async verifySectionClaims({ section }) {
+            verificationCalls += 1;
+            const units = extractSectionSemanticProseUnitsV1({
+              sectionIndex: 0,
+              bodyMarkdown: section.bodyMarkdown,
+            });
+            return finalizeSectionSemanticVerificationV1({
+              contract: contract(),
+              section,
+              modelName: "test-model",
+              candidate: {
+                units: units.map(unit => {
+                  const unsupported = unit.text === badOne ||
+                    (unit.text === badTwo && !section.bodyMarkdown.includes(badOne));
+                  return {
+                    unitId: unit.id,
+                    classification: unsupported ? "UNSUPPORTED" as const : "SUPPORTED" as const,
+                    matchedClaimId: unsupported ? null : "claim-1",
+                    evidenceIds: unsupported ? [] : ["ev-1"],
+                    rationale: "Synthetic multi-pass diagnostic",
+                  };
+                }),
+              },
+            });
+          },
+          async repairSection() {
+            modelRepairs += 1;
+            throw new Error("verify-only must not rewrite");
+          },
+        },
+      });
+      expect(modelRepairs).toBe(0);
+      expect(verificationCalls).toBe(3);
+      expect(result.section.bodyMarkdown).toContain(first);
+      expect(result.section.bodyMarkdown).not.toContain(badOne);
+      expect(result.section.bodyMarkdown).not.toContain(badTwo);
+      expect(result.semanticVerification.status).toBe("PASS");
+    });
+
     it(
       "does not repair an already clean section",
       async () => {
