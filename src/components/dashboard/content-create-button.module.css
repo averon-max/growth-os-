@@ -355,3 +355,12 @@
   font-size: 11px;
   line-height: 1.45;
 }
+
+/* Spacious, responsive generation canvas; normal form remains compact. */
+.dialogVisual{width:min(780px,100%);max-height:min(92vh,900px);overflow-y:auto}
+.dialogVisual .header{position:sticky;top:0;background:#101214;z-index:3}
+.previewRow{display:flex;justify-content:flex-start;margin-top:12px}
+.previewButton{background:transparent;border:1px solid rgba(118,133,247,.3);border-radius:6px;color:#a8b6ff;padding:8px 11px;font-size:11px;cursor:pointer}
+.previewButton:hover:not(:disabled){background:rgba(96,112,230,.11);border-color:rgba(118,133,247,.56)}
+.previewButton:disabled{cursor:default;opacity:.4}
+@media(max-width:560px){.dialogVisual{max-height:95vh}.dialogVisual form{padding:12px}}
