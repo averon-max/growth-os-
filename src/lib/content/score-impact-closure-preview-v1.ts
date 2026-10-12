@@ -73,16 +73,12 @@ export function composeScoreImpactClosurePreviewV1({
   if (changedSectionIndexes.length !== 1 || changedSectionIndexes[0] !== 3) {
     throw new Error("CLOSURE_PREVIEW_PRESERVATION_FAILED");
   }
-  const markdown = [
-    "# " + h1.trim(),
-    "",
-    ...updated.flatMap(section => [
-      "## " + section.heading,
-      "",
-      section.bodyMarkdown.trim(),
-      "",
-    ]),
-  ].join("\n").trim() + "\n";
+  // Preserve the raw original section strings, including any
+  // intentional whitespace. Only the replacement section is new.
+  const markdown = "# " + h1.trim() + "\n\n" +
+    updated.map(section =>
+      "## " + section.heading + "\n\n" + section.bodyMarkdown
+    ).join("\n\n") + "\n";
   return Object.freeze({
     markdown,
     sectionHashesBefore: Object.freeze(before),
