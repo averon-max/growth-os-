@@ -1666,6 +1666,45 @@ const trigger: SectionRepairTriggerV1 =
 
 
   /*
+   * DEPTH_FIRST_EXPANSION_ROLLBACK_V1
+   *
+   * A depth-only rewrite can remove useful, already-grounded prose.
+   * Keep the original ONLY after separately verifying it against
+   * the same immutable claim/evidence contract. Never reinstate
+   * unsupported text merely to recover the word count.
+   *
+   * A restored original must not trigger another paid expansion.
+   * Article-level readiness still judges total content coverage.
+   */
+  let skipFurtherDepthAfterRegression = false;
+  if (
+    trigger === "DEPTH" &&
+    countSectionWordsV1(repaired.bodyMarkdown) <
+      countSectionWordsV1(section.bodyMarkdown)
+  ) {
+    try {
+      const baselineSemantic = await semanticVerify({
+        contract,
+        section,
+        generator,
+      });
+      assertSectionSemanticVerificationPassed(baselineSemantic);
+      console.warn("[writer depth] retaining verified original after shrinking rewrite", {
+        sectionIndex: contract.sectionIndex,
+        originalWords: countSectionWordsV1(section.bodyMarkdown),
+        proposedWords: countSectionWordsV1(repaired.bodyMarkdown),
+      });
+      repaired = section;
+      finalReconciliation = initialReconciliation;
+      finalSemantic = baselineSemantic;
+      skipFurtherDepthAfterRegression = true;
+    } catch {
+      // Do not roll back if the original has not passed semantic
+      // verification. Continue with the accepted repaired section.
+    }
+  }
+
+  /*
    * SECTION_DEPTH_TERMINAL_GATE_V1
    *
    * Depth remains section-local and runs only after the section
@@ -1757,7 +1796,8 @@ const trigger: SectionRepairTriggerV1 =
       1;
     depthPass <=
       MAX_DEPTH_MODEL_REPAIR_PASSES &&
-    terminalDepthRepair;
+    terminalDepthRepair &&
+    !skipFurtherDepthAfterRegression;
     depthPass +=
       1
   ) {
@@ -1851,16 +1891,14 @@ const trigger: SectionRepairTriggerV1 =
       nextSection.bodyMarkdown ===
         beforeBody
     ) {
-      throw new ContentGenerationError(
-        [
-          "SECTION_TARGETED_REPAIR_EXHAUSTED",
-          "DEPTH",
-          "NO_PROGRESS_BODY_CYCLE",
-          `${beforeDepth.currentWords}<${beforeDepth.minWords}`,
-        ].join(
-          ":"
-        )
-      );
+      // A no-op depth rewrite cannot justify restarting the article:
+      // the existing section was independently verified already.
+      console.warn("[writer depth] retaining verified text after no-op depth pass", {
+        sectionIndex: contract.sectionIndex,
+        words: beforeDepth.currentWords,
+        softTargetWords: beforeDepth.minWords,
+      });
+      break;
     }
 
 
