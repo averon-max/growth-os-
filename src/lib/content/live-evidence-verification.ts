@@ -2,6 +2,8 @@ import {
   fetchSinglePage,
 } from "../crawler/crawler";
 
+import { findExactSourceSentenceV1 } from "./exact-source-sentence-v1";
+
 import {
   defaultAuthorityTier,
   type EvidenceSourceType,
@@ -2938,7 +2940,20 @@ export function selectVerifiedClaimSourcesV1({
     const sourceHost = evidenceHostV1(source.url);
     if (!bodyText || !sourceHost) continue;
 
-    const candidate = findVerifiedExcerptCandidateV1({
+    // Prefer a short verbatim sentence when the source contains the
+    // literal claim. The exact candidate MUST pass the same strict
+    // lexical, polarity, numeric and negative-target verifier.
+    const exactSentence = findExactSourceSentenceV1({
+      claimText,
+      bodyText,
+    });
+    const exactVerified = exactSentence
+      ? findVerifiedExcerptCandidateV1({
+          claimText,
+          bodyText: exactSentence,
+        })
+      : null;
+    const candidate = exactVerified ?? findVerifiedExcerptCandidateV1({
       claimText,
       bodyText,
     });
