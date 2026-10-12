@@ -22,6 +22,7 @@ import {
 } from "@/lib/content/article-recovery-orchestrator-v1";
 
 import { geminiGenerator } from "@/lib/content/gemini-generator";
+import { describeRejectedArticleV1 } from "@/lib/content/article-failure-diagnostic-v1";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -130,8 +131,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               ? "Growth OS attempted automatic recovery, but the article still could not pass its production gates safely."
               : "The article could not pass its production gates safely.",
 
-          code:
-            "ARTICLE_RECOVERY_EXHAUSTED",
+          ...describeRejectedArticleV1(article.publishError),
 
           articleCreated:
             true,
