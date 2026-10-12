@@ -19,9 +19,9 @@ const plain = (value: unknown): Record<string, any> => {
   }
   return value as Record<string, any>;
 };
-const assert = (ok: unknown, code: string): asserts ok => {
+function assert(ok: unknown, code: string): asserts ok {
   if (!ok) throw new Error(code);
-};
+}
 
 const SOURCE_URL =
   "https://www.experian.com/blogs/ask-experian/does-credit-monitoring-hurt-credit-score/";
@@ -175,7 +175,9 @@ async function main() {
       risk: "HIGH", jurisdiction: "United States",
     });
     const rebuilt = buildClaimLedger({
-      claims: inputs, graph, asOf: new Date(),
+      claims: inputs,
+      graph: graph as unknown as Parameters<typeof buildClaimLedger>[0]["graph"],
+      asOf: new Date(),
     });
     for (const old of ledger.claims) {
       const now = rebuilt.claims.find(c => c.id === old.id);
