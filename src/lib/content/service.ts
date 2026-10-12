@@ -576,16 +576,17 @@ export async function createContentBrief(
       /*
        * SECONDARY_CLUSTER_PRODUCTION_PROJECTION_V2
        *
-       * Related keywords contain only canonical primary
-       * plus approved secondary queries.
-       *
-       * Supporting discovery candidates are excluded here.
+       * Research context: canonical primary and eligible secondary
+       * queries, plus same-page supporting observations. Supporting
+       * queries are NOT promoted into persisted secondaryKeywords or
+       * required exact-match usage; they inform subtopic decisions only.
        */
       [
         strategy.primary,
         ...strategy.secondary,
+        ...strategy.supporting,
       ]
-        .slice(0, 15)
+        .slice(0, 20)
         .map(
           (keyword) => ({
             keyword:
