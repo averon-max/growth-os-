@@ -2050,7 +2050,7 @@ export async function buildContentStrategy({
       )
       .slice(
         0,
-        8
+        12
       );
 
   const selected =
