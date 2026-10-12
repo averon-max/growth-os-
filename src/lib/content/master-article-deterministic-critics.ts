@@ -589,6 +589,13 @@ export function runDeterministicCoverageCriticV1({
       );
 
 
+  // Primary is the first authoritative keyword supplied by the brief.
+  // Missing exact-match secondary phrases are editorial warnings:
+  // coverage and verified facts remain enforced by their own gates.
+  const rankReadyPrimary =
+    rankReadyKeywords?.find((value) => value.trim().length > 0)?.trim().toLocaleLowerCase("en-US") ??
+    null;
+
   const rankReadySeen =
     new Set<string>();
 
@@ -774,7 +781,7 @@ export function runDeterministicCoverageCriticV1({
           "RANK_READY_PLANNED_KEYWORD_MISSING",
 
         severity:
-          "BLOCK",
+          dedupeKey === rankReadyPrimary ? "BLOCK" : "WARN",
 
         location:
           sectionLocation(
