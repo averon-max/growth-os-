@@ -1822,6 +1822,39 @@ describe(
         );
       }
     );
+    it("reuses every accepted section from a complete checkpoint with zero new provider calls", async () => {
+      const plan = contract();
+      const initialCalls: string[] = [];
+      let saved: MasterWriterSectionProgressV1 | null = null;
+      const first = await executeMasterWriterV1({
+        contract: plan,
+        generator: successfulGenerator({ calls: initialCalls }),
+        onProgress: async ({ shell, accepted }) => {
+          saved = {
+            version: "MASTER_WRITER_SECTION_PROGRESS_V1",
+            articleId: "test-article",
+            briefId: "test-brief",
+            contractHash: fingerprintMasterWriterContractV1(plan, "test-model"),
+            modelName: "test-model",
+            shell,
+            accepted: [...accepted],
+          };
+        },
+      });
+      const checkpoint = saved as MasterWriterSectionProgressV1 | null;
+      expect(checkpoint?.accepted).toHaveLength(2);
+      const replayCalls: string[] = [];
+      const resumed = await executeMasterWriterV1({
+        contract: plan,
+        generator: successfulGenerator({ calls: replayCalls }),
+        resumeProgress: checkpoint,
+      });
+      expect(replayCalls).toEqual([]);
+      expect(resumed.article.bodyMarkdown).toBe(first.article.bodyMarkdown);
+      expect(resumed.sections).toHaveLength(2);
+      expect(resumed.semanticVerifications.every(x => x.status !== "BLOCK")).toBe(true);
+    });
+
     it("resumes after a failed later section without regenerating verified prefix", async () => {
       const plan = contract();
       const firstCalls: string[] = [];
