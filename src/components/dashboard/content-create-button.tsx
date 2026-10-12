@@ -1148,6 +1148,7 @@ export function ContentCreateButton({
                   local preview; it never starts research or article writes. */}
               {busy || previewAnimation ? (
                 <ContentGenerationHud
+                  preview={!busy && previewAnimation}
                   mode={stage === "WRITING" ? "WRITING" : "PLANNING"}
                   topic={topic}
                   keywords={
