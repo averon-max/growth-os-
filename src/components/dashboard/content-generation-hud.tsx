@@ -12,6 +12,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { KeywordOrbitVisualization } from "./keyword-orbit-visualization";
+
 import styles from "./content-generation-hud.module.css";
 
 
@@ -67,6 +69,7 @@ export function ContentGenerationHud({
   topic,
   primaryKeyword,
   searchIntent,
+  keywords = [],
 }: {
   mode:
     GenerationMode;
@@ -79,6 +82,8 @@ export function ContentGenerationHud({
 
   searchIntent?:
     string | null;
+
+  keywords?: readonly string[];
 }) {
   const [
     elapsed,
@@ -234,6 +239,8 @@ export function ContentGenerationHud({
         </div>
       </div>
 
+
+      <KeywordOrbitVisualization topic={topic} keywords={keywords} />
 
       <div
         className={
