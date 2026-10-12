@@ -60,6 +60,19 @@ describe("prewriter mission authority gate", () => {
     expect(inspectPreWriterMissionAuthorityV1(input).ready).toBe(true);
   });
 
+  it("protects a MUST question owned by a non-question H2 after claim contraction", () => {
+    const heading = "How Credit Scores Work";
+    expect(() => assertPreWriterMissionAuthorityV1({
+      blueprints: [{ heading, requiredClaims: ["claim-score-inquiry"] }],
+      sections: [{
+        heading,
+        state: "WRITABLE",
+        requiredQuestionIds: ["question-score"],
+        requiredClaimIds: [],
+      }],
+    })).toThrow("ARTICLE_PREWRITER_MISSION_AUTHORITY_LOST");
+  });
+
   it("preserves identity checks between the locked plan and original runtime", () => {
     expect(() => assertPreWriterMissionAuthorityV1({
       blueprints: [question],
