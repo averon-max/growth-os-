@@ -33,3 +33,37 @@ export function directAnswerEvidenceSearchProbeV3({
   const exact = questions.find(question => /\?\s*$/.test(question.trim()));
   return (exact ?? heading).trim();
 }
+
+
+/**
+ * Pure source-discovery projection for the question-first recovery pass.
+ * Caller passes only unresolved original claims. These question-shaped
+ * texts must NEVER be written back to the claim ledger as factual claims.
+ */
+export function buildEarlyQuestionEvidenceProbesV3({
+  unresolvedClaims,
+  sections,
+}: {
+  unresolvedClaims: readonly Readonly<{ id: string; text: string }>[];
+  sections: readonly Readonly<{
+    heading: string;
+    questions: readonly string[];
+    requiredClaimIds: readonly string[];
+  }>[];
+}): readonly Readonly<{ id: string; text: string }>[] {
+  return unresolvedClaims.flatMap(claim => {
+    const owner = sections.find(section =>
+      section.requiredClaimIds.includes(claim.id)
+    );
+    if (!owner || !/\?\s*$/.test(owner.heading.trim())) {
+      return [];
+    }
+    return [{
+      id: claim.id,
+      text: directAnswerEvidenceSearchProbeV3({
+        heading: owner.heading,
+        questions: owner.questions,
+      }),
+    }];
+  });
+}
