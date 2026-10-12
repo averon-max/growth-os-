@@ -360,6 +360,37 @@ describe(
       expect(result.repair.attemptCount).toBeGreaterThanOrEqual(2);
     });
 
+    it("keeps previously verified prose when a depth expansion shrinks below the soft section target", async () => {
+      const withDepth = {
+        ...contract(),
+        executionPlanAuthority: {
+          targetWords: { min: 35, preferred: 50, max: 90 },
+        },
+      } as SectionGenerationContractV1;
+      const baseline = "Credit monitoring can detect certain changes in a credit report. " +
+        "The alert helps a reader notice a change and decide whether it needs review. " +
+        "A credit report is not the same thing as a credit score.";
+      let repairs = 0;
+      const result = await verifyAndRepairGeneratedSectionV1({
+        contract: withDepth,
+        section: generated({ body: baseline }),
+        generator: {
+          modelName: "test-model",
+          async verifySectionClaims({ section }) {
+            return semantic({ section, classification: "SUPPORTED" });
+          },
+          async repairSection() {
+            repairs += 1;
+            return generated({ body: "Credit monitoring can detect report changes." });
+          },
+        },
+      });
+      expect(repairs).toBeGreaterThanOrEqual(1);
+      expect(result.section.bodyMarkdown).toBe(baseline);
+      expect(result.reconciliation.status).toBe("PASS");
+      expect(result.semanticVerification.status).not.toBe("BLOCK");
+    });
+
     it(
       "does not repair an already clean section",
       async () => {
