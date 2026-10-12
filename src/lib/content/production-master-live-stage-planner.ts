@@ -165,6 +165,7 @@ import {
 import {
   eligibleForDirectAnswerEvidenceRecoveryV3,
   directAnswerEvidenceSearchProbeV3,
+  buildEarlyQuestionEvidenceProbesV3,
 } from "./direct-answer-evidence-recovery-v3";
 
 
@@ -4023,24 +4024,10 @@ function inspectStagePlanCompleteness(
    * crawler + strict VERIFIED_EXCERPT verifier may authorize it.
    * This stage changes NO claim text, IDs or planning scope.
    */
-  const earlyQuestionProbeClaimsV3 =
-    unresolvedEvidenceClaims.flatMap((claim) => {
-      const owner = plan.sections.find((section) =>
-        section.requiredClaimIds.includes(claim.id)
-      );
-
-      if (!owner || !/\?\s*$/.test(owner.heading.trim())) {
-        return [];
-      }
-
-      return [{
-        ...claim,
-        text: directAnswerEvidenceSearchProbeV3({
-          heading: owner.heading,
-          questions: owner.questions,
-        }),
-      }];
-    });
+  const earlyQuestionProbeClaimsV3 = buildEarlyQuestionEvidenceProbesV3({
+    unresolvedClaims: unresolvedEvidenceClaims,
+    sections: plan.sections,
+  });
 
   if (earlyQuestionProbeClaimsV3.length > 0) {
     const questionSources = await discoverClaimEvidenceFallbackSourcesV1({
