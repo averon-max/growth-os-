@@ -4029,7 +4029,7 @@ function inspectStagePlanCompleteness(
         section.requiredClaimIds.includes(claim.id)
       );
 
-      if (!owner || !/\\?\\s*$/.test(owner.heading.trim())) {
+      if (!owner || !/\?\s*$/.test(owner.heading.trim())) {
         return [];
       }
 
