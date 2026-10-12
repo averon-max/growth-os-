@@ -507,9 +507,25 @@ export async function verifyGeneratedSectionOnlyV1({
    * This helper already fails closed when required claims would
    * lose their surviving supported representation.
    */
-  if (
-    initialSemantic.status ===
-      "BLOCK"
+  /*
+   * CRITIC_VERIFY_ONLY_BOUNDED_SEMANTIC_CONVERGENCE_V2
+   *
+   * A first deterministic deletion may expose a new unsupported unit
+   * after Markdown normalization. Recheck only the currently BLOCKED
+   * section, never invoke an additional writer/model repair.
+   *
+   * Each pass must delete actual blocked prose, preserve every
+   * required-claim representation and re-run canonical reconciliation.
+   * Bound the number of paid semantic verifications and fail closed
+   * when there is no progress, a repeated body, or an unresolved BLOCK.
+   */
+  const maxVerifyOnlyCleanupPasses = 4;
+  const seenVerifyOnlyBodies = new Set<string>([acceptedSection.bodyMarkdown]);
+  let verifyOnlyCleanupPasses = 0;
+
+  while (
+    finalSemantic.status === "BLOCK" &&
+    verifyOnlyCleanupPasses < maxVerifyOnlyCleanupPasses
   ) {
     const beforeBody =
       acceptedSection
@@ -529,7 +545,7 @@ export async function verifyGeneratedSectionOnlyV1({
             acceptedSection,
 
           verification:
-            initialSemantic,
+            finalSemantic,
         });
     } catch (
       error
@@ -549,13 +565,14 @@ export async function verifyGeneratedSectionOnlyV1({
 
 
     if (
-      cleanedSection.bodyMarkdown ===
-      beforeBody
+      cleanedSection.bodyMarkdown === beforeBody ||
+      seenVerifyOnlyBodies.has(cleanedSection.bodyMarkdown)
     ) {
       throw new ContentGenerationError(
         "SECTION_VERIFY_ONLY_DETERMINISTIC_CLEANUP_NO_PROGRESS"
       );
     }
+    seenVerifyOnlyBodies.add(cleanedSection.bodyMarkdown);
 
 
     assertSectionIdentity({
@@ -641,6 +658,7 @@ export async function verifyGeneratedSectionOnlyV1({
 
     deterministicCleanupUsed =
       true;
+    verifyOnlyCleanupPasses += 1;
   }
 
 
