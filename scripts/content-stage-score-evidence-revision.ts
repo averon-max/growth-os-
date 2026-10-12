@@ -201,7 +201,7 @@ async function main() {
     runtime.claimLedger = rebuilt;
 
     const { rebindApprovedDirectAnswerV1 } =
-      await import("../src/lib/content/rebind-approved-direct-answer-v1");
+      await import("./rebind-approved-direct-answer-v1");
     const ownership = rebindApprovedDirectAnswerV1({
       planClaimIds: sectionPlan.requiredClaimIds,
       blueprintClaimIds: sectionBlueprint.requiredClaims,
