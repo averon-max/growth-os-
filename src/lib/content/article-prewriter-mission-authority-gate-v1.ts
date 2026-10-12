@@ -20,7 +20,7 @@ export class PreWriterMissionAuthorityErrorV1 extends Error {
 
   constructor(issues: readonly Readonly<PreWriterMissionAuthorityIssueV1>[]) {
     super(
-      this.code + ":" + issues.map(issue =>
+      "ARTICLE_PREWRITER_MISSION_AUTHORITY_LOST:" + issues.map(issue =>
         `SECTION=${issue.index};HEADING=${issue.heading};CLAIMS=${issue.missingClaimIds.join(",")}`
       ).join("|")
     );
