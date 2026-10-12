@@ -513,7 +513,16 @@ export function isSafeMissionPreservingClaimReplanCandidateV1({
       );
 
 
+  // The section H2 owns the reader's information job. A secondary
+  // "What is a soft inquiry?" does not turn a score-impact question
+  // into a definition section (and block valid direct-answer replans).
+  const headingIsNonDefinitionQuestionV3 =
+    /\?\s*$/.test(sectionHeading.trim()) &&
+    !/^(?:what\s+(?:is|are)\b|define\b|definition\b)/i
+      .test(sectionHeading.trim());
+
   const isDefinitionJobV3 =
+    !headingIsNonDefinitionQuestionV3 &&
     /\bdefine\b|\bdefinition\b|\bwhat\s+(?:is|are)\b/i
       .test(
         definitionJobTextV3
@@ -1024,9 +1033,46 @@ export function isSafeMissionPreservingClaimReplanCandidateV1({
       1;
 
 
+  /*
+   * DIRECT_QUESTION_REPLAN_OWNERSHIP_V1
+   *
+   * A compound source claim may explain a neighboring mechanism
+   * (e.g. a soft inquiry), yet fail to answer this section's precise
+   * score-impact H2. Permit an answer-first wording change ONLY if:
+   * - H2 explicitly asks a non-definition question;
+   * - the article subject survives;
+   * - two substantive H2 concepts occur in the candidate;
+   * - the original proposition retains some topical overlap.
+   *
+   * Numeric and polarity preservation were checked above. This is
+   * NOT evidence authority: the caller still requires fetched
+   * SUPPORTS + VERIFIED_EXCERPT before accepting any replacement.
+   */
+  const substantiveQuestionTokensV3 =
+    new Set(
+      [...withoutTokensV2(
+        semanticTokensV2(sectionHeading),
+        primaryTokens
+      )].filter(token =>
+        !new Set(["you", "your", "my", "our", "their", "me"]).has(token)
+      )
+    );
+
+  const directQuestionAlignedReplanV3 =
+    headingIsNonDefinitionQuestionV3 &&
+    subjectAnchored &&
+    originalOverlap >= 2 &&
+    sectionOverlap >= 2 &&
+    substantiveQuestionTokensV3.size >= 2 &&
+    intersectionSizeV2(
+      substantiveQuestionTokensV3,
+      candidateTokens
+    ) >= 2;
+
   return (
     subjectPreservingDefinitionReplan ||
-    ordinaryMissionPreservingReplan
+    ordinaryMissionPreservingReplan ||
+    directQuestionAlignedReplanV3
   );
 }
 

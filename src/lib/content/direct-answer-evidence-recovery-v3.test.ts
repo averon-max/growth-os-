@@ -41,3 +41,19 @@ describe("direct-answer evidence recovery v3", () => {
     })).toBe("Does monitoring affect your score?");
   });
 });
+
+describe("direct-answer probe ownership", () => {
+  it("searches the actual question H2 instead of an adjacent definition subquestion", () => {
+    expect(directAnswerEvidenceSearchProbeV3({
+      heading: "Does Credit Monitoring Affect Your Credit Score?",
+      questions: ["What is a soft inquiry?", "Does checking your report lower your score?"],
+    })).toBe("Does Credit Monitoring Affect Your Credit Score?");
+  });
+
+  it("retains explicit questions when the H2 is not question-shaped", () => {
+    expect(directAnswerEvidenceSearchProbeV3({
+      heading: "Credit monitoring and scores",
+      questions: ["Does credit monitoring affect your credit score?"],
+    })).toBe("Does credit monitoring affect your credit score?");
+  });
+});
