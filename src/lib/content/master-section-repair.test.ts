@@ -364,7 +364,7 @@ describe(
       const withDepth = {
         ...contract(),
         executionPlanAuthority: {
-          targetWords: { min: 35, preferred: 50, max: 90 },
+          targetWords: { min: 45, preferred: 55, max: 90 },
         },
       } as SectionGenerationContractV1;
       const baseline = "Credit monitoring can detect certain changes in a credit report. " +
