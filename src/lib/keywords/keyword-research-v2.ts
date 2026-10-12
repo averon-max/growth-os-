@@ -3,6 +3,7 @@ import { parseCachedKeywordResearchV2, type KeywordResearchResultV2 } from "./ke
 import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
+import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
 import { prepareKeywordOpportunitiesV2, validateKeywordOpportunityChoiceV2,
   type KeywordObservationV2, type KeywordOpportunityChoiceV2, type SerpOpportunityV2,
@@ -86,7 +87,16 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
         row && typeof row === "object" && typeof row.keyword === "string"),
     produce: () => fetchRelatedKeywords(seed, locationName, "English", 3, limit, true),
   });
-  const context = await getWebsiteKeywordContext(website.id).catch(() => null);
+  const [context, trends] = await Promise.all([
+    getWebsiteKeywordContext(website.id).catch(() => null),
+    fetchTrendingQueries(seed, market).catch(() => null),
+  ]);
+  const topTrends = new Map((trends?.topQueries ?? []).map(item => [
+    item.query.trim().toLowerCase(), item.value,
+  ] as const));
+  const risingTrends = new Map((trends?.risingQueries ?? []).map(item => [
+    item.query.trim().toLowerCase(), item.value,
+  ] as const));
   const observations: KeywordObservationV2[] = [
     { keyword: seed, searchVolume: null, keywordDifficulty: null, cpc: null, source: "SEED" },
     ...(context?.topKeywords ?? []).map(keyword => ({
@@ -104,9 +114,26 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       searchVolume: keyword.searchVolume,
       keywordDifficulty: keyword.keywordDifficulty,
       cpc: keyword.cpc,
+      monthlySearches: keyword.monthlySearches,
+      trend: keyword.trend,
+      googleTrendsTop: topTrends.get(keyword.keyword.trim().toLowerCase()) ?? null,
+      googleTrendsRising: risingTrends.get(keyword.keyword.trim().toLowerCase()) ?? null,
       source: "DATAFORSEO" as const,
     })),
   ];
+
+  // Trend-only queries are real observed queries, but have unknown demand
+  // and KD until measured by a source of absolute search statistics.
+  for (const item of [...(trends?.topQueries ?? []), ...(trends?.risingQueries ?? [])]) {
+    if (!observations.some(row => row.keyword.trim().toLowerCase() === item.query.trim().toLowerCase())) {
+      observations.push({
+        keyword: item.query, searchVolume: null, keywordDifficulty: null,
+        cpc: null, source: "SEED",
+        googleTrendsTop: topTrends.get(item.query.trim().toLowerCase()) ?? null,
+        googleTrendsRising: risingTrends.get(item.query.trim().toLowerCase()) ?? null,
+      });
+    }
+  }
 
   const existingBriefs = await prisma.contentBrief.findMany({
     where: { websiteId: website.id },
