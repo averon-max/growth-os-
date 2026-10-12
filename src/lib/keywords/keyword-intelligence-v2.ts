@@ -1,4 +1,5 @@
 import { classifySearchIntent } from "../content/seo-strategy";
+import type { RelatedKeywordResult } from "./dataforseo-provider";
 
 /** One real observed query, never model-invented. */
 export interface KeywordObservationV2 {
@@ -9,6 +10,14 @@ export interface KeywordObservationV2 {
   impressions?: number;
   clicks?: number;
   position?: number | null;
+  /** DataForSEO's historical absolute monthly volumes, if returned. */
+  monthlySearches?: RelatedKeywordResult["monthlySearches"];
+  /** DataForSEO changes expressed as percentages, not absolute search volume. */
+  trend?: RelatedKeywordResult["trend"];
+  /** Google Trends related query score (relative only, not search volume). */
+  googleTrendsTop?: number | null;
+  /** Google Trends rising query change percentage (not absolute volume). */
+  googleTrendsRising?: number | null;
   source: "DATAFORSEO" | "GSC" | "SEED";
 }
 
@@ -90,7 +99,17 @@ function score(candidate: KeywordObservationV2): number {
   const nearWin = position !== null && position >= 4 && position <= 20 ? 12 : 0;
   const evidence = (volume !== null ? 4 : 0) + (kd !== null ? 4 : 0) +
     (impressions > 0 ? 6 : 0);
-  return Math.round((20 + demand + competition + gsc + nearWin + evidence) * 100) / 100;
+  // Provider percentages and Google Trends related-interest scores are
+  // bounded auxiliary signals; never interpret either as monthly searches.
+  const quarterlyChange = candidate.trend?.quarterly ?? candidate.trend?.yearly ?? null;
+  const momentum = quarterlyChange !== null && Number.isFinite(quarterlyChange)
+    ? Math.max(-8, Math.min(8, quarterlyChange / 12.5)) : 0;
+  const rising = validNumber(candidate.googleTrendsRising);
+  const top = validNumber(candidate.googleTrendsTop);
+  const trendEvidence = rising !== null ? Math.min(6, 1 + Math.log1p(rising) / 2)
+    : top !== null ? Math.min(3, 1 + top / 50) : 0;
+  return Math.round((20 + demand + competition + gsc + nearWin + evidence +
+    momentum + trendEvidence) * 100) / 100;
 }
 
 export function prepareKeywordOpportunitiesV2({
@@ -116,7 +135,9 @@ export function prepareKeywordOpportunitiesV2({
   // Count accepted distinct candidates, not raw rows: seed and GSC rows
   // must not arbitrarily discard relevant DataForSEO results.
   for (const item of observations) {
-    if (retained.size >= limit) break;
+    // Inspect all supplied observations before selecting top N by actual
+    // scored opportunity. GSC rows and provider ordering must not starve
+    // later, stronger DataForSEO discoveries.
     inspected += 1;
     const normalized = normalizeKeywordV2(item.keyword ?? "");
     if (normalized.length < 3 || normalized.length > 180) {
@@ -129,6 +150,13 @@ export function prepareKeywordOpportunitiesV2({
       if (already.searchVolume === null) already.searchVolume = validNumber(item.searchVolume);
       if (already.keywordDifficulty === null) already.keywordDifficulty = validNumber(item.keywordDifficulty);
       if (already.cpc === null) already.cpc = validNumber(item.cpc);
+      if ((!already.monthlySearches || already.monthlySearches.length === 0) &&
+        item.monthlySearches?.length) already.monthlySearches = item.monthlySearches;
+      if (!already.trend && item.trend) already.trend = item.trend;
+      if (already.googleTrendsTop == null && item.googleTrendsTop != null)
+        already.googleTrendsTop = item.googleTrendsTop;
+      if (already.googleTrendsRising == null && item.googleTrendsRising != null)
+        already.googleTrendsRising = item.googleTrendsRising;
       if ((item.impressions ?? 0) > (already.impressions ?? 0)) {
         already.impressions = item.impressions;
         already.clicks = item.clicks;
@@ -166,7 +194,7 @@ export function prepareKeywordOpportunitiesV2({
     opportunityScore: score(candidate),
   })).sort((a, b) =>
     b.opportunityScore - a.opportunityScore || a.normalized.localeCompare(b.normalized)
-  );
+  ).slice(0, limit);
   const clustersById = new Map<string, KeywordCandidateV2[]>();
   for (const candidate of candidates) {
     const list = clustersById.get(candidate.clusterId) ?? [];
