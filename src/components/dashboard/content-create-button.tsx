@@ -268,6 +268,7 @@ export function ContentCreateButton({
     >(null);
 
   const [researching, setResearching] = useState(false);
+  const [previewAnimation, setPreviewAnimation] = useState(false);
   const [researchReport, setResearchReport] =
     useState<KeywordResearchReportV2 | null>(null);
   const [approvedResearchKey, setApprovedResearchKey] =
@@ -708,7 +709,7 @@ export function ContentCreateButton({
         >
           <div
             className={
-              styles.dialog
+              busy || previewAnimation ? `${styles.dialog} ${styles.dialogVisual}` : styles.dialog
             }
           >
             <div
@@ -1143,17 +1144,15 @@ export function ContentCreateButton({
                 </span>
               </div>
 
-              {/* CONTENT_GENERATION_HUD_V1 */}
-              {busy ? (
+              {/* The visual runs only for real pending requests or explicit
+                  local preview; it never starts research or article writes. */}
+              {busy || previewAnimation ? (
                 <ContentGenerationHud
-                  mode={
-                    stage ===
-                    "PLANNING"
-                      ? "PLANNING"
-                      : "WRITING"
-                  }
-                  topic={
-                    topic
+                  mode={stage === "WRITING" ? "WRITING" : "PLANNING"}
+                  topic={topic}
+                  keywords={
+                    researchReport?.clusters.map(cluster => cluster.primary.keyword) ??
+                    suggestions.related.map(item => item.keyword)
                   }
                 />
               ) : null}
@@ -1167,6 +1166,18 @@ export function ContentCreateButton({
                   {error}
                 </div>
               ) : null}
+
+              <div className={styles.previewRow}>
+                <button
+                  type="button"
+                  className={styles.previewButton}
+                  disabled={busy}
+                  onClick={() => setPreviewAnimation(value => !value)}
+                  aria-pressed={previewAnimation}
+                >
+                  {previewAnimation ? "Hide animation preview" : "Preview keyword universe — free"}
+                </button>
+              </div>
 
               <div
                 className={
