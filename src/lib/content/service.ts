@@ -1,4 +1,5 @@
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
+import { buildResearchDecisionV2 } from "./research-decision-v2";
 import {
   assertFinalArticleVersionIntegrityV1,
 } from "./final-article-version-integrity-v1";
@@ -1144,6 +1145,12 @@ export async function createContentBrief(
           ...finalPlan,
 
           searchBlueprintShadow,
+          ...(input.generationPolicy ? {
+            researchDecisionV2: buildResearchDecisionV2({
+              policy: input.generationPolicy,
+              strategy,
+            }),
+          } : {}),
 
           searchMissionInput:
             productionMaster
