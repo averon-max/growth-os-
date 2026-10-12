@@ -58,9 +58,27 @@ export function parsePage(html: string, baseUrl: string): ParsedPage {
     $('meta[name="googlebot"]').attr("content")?.trim() ||
     null;
 
-  // Word count — exclude script and style
-  $("script, style, noscript").remove();
-  const bodyText = $("body").text().replace(/\s+/g, " ").trim();
+  /*
+   * CRAWLER_READING_TEXT_BLOCK_BOUNDARIES_V1
+   *
+   * Cheerio .text() concatenates adjacent block element text without
+   * spaces: <h2>Quick Answer</h2><p>Credit...</p> becomes
+   * "Quick AnswerCredit...". That breaks exact sentence-level evidence
+   * verification and can merge unrelated navigation with a factual
+   * assertion. Preserve readable boundaries from the fetched DOM.
+   *
+   * A clone avoids changing link/image/structured-data extraction.
+   * Do not break inline <em>/<strong>/<span> because these may split
+   * an ordinary sentence at word boundaries.
+   */
+  const readingBody = $("body").clone();
+  readingBody.find("script, style, noscript, template, svg").remove();
+  readingBody.find("br, hr").replaceWith(" ");
+  readingBody
+    .find("p, div, section, article, main, nav, aside, header, footer, h1, h2, h3, h4, h5, h6, li, ul, ol, blockquote, tr, td, th")
+    .prepend(" ")
+    .append(" ");
+  const bodyText = readingBody.text().replace(/\s+/g, " ").trim();
   const wordCount = bodyText ? bodyText.split(/\s+/).filter(Boolean).length : 0;
 
   // Links
