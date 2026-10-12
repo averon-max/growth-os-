@@ -65,7 +65,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision)].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "momentum-v1"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
