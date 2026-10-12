@@ -1440,7 +1440,7 @@ export const geminiGenerator:
       : "";
 
     const relatedKeywordsBlock = input.relatedKeywords && input.relatedKeywords.length > 0
-      ? `\n\nReal related keywords (from DataForSEO):\n${input.relatedKeywords
+      ? `\n\nObserved related queries (primary, approved secondary, and supporting research; metrics are unknown when not observed):\n${input.relatedKeywords
           .map((k) => `- "${k.keyword}" -- volume ${k.searchVolume ?? "unknown"}, difficulty ${k.keywordDifficulty ?? "unknown"}, CPC ${k.cpc ?? "unknown"}`)
           .join("\n")}`
       : "";
