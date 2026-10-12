@@ -70,6 +70,7 @@ export function ContentGenerationHud({
   primaryKeyword,
   searchIntent,
   keywords = [],
+  preview = false,
 }: {
   mode:
     GenerationMode;
@@ -84,6 +85,8 @@ export function ContentGenerationHud({
     string | null;
 
   keywords?: readonly string[];
+
+  preview?: boolean;
 }) {
   const [
     elapsed,
@@ -235,7 +238,7 @@ export function ContentGenerationHud({
             }
           />
 
-          LIVE
+          {preview ? "PREVIEW" : "LIVE"}
         </div>
       </div>
 
@@ -435,11 +438,9 @@ export function ContentGenerationHud({
         />
 
         <span>
-          No artificial
-          percentage —
-          completion follows
-          the real generation
-          request.
+          {preview
+            ? "Visual preview only — no API calls or article creation."
+            : "No artificial percentage — completion follows the real generation request."}
         </span>
       </div>
     </section>
