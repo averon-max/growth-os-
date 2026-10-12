@@ -10,6 +10,9 @@ import {
 import {
   assertArticlePreWriterEvidenceReadyV1,
 } from "./article-prewriter-evidence-gate-v1";
+import {
+  assertPreWriterMissionAuthorityV1,
+} from "./article-prewriter-mission-authority-gate-v1";
 
 import {
   classifyRejectedRecoveryV1,
@@ -1023,6 +1026,10 @@ export async function createContentBrief(
   assertArticlePreWriterAnswerSupportV2(
     liveMaster.articleExecutionPlan
   );
+  assertPreWriterMissionAuthorityV1({
+    sections: liveMaster.articleExecutionPlan.sections,
+    blueprints: productionMaster.masterRuntime!.sectionBlueprints.sections,
+  });
 
   const briefInput:
     ContentBriefInput = {
@@ -1414,6 +1421,10 @@ export async function generateArticleFromBrief(
   assertArticlePreWriterAnswerSupportV2(
     persistedArticleExecutionPlan
   );
+  assertPreWriterMissionAuthorityV1({
+    sections: persistedArticleExecutionPlan.sections,
+    blueprints: masterRuntimeInspection.runtime.sectionBlueprints.sections,
+  });
 /*
    * EVIDENCE_DEFERRED_EFFECTIVE_RUNTIME_V1
    *
