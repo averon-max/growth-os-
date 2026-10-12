@@ -4012,6 +4012,71 @@ function inspectStagePlanCompleteness(
     0;
 
 
+  /*
+   * QUESTION_FIRST_EVIDENCE_RECOVERY_V3
+   *
+   * The section mission can ask a precise question unrelated to
+   * the article-level seed. Search that exact approved H2 once,
+   * BEFORE paying for up to six broad fallback waves.
+   *
+   * A discovered URL has no claim authority. Only the existing
+   * crawler + strict VERIFIED_EXCERPT verifier may authorize it.
+   * This stage changes NO claim text, IDs or planning scope.
+   */
+  const earlyQuestionProbeClaimsV3 =
+    unresolvedEvidenceClaims.flatMap((claim) => {
+      const owner = plan.sections.find((section) =>
+        section.requiredClaimIds.includes(claim.id)
+      );
+
+      if (!owner || !/\\?\\s*$/.test(owner.heading.trim())) {
+        return [];
+      }
+
+      return [{
+        ...claim,
+        text: directAnswerEvidenceSearchProbeV3({
+          heading: owner.heading,
+          questions: owner.questions,
+        }),
+      }];
+    });
+
+  if (earlyQuestionProbeClaimsV3.length > 0) {
+    const questionSources = await discoverClaimEvidenceFallbackSourcesV1({
+      claims: earlyQuestionProbeClaimsV3,
+      primaryQuery: research.keyword,
+      locationName: research.market.locationName,
+      languageName: research.market.languageName,
+      existingUrls: evidenceGraphInput.sources.map(source => source.url),
+      maxQueriesPerClaim: 1,
+    });
+
+    fallbackEvidenceSourcesTotal += questionSources.length;
+
+    if (questionSources.length > 0) {
+      evidenceGraphInput = await enrichLiveEvidenceGraphV1({
+        graph: {
+          sources: [...questionSources, ...evidenceGraphInput.sources],
+          claimEvidence: [...evidenceGraphInput.claimEvidence],
+        },
+        claims: unresolvedEvidenceClaims,
+      });
+
+      const verified = verifiedClaimIdsFromGraph(evidenceGraphInput);
+      unresolvedEvidenceClaims = claimsInput.filter(
+        claim => !verified.has(claim.id)
+      );
+    }
+
+    console.info("[content question-first evidence recovery]", {
+      questionClaimIds: earlyQuestionProbeClaimsV3.map(claim => claim.id),
+      discoveredSources: questionSources.length,
+      unresolvedAfter: unresolvedEvidenceClaims.map(claim => claim.id),
+    });
+  }
+
+
   const evidenceRecoveryWaves:
     Array<{
       wave:
