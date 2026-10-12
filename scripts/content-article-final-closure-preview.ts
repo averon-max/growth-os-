@@ -136,18 +136,21 @@ async function main(): Promise<void> {
     note: "Standalone review draft. New claim/evidence must be versioned and reviewed before it can become an official IN_REVIEW article.",
   };
 
-  // Never overwrite a previous manually edited review candidate.
-  // A repeated dry run can safely report existing candidate paths.
-  for (const [target, data] of [
+  // Check both outputs before creating either, so an existing manual
+  // edit cannot produce a partially updated candidate pair.
+  const outputs = [
     [markdownPath, preview.markdown],
     [manifestPath, JSON.stringify(manifest, null, 2) + "\n"],
-  ] as const) {
+  ] as const;
+  for (const [target] of outputs) {
     try {
       await readFile(target, "utf8");
       throw new Error("FINAL_CLOSURE_CANDIDATE_ALREADY_EXISTS:" + target);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
+  }
+  for (const [target, data] of outputs) {
     await atomicSave(target, data);
   }
 
