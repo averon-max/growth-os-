@@ -31,26 +31,44 @@ function safeError(error: unknown) {
 }
 function unique<T>(items: readonly T[]): T[] { return [...new Set(items)]; }
 
-function parseExactFiveSections(body: string, headings: readonly string[]): string[] {
+function parseExactFiveSections(
+  body: string,
+  originals: readonly Readonly<{ heading: string; bodyMarkdown: string }>[],
+): string[] {
   let cursor = 0;
   const sections: string[] = [];
-  for (let i = 0; i < headings.length; i++) {
-    const marker = "## " + headings[i] + "\n\n";
+  for (let i = 0; i < originals.length; i++) {
+    const marker = "## " + originals[i].heading + "\n\n";
     invariant(body.startsWith(marker, cursor),
       "CANDIDATE_SECTION_HEADING_OR_ORDER_MISMATCH:" + i);
-    const start = cursor + marker.length;
-    const separator = i + 1 < headings.length
-      ? "\n\n## " + headings[i + 1] + "\n\n" : "";
-    const end = separator ? body.indexOf(separator, start) : body.length;
-    invariant(end >= start, "CANDIDATE_SECTION_BOUNDARY_MISSING:" + i);
-    const content = body.slice(start, end);
+    cursor += marker.length;
+    let content: string;
+    if (i !== 3) {
+      content = originals[i].bodyMarkdown;
+      invariant(body.startsWith(content, cursor),
+        "UNTOUCHED_SECTION_BYTES_DIFFER:" + i);
+      cursor += content.length;
+    } else {
+      const next = originals[i + 1];
+      invariant(next, "SCORE_SECTION_NEXT_HEADING_MISSING");
+      const separator = "\n\n## " + next.heading + "\n\n";
+      const end = body.indexOf(separator, cursor);
+      invariant(end >= cursor, "CANDIDATE_SCORE_SECTION_BOUNDARY_MISSING");
+      content = body.slice(cursor, end);
+      cursor = end;
+    }
     invariant(content.trim().length > 0, "CANDIDATE_SECTION_EMPTY:" + i);
     sections.push(content);
-    cursor = separator ? end + 2 : end;
+    if (i < originals.length - 1) {
+      invariant(body.startsWith("\n\n", cursor),
+        "CANDIDATE_SECTION_SEPARATOR_INVALID:" + i);
+      cursor += 2;
+    }
   }
   invariant(cursor === body.length, "CANDIDATE_EXTRA_CONTENT");
-  invariant(sections.map((s,i)=>"## " + headings[i] + "\n\n" + s)
-    .join("\n\n") === body, "CANDIDATE_EXACT_RECOMPOSITION_FAILED");
+  invariant(sections.map((sec,i)=>
+    "## " + originals[i].heading + "\n\n" + sec
+  ).join("\n\n") === body, "CANDIDATE_EXACT_RECOMPOSITION_FAILED");
   return sections;
 }
 
@@ -108,7 +126,7 @@ async function main(): Promise<void> {
   const body = candidateMd.slice(h1Line[0].length).trimEnd();
   invariant(!/^#\s+/m.test(body), "BODY_CONTAINS_H1");
   const headings=originalSections.map(s=>s.heading as string);
-  const sectionBodies=parseExactFiveSections(body,headings);
+  const sectionBodies=parseExactFiveSections(body,originalSections as any);
   invariant(sectionBodies.every((s,i)=>i===3||s===originalSections[i].bodyMarkdown),
     "UNTOUCHED_SECTION_BYTES_DIFFER");
   invariant(sectionBodies[3]!==originalSections[3].bodyMarkdown,
@@ -360,9 +378,9 @@ async function main(): Promise<void> {
       const semantic=await model.verifySectionClaims({
         contract:target,section:correctedSection as any,
       });
+      result.semanticVerification=semantic;
       assertSectionSemanticVerificationPassed(semantic);
       semantics[3]=semantic;
-      result.semanticVerification=semantic;
       run.semanticVerifications=semantics;
 
       const context={
