@@ -37,6 +37,7 @@ export function inspectPreWriterMissionAuthorityV1({
     heading: string;
     state: string;
     requiredClaimIds: readonly string[];
+    requiredQuestionIds?: readonly string[];
   }>[];
   blueprints: readonly Readonly<{
     heading: string;
@@ -57,7 +58,11 @@ export function inspectPreWriterMissionAuthorityV1({
     if (!original || original.heading.trim() !== section.heading.trim()) {
       throw new Error(`ARTICLE_PREWRITER_MISSION_HEADING_MISMATCH:${index}`);
     }
-    if (section.state !== "WRITABLE" || !/\?\s*$/.test(section.heading)) {
+    if (
+      section.state !== "WRITABLE" ||
+      (!/\?\s*$/.test(section.heading) &&
+        !(section.requiredQuestionIds?.length))
+    ) {
       return;
     }
     const finalClaims = new Set(section.requiredClaimIds.map(id => id.trim()));
