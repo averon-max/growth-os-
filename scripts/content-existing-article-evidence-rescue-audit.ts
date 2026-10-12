@@ -92,6 +92,7 @@ async function main(): Promise<void> {
 
     const { fetchSinglePage } = await import("../src/lib/crawler/crawler");
     const { findVerifiedExcerptCandidateV1 } = await import("../src/lib/content/live-evidence-verification");
+    const { findExactSourceSentenceV1 } = await import("../src/lib/content/exact-source-sentence-v1");
     const { isSafeMissionPreservingClaimReplanCandidateV1 } = await import("../src/lib/content/claim-replan-safety-v1");
 
     console.log("PROPOSED_NEW_DIRECT_ANSWER:", proposedDirectAnswer);
@@ -125,7 +126,15 @@ async function main(): Promise<void> {
           bodyText,
         }) : null;
 
-        directAnswerVerified ||= directMatch !== null;
+        const exactSentence = bodyText ? findExactSourceSentenceV1({
+          claimText: proposedDirectAnswer,
+          bodyText,
+        }) : null;
+        const exactVerified = exactSentence ? findVerifiedExcerptCandidateV1({
+          claimText: proposedDirectAnswer,
+          bodyText: exactSentence,
+        }) : null;
+        directAnswerVerified ||= exactVerified !== null;
         console.log("SOURCE_CHECK:", JSON.stringify({
           url,
           statusCode: page.statusCode,
@@ -133,7 +142,8 @@ async function main(): Promise<void> {
           fetchError: page.error ?? null,
           oldClaimLexicalMatch: Boolean(originalMatch),
           newDirectAnswerLexicalMatch: Boolean(directMatch),
-          directExcerpt: directMatch?.excerpt.slice(0, 350) ?? null,
+          cleanExactSentenceVerified: Boolean(exactVerified),
+          directExcerpt: exactVerified?.excerpt ?? null,
         }));
       } catch (error) {
         console.log("SOURCE_CHECK:", JSON.stringify({
@@ -142,10 +152,12 @@ async function main(): Promise<void> {
           fetchError: error instanceof Error ? error.message : String(error),
           oldClaimLexicalMatch: false,
           newDirectAnswerLexicalMatch: false,
+          cleanExactSentenceVerified: false,
+          directExcerpt: null,
         }));
       }
     }
-    console.log("SOURCE_LEVEL_DIRECT_ANSWER_CANDIDATE:", directAnswerVerified ? "FOUND" : "NOT_FOUND");
+    console.log("SOURCE_LEVEL_DIRECT_ANSWER_CANDIDATE:", directAnswerVerified ? "VERIFIED_EXACT_SENTENCE" : "NOT_FOUND");
     console.log("PERSISTED_EVIDENCE_CHANGED:", false);
     console.log("WRITER_CHECKPOINT_CHANGED:", false);
     console.log("DO_NOT_AUTO_PROMOTE_TO_VERIFIED_CLAIM:", true);
