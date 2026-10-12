@@ -391,6 +391,21 @@ describe(
     );
 
 
+    it("warns on missing secondary exact phrases without suppressing required primary phrase", () => {
+      const withSecondary = runDeterministicCoverageCriticV1({
+        contract: contract(),
+        run: run(),
+        rankReadyKeywords: ["credit monitoring", "free credit monitoring"],
+      });
+      expect(withSecondary.findings.some(f => f.code === "RANK_READY_PLANNED_KEYWORD_MISSING" && f.severity === "WARN")).toBe(true);
+      const withoutPrimary = runDeterministicCoverageCriticV1({
+        contract: contract(),
+        run: run(),
+        rankReadyKeywords: ["missing primary phrase", "free credit monitoring"],
+      });
+      expect(withoutPrimary.findings.some(f => f.code === "RANK_READY_PLANNED_KEYWORD_MISSING" && f.severity === "BLOCK")).toBe(true);
+    });
+
     it(
       "blocks total loss of assigned query coverage",
       () => {
