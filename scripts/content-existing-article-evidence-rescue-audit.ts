@@ -108,32 +108,42 @@ async function main(): Promise<void> {
 
     let directAnswerVerified = false;
     for (const url of urls) {
-      const page = await fetchSinglePage(url, {
-        timeoutMs: 12000,
-        maxResponseSize: 2 * 1024 * 1024,
-      });
-      const usable = !page.error && page.statusCode >= 200 &&
-        page.statusCode < 300 && Boolean(page.parsed?.bodyText);
-      const text = usable ? page.parsed!.bodyText : "";
-      const originalMatch = text ? findVerifiedExcerptCandidateV1({
-        claimText: oldClaim.text,
-        bodyText: text,
-      }) : null;
-      const directMatch = text ? findVerifiedExcerptCandidateV1({
-        claimText: proposedDirectAnswer,
-        bodyText: text,
-      }) : null;
+      try {
+        const page = await fetchSinglePage(url, {
+          timeoutMs: 12000,
+          maxResponseSize: 2 * 1024 * 1024,
+        });
+        const usable = !page.error && page.statusCode >= 200 &&
+          page.statusCode < 300 && Boolean(page.parsed?.bodyText);
+        const bodyText = usable ? page.parsed!.bodyText : "";
+        const originalMatch = bodyText ? findVerifiedExcerptCandidateV1({
+          claimText: oldClaim.text,
+          bodyText,
+        }) : null;
+        const directMatch = bodyText ? findVerifiedExcerptCandidateV1({
+          claimText: proposedDirectAnswer,
+          bodyText,
+        }) : null;
 
-      directAnswerVerified ||= directMatch !== null;
-      console.log("SOURCE_CHECK:", JSON.stringify({
-        url,
-        statusCode: page.statusCode,
-        fetched: usable,
-        fetchError: page.error ?? null,
-        oldClaimLexicalMatch: Boolean(originalMatch),
-        newDirectAnswerLexicalMatch: Boolean(directMatch),
-        directExcerpt: directMatch?.excerpt.slice(0, 350) ?? null,
-      }));
+        directAnswerVerified ||= directMatch !== null;
+        console.log("SOURCE_CHECK:", JSON.stringify({
+          url,
+          statusCode: page.statusCode,
+          fetched: usable,
+          fetchError: page.error ?? null,
+          oldClaimLexicalMatch: Boolean(originalMatch),
+          newDirectAnswerLexicalMatch: Boolean(directMatch),
+          directExcerpt: directMatch?.excerpt.slice(0, 350) ?? null,
+        }));
+      } catch (error) {
+        console.log("SOURCE_CHECK:", JSON.stringify({
+          url,
+          fetched: false,
+          fetchError: error instanceof Error ? error.message : String(error),
+          oldClaimLexicalMatch: false,
+          newDirectAnswerLexicalMatch: false,
+        }));
+      }
     }
     console.log("SOURCE_LEVEL_DIRECT_ANSWER_CANDIDATE:", directAnswerVerified ? "FOUND" : "NOT_FOUND");
     console.log("PERSISTED_EVIDENCE_CHANGED:", false);
