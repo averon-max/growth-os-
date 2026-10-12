@@ -16,11 +16,10 @@ export function eligibleForDirectAnswerEvidenceRecoveryV3({
   roles: readonly string[];
   requiredRoles: ReadonlySet<string>;
 }): boolean {
-  const asksQuestion = /\?\s*$/.test(heading.trim()) ||
-    questions.some(question => /\?\s*$/.test(question.trim()));
-  if (!asksQuestion) return false;
+  // Preserve the prior required-role path, and admit explicit
+  // question H2s even when questions[] or template roles are absent.
   return /\?\s*$/.test(heading.trim()) ||
-    roles.some(role => requiredRoles.has(role));
+    (questions.length > 0 && roles.some(role => requiredRoles.has(role)));
 }
 
 /** Use the precise approved question as the discovery seed, not general article intent. */
