@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     briefs: vi.fn(),
     keywordContext: vi.fn(),
     related: vi.fn(),
+    trends: vi.fn(),
     serp: vi.fn(),
     openai: vi.fn(),
     cacheFind: vi.fn(async (arg: { where: { normalized_source: {
@@ -37,6 +38,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: {
 }}));
 
 vi.mock("./dataforseo-provider", () => ({ fetchRelatedKeywords: mocks.related }));
+vi.mock("./trends-provider", () => ({ fetchTrendingQueries: mocks.trends }));
 vi.mock("@/lib/content/keyword-context", () => ({
   getWebsiteKeywordContext: mocks.keywordContext,
 }));
@@ -67,6 +69,7 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     });
     mocks.briefs.mockResolvedValue([]);
     mocks.keywordContext.mockResolvedValue({ topKeywords: [] });
+    mocks.trends.mockResolvedValue(null);
     mocks.related.mockResolvedValue([
       { keyword: "credit monitoring benefits", searchVolume: 260, keywordDifficulty: 18,
         cpc: 1.2, serpInfo: { resultCount: 1000, features: [], updatedAt: null } },
@@ -84,6 +87,29 @@ describe("Keyword Intelligence V2 research orchestration", () => {
       }) } }] };
     });
     vi.stubEnv("OPENAI_API_KEY", "test-only-key");
+  });
+
+  it("combines Trends and provider momentum before GPT selection", async () => {
+    mocks.trends.mockResolvedValue({
+      topQueries: [{ query: "credit monitoring benefits", value: 100 }],
+      risingQueries: [{ query: "credit monitoring benefits", value: 180 }],
+    });
+    mocks.related.mockResolvedValue([
+      { keyword: "credit monitoring benefits", searchVolume: 260,
+        keywordDifficulty: 18, cpc: 1.2, monthlySearches: [
+          { year: 2026, month: 9, searchVolume: 260 },
+        ], trend: { monthly: 30, quarterly: 45, yearly: 60 },
+        serpInfo: { resultCount: 1000, features: [], updatedAt: null } },
+    ]);
+    const result = await researchKeywordOpportunitiesV2(input);
+    const candidate = result.candidateSnapshots.find(
+      row => row.keyword === "credit monitoring benefits",
+    );
+    expect(candidate?.trend?.quarterly).toBe(45);
+    expect(candidate?.googleTrendsTop).toBe(100);
+    expect(candidate?.googleTrendsRising).toBe(180);
+    expect(candidate?.monthlySearches?.[0]?.searchVolume).toBe(260);
+    expect(mocks.trends).toHaveBeenCalledWith("credit monitoring", "US");
   });
 
   it("does not invoke paid providers when authorization is absent", async () => {
