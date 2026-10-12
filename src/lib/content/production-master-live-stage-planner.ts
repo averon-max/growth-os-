@@ -162,6 +162,11 @@ import {
   selectDeterministicDefinitionReplanCandidateV1,
 } from "./claim-replan-safety-v1";
 
+import {
+  eligibleForDirectAnswerEvidenceRecoveryV3,
+  directAnswerEvidenceSearchProbeV3,
+} from "./direct-answer-evidence-recovery-v3";
+
 
 /*
  * STAGE 9N-B3.6
@@ -4851,16 +4856,12 @@ function inspectStagePlanCompleteness(
 
         if (
           !ownerSection ||
-          ownerSection.questions.length ===
-            0 ||
-          !ownerSection.roles.some(
-            (
-              role
-            ) =>
-              requiredRoleIdsForDirectAnswerV2.has(
-                role
-              )
-          )
+          !eligibleForDirectAnswerEvidenceRecoveryV3({
+            heading: ownerSection.heading,
+            questions: ownerSection.questions,
+            roles: ownerSection.roles,
+            requiredRoles: requiredRoleIdsForDirectAnswerV2,
+          })
         ) {
           return [];
         }
@@ -4893,7 +4894,9 @@ function inspectStagePlanCompleteness(
               ownerSection.mission,
 
             sectionQuestions:
-              ownerSection.questions,
+              ownerSection.questions.length > 0
+                ? ownerSection.questions
+                : [ownerSection.heading],
 
             sectionExpectedOutcome:
               ownerSection.expectedOutcome,
@@ -4982,18 +4985,12 @@ function inspectStagePlanCompleteness(
       ) => ({
         ...target.claim,
 
-        text:
-          [
-            ...target
-              .ownerSection
-              .questions,
-
-            target
-              .ownerSection
-              .mission,
-          ]
-            .filter(Boolean)
-            .join(" "),
+        // Search the exact user question first. The original claim
+        // remains unchanged until independent excerpt verification.
+        text: directAnswerEvidenceSearchProbeV3({
+          heading: target.ownerSection.heading,
+          questions: target.ownerSection.questions,
+        }),
       })
     );
 
