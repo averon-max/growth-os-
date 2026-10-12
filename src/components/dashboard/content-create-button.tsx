@@ -622,9 +622,16 @@ export function ContentCreateButton({
       if (
         !articleResponse.ok
       ) {
+        const details = [
+          articleJson?.failureClass ? `Failure: ${articleJson.failureClass}` : null,
+          articleJson?.owner ? `Owner: ${articleJson.owner}` : null,
+          articleJson?.nextAction ? `Next: ${articleJson.nextAction}` : null,
+          articleJson?.diagnostic ? String(articleJson.diagnostic) : null,
+          articleJson?.articleId ? `Article ID: ${articleJson.articleId}` : null,
+        ].filter(Boolean).join(" | ");
         throw new Error(
-          articleJson.error ??
-            "The plan was created, but the article could not be written."
+          [articleJson.error ?? "The plan was created, but the article could not be written.", details]
+            .filter(Boolean).join(" — ")
         );
       }
 
