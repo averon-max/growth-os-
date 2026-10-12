@@ -1458,6 +1458,7 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
   languageName,
   existingUrls = [],
   search,
+  maxQueriesPerClaim = MAX_EVIDENCE_FALLBACK_QUERIES_PER_CLAIM,
 }: {
   claims:
     readonly MinimalClaim[];
@@ -1476,11 +1477,21 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
 
   search?:
     EvidenceFallbackSearchV1;
+
+  maxQueriesPerClaim?: number;
 }): Promise<
   EvidenceGraphInput[
     "sources"
   ]
 > {
+  if (
+    !Number.isInteger(maxQueriesPerClaim) ||
+    maxQueriesPerClaim < 1 ||
+    maxQueriesPerClaim > MAX_EVIDENCE_FALLBACK_QUERIES_PER_CLAIM
+  ) {
+    throw new Error("EVIDENCE_FALLBACK_QUERY_LIMIT_INVALID");
+  }
+
   const runSearch:
     EvidenceFallbackSearchV1 =
       search ??
@@ -1642,7 +1653,7 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
               claim.text,
           }),
         ])
-      );
+      ).slice(0, maxQueriesPerClaim);
 
 
     let sourcesForClaim =
