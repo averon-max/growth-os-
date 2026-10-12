@@ -13,6 +13,7 @@ import {
 import {
   eligibleForDirectAnswerEvidenceRecoveryV3,
   directAnswerEvidenceSearchProbeV3,
+  buildEarlyQuestionEvidenceProbesV3,
 } from "./direct-answer-evidence-recovery-v3";
 import {
   assertArticlePreWriterAnswerSupportV2,
@@ -76,20 +77,31 @@ async function sourceRecovery() {
   });
   expect(probe).toBe(heading);
 
+  const targetedProbes = buildEarlyQuestionEvidenceProbesV3({
+    unresolvedClaims: [claim],
+    sections: [{
+      heading,
+      questions: [],
+      requiredClaimIds: [claim.id],
+    }],
+  });
+  expect(targetedProbes).toEqual([{ id: claim.id, text: heading }]);
+
   const search = vi.fn(async () => ({
     organic: [{ url: sourceUrl, title: "Credit monitoring and scores" }],
   }));
 
   const sources = await discoverClaimEvidenceFallbackSourcesV1({
-    claims: [{ id: claim.id, text: probe }],
+    claims: targetedProbes,
     primaryQuery: "what is credit monitoring",
     locationName: "United States",
     languageName: "English",
     existingUrls: [],
     search,
+    maxQueriesPerClaim: 1,
   });
 
-  expect(search).toHaveBeenCalled();
+  expect(search).toHaveBeenCalledTimes(1);
   expect(search.mock.calls[0]).toEqual([{
     keyword: heading,
     locationName: "United States",
