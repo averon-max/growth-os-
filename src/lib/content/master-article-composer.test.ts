@@ -530,3 +530,26 @@ describe(
     );
   }
 );
+
+describe("canonical article prose spacing", () => {
+  it("repairs excessive spaces in prose but preserves fenced and inline code", async () => {
+    const { normalizeMasterArticleProseSpacesV1 } = await import("./master-article-composer");
+    const source = [
+      "Some   prose  with    an issue.",
+      "`code   spacing` and prose   again.",
+      "```txt",
+      "three   spaces in code",
+      "```",
+      "    keep   indentation",
+      "| cell   value |",
+      "Another    paragraph.",
+    ].join("\n");
+    const result = normalizeMasterArticleProseSpacesV1(source);
+    expect(result).toContain("Some prose  with an issue.");
+    expect(result).toContain("`code   spacing` and prose again.");
+    expect(result).toContain("three   spaces in code");
+    expect(result).toContain("    keep   indentation");
+    expect(result).toContain("| cell   value |");
+    expect(result).toContain("Another paragraph.");
+  });
+});
