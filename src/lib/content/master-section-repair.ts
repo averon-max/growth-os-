@@ -2170,16 +2170,16 @@ const trigger: SectionRepairTriggerV1 =
         acceptedSection.bodyMarkdown
       )
     ) {
-      throw new ContentGenerationError(
-        [
-          "SECTION_TARGETED_REPAIR_EXHAUSTED",
-          "DEPTH",
-          "NO_PROGRESS_AFTER_SEMANTIC_CLEANUP",
-          `${beforeDepth.currentWords}<${beforeDepth.minWords}`,
-        ].join(
-          ":"
-        )
-      );
+      // The pre-expansion section already passed semantic verification
+      // and claim reconciliation. A repeated body is not a reason to
+      // discard accepted work or restart the entire article.
+      // Article-level readiness remains responsible for total depth.
+      console.warn("[writer depth] retaining verified baseline after no-op expansion", {
+        sectionIndex: contract.sectionIndex,
+        words: beforeDepth.currentWords,
+        softTargetWords: beforeDepth.minWords,
+      });
+      break;
     }
 
 
@@ -2209,16 +2209,17 @@ const trigger: SectionRepairTriggerV1 =
       nextDepthRepair.currentWords <=
         beforeDepth.currentWords
     ) {
-      throw new ContentGenerationError(
-        [
-          "SECTION_TARGETED_REPAIR_EXHAUSTED",
-          "DEPTH",
-          "NO_MEANINGFUL_PROGRESS",
-          `${nextDepthRepair.currentWords}<${nextDepthRepair.minWords}`,
-        ].join(
-          ":"
-        )
-      );
+      // The proposed expansion *reduced* verified coverage. Discard
+      // this candidate and keep the previously reconciled, verified
+      // section; do not turn a soft section-length target into a
+      // whole-article REJECTED state. Global readiness still gates.
+      console.warn("[writer depth] rejected shrinking expansion; preserving verified section", {
+        sectionIndex: contract.sectionIndex,
+        candidateWords: nextDepthRepair.currentWords,
+        retainedWords: beforeDepth.currentWords,
+        softTargetWords: beforeDepth.minWords,
+      });
+      break;
     }
 
 
