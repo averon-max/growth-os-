@@ -106,11 +106,23 @@ async function main() {
     const sectionPlan = plan.sections[ownerIndex];
     const sectionBlueprint = blueprint.sections[ownerIndex];
     assert(sectionPlan.state === "WRITABLE", "TARGET_SECTION_NOT_WRITABLE");
-    assert(sectionPlan.requiredClaimIds.includes(OLD_CLAIM_ID) &&
-      sectionBlueprint.requiredClaims.includes(OLD_CLAIM_ID),
-      "OLD_REQUIRED_CLAIM_NOT_PRESENT_IN_OWNER");
+    // The persisted ArticleExecutionPlan may already have contracted
+    // a claim from Stage-8's blueprint. It is incorrect to require the
+    // legacy ID in BOTH owner representations before source rescue.
+    // Require an actual legacy blueprint/plan owner, however; otherwise
+    // this script cannot establish it is modifying the intended mission.
+    const originalPlanOwnedOldClaim =
+      sectionPlan.requiredClaimIds.includes(OLD_CLAIM_ID);
+    const originalBlueprintOwnedOldClaim =
+      sectionBlueprint.requiredClaims.includes(OLD_CLAIM_ID);
+    assert(originalPlanOwnedOldClaim || originalBlueprintOwnedOldClaim,
+      "LEGACY_SCORE_CLAIM_HAS_NO_ORIGINAL_OWNER");
+    assert(ledger.claims.some((c: any) => c.id === OLD_CLAIM_ID),
+      "LEGACY_SCORE_CLAIM_NOT_IN_LEDGER");
     assert(!plan.sections.some((s: any, i: number) =>
-      i !== ownerIndex && s.requiredClaimIds.includes(OLD_CLAIM_ID)),
+      i !== ownerIndex && s.requiredClaimIds.includes(OLD_CLAIM_ID)) &&
+      !blueprint.sections.some((s: any, i: number) =>
+        i !== ownerIndex && s.requiredClaims.includes(OLD_CLAIM_ID)),
       "OLD_CLAIM_HAS_MULTIPLE_OWNERS");
     const newClaimId = manifest.source.verifiedClaimId;
     assert(!ledger.claims.some((c: any) => c.id === newClaimId),
@@ -188,17 +200,24 @@ async function main() {
       "NEW_CLAIM_LEDGER_DID_NOT_VERIFY");
     runtime.claimLedger = rebuilt;
 
-    const replaceClaim = (ids: string[]) =>
-      [...new Set(ids.map(id => id === OLD_CLAIM_ID ? newClaimId : id))];
-    const oldClaimEvidence = new Set(graph.claimEvidence.filter((e: any) =>
-      e.claimId === OLD_CLAIM_ID).map((e: any) => e.id));
-    const reviseEvidence = (ids: string[]) =>
-      [...new Set([...ids.filter(id => !oldClaimEvidence.has(id)), EVIDENCE_ID])];
-
-    sectionPlan.requiredClaimIds = replaceClaim(sectionPlan.requiredClaimIds);
-    sectionPlan.evidenceIds = reviseEvidence(sectionPlan.evidenceIds);
-    sectionBlueprint.requiredClaims = replaceClaim(sectionBlueprint.requiredClaims);
-    sectionBlueprint.evidenceIds = reviseEvidence(sectionBlueprint.evidenceIds);
+    const { rebindApprovedDirectAnswerV1 } =
+      await import("../src/lib/content/rebind-approved-direct-answer-v1");
+    const ownership = rebindApprovedDirectAnswerV1({
+      planClaimIds: sectionPlan.requiredClaimIds,
+      blueprintClaimIds: sectionBlueprint.requiredClaims,
+      planEvidenceIds: sectionPlan.evidenceIds,
+      blueprintEvidenceIds: sectionBlueprint.evidenceIds,
+      oldClaimId: OLD_CLAIM_ID,
+      newClaimId,
+      newEvidenceId: EVIDENCE_ID,
+      oldClaimEvidenceIds: graph.claimEvidence
+        .filter((e: any) => e.claimId === OLD_CLAIM_ID)
+        .map((e: any) => e.id),
+    });
+    sectionPlan.requiredClaimIds = ownership.planClaimIds;
+    sectionPlan.evidenceIds = ownership.planEvidenceIds;
+    sectionBlueprint.requiredClaims = ownership.blueprintClaimIds;
+    sectionBlueprint.evidenceIds = ownership.blueprintEvidenceIds;
     plan.verifiedEvidenceIds = [...new Set([...(plan.verifiedEvidenceIds ?? []), EVIDENCE_ID])];
 
     const inspected = inspectMasterRuntimeSnapshot(staged);
@@ -238,6 +257,8 @@ async function main() {
       result: "STAGED_EVIDENCE_VALID",
       articleId, briefId, newClaim: newClaimId, verifiedQuote: quote,
       existingClaimStatusesPreserved: true,
+      legacyPlanOwnedClaim: originalPlanOwnedOldClaim,
+      legacyBlueprintOwnedClaim: originalBlueprintOwnedOldClaim,
       stagedPublicationEvidenceGate: "PASS",
       stagedPreWriterGates: "PASS",
       candidateArticleBodyUnmodified: true,
