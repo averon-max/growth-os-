@@ -9,6 +9,7 @@
 import { loadEnvConfig } from "@next/env";
 import { Prisma } from "@prisma/client";
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 loadEnvConfig(process.env.GROWTH_OS_ENV_ROOT?.trim() || process.cwd());
@@ -364,7 +365,7 @@ async function main(){
       replayArtifact?.executionStatus==="SUCCEEDED" &&
       replayArtifact.articleFingerprint===serpFingerprint &&
       replayArtifact.replayStatus===replay.status &&
-      hash(JSON.stringify(latestPlan?.plan))===hash(JSON.stringify(sourceSnapshot)),
+      isDeepStrictEqual(latestPlan?.plan,sourceSnapshot),
       "POST_COMMIT_VERIFICATION_FAILED");
     console.log(JSON.stringify({
       result:"ARTICLE_V3_IN_REVIEW",
