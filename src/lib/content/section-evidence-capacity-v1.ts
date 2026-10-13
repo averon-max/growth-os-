@@ -85,7 +85,7 @@ export function inspectSectionEvidenceCapacityV1(
     ? [...perSection,{
         sectionId:"article-plan",
         heading:"Cross-section information gain",
-        reason:"EXPLANATORY_ARTICLE_HAS_ONE_FACT_PER_SECTION",
+        reason:"EXPLANATORY_ARTICLE_HAS_ONE_FACT_PER_SECTION" as const,
       }]
     : perSection;
 }
