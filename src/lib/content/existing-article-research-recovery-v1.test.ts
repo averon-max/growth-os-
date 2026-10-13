@@ -137,6 +137,19 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("SOURCE_GROUNDING_BEFORE_PAID_SEMANTIC_REVIEW_V1");
   });
 
+  it("reuses previously paid DataForSEO result URLs before research and writer",()=>{
+    const read=engine.indexOf("readExistingResearchPlanningCheckpointV1(\n        discoveryScope)");
+    const search=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
+    const save=engine.indexOf("encodeResearchDiscoveryCheckpointV1(fetched)");
+    const reverify=engine.indexOf("claims:proposed,\n        });",search);
+    expect(read).toBeGreaterThan(0);
+    expect(search).toBeGreaterThan(read);
+    expect(save).toBeGreaterThan(search);
+    expect(reverify).toBeGreaterThan(save);
+    expect(engine).toContain("reusedSourceDiscoveryCheckpoint=cachedDiscovery!==null");
+    expect(engine).toContain("paidSearchCalls:reusedSourceDiscoveryCheckpoint?0:fallbackSearches");
+  });
+
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
