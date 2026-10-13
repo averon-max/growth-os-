@@ -280,7 +280,7 @@ export async function recoverExistingArticleResearchV1({
         // provider search is made for this section's probe, regardless
         // of how many query strings the legacy fallback iterator emits.
         let searchRequestsForProbe=0;
-        let badProviderMarketError:Error|null=null;
+        let providerSearchFailure:Error|null=null;
         const search:NonNullable<
           Parameters<typeof discoverClaimEvidenceFallbackSourcesV1>[0]["search"]
         >=async input=>{
@@ -295,14 +295,14 @@ export async function recoverExistingArticleResearchV1({
             return {organic:(serp.organic??[]) as unknown as
               readonly import("./live-evidence-verification").EvidenceFallbackOrganicResultV1[]};
           }catch(error){
-            if(error instanceof Error&&
-              /Invalid Field:\s*['"](?:language_name|location_name)['"]/i
-                .test(error.message)){
-              badProviderMarketError=new Error(
-                "SAVED_RESEARCH_RECOVERY_DATAFORSEO_MARKET_REJECTED:"+
-                error.message.slice(0,220)
-              );
-            }
+            const message=error instanceof Error?error.message:String(error);
+            const code=/Invalid Field:\s*['"](?:language_name|location_name)['"]/i
+              .test(message)
+              ?"DATAFORSEO_MARKET_REJECTED"
+              :"DATAFORSEO_SEARCH_FAILED";
+            providerSearchFailure=new Error(
+              "SAVED_RESEARCH_RECOVERY_"+code+":"+message.slice(0,220)
+            );
             throw error;
           }
         };
@@ -314,8 +314,12 @@ export async function recoverExistingArticleResearchV1({
           existingUrls:[...alreadySeen],
           search,
         });
-        if(badProviderMarketError){
-          throw badProviderMarketError;
+        // The common fallback utility logs and swallows individual
+        // provider errors to try alternate queries. For this explicit
+        // one-query-per-section recovery, such failures are fatal:
+        // don't label an API outage as insufficient research.
+        if(providerSearchFailure){
+          throw providerSearchFailure;
         }
         let kept=0;
         for(const source of found){
