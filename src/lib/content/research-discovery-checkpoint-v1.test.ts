@@ -38,6 +38,29 @@ describe("cost-aware source URL discovery checkpoint",()=>{
     expect(()=>decodeResearchDiscoveryCheckpointV1(unsafe))
       .toThrow("SOURCE_URL_UNSAFE");
   });
+  it("rejects wrong primitive JSON types and malformed timestamps",()=>{
+    const badId=JSON.stringify({
+      version:"RESEARCH_DISCOVERY_CHECKPOINT_V1",
+      sources:[{...source,id:17}],
+    });
+    expect(()=>decodeResearchDiscoveryCheckpointV1(badId))
+      .toThrow("SOURCE_METADATA");
+    const badDate=JSON.stringify({
+      version:"RESEARCH_DISCOVERY_CHECKPOINT_V1",
+      sources:[{...source,retrievedAt:1234}],
+    });
+    expect(()=>decodeResearchDiscoveryCheckpointV1(badDate))
+      .toThrow("SOURCE_DATE");
+  });
+  it("rejects authenticated URLs before crawler can see cached discoveries",()=>{
+    const value=JSON.stringify({
+      version:"RESEARCH_DISCOVERY_CHECKPOINT_V1",
+      sources:[{...source,url:"https://user:password@consumer.ftc.gov/article"}],
+    });
+    expect(()=>decodeResearchDiscoveryCheckpointV1(value))
+      .toThrow("SOURCE_URL_UNSAFE");
+  });
+
   it("does not accept unrecognized provider authority labels",()=>{
     const wrong=JSON.stringify({
       version:"RESEARCH_DISCOVERY_CHECKPOINT_V1",
