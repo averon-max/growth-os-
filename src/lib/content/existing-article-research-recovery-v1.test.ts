@@ -92,7 +92,8 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(provider).toBeGreaterThan(planning);
     expect(engine).toContain("languageName:searchMarket.languageName");
     expect(engine).toContain("locationName:searchMarket.locationName");
-    expect(engine).toContain("SAVED_RESEARCH_RECOVERY_DATAFORSEO_MARKET_REJECTED");
+    expect(engine).toContain("DATAFORSEO_MARKET_REJECTED");
+    expect(engine).toContain("DATAFORSEO_SEARCH_FAILED");
     expect(engine).not.toContain('languageName:typeof mission.language==="string"');
   });
 
