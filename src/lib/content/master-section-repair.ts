@@ -861,8 +861,20 @@ export async function verifyAndRepairGeneratedSectionV1({
    * Deterministic reconciliation and deterministic semantic
    * cleanup do not count as model mutation and remain allowed.
    */
+  /*
+   * NO_EVIDENCE_NO_DEPTH_PADDING_V1
+   *
+   * A soft planned word floor must not force LLM expansion when this
+   * section owns no publication-grade material claims/evidence.
+   * Such sections may give a concise useful explanation, but may not
+   * inflate paragraphs with repeated generic advice.
+   */
+  const evidenceCanSupportDepth =
+    contract.blueprint.requiredClaims.length > 0 &&
+    contract.blueprint.evidenceIds.length > 0;
+
   const sectionTargetWords =
-    (
+    evidenceCanSupportDepth ? (
       contract as
         Readonly<SectionGenerationContractV1> & {
           readonly executionPlanAuthority?: Readonly<{
@@ -873,8 +885,7 @@ export async function verifyAndRepairGeneratedSectionV1({
             }>;
           }>;
         }
-    ).executionPlanAuthority?.targetWords ??
-    null;
+    ).executionPlanAuthority?.targetWords ?? null : null;
 
 
   const depthRepairFor = (
@@ -1760,7 +1771,7 @@ const trigger: SectionRepairTriggerV1 =
    * - provider/programming failure
    */
   const depthTargetWords =
-    (
+    evidenceCanSupportDepth ? (
       contract as
         Readonly<SectionGenerationContractV1> & {
           readonly executionPlanAuthority?: Readonly<{
