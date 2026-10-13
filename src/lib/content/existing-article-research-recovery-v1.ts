@@ -218,23 +218,36 @@ export async function recoverExistingArticleResearchV1({
       const probes=[...missingBySection.values()].slice(0,6);
       fallbackSearches=probes.length;
       const mission=record(oldSnapshot.searchMissionInput??{});
-      const fetched=await discoverClaimEvidenceFallbackSourcesV1({
-        claims:probes,
-        primaryQuery:original.brief.primaryKeyword,
-        locationName:typeof mission.location==="string"
-          ?mission.location:"United States",
-        languageName:typeof mission.language==="string"
-          ?mission.language:"English",
-        existingUrls:newGraph.sources.map(s=>s.url),
-        maxQueriesPerClaim:1,
-      });
+      const alreadySeen=new Set(newGraph.sources.map(s=>s.url));
+      const fetched:typeof newGraph.sources[number][]=[];
+      for(const probe of probes){
+        // One search per section, not one broad multi-claim search.
+        // Reserve a place in the crawler's first-24 URL ceiling for
+        // EVERY missing section instead of spending the whole budget
+        // on URLs from the first query.
+        const found=await discoverClaimEvidenceFallbackSourcesV1({
+          claims:[probe],
+          primaryQuery:original.brief.primaryKeyword,
+          locationName:typeof mission.location==="string"
+            ?mission.location:"United States",
+          languageName:typeof mission.language==="string"
+            ?mission.language:"English",
+          existingUrls:[...alreadySeen],
+          maxQueriesPerClaim:1,
+        });
+        let kept=0;
+        for(const source of found){
+          if(alreadySeen.has(source.url))continue;
+          fetched.push(source);
+          alreadySeen.add(source.url);
+          if(++kept===3)break;
+        }
+      }
       if(fetched.length){
         newGraph=await enrichLiveEvidenceGraphV1({
           graph:{
-            // The production crawler intentionally fetches only its
-            // FIRST 24 URLs. Put claim-specific fallback URLs first
-            // or they would never be fetched after 62 old sources.
-            // Keep the full original inventory for provenance.
+            // At most 18 fetched URLs first, then the full old 62
+            // source inventory for durable provenance.
             sources:[...fetched,...newGraph.sources],
             claimEvidence:[...newGraph.claimEvidence],
           },
