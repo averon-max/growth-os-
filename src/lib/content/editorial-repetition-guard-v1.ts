@@ -50,6 +50,16 @@ function sectionPhrases(sections:readonly EditorialSectionV1[],size:number){
     phrase,indices:[...indices].sort((a,b)=>a-b),
   }));
 }
+function independentRepeatedSentences(
+  section:EditorialSectionV1,five:string,three:string
+):boolean{
+  const sentences=prose(section.bodyMarkdown).split(/[.!?](?:\s+|$)/)
+    .map(text=>words(text).join(" "));
+  const a=sentences.flatMap((text,i)=>text.includes(five)?[i]:[]);
+  const b=sentences.flatMap((text,i)=>text.includes(three)?[i]:[]);
+  return a.some(i=>b.some(j=>i!==j));
+}
+
 export function detectHighConfidenceEditorialRepetitionV1(
   sections:readonly EditorialSectionV1[]
 ):readonly EditorialRepetitionFindingV1[]{
@@ -87,8 +97,13 @@ export function detectHighConfidenceEditorialRepetitionV1(
     for(const three of shorter){
       if(five.phrase.includes(three.phrase))continue;
       const shared=five.indices.filter(i=>three.indices.includes(i));
-      if(shared.length<2)continue;
-      const selected=shared[shared.length-1];
+      // Two windows from one repeated definition are NOT two distinct
+      // editorial problems. Require separately repeated sentences in
+      // at least two sections before marking recycled advice.
+      const independent=shared.filter(i=>
+        independentRepeatedSentences(sections[i],five.phrase,three.phrase));
+      if(independent.length<2)continue;
+      const selected=independent[independent.length-1];
       return [{
         code:"EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS",
         sectionIndex:selected,
