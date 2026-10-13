@@ -83,6 +83,19 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("resumedPaidPlan:storedPlanningResponse!==null");
   });
 
+  it("validates canonical DataForSEO location and language before paid planning",()=>{
+    const market=engine.indexOf("resolveResearchRecoverySerpMarketV1({");
+    const planning=engine.indexOf("callContentAiJson(planPrompt");
+    const provider=engine.indexOf("buildSerpIntelligence({");
+    expect(market).toBeGreaterThan(0);
+    expect(market).toBeLessThan(planning);
+    expect(provider).toBeGreaterThan(planning);
+    expect(engine).toContain("languageName:searchMarket.languageName");
+    expect(engine).toContain("locationName:searchMarket.locationName");
+    expect(engine).toContain("SAVED_RESEARCH_RECOVERY_DATAFORSEO_MARKET_REJECTED");
+    expect(engine).not.toContain('languageName:typeof mission.language==="string"');
+  });
+
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
