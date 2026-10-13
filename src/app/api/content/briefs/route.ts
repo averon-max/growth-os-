@@ -34,6 +34,7 @@ import {
 } from "@/lib/content/production-master-brief-required";
 import { geminiGenerator } from "@/lib/content/gemini-generator";
 import { getContentBriefs } from "@/lib/content/repository";
+import { normalizeContentTopicKeyV1 } from "@/lib/content/article-library-grouping-v1";
 import {
   parseOptionalExplicitSearchMissionInput,
 } from "@/lib/content/search-mission-ingress";
@@ -220,6 +221,53 @@ export async function POST(req: NextRequest) {
       resolveGenerationTopicV1(
         generationPolicy
       );
+
+    /*
+     * CONTENT_TOPIC_PREPAID_DUPLICATE_GUARD_V1
+     *
+     * New briefs must not silently spawn multiple paid Writer runs for
+     * a site and exact approved keyword. Reuse the existing brief and
+     * article via the user-facing Content library instead.
+     *
+     * This runs before crawl preflight, evidence research, planner and
+     * model requests. Intentional new angles require a distinct approved
+     * search target; do not silently overwrite prior article history.
+     */
+    const topicKey=normalizeContentTopicKeyV1(topic);
+    if (topicKey) {
+      const potentialDuplicates=await prisma.contentBrief.findMany({
+        where:{
+          websiteId,
+          primaryKeyword:{equals:topic.trim(),mode:"insensitive"},
+        },
+        select:{
+          id:true,
+          primaryKeyword:true,
+          articles:{
+            select:{id:true,status:true,updatedAt:true},
+            orderBy:{updatedAt:"desc"},
+            take:3,
+          },
+        },
+        orderBy:{createdAt:"desc"},
+        take:30,
+      });
+      const existing=potentialDuplicates.find(brief=>
+        normalizeContentTopicKeyV1(brief.primaryKeyword)===topicKey
+      );
+      if (existing) {
+        const existingArticle=existing.articles.find(a=>
+          ["IN_REVIEW","APPROVED","PUBLISHED"].includes(a.status)
+        ) ?? existing.articles[0] ?? null;
+        return NextResponse.json({
+          error:"This website already has content for that keyword. Continue the existing article or brief instead of paying for a duplicate.",
+          code:"CONTENT_TOPIC_ALREADY_EXISTS",
+          existingBriefId:existing.id,
+          existingArticleId:existingArticle?.id??null,
+          existingStatus:existingArticle?.status??null,
+        },{status:409});
+      }
+    }
 
     const business = await prisma.business.findUnique({ where: { id: website.businessId } });
     if (!business) {
