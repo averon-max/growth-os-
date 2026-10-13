@@ -1,3 +1,4 @@
+import { EditorialRepetitionGateErrorV1 } from "@/lib/content/editorial-repetition-guard-v1";
 import {
   ArticlePublicationPolicyError,
 } from "@/lib/content/article-publication-policy";
@@ -271,6 +272,10 @@ export async function POST(
   } catch (
     err
   ) {
+    if (err instanceof EditorialRepetitionGateErrorV1) {
+      return NextResponse.json({ error:err.message, code:err.code, sections:err.findings.map(f=>({sectionIndex:f.sectionIndex,issue:f.code})) }, {status:409});
+    }
+
     if (
       err instanceof
       ArticlePublicationPolicyError
