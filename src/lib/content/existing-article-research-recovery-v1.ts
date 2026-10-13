@@ -406,6 +406,26 @@ export async function recoverExistingArticleResearchV1({
       primaryKeyword:original.brief.primaryKeyword,
       secondaryKeywords:original.brief.secondaryKeywords,
     });
+    const priorIntelligence=analyzeArticleAgainstPlan({
+      ...priorArticle,plan:oldSnapshot,
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+    });
+    check(
+      intelligence.article.keywordCoverage.used>=
+        priorIntelligence.article.keywordCoverage.used &&
+      intelligence.article.keywordCoverage.missing<=
+        priorIntelligence.article.keywordCoverage.missing,
+      "KEYWORD_COVERAGE_REGRESSED"
+    );
+    const previousAudit=auditArticle({
+      article:priorArticle,
+      primaryKeyword:original.brief.primaryKeyword,
+    });
+    check(audit.h2Count===previousAudit.h2Count &&
+      audit.h3Count===previousAudit.h3Count,
+      "HEADING_STRUCTURE_DRIFT");
+
     const registry=await getBusinessFactRegistryForBrief({
       briefId:original.briefId,websiteId:original.brief.websiteId,
     });
