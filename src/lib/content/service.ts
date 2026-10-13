@@ -84,6 +84,10 @@ import {
   executeMasterArticleCriticRepairReplayV1,
 } from "./master-article-critic-repair-execution";
 
+import {
+  buildMasterArticleCriticRepairPlanV1,
+} from "./master-article-critic-repair-plan";
+
 import type {
   SerpReplayV1,
 } from "./serp-replay";
@@ -2604,22 +2608,78 @@ export async function generateArticleFromBrief(
      * - ALL 9 critics replay
      * - second BLOCK -> fail closed
      */
-    const masterCriticRepairExecution =
-      await executeMasterArticleCriticRepairReplayV1({
-        contract:
-          articleGenerationContract,
+    /*
+     * OPTIONAL_KEYWORD_COVERAGE_RECOVERY_V1
+     *
+     * Try at most one ordinary section-repair/reverify/critic-replay
+     * transaction for two missing planned secondary keywords.
+     *
+     * If an already acceptable article cannot safely incorporate
+     * those optional terms, retain its accepted original text and
+     * warnings. Do NOT reject or erase the paid-for article. Genuine
+     * initial BLOCKs must still fail closed and cannot use fallback.
+     */
+    let masterCriticRepairExecution;
+    try {
+      masterCriticRepairExecution =
+        await executeMasterArticleCriticRepairReplayV1({
+          contract:
+            articleGenerationContract,
 
-        run:
-          masterWriterRun,
+          run:
+            masterWriterRun,
 
-        initialCritics:
-          masterCriticExecution,
+          initialCritics:
+            masterCriticExecution,
 
-        generator,
+          generator,
 
-        context:
-          masterCriticContext,
+          context:
+            masterCriticContext,
+        });
+    } catch (optionalRepairError) {
+      const baselinePlan =
+        buildMasterArticleCriticRepairPlanV1({
+          contract:
+            articleGenerationContract,
+
+          suite:
+            masterCriticExecution.suite,
+        });
+      const warningOnly =
+        masterCriticExecution.suite.status !== "BLOCK" &&
+        baselinePlan.repairTasks.length > 0 &&
+        baselinePlan.repairTasks.every(task =>
+          task.findings.every(finding =>
+            finding.severity === "WARN" &&
+            finding.code === "RANK_READY_PLANNED_KEYWORD_MISSING"
+          )
+        );
+      if (!warningOnly) {
+        throw optionalRepairError;
+      }
+      console.warn("[content optional keyword recovery] kept verified original", {
+        briefId: brief.id,
+        articleId: pendingArticle.id,
+        reason: optionalRepairError instanceof Error
+          ? optionalRepairError.message.slice(0, 220)
+          : "OPTIONAL_REPAIR_FAILED",
       });
+      masterCriticRepairExecution = Object.freeze({
+        version: "MASTER_ARTICLE_CRITIC_REPAIR_EXECUTION_V1" as const,
+        initialCritics: masterCriticExecution,
+        repairPlan: baselinePlan,
+        run: masterWriterRun,
+        finalCritics: masterCriticExecution,
+        repairs: Object.freeze([]),
+        provenance: Object.freeze({
+          criticReplayCount: 0 as const,
+          repairedSectionCount: 0,
+          repairAttemptCount: 0,
+          wholeArticleRewriteCount: 0 as const,
+        }),
+      });
+    }
 
 
     /*
