@@ -847,6 +847,35 @@ export async function executeMasterArticleCriticRepairReplayV1({
    * REPAIRABLE_SECTION findings are retained as final review
    * diagnostics and are NOT executed again here.
    */
+  // Optional keyword coverage work must never make an already
+  // acceptable article worse. A model can introduce unsupported
+  // material: if its nine-critic replay now BLOCKS, keep the original.
+  // Similarly, do not accept an edit that fails to improve coverage.
+  const optionalKeywordRepair =
+    initialCritics.suite.status !== "BLOCK" &&
+    repairPlan.repairTasks.length > 0 &&
+    repairPlan.repairTasks.every(task =>
+      task.findings.every(finding =>
+        finding.severity === "WARN" &&
+        finding.code === "RANK_READY_PLANNED_KEYWORD_MISSING"
+      )
+    );
+  if (optionalKeywordRepair) {
+    const missingCount = (execution: Readonly<MasterArticleCriticExecutionV1>) =>
+      execution.suite.results.flatMap(result => result.findings)
+        .filter(finding =>
+          finding.code === "RANK_READY_PLANNED_KEYWORD_MISSING"
+        ).length;
+    if (
+      finalCritics.suite.status === "BLOCK" ||
+      missingCount(finalCritics) >= missingCount(initialCritics)
+    ) {
+      throw new ContentGenerationError(
+        "OPTIONAL_KEYWORD_REPAIR_DID_NOT_IMPROVE_SAFELY"
+      );
+    }
+  }
+
   const residualPlan =
     buildMasterArticleCriticRepairPlanV1({
       contract,
