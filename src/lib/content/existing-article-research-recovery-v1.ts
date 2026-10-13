@@ -31,6 +31,7 @@ import {
 import {
   readExistingResearchPlanningCheckpointV1,
   saveExistingResearchPlanningCheckpointV1,
+  assertResearchPlanningCheckpointWritableV1,
 } from "./existing-article-research-checkpoint-v1";
 import {
   enrichLiveEvidenceGraphV1,
@@ -195,6 +196,9 @@ export async function recoverExistingArticleResearchV1({
     };
     const storedPlanningResponse=
       await readExistingResearchPlanningCheckpointV1(planningScope);
+    if(storedPlanningResponse===null){
+      await assertResearchPlanningCheckpointWritableV1(planningScope);
+    }
     const rawPlan=storedPlanningResponse ??
       await callContentAiJson(planPrompt,{reasoningEffort:"low"});
     if(storedPlanningResponse===null){
