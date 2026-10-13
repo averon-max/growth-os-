@@ -1,190 +1,231 @@
 /**
- * Re-evaluate an already-written article rejected ONLY for the old
- * Markdown/prose whitespace audit mismatch. NO AI, NO Writer, NO replay.
+ * One-article deterministic salvage after the old whitespace-only
+ * Content Gate rejection. No Writer, model, web requests or paid replay.
  *
- * Requires the FINAL checkpoint and the latest genuine persisted SERP
- * artifact to attest the exact, unchanged article; otherwise fail closed.
+ * IMPORTANT: normalized bytes DIFFER from the original SERP-compared
+ * article. A new FAILED/diagnostic replay artifact is appended, so the
+ * real publish gate refuses to publish until a fresh replay is run.
  *
- * Usage (read-only):
- *   npx tsx scripts/content-recover-existing-whitespace-rejection.ts BRIEF_ID ARTICLE_ID
- *
- * Explicit DB transition:
- *   GROWTH_OS_WHITESPACE_RECOVERY_COMMIT=1 npx tsx ... BRIEF_ID ARTICLE_ID --commit
+ * Default read only. The --commit path requires an explicit env opt-in.
  */
 import { loadEnvConfig } from "@next/env";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { resolve, join } from "node:path";
+import { join, resolve } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { Prisma } from "@prisma/client";
 
 loadEnvConfig(process.env.GROWTH_OS_ENV_ROOT?.trim() || process.cwd());
-const hash=(value:string)=>createHash("sha256").update(value,"utf8").digest("hex");
-function check(value:unknown,message:string):asserts value {
-  if(!value) throw new Error(message);
-}
-function record(value:unknown):Record<string,any>{
-  check(value!==null&&typeof value==="object"&&!Array.isArray(value),"INVALID_RECORD");
+const hash=(x:string)=>createHash("sha256").update(x,"utf8").digest("hex");
+function check(ok:unknown,why:string):asserts ok{if(!ok)throw new Error(why);}
+function rec(value:unknown):Record<string,any>{
+  check(value!==null&&typeof value==="object"&&!Array.isArray(value),
+    "RECOVERY_EXPECTED_RECORD");
   return value as Record<string,any>;
 }
-function articleFields(value:unknown){
-  const a=record(value);
-  check(
-    typeof a.title==="string" &&
-    typeof a.metaDescription==="string" &&
-    typeof a.h1==="string" &&
-    typeof a.bodyMarkdown==="string",
-    "ARTIFACT_ARTICLE_FIELDS_INVALID"
-  );
-  return {
-    title:a.title as string,
-    metaDescription:a.metaDescription as string,
-    h1:a.h1 as string,
-    bodyMarkdown:a.bodyMarkdown as string,
-  };
+function fields(value:unknown){
+  const a=rec(value);
+  check(["title","metaDescription","h1","bodyMarkdown"].every(
+    key=>typeof a[key]==="string"),"RECOVERY_ARTICLE_FIELDS_INVALID");
+  return {title:a.title as string,metaDescription:a.metaDescription as string,
+    h1:a.h1 as string,bodyMarkdown:a.bodyMarkdown as string};
 }
+function jsonValue(x:unknown):Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(x)) as Prisma.InputJsonValue;
+}
+function errored(e:unknown){return e instanceof Error?e.message:String(e);}
+
 async function main(){
-  const [briefId,articleId,flag,...extra]=process.argv.slice(2);
+  const [briefId,articleId,flag,...rest]=process.argv.slice(2);
   const commit=flag==="--commit";
-  check(!extra.length&&(!flag||commit)&&[briefId,articleId].every(
-    x=>/^[a-z0-9_-]{5,100}$/i.test(x??"")
-  ),"USAGE: BRIEF_ID ARTICLE_ID [--commit]");
+  check(rest.length===0&&(!flag||commit)&&[briefId,articleId].every(
+    id=>/^[a-z0-9_-]{5,100}$/i.test(id??"")),
+    "USAGE: BRIEF_ID ARTICLE_ID [--commit]");
   check(!commit||process.env.GROWTH_OS_WHITESPACE_RECOVERY_COMMIT==="1",
-    "EXPLICIT_COMMIT_OPT_IN_REQUIRED");
+    "EXPLICIT_WHITESPACE_RECOVERY_COMMIT_OPT_IN_REQUIRED");
+
   const {prisma}=await import("../src/lib/prisma");
   try{
     const [brief,article,snapshot]=await Promise.all([
-      prisma.contentBrief.findUnique({
-        where:{id:briefId},
-        select:{websiteId:true,primaryKeyword:true,secondaryKeywords:true},
-      }),
+      prisma.contentBrief.findUnique({where:{id:briefId},
+        select:{websiteId:true,primaryKeyword:true,secondaryKeywords:true}}),
       prisma.contentArticle.findUnique({where:{id:articleId}}),
       prisma.contentEvidenceSnapshot.findUnique({where:{briefId},select:{plan:true}}),
     ]);
     check(brief&&article&&snapshot&&article.briefId===briefId,
-      "BRIEF_ARTICLE_OR_EVIDENCE_SNAPSHOT_NOT_FOUND");
-    check(article.status==="REJECTED" && article.publishedAt===null &&
-      article.publishedUrl===null &&
-      article.publishError?.includes("BROKEN_ARTICLE_EXCESSIVE_SPACES"),
-      "NOT_A_WHITESPACE_ONLY_REJECTED_ARTICLE");
+      "RECOVERY_BRIEF_ARTICLE_EVIDENCE_NOT_FOUND");
+    check(article.status==="REJECTED"&&!article.publishedAt&&!article.publishedUrl,
+      "RECOVERY_STATUS_NOT_UNPUBLISHED_REJECTED");
+    check(article.publishError===
+      "CONTENT_GATE_FAILED: BROKEN_ARTICLE_EXCESSIVE_SPACES",
+      "RECOVERY_ERROR_NOT_EXACTLY_WHITESPACE_ONLY");
 
-    const { normalizeMasterArticleProseSpacesV1 }=
+    const original=fields(article);
+    const {normalizeMasterArticleProseSpacesV1}=
       await import("../src/lib/content/article-prose-whitespace-v1");
-    check(normalizeMasterArticleProseSpacesV1(article.bodyMarkdown)===article.bodyMarkdown,
-      "STORED_ARTICLE_HAS_ACTUAL_UNNORMALIZED_PROSE");
-    const {auditArticle}=await import("../src/lib/content/content-quality");
-    const {evaluateContentGate}=await import("../src/lib/content/content-gate");
-    const {getBusinessFactRegistryForBrief}=
-      await import("../src/lib/content/evidence-snapshot");
-    const {assertStoredPublicationEvidenceV1}=
-      await import("../src/lib/content/stored-publication-evidence-gate-v1");
-    const {analyzeArticleAgainstPlan}=
-      await import("../src/lib/content/content-plan-analysis");
-    const {evaluateArticlePublicationPolicy}=
-      await import("../src/lib/content/article-publication-policy");
+    const cleaned=normalizeMasterArticleProseSpacesV1(original.bodyMarkdown);
+    check(cleaned!==original.bodyMarkdown,
+      "RECOVERY_NO_CANONICAL_WHITESPACE_CHANGE_FOUND");
+    check(normalizeMasterArticleProseSpacesV1(cleaned)===cleaned,
+      "RECOVERY_NORMALIZER_NOT_IDEMPOTENT");
+    // Prove identical non-space characters and words, including code,
+    // headings and claims. No punctuation or words may be changed.
+    check(original.bodyMarkdown.replace(/ +/g," ")===cleaned.replace(/ +/g," "),
+      "RECOVERY_CHANGED_NON_WHITESPACE_CONTENT");
+    const changedLines=original.bodyMarkdown.split("\n").filter(
+      (line,i)=>line!==cleaned.split("\n")[i]).length;
+    check(changedLines>=1&&changedLines<=30,
+      "RECOVERY_WHITESPACE_DIFF_TOO_LARGE");
+
+    const proposed={...original,bodyMarkdown:cleaned};
     const {buildSerpReplayArticleFingerprintV1}=
       await import("../src/lib/content/serp-replay-fingerprint");
-    const {parsePersistedArticleExecutionPlanV1}=
-      await import("../src/lib/content/article-execution-plan-binding-v1");
-    const {buildProductionFinalArticleReadinessV1}=
-      await import("../src/lib/content/production-final-article-readiness-adapter-v1");
+    const oldFingerprint=buildSerpReplayArticleFingerprintV1(original);
+    const newFingerprint=buildSerpReplayArticleFingerprintV1(proposed);
+    check(oldFingerprint!==newFingerprint,"RECOVERY_FINGERPRINT_UNCHANGED");
 
-    const fields=articleFields(article),fp=buildSerpReplayArticleFingerprintV1(fields);
     const replay=await prisma.serpReplayArtifact.findFirst({
       where:{contentArticleId:articleId},
       orderBy:[{createdAt:"desc"},{id:"desc"}],
     });
     check(replay&&replay.executionStatus==="SUCCEEDED" &&
-      ["READY","WARN"].includes(replay.replayStatus??"") &&
-      replay.articleFingerprintAlgo==="SHA256_V1"&&
-      replay.articleFingerprint===fp&&
-      replay.replayVersion==="SERP_REPLAY_V1",
-      "LATEST_REAL_SERP_REPLAY_MUST_MATCH_EXACT_ARTICLE");
+      replay.replayVersion==="SERP_REPLAY_V1" &&
+      (replay.replayStatus==="READY"||replay.replayStatus==="WARN") &&
+      replay.articleFingerprintAlgo==="SHA256_V1" &&
+      replay.articleFingerprint===oldFingerprint &&
+      replay.keyword?.trim().toLowerCase()===
+        brief.primaryKeyword.trim().toLowerCase() &&
+      replay.serpSnapshotFingerprint &&
+      replay.serpCapturedAt instanceof Date &&
+      Array.isArray(replay.comparisons) &&
+      Array.isArray(replay.blockers) &&
+      replay.blockers.length===0,
+      "RECOVERY_ORIGINAL_GENUINE_REPLAY_NOT_VERIFIABLE");
 
+    const {assertStoredPublicationEvidenceV1}=
+      await import("../src/lib/content/stored-publication-evidence-gate-v1");
+    const {auditArticle}=await import("../src/lib/content/content-quality");
+    const {evaluateContentGate}=
+      await import("../src/lib/content/content-gate");
+    const {getBusinessFactRegistryForBrief}=
+      await import("../src/lib/content/evidence-snapshot");
+    const {analyzeArticleAgainstPlan}=
+      await import("../src/lib/content/content-plan-analysis");
+    const {evaluateArticlePublicationPolicy}=
+      await import("../src/lib/content/article-publication-policy");
     assertStoredPublicationEvidenceV1(snapshot.plan);
-    const audit=auditArticle({article:fields,primaryKeyword:brief.primaryKeyword});
-    const analysis=analyzeArticleAgainstPlan({
-      ...fields,plan:snapshot.plan,
+    const auditBefore=auditArticle({article:original,
+      primaryKeyword:brief.primaryKeyword});
+    const audit=auditArticle({article:proposed,
+      primaryKeyword:brief.primaryKeyword});
+    check(auditBefore.issues.includes("BROKEN_ARTICLE_EXCESSIVE_SPACES") &&
+      !audit.issues.includes("BROKEN_ARTICLE_EXCESSIVE_SPACES") &&
+      auditBefore.wordCount===audit.wordCount &&
+      auditBefore.h2Count===audit.h2Count &&
+      auditBefore.h3Count===audit.h3Count,
+      "RECOVERY_AUDIT_DID_NOT_CONVERGE");
+
+    const before=analyzeArticleAgainstPlan({...original,plan:snapshot.plan,
       primaryKeyword:brief.primaryKeyword,
-      secondaryKeywords:brief.secondaryKeywords,
-    });
+      secondaryKeywords:brief.secondaryKeywords});
+    const analysis=analyzeArticleAgainstPlan({...proposed,plan:snapshot.plan,
+      primaryKeyword:brief.primaryKeyword,
+      secondaryKeywords:brief.secondaryKeywords});
+    check(isDeepStrictEqual(before.article.keywordCoverage,
+      analysis.article.keywordCoverage) &&
+      isDeepStrictEqual(before.article.structure,analysis.article.structure),
+      "RECOVERY_STRUCTURE_OR_KEYWORD_DRIFT");
     const registry=await getBusinessFactRegistryForBrief({
       briefId,websiteId:brief.websiteId,
     });
-    const gate=evaluateContentGate({
-      article:fields,primaryKeyword:brief.primaryKeyword,audit,registry,
+    const gate=evaluateContentGate({article:proposed,
+      primaryKeyword:brief.primaryKeyword,audit,registry});
+    const policy=evaluateArticlePublicationPolicy({
+      article:proposed,intelligence:analysis,
     });
-    const policy=evaluateArticlePublicationPolicy({article:fields,intelligence:analysis});
-    check(gate.pass&&policy.pass, "STILL_BLOCKED_AFTER_CANONICAL_WHITESPACE_FIX");
+    check(gate.pass&&policy.pass,
+      "RECOVERY_CONTENT_OR_PUBLICATION_GATE_STILL_BLOCKED");
 
-    // This full run checkpoint was persisted AFTER the accepted nine-critic
-    // suite and competitive SERP replay. Never fabricate missing authority.
-    const cpRoot=resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim() ||
+    // Local checkpoints are OPTIONAL, and were not enabled for the
+    // user's 3000 run. A real persisted post-critic SERP artifact
+    // remains the authority when the checkpoint is missing.
+    const cpDir=resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim() ||
       join(process.cwd(),".growth-os-tmp/article-checkpoints"));
-    const cpName=join(cpRoot,articleId+"-POST_FINAL_REPLAY.json");
-    let cpRaw:string;
-    try{
-      cpRaw=await readFile(cpName,"utf8");
-    }catch{
-      throw new Error("POST_FINAL_REPLAY_CHECKPOINT_NOT_FOUND__NO_AI_OR_DB_CHANGES");
+    const cpPath=join(cpDir,articleId+"-POST_FINAL_REPLAY.json");
+    const checkpointRaw:string|null=await readFile(cpPath,"utf8")
+      .catch((error:NodeJS.ErrnoException)=>{
+        if(error.code==="ENOENT")return null;
+        throw error;
+      });
+    let checkpointVerified=false;
+    let checkpointHash:string|null=null;
+    if(checkpointRaw){
+      const saved=rec(JSON.parse(checkpointRaw)),cp=rec(saved.checkpoint);
+      check(saved.sha256===hash(JSON.stringify(cp)) &&
+        cp.stage==="POST_FINAL_REPLAY"&&
+        cp.version==="ARTICLE_RECOVERY_CHECKPOINT_V1"&&
+        cp.articleId===articleId&&cp.briefId===briefId &&
+        cp.writerRun?.version==="MASTER_WRITER_RUN_V1" &&
+        hash(JSON.stringify(fields(cp.writerRun.article)))===
+          hash(JSON.stringify(original)) &&
+        ["PASS","WARN"].includes(cp.finalCritics?.suite?.status) &&
+        cp.finalCritics?.provenance?.finalCriticCount===9 &&
+        cp.finalCritics?.suite?.counts?.blockFindings===0,
+        "RECOVERY_EXISTING_CHECKPOINT_CONFLICT");
+      checkpointVerified=true;
+      checkpointHash=saved.sha256;
     }
-    const saved=record(JSON.parse(cpRaw)),cp=record(saved.checkpoint);
-    check(saved.sha256===hash(JSON.stringify(cp)) &&
-      cp.version==="ARTICLE_RECOVERY_CHECKPOINT_V1" &&
-      cp.stage==="POST_FINAL_REPLAY"&&cp.articleId===articleId&&cp.briefId===briefId,
-      "FINAL_CHECKPOINT_INTEGRITY_FAILED");
-    const run=record(cp.writerRun),critics=record(cp.finalCritics);
-    check(run.version==="MASTER_WRITER_RUN_V1" &&
-      hash(JSON.stringify(articleFields(record(run.article))))===
-        hash(JSON.stringify(fields)) &&
-      critics.version==="MASTER_ARTICLE_CRITIC_EXECUTION_V1" &&
-      ["PASS","WARN"].includes(critics.suite?.status) &&
-      critics.provenance?.finalCriticCount===9 &&
-      critics.suite?.counts?.blockFindings===0,
-      "FINAL_CRITIC_OR_ARTICLE_VERSION_NOT_PROVEN");
 
-    const plan=parsePersistedArticleExecutionPlanV1(
-      record(snapshot.plan).articleExecutionPlan
-    );
-    const restoredReplay={
-      version:"SERP_REPLAY_V1",status:replay.replayStatus,
-      keyword:replay.keyword,
-      serpSnapshotFingerprint:replay.serpSnapshotFingerprint,
-      serpCapturedAt:replay.serpCapturedAt,
-      comparisons:replay.comparisons,
-      blockers:replay.blockers,
-      warnings:replay.warnings,
-      provenance:replay.provenance,
-    };
-    const readiness=buildProductionFinalArticleReadinessV1({
-      plan,writerRun:run,finalCritics:critics,
-      articleBodyMarkdown:fields.bodyMarkdown,
-      contentGatePass:gate.pass,
-      publicationPolicyPass:policy.pass,
-      serpReplay:restoredReplay,
-      serpReplayWarning:null,
-    });
-    check(["PASS","WARN"].includes(readiness.status) &&
-      readiness.blockers.length===0,
-      "FINAL_READINESS_STILL_BLOCKED:"+JSON.stringify(readiness.blockers));
-
-    console.log(JSON.stringify({
-      result:commit?"CONTROLLED_WHITESPACE_PROMOTION_REQUESTED":
-        "READ_ONLY_WHITESPACE_RECOVERY_PREFLIGHT_PASS",
-      articleId,briefId,statusBefore:article.status,
-      contentGate:"PASS",publicationPolicy:"PASS",
-      criticStatus:critics.suite.status,
-      replayStatus:replay.replayStatus,
-      readinessStatus:readiness.status,
-      blockers:readiness.blockers,
-      qualityAudit:audit.score,readerWords:audit.wordCount,
+    const summary={
+      result:commit?"DETERMINISTIC_FORMATTING_RECOVERY_COMMIT_REQUESTED":
+        "READ_ONLY_FORMATTING_RECOVERY_PASS",
+      briefId,articleId,
+      from:"REJECTED",to:"IN_REVIEW",
+      readerWords:audit.wordCount,
+      h2:audit.h2Count,h3:audit.h3Count,
       plannedKeywords:analysis.article.keywordCoverage,
-      exactArticleFingerprint:fp,
-      articleBytesUnchanged:true,replayReusedWithoutModelCall:true,
-      checkpointSha256:saved.sha256,
-      commit,
-    },null,2));
+      changedLines,whitespaceOnly:true,
+      originalReplayStatus:replay.replayStatus,
+      originalReplayArtifactId:replay.id,
+      originalFingerprint:oldFingerprint,
+      normalizedFingerprint:newFingerprint,
+      checkpointVerified,
+      checkpointHash,
+      contentGate:"PASS",
+      publicationPolicy:"PASS",
+      publicationReplayStatus:"REVALIDATION_REQUIRED",
+      publicationBlockedUntilNewRealReplay:true,
+      newModelCalls:0,
+      databaseUnchanged:!commit,
+    };
+    console.log(JSON.stringify(summary,null,2));
     if(!commit)return;
 
+    // Single serializable unit. Archive the complete original text and
+    // original genuine replay ID inside a transparent diagnostic
+    // append-only artifact with FAILED execution, not fake SUCCEEDED.
+    // The explicit Publish Gate will reject this latest artifact until
+    // a genuine new replay of normalized article bytes is available.
+    const recovery={
+      version:"DETERMINISTIC_FORMATTING_RECOVERY_V1",
+      originalArticle:original,
+      originalArticleId:articleId,briefId,
+      originalStatus:article.status,
+      originalPublishError:article.publishError,
+      originalUpdatedAt:article.updatedAt.toISOString(),
+      originalReplayArtifactId:replay.id,
+      originalReplayFingerprint:oldFingerprint,
+      normalizedFingerprint:newFingerprint,
+      checkpointHash,
+      checkpointVerified,
+      normalizationAlgorithm:"CANONICAL_PROSE_WHITESPACE_V1",
+      changedLines,
+      equivalentReaderWords:audit.wordCount,
+      runSource:checkpointVerified?
+        "EXACT_POST_FINAL_REPLAY_CHECKPOINT":
+        "PERSISTED_ORIGINAL_POST_CRITIC_REPLAY",
+      publicationGate:"MUST_REPLAY_NORMALIZED_TEXT_BEFORE_PUBLISH",
+    };
     const result=await prisma.$transaction(async tx=>{
       const [now,nowSnapshot,latestReplay]=await Promise.all([
         tx.contentArticle.findUnique({where:{id:articleId}}),
@@ -194,44 +235,73 @@ async function main(){
           orderBy:[{createdAt:"desc"},{id:"desc"}],
         }),
       ]);
-      check(now&&nowSnapshot&&latestReplay&&
-        now.status==="REJECTED"&&now.briefId===briefId&&
-        now.updatedAt.getTime()===article.updatedAt.getTime()&&
-        now.publishError===article.publishError&&
-        hash(JSON.stringify(articleFields(now)))===hash(JSON.stringify(fields)) &&
-        hash(JSON.stringify(nowSnapshot.plan))===hash(JSON.stringify(snapshot.plan)) &&
+      check(now&&nowSnapshot&&latestReplay&&now.briefId===briefId &&
+        now.status==="REJECTED"&&!now.publishedAt&&!now.publishedUrl &&
+        now.updatedAt.getTime()===article.updatedAt.getTime() &&
+        now.publishError===article.publishError &&
+        hash(JSON.stringify(fields(now)))===hash(JSON.stringify(original)) &&
+        isDeepStrictEqual(nowSnapshot.plan,snapshot.plan) &&
         latestReplay.id===replay.id &&
-        latestReplay.articleFingerprint===fp,
-        "STORED_INPUTS_CHANGED_BEFORE_TRANSACTION");
-      const promoted=await tx.contentArticle.updateMany({
+        latestReplay.articleFingerprint===oldFingerprint,
+        "RECOVERY_DATA_CHANGED_BEFORE_COMMIT");
+      const update=await tx.contentArticle.updateMany({
         where:{id:articleId,briefId,status:"REJECTED",
           updatedAt:article.updatedAt,publishError:article.publishError},
-        data:{status:"IN_REVIEW",publishError:null},
+        data:{bodyMarkdown:cleaned,status:"IN_REVIEW",publishError:null},
       });
-      check(promoted.count===1,"ARTICLE_CAS_FAILED");
-      return promoted.count;
+      check(update.count===1,"RECOVERY_COMPARE_AND_SWAP_FAILED");
+      const diagnostic=await tx.serpReplayArtifact.create({
+        data:{
+          contentArticleId:articleId,
+          artifactVersion:"SERP_REPLAY_ARTIFACT_V1",
+          replayVersion:"SERP_REPLAY_V1",
+          executionStatus:"FAILED",
+          replayStatus:null,
+          articleFingerprint:newFingerprint,
+          articleFingerprintAlgo:"SHA256_V1",
+          keyword:replay.keyword,
+          serpSnapshotFingerprint:replay.serpSnapshotFingerprint,
+          serpCapturedAt:replay.serpCapturedAt,
+          comparisons:Prisma.DbNull,
+          blockers:Prisma.DbNull,
+          warnings:Prisma.DbNull,
+          provenance:jsonValue(recovery),
+          errorMessage:"SERP_REPLAY_REQUIRED_AFTER_SAFE_WHITESPACE_NORMALIZATION",
+        },
+      });
+      return diagnostic.id;
     },{
       isolationLevel:Prisma.TransactionIsolationLevel.Serializable,
-      maxWait:10000,
-      timeout:30000,
+      maxWait:10000,timeout:30000,
     });
-    const after=await prisma.contentArticle.findUnique({where:{id:articleId}});
-    check(result===1&&after?.status==="IN_REVIEW"&&
-      hash(JSON.stringify(articleFields(after)))===hash(JSON.stringify(fields)),
-      "POST_COMMIT_STATUS_OR_ARTICLE_FINGERPRINT_MISMATCH");
+    const [after,latestReplay]=await Promise.all([
+      prisma.contentArticle.findUnique({where:{id:articleId}}),
+      prisma.serpReplayArtifact.findFirst({
+        where:{contentArticleId:articleId},
+        orderBy:[{createdAt:"desc"},{id:"desc"}],
+      }),
+    ]);
+    check(after?.status==="IN_REVIEW"&&
+      hash(JSON.stringify(fields(after)))===hash(JSON.stringify(proposed)) &&
+      latestReplay?.id===result &&latestReplay.executionStatus==="FAILED" &&
+      latestReplay.articleFingerprint===newFingerprint,
+      "RECOVERY_POST_COMMIT_VERIFICATION_FAILED");
     console.log(JSON.stringify({
-      result:"EXISTING_ARTICLE_RECOVERED_IN_REVIEW",
-      articleId,briefId,status:"IN_REVIEW",
-      originalSerpReplayArtifactId:replay.id,
-      exactArticleFingerprint:fp,
-      originalTextUnchanged:true,newAiCalls:0,published:false,
+      result:"ARTICLE_FORMATTING_RECOVERED_IN_REVIEW",
+      briefId,articleId,status:"IN_REVIEW",
+      words:audit.wordCount,
+      originalTextArchived:true,
+      currentFingerprint:newFingerprint,
+      oldRealReplayPreserved:replay.id,
+      newDiagnosticReplayArtifactId:result,
+      publishGate:"REVALIDATION_REQUIRED",
+      noWriterCalls:true,newAiCalls:0,published:false,
     },null,2));
   }finally{
     await prisma.$disconnect();
   }
 }
 main().catch(error=>{
-  console.error("WHITESPACE_RECOVERY_STOPPED:",
-    error instanceof Error?error.message:String(error));
+  console.error("WHITESPACE_RECOVERY_STOPPED:",errored(error));
   process.exitCode=1;
 });
