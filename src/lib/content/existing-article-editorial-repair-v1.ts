@@ -193,6 +193,24 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       primaryKeyword:original.brief.primaryKeyword,
       secondaryKeywords:original.brief.secondaryKeywords,
     });
+    const originalIntelligence=analyzeArticleAgainstPlan({
+      ...initial,plan:snap.plan,
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+    });
+    check(
+      intelligence.article.keywordCoverage.used>=
+        originalIntelligence.article.keywordCoverage.used &&
+      intelligence.article.keywordCoverage.missing<=
+        originalIntelligence.article.keywordCoverage.missing,
+      "SAVED_EDITORIAL_KEYWORD_COVERAGE_REGRESSED"
+    );
+    const initialAudit=auditArticle({article:initial,
+      primaryKeyword:original.brief.primaryKeyword});
+    check(audit.h2Count===initialAudit.h2Count &&
+      audit.h3Count===initialAudit.h3Count,
+      "SAVED_EDITORIAL_HEADING_STRUCTURE_DRIFT");
+
     const registry=await getBusinessFactRegistryForBrief({
       briefId:original.briefId,websiteId:original.brief.websiteId,
     });
