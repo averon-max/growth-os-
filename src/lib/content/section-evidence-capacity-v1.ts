@@ -12,6 +12,10 @@
  * material claims/evidence. Require upstream Research to repair
  * or defer that section instead of paying for verbose fluff.
  */
+import {
+  inspectStagePlanInformationGainV1,
+} from "./stage-plan-information-gain-v1";
+
 export interface SectionEvidenceCapacityV1 {
   state:string;
   id:string;
@@ -26,7 +30,8 @@ export interface SectionEvidenceGapV1 {
   sectionId:string;
   heading:string;
   reason:"SUBSTANTIVE_QUESTION_WITHOUT_EVIDENCE" |
-    "LENGTH_BUDGET_WITHOUT_EVIDENCE";
+    "LENGTH_BUDGET_WITHOUT_EVIDENCE" |
+    "EXPLANATORY_ARTICLE_HAS_ONE_FACT_PER_SECTION";
 }
 export class SectionEvidenceCapacityErrorV1 extends Error {
   readonly code="SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT" as const;
@@ -39,7 +44,7 @@ export class SectionEvidenceCapacityErrorV1 extends Error {
 export function inspectSectionEvidenceCapacityV1(
   sections:readonly SectionEvidenceCapacityV1[]
 ):readonly SectionEvidenceGapV1[]{
-  return sections.flatMap<SectionEvidenceGapV1>(section=>{
+  const perSection=sections.flatMap<SectionEvidenceGapV1>(section=>{
     if(section.state!=="WRITABLE")return [];
     const claimAuthority=section.requiredClaimIds.length;
     const sourceAuthority=section.evidenceIds.length;
@@ -59,6 +64,30 @@ export function inspectSectionEvidenceCapacityV1(
       }];
     return [];
   });
+
+  /*
+   * POST_VERIFICATION_BREADTH_AUTHORITY_V1
+   *
+   * Source verification can contract several originally planned
+   * facts away. Catch a six-section explanatory plan still owning
+   * only one surviving atomic factual claim per information job.
+   * Never solve this by letting Writer pad a generic paragraph.
+   */
+  const surviving=sections.filter(section=>section.state==="WRITABLE");
+  const breadth=inspectStagePlanInformationGainV1(
+    surviving.map(section=>({
+      heading:section.heading,
+      requiredClaimIds:section.requiredClaimIds,
+      questions:section.requiredQuestionIds,
+    }))
+  );
+  return breadth.insufficient
+    ? [...perSection,{
+        sectionId:"article-plan",
+        heading:"Cross-section information gain",
+        reason:"EXPLANATORY_ARTICLE_HAS_ONE_FACT_PER_SECTION",
+      }]
+    : perSection;
 }
 export function assertSectionEvidenceCapacityV1(
   sections:readonly SectionEvidenceCapacityV1[]
