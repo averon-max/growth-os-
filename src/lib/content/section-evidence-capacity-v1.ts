@@ -39,7 +39,7 @@ export class SectionEvidenceCapacityErrorV1 extends Error {
 export function inspectSectionEvidenceCapacityV1(
   sections:readonly SectionEvidenceCapacityV1[]
 ):readonly SectionEvidenceGapV1[]{
-  return sections.flatMap(section=>{
+  return sections.flatMap<SectionEvidenceGapV1>(section=>{
     if(section.state!=="WRITABLE")return [];
     const claimAuthority=section.requiredClaimIds.length;
     const sourceAuthority=section.evidenceIds.length;
