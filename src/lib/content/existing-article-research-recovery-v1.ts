@@ -225,6 +225,24 @@ export async function recoverExistingArticleResearchV1({
         // Reserve a place in the crawler's first-24 URL ceiling for
         // EVERY missing section instead of spending the whole budget
         // on URLs from the first query.
+        // Explicit search callback works with BOTH production
+        // fallback-provider signatures (old and new). At most ONE
+        // provider search is made for this section's probe, regardless
+        // of how many query strings the legacy fallback iterator emits.
+        let searchRequestsForProbe=0;
+        const search:NonNullable<
+          Parameters<typeof discoverClaimEvidenceFallbackSourcesV1>[0]["search"]
+        >=async input=>{
+          if(searchRequestsForProbe++>=1)return {organic:[]};
+          const {buildSerpIntelligence}=await import("./serp-intelligence");
+          const serp=await buildSerpIntelligence({
+            keyword:input.keyword,
+            locationName:input.locationName,
+            languageName:input.languageName,
+          });
+          return {organic:(serp.organic??[]) as unknown as
+            readonly import("./live-evidence-verification").EvidenceFallbackOrganicResultV1[]};
+        };
         const found=await discoverClaimEvidenceFallbackSourcesV1({
           claims:[probe],
           primaryQuery:original.brief.primaryKeyword,
@@ -233,7 +251,7 @@ export async function recoverExistingArticleResearchV1({
           languageName:typeof mission.language==="string"
             ?mission.language:"English",
           existingUrls:[...alreadySeen],
-          maxQueriesPerClaim:1,
+          search,
         });
         let kept=0;
         for(const source of found){
