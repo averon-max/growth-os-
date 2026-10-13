@@ -127,9 +127,13 @@ export function budgetResearchExpansionProposalsV1({
   const ordered=writable.map(section=>byId.get(section.id)!);
   const offeredClaims=ordered.reduce(
     (total,p)=>total+p.proposedClaims.length,0);
-  const selected=new Map(ordered.map(p=>[
-    p.sectionId,[] as ResearchExpansionProposalV1["proposedClaims"][number][],
-  ]));
+  const selected=new Map<string,
+    Array<ResearchExpansionProposalV1["proposedClaims"][number]>>(
+      ordered.map(p=>[
+        p.sectionId,
+        [] as Array<ResearchExpansionProposalV1["proposedClaims"][number]>,
+      ] as const)
+    );
   let remaining=maxClaims;
   for(let index=0;index<4&&remaining>0;index++){
     for(const proposal of ordered){
