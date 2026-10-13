@@ -76,9 +76,12 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const [briefId, articleId] = args;
   const live = args.includes("--run");
+  const v3 = args.includes("--v3");
   invariant([briefId, articleId].every(v=>/^[a-zA-Z0-9_-]{1,100}$/.test(v??"")),
-    "USAGE: BRIEF_ID ARTICLE_ID [--run]");
-  invariant(args.length === (live ? 3 : 2), "UNKNOWN_ARGUMENTS");
+    "USAGE: BRIEF_ID ARTICLE_ID [--v3] [--run]");
+  invariant(args.length === 2+Number(v3)+Number(live) &&
+    args.every((value,index)=>index<2 || value==="--v3" || value==="--run"),
+    "UNKNOWN_ARGUMENTS");
   invariant(!live || process.env.GROWTH_OS_LIVE_REVIEW === "1",
     "EXPLICIT_GROWTH_OS_LIVE_REVIEW_OPT_IN_REQUIRED");
 
@@ -86,11 +89,14 @@ async function main(): Promise<void> {
     ".growth-os-tmp/final-article-closure");
   const checkpointDir = resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR ??
     ".growth-os-tmp/article-checkpoints");
+  const suffix=v3 ? "-SUPPORTED-CANDIDATE-V3" : "-REVIEW-CANDIDATE";
   const [candidateMd, candidateRaw, cpRaw, revisionRaw] = await Promise.all([
-    readFile(join(root, articleId + "-REVIEW-CANDIDATE.md"), "utf8"),
-    readFile(join(root, articleId + "-REVIEW-CANDIDATE.json"), "utf8"),
+    readFile(join(root, articleId + suffix + ".md"), "utf8"),
+    readFile(join(root, articleId + suffix + ".json"), "utf8"),
     readFile(join(checkpointDir, articleId + "-POST_WRITER.json"), "utf8"),
-    readFile(join(root, articleId + "-STAGED-EVIDENCE-REVISION.json"), "utf8"),
+    readFile(join(root, articleId + (v3 ?
+      "-STAGED-EVIDENCE-EXPANSION-V2.json" :
+      "-STAGED-EVIDENCE-REVISION.json")), "utf8"),
   ]);
   const manifest = record(JSON.parse(candidateRaw));
   const saved = record(JSON.parse(cpRaw));
