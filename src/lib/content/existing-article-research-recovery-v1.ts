@@ -231,7 +231,11 @@ export async function recoverExistingArticleResearchV1({
       if(fetched.length){
         newGraph=await enrichLiveEvidenceGraphV1({
           graph:{
-            sources:[...newGraph.sources,...fetched],
+            // The production crawler intentionally fetches only its
+            // FIRST 24 URLs. Put claim-specific fallback URLs first
+            // or they would never be fetched after 62 old sources.
+            // Keep the full original inventory for provenance.
+            sources:[...fetched,...newGraph.sources],
             claimEvidence:[...newGraph.claimEvidence],
           },
           claims:proposed,
