@@ -75,8 +75,9 @@ describe("bounded same-article fact research expansion",()=>{
     const over=suggestions().map((section,i)=>({
       ...section,
       proposedClaims:[...Array.from({length:4},(_,j)=>({
-        text:"Distinct topic "+i+" source-observable mechanism "+j+
-          " can be independently described by a published page.",
+        text:"Unique mechanism"+i+"factor"+j+
+          " changes signal"+i+"detail"+j+
+          " when condition"+i+"branch"+j+" is present.",
         category:"FACT" as const,risk:"LOW" as const,
       }))],
     }));
