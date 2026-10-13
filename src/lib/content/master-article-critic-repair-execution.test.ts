@@ -341,3 +341,29 @@ describe(
     );
   }
 );
+
+describe("optional coverage self-healing production wiring", () => {
+  it("does not erase a rejected article on retry", () => {
+    const service=source("./service.ts");
+    const beginning=service.indexOf("const pendingArticle =");
+    const ending=service.indexOf("try {",beginning);
+    const retry=service.slice(beginning,ending);
+    expect(retry).not.toMatch(/bodyMarkdown:\\s*""/);
+    expect(retry).toContain('status:\\n              "GENERATING"'.replace('\\n','\n'));
+  });
+
+  it("preserves an accepted article when optional coverage repair cannot pass", () => {
+    const service=source("./service.ts");
+    expect(service).toContain("OPTIONAL_KEYWORD_COVERAGE_RECOVERY_V1");
+    expect(service).toContain('masterCriticExecution.suite.status !== "BLOCK"');
+    expect(service).toContain("run: masterWriterRun");
+    expect(service).toContain("finalCritics: masterCriticExecution");
+  });
+
+  it("requires safe, measurable keyword improvement after nine critics", () => {
+    const repair=source("./master-article-critic-repair-execution.ts");
+    expect(repair).toContain("OPTIONAL_KEYWORD_REPAIR_DID_NOT_IMPROVE_SAFELY");
+    expect(repair).toContain('finalCritics.suite.status === "BLOCK"');
+    expect(repair).toContain("missingCount(finalCritics) >= missingCount(initialCritics)");
+  });
+});
