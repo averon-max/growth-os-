@@ -68,6 +68,21 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(ui).toContain("window.confirm(");
     expect(ui).toContain("Recover research");
   });
+  it("reuses a paid planning response and contracts overcomplete claims before validating",()=>{
+    const read=engine.indexOf("readExistingResearchPlanningCheckpointV1(planningScope)");
+    const model=engine.indexOf("callContentAiJson(planPrompt");
+    const write=engine.indexOf("saveExistingResearchPlanningCheckpointV1(");
+    const budget=engine.indexOf("budgetResearchExpansionProposalsV1({");
+    const validate=engine.indexOf("validateResearchExpansionProposalsV1({");
+    expect(read).toBeGreaterThan(0);
+    expect(model).toBeGreaterThan(read);
+    expect(write).toBeGreaterThan(model);
+    expect(budget).toBeGreaterThan(write);
+    expect(validate).toBeGreaterThan(budget);
+    expect(engine).toContain("assertResearchPlanningCheckpointWritableV1(planningScope)");
+    expect(engine).toContain("resumedPaidPlan:storedPlanningResponse!==null");
+  });
+
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
