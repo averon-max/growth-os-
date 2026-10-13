@@ -77,16 +77,50 @@ function recycledLongPhraseGroups(
   const related=sectionPhrases(sections,6)
     .filter(x=>x.indices.length>=2)
     .sort((a,b)=>b.indices.length-a.indices.length);
+
+  /*
+   * A definition repeated verbatim in every section may produce
+   * several DIFFERENT six-word windows. Even word-overlap grouping
+   * cannot collapse all those windows. Track the actual sentence
+   * occurrences instead of counting multiple windows of ONE fact as
+   * several independent information-gain failures.
+   *
+   * Also discard windows spanning sentence boundaries: a repeated
+   * fragment must occur in actual reader-facing prose sentences.
+   */
+  const sentenceTexts=sections.map(section=>
+    prose(section.bodyMarkdown)
+      .split(/[.!?](?:\\s+|$)/)
+      .map(sentence=>words(sentence).join(" "))
+  );
+  const seenSentenceLocations=new Set<string>();
   const groups:{phrase:string;indices:readonly number[]}[]=[];
   for(const candidate of related){
+    const occurrences=sentenceTexts.flatMap((sentences,sectionIndex)=>
+      sentences.flatMap((sentence,sentenceIndex)=>
+        sentence.includes(candidate.phrase)
+          ? [sectionIndex+":"+sentenceIndex]
+          : []
+      )
+    );
+    const owningSections=[...new Set(
+      occurrences.map(value=>Number(value.split(":")[0]))
+    )];
+    if(owningSections.length<2)continue;
+    const locationKey=occurrences.join("|");
+    if(seenSentenceLocations.has(locationKey))continue;
+
     const terms=new Set(candidate.phrase.split(" "));
-    const duplicate=groups.some(group=>{
+    const nearDuplicate=groups.some(group=>{
       const other=new Set(group.phrase.split(" "));
       const intersection=[...terms].filter(x=>other.has(x)).length;
       const union=new Set([...terms,...other]).size;
       return union>0 && intersection/union>=0.5;
     });
-    if(!duplicate)groups.push(candidate);
+    if(nearDuplicate)continue;
+
+    groups.push({phrase:candidate.phrase,indices:owningSections});
+    seenSentenceLocations.add(locationKey);
   }
   return groups;
 }
