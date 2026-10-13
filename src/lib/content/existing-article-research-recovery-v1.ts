@@ -20,6 +20,8 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {resolveResearchRecoverySerpMarketV1}
+  from "./research-recovery-serp-market-v1";
 import {Prisma} from "@prisma/client";
 import {prisma} from "@/lib/prisma";
 import {callContentAiJson,geminiGenerator} from "./gemini-generator";
@@ -156,6 +158,20 @@ export async function recoverExistingArticleResearchV1({
     check(sourceDomains.length>0,"SOURCE_INVENTORY_EMPTY");
 
     /*
+     * Fail BEFORE new planning/model spend if the persisted mission
+     * cannot be expressed as a valid DataForSEO SERP market.
+     * BCP-47 `en` is not the DataForSEO `language_name` `English`.
+     */
+    const storedMission=record(oldSnapshot.searchMissionInput??{});
+    const searchMarket=resolveResearchRecoverySerpMarketV1({
+      language:typeof storedMission.language==="string"
+        ?storedMission.language:"",
+      location:typeof storedMission.location==="string"
+        ?storedMission.location:"",
+    });
+    console.info("[content research recovery SERP market]",searchMarket);
+
+    /*
      * One bounded planning inference only. No new keyword, outline,
      * question, competitor metric, market or business fact authority.
      */
@@ -252,7 +268,6 @@ export async function recoverExistingArticleResearchV1({
       }
       const probes=[...missingBySection.values()].slice(0,6);
       fallbackSearches=probes.length;
-      const mission=record(oldSnapshot.searchMissionInput??{});
       const alreadySeen=new Set(newGraph.sources.map(s=>s.url));
       const fetched:Array<(typeof newGraph.sources)[number]>=[];
       for(const probe of probes){
@@ -265,29 +280,43 @@ export async function recoverExistingArticleResearchV1({
         // provider search is made for this section's probe, regardless
         // of how many query strings the legacy fallback iterator emits.
         let searchRequestsForProbe=0;
+        let badProviderMarketError:Error|null=null;
         const search:NonNullable<
           Parameters<typeof discoverClaimEvidenceFallbackSourcesV1>[0]["search"]
         >=async input=>{
           if(searchRequestsForProbe++>=1)return {organic:[]};
-          const {buildSerpIntelligence}=await import("./serp-intelligence");
-          const serp=await buildSerpIntelligence({
-            keyword:input.keyword,
-            locationName:input.locationName,
-            languageName:input.languageName,
-          });
-          return {organic:(serp.organic??[]) as unknown as
-            readonly import("./live-evidence-verification").EvidenceFallbackOrganicResultV1[]};
+          try{
+            const {buildSerpIntelligence}=await import("./serp-intelligence");
+            const serp=await buildSerpIntelligence({
+              keyword:input.keyword,
+              locationName:searchMarket.locationName,
+              languageName:searchMarket.languageName,
+            });
+            return {organic:(serp.organic??[]) as unknown as
+              readonly import("./live-evidence-verification").EvidenceFallbackOrganicResultV1[]};
+          }catch(error){
+            if(error instanceof Error&&
+              /Invalid Field:\s*['"](?:language_name|location_name)['"]/i
+                .test(error.message)){
+              badProviderMarketError=new Error(
+                "SAVED_RESEARCH_RECOVERY_DATAFORSEO_MARKET_REJECTED:"+
+                error.message.slice(0,220)
+              );
+            }
+            throw error;
+          }
         };
         const found=await discoverClaimEvidenceFallbackSourcesV1({
           claims:[probe],
           primaryQuery:original.brief.primaryKeyword,
-          locationName:typeof mission.location==="string"
-            ?mission.location:"United States",
-          languageName:typeof mission.language==="string"
-            ?mission.language:"English",
+          locationName:searchMarket.locationName,
+          languageName:searchMarket.languageName,
           existingUrls:[...alreadySeen],
           search,
         });
+        if(badProviderMarketError){
+          throw badProviderMarketError;
+        }
         let kept=0;
         for(const source of found){
           if(alreadySeen.has(source.url))continue;
