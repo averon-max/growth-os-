@@ -20,6 +20,10 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {
+  encodeResearchDiscoveryCheckpointV1,
+  decodeResearchDiscoveryCheckpointV1,
+} from "./research-discovery-checkpoint-v1";
 import {resolveResearchRecoverySerpMarketV1}
   from "./research-recovery-serp-market-v1";
 import {Prisma} from "@prisma/client";
@@ -265,6 +269,7 @@ export async function recoverExistingArticleResearchV1({
     const unresolved=proposed.filter(c=>!newSupport(c.id));
     let fallbackSearches=0;
     let discoveredSourceCount=0;
+    let reusedSourceDiscoveryCheckpoint=false;
     if(unresolved.length){
       // One wave: at most one outstanding factual question from each
       // under-researched section. Avoid spending all fallback searches
@@ -276,8 +281,29 @@ export async function recoverExistingArticleResearchV1({
       }
       const probes=[...missingBySection.values()].slice(0,6);
       fallbackSearches=probes.length;
+      const discoveryFingerprint=hash({
+        version:"BOUNDED_RESEARCH_SOURCE_DISCOVERY_V1",
+        evidence:originalEvidenceFingerprint,
+        market:searchMarket,primary:original.brief.primaryKeyword,
+        probes:probes.map(c=>({id:c.id,text:c.text})),
+        existingUrls:newGraph.sources.map(s=>s.url),
+      });
+      const discoveryScope={
+        articleId,briefId:original.briefId,
+        updatedAt:original.updatedAt.toISOString(),
+        evidenceSha256:discoveryFingerprint,
+        directory:".growth-os-tmp/research-recovery/discovery/"+
+          discoveryFingerprint.slice(0,20),
+      };
+      const cachedDiscovery=await readExistingResearchPlanningCheckpointV1(
+        discoveryScope);
+      reusedSourceDiscoveryCheckpoint=cachedDiscovery!==null;
       const alreadySeen=new Set(newGraph.sources.map(s=>s.url));
-      const fetched:Array<(typeof newGraph.sources)[number]>=[];
+      const fetched:Array<(typeof newGraph.sources)[number]>=
+        cachedDiscovery===null?[]:
+        decodeResearchDiscoveryCheckpointV1(cachedDiscovery);
+      if(cachedDiscovery===null){
+        await assertResearchPlanningCheckpointWritableV1(discoveryScope);
       for(const probe of probes){
         // One search per section, not one broad multi-claim search.
         // Reserve a place in the crawler's first-24 URL ceiling for
@@ -337,7 +363,18 @@ export async function recoverExistingArticleResearchV1({
           if(++kept===3)break;
         }
       }
+        // Save the complete URL inventory IMMEDIATELY after provider
+        // discovery. Later failed source matching / Writer runs can
+        // reuse the same URLs without another paid SERP query.
+        await saveExistingResearchPlanningCheckpointV1(
+          discoveryScope,encodeResearchDiscoveryCheckpointV1(fetched));
+      }
       discoveredSourceCount=fetched.length;
+      console.info("[content research recovery source discovery cache]",{
+        reused:reusedSourceDiscoveryCheckpoint,
+        paidSearchCalls:reusedSourceDiscoveryCheckpoint?0:fallbackSearches,
+        cachedSourceUrls:fetched.length,
+      });
       if(fetched.length){
         newGraph=await enrichLiveEvidenceGraphV1({
           graph:{
@@ -493,6 +530,7 @@ export async function recoverExistingArticleResearchV1({
       sourceInventory:newGraph.sources.length,
       fallbackSearches,
       newlyDiscoveredSources:discoveredSourceCount,
+      reusedSourceDiscoveryCheckpoint,
       sections:strictBySection,
     });
     check(strictBySection.every(section=>section.lexicallyVerified>=1),
@@ -797,6 +835,7 @@ export async function recoverExistingArticleResearchV1({
               updatedEvidenceHash:hash(revisedSnapshot),
               newVerifiedClaimIds:newSupported.map(c=>c.id),
               fallbackSearches,
+              reusedSourceDiscoveryCheckpoint,
               sourceGroundedReplanCount,
               sourceCount:graph.sources.length,
               semanticReview:{
