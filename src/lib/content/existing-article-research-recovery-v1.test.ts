@@ -26,7 +26,8 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(extraction).toBeGreaterThan(planning);
     expect(fallback).toBeGreaterThan(extraction);
     expect(semantic).toBeGreaterThan(fallback);
-    expect(engine).toContain("maxQueriesPerClaim:1");
+    expect(engine).toContain("searchRequestsForProbe++>=1");
+    expect(engine).toContain("search,");
     expect(engine).toContain("missingBySection.values()].slice(0,6)");
   });
   it("recreates locked section, evidence and writer authority from verified atomic facts",()=>{
