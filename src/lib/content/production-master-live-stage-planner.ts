@@ -3,6 +3,11 @@ import {
 } from "./production-claim-category-normalization-v2";
 
 import {
+  inspectStagePlanInformationGainV1,
+  INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
+} from "./stage-plan-information-gain-v1";
+
+import {
 
   ARTICLE_TEMPLATE_POLICIES_V1,
   selectArticleTemplateV1,
@@ -1555,6 +1560,8 @@ export async function planProductionMasterArtifactsFromLiveSources({
 
       atomicClaimContract,
 
+      INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
+
       sectionClaimOwnershipContract,
 
       seoContentTargetPolicy,
@@ -1821,6 +1828,21 @@ function inspectStagePlanCompleteness(
         missing.push(
           "sections[].evidenceSensitiveRole.requiredClaimIds"
         );
+      }
+
+      /*
+       * STAGE_PLAN_INFORMATION_GAIN_CLAIM_BREADTH_V1
+       *
+       * A six-section explanatory article with one generic fact per
+       * reader job must be repaired at the Stage Plan, not padded by
+       * the Writer. Reuse the existing one bounded plan regeneration;
+       * no invented claims gain evidence authority here.
+       */
+      const informationGain=inspectStagePlanInformationGainV1(
+        candidate.sections
+      );
+      if(informationGain.issueCode){
+        missing.push(informationGain.issueCode);
       }
 
       /*
