@@ -110,11 +110,27 @@ async function main(): Promise<void> {
     manifest.sourceCheckpointSha256 === saved.sha256 &&
     revised.articleId === articleId && revised.briefId === briefId,
     "CHECKPOINT_REVISION_IDENTITY_MISMATCH");
-  invariant(revised.version === "STAGED_SCORE_EVIDENCE_REVISION_V1" &&
-    revised.status === "NOT_PERSISTED_NOT_READY_FOR_REVIEW" &&
-    revised.verifiedClaimId === manifest.source?.verifiedClaimId &&
-    revised.verifiedEvidenceId === "evidence-score-impact-experian-reviewed-v1",
-    "STAGED_EVIDENCE_REVISION_INVALID");
+  if(v3){
+    invariant(manifest.version === "SUPPORTED_SCORE_CANDIDATE_V3" &&
+      manifest.status === "NOT_PERSISTED_NOT_SEMANTICALLY_APPROVED" &&
+      manifest.evidenceExpansionSha256 === digest(revisionRaw) &&
+      manifest.checkpointSha256 === saved.sha256 &&
+      manifest.sourceCheckpointSha256 === saved.sha256 &&
+      manifest.originalPlanSha256 === revised.originalPlanSha256 &&
+      manifest.initialCandidateSha256 === revised.candidateArticleSha256 &&
+      revised.version === "STAGED_SCORE_EVIDENCE_EXPANSION_V2" &&
+      revised.status === "NOT_PERSISTED_NOT_READY_FOR_REVIEW" &&
+      revised.verified.length === 6 &&
+      revised.preWriterGate === "PASS" &&
+      revised.sourceEvidenceGate === "PASS",
+      "STAGED_SCORE_EVIDENCE_EXPANSION_INVALID");
+  }else{
+    invariant(revised.version === "STAGED_SCORE_EVIDENCE_REVISION_V1" &&
+      revised.status === "NOT_PERSISTED_NOT_READY_FOR_REVIEW" &&
+      revised.verifiedClaimId === manifest.source?.verifiedClaimId &&
+      revised.verifiedEvidenceId === "evidence-score-impact-experian-reviewed-v1",
+      "STAGED_EVIDENCE_REVISION_INVALID");
+  }
   invariant(JSON.stringify(manifest.changedSectionIndexes)==="[3]",
     "CANDIDATE_MODIFIED_UNEXPECTED_SECTION");
   const originalRun = record(cp.writerRun);
@@ -122,9 +138,10 @@ async function main(): Promise<void> {
   invariant(Array.isArray(originalSections) && originalSections.length===5,
     "CHECKPOINT_SECTIONS_INVALID");
   const originalHashes = originalSections.map(s=>digest(s.bodyMarkdown));
-  invariant(JSON.stringify(originalHashes)===JSON.stringify(manifest.sectionHashesBefore),
-    "CHECKPOINT_SECTION_HASHES_INVALID");
-  invariant(originalHashes.every((h,i)=>i===3||h===manifest.sectionHashesAfter[i]),
+  invariant(JSON.stringify(originalHashes)===JSON.stringify(
+    v3 ? manifest.originalSectionHashes : manifest.sectionHashesBefore
+  ), "CHECKPOINT_SECTION_HASHES_INVALID");
+  invariant(v3 || originalHashes.every((h,i)=>i===3||h===manifest.sectionHashesAfter[i]),
     "UNTOUCHED_SECTIONS_CHANGED");
 
   const h1Line=/^# ([^\r\n]+)\r?\n(?:\r?\n)*/.exec(candidateMd);
@@ -145,7 +162,9 @@ async function main(): Promise<void> {
     h1: originalRun.shell.h1,
     bodyMarkdown:body,
   };
-  invariant(digest(JSON.stringify(candidateArticle))===revised.candidateArticleSha256,
+  const selectedCandidateSha=v3 ?
+    manifest.candidateArticleSha256 : revised.candidateArticleSha256;
+  invariant(digest(JSON.stringify(candidateArticle))===selectedCandidateSha,
     "CANDIDATE_ARTICLE_VERSION_MISMATCH");
 
   const { prisma }=await import("../src/lib/prisma");
