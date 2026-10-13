@@ -10,7 +10,8 @@
  * No checkpoint ever grants source authority or changes the DB.
  */
 import {createHash} from "node:crypto";
-import {mkdir,readFile,open} from "node:fs/promises";
+import {mkdir,readFile,open,unlink} from "node:fs/promises";
+import {randomUUID} from "node:crypto";
 import {resolve,join} from "node:path";
 const VERSION="EXISTING_ARTICLE_RESEARCH_PAID_PLAN_CHECKPOINT_V1" as const;
 const sha=(value:string)=>createHash("sha256").update(value,"utf8").digest("hex");
@@ -71,6 +72,25 @@ export async function readExistingResearchPlanningCheckpointV1(
     throw error;
   }
 }
+/**
+ * Test local checkpoint durability BEFORE any paid planning request.
+ * If an ephemeral/read-only server cannot provide write access, fail
+ * closed before spending money, rather than losing a paid response.
+ */
+export async function assertResearchPlanningCheckpointWritableV1(
+  scope:Scope
+):Promise<void>{
+  const {directory}=checked(scope);
+  await mkdir(directory,{recursive:true,mode:0o700});
+  const probe=join(directory,".write-probe-"+randomUUID());
+  const handle=await open(probe,"wx",0o600);
+  try{await handle.writeFile("probe","utf8");await handle.sync();}
+  finally{
+    await handle.close();
+    await unlink(probe);
+  }
+}
+
 export async function saveExistingResearchPlanningCheckpointV1(
   scope:Scope,response:string
 ):Promise<string>{
