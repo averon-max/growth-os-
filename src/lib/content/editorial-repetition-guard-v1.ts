@@ -132,3 +132,14 @@ export function detectPersistedArticleEditorialRepetitionV1(
   }
   return detectHighConfidenceEditorialRepetitionV1(sections);
 }
+
+
+export class EditorialRepetitionGateErrorV1 extends Error {
+  readonly code="ARTICLE_EDITORIAL_REPETITION_BLOCKED" as const;
+  readonly findings:readonly EditorialRepetitionFindingV1[];
+  constructor(findings:readonly EditorialRepetitionFindingV1[]){
+    super("Substantive editorial revision required: multiple sections recycle the same explanation or guidance.");
+    this.name="EditorialRepetitionGateErrorV1";
+    this.findings=Object.freeze([...findings]);
+  }
+}
