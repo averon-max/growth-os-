@@ -3,6 +3,10 @@ import {
 } from "./article-structure-stats-v1";
 
 import {
+  countWords as countReaderWords,
+} from "./article-analyzer";
+
+import {
   ContentGenerationError,
 } from "./generator";
 
@@ -31,18 +35,9 @@ function normalize(
 function countWords(
   markdown: string
 ): number {
-  return markdown
-    .replace(
-      /[#>*_`\[\]()!-]/g,
-      " "
-    )
-    .split(
-      /\s+/
-    )
-    .filter(Boolean)
-    .length;
+  // Reader-facing Article Intelligence and final quality must agree.
+  return countReaderWords(markdown);
 }
-
 
 function countPhrase(
   text: string,

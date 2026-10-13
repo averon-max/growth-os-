@@ -232,3 +232,17 @@ describe(
     );
   }
 );
+
+describe("audit and Article Intelligence word count consistency", () => {
+  it("does not count Markdown citation URLs as reader words", async () => {
+    const { countWords } = await import("./article-analyzer");
+    const article = {
+      title: "Credit monitoring",
+      metaDescription: "A guide to credit monitoring alerts and reports.",
+      h1: "Credit monitoring",
+      bodyMarkdown: "## Alerts\nCredit monitoring provides alerts. See [official source](https://www.example.com/some-long-url).",
+    };
+    const audit = auditArticle({article,primaryKeyword:"credit monitoring"});
+    expect(audit.wordCount).toBe(countWords(article.bodyMarkdown));
+  });
+});

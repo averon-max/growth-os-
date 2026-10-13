@@ -25,6 +25,7 @@ export function ArticleStructureStats({
   h1,
   bodyMarkdown,
   keywords,
+  status,
 }: {
   title:
     string;
@@ -37,6 +38,7 @@ export function ArticleStructureStats({
 
   keywords:
     readonly string[];
+  status?: string;
 }) {
   /*
    * ARTICLE_STRUCTURE_CANONICAL_V1
@@ -174,7 +176,19 @@ export function ArticleStructureStats({
             styles.badge
           }
         >
-          Live draft
+          {status === "IN_REVIEW"
+            ? "In review"
+            : status === "APPROVED"
+              ? "Approved"
+              : status === "PUBLISHED"
+                ? "Published"
+                : status === "GENERATING"
+                  ? "Generating"
+                  : status === "REJECTED"
+                    ? "Needs revision"
+                    : status === "BLOCKED_EXTERNAL"
+                      ? "Waiting for provider"
+                      : "Draft"}
         </span>
       </div>
 

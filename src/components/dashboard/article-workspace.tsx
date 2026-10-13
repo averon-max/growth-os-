@@ -2424,6 +2424,7 @@ ${article.bodyMarkdown}`
 
       {/* ARTICLE_STRUCTURE_STATS_SIDEBAR_BLUE_V1 */}
       <ArticleStructureStats
+        status={article.status}
         title={
           draft.title
         }

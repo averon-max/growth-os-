@@ -2310,18 +2310,9 @@ export async function generateArticleFromBrief(
           },
 
           data: {
-            title:
-              "",
-
-            metaDescription:
-              "",
-
-            h1:
-              "",
-
-            bodyMarkdown:
-              "",
-
+            // Do not erase a paid-for earlier draft on retry.
+            // POST_WRITER overwrites these fields only when the new
+            // Writer run actually completes.
             status:
               "GENERATING",
 
