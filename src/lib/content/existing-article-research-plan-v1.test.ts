@@ -1,6 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {
   validateResearchExpansionProposalsV1,
+  budgetResearchExpansionProposalsV1,
 } from "./existing-article-research-plan-v1";
 import type {ArticleExecutionPlanV1}
   from "./article-execution-plan-v1";
@@ -70,6 +71,52 @@ describe("bounded same-article fact research expansion",()=>{
       plan,existingClaimTexts:existing,proposals:proposed,
     })).toThrow("CLAIM_DUPLICATES_EXISTING_FACT");
   });
+  it("contracts a paid 24-fact response to 18, retaining 3 factual proposals per section",()=>{
+    const over=suggestions().map((section,i)=>({
+      ...section,
+      proposedClaims:[...Array.from({length:4},(_,j)=>({
+        text:"Distinct topic "+i+" source-observable mechanism "+j+
+          " can be independently described by a published page.",
+        category:"FACT" as const,risk:"LOW" as const,
+      }))],
+    }));
+    const result=budgetResearchExpansionProposalsV1({
+      plan,proposals:over,
+    });
+    expect(result).toMatchObject({
+      offeredClaims:24,retainedClaims:18,droppedClaims:6,
+    });
+    expect(result.proposals.map(section=>section.proposedClaims.length))
+      .toEqual([3,3,3,3,3,3]);
+    expect(result.proposals[0].proposedClaims)
+      .toEqual(over[0].proposedClaims.slice(0,3));
+    expect(validateResearchExpansionProposalsV1({
+      plan,existingClaimTexts:existing,
+      proposals:result.proposals,
+    })).toHaveLength(18);
+  });
+  it("preserves all original proposals when model respects its cost ceiling",()=>{
+    const input=suggestions();
+    const result=budgetResearchExpansionProposalsV1({
+      plan,proposals:input,
+    });
+    expect(result.droppedClaims).toBe(0);
+    expect(result.proposals).toEqual(input);
+  });
+  it("does not hide a duplicate or an unknown section when contracting",()=>{
+    const original=suggestions().map((p,i)=>({
+      ...p,proposedClaims:Array.from({length:4},(_,j)=>({
+        text:"Fact domain "+i+" item "+j+
+          " is explained using distinct independent verification.",
+        category:"FACT" as const,risk:"LOW" as const,
+      })),
+    }));
+    original[5]={...original[5],sectionId:"section-1"};
+    expect(()=>budgetResearchExpansionProposalsV1({
+      plan,proposals:original,
+    })).toThrow("SECTION_ID_INVALID_OR_DUPLICATED");
+  });
+
   it("rejects multi-fact dumps exceeding the bounded plan limit",()=>{
     const proposed=suggestions().map((s,i)=>({
       ...s,
