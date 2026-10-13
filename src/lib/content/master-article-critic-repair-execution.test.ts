@@ -348,7 +348,7 @@ describe("optional coverage self-healing production wiring", () => {
     const beginning=service.indexOf("const pendingArticle =");
     const ending=service.indexOf("try {",beginning);
     const retry=service.slice(beginning,ending);
-    expect(retry).not.toMatch(/bodyMarkdown:\\s*""/);
+    expect(retry).not.toMatch(/bodyMarkdown:\s*""/);
     expect(retry).toContain('status:\\n              "GENERATING"'.replace('\\n','\n'));
   });
 
