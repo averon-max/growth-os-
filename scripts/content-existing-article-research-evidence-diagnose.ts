@@ -95,6 +95,49 @@ async function main(){
     const result=inspectResearchRecoveryEvidenceV1({
       claims:proposed,sources,bodies:bodyRows,
     });
+    const {rankEvidenceRecoveryExcerptsV1}=await import(
+      "../src/lib/content/live-evidence-verification");
+    const {buildSourceGroundedReplanPacketV1}=await import(
+      "../src/lib/content/source-grounded-claim-replan-v1");
+    const strictSections=new Set(result.claimDiagnostics
+      .filter(c=>c.strictMatches>0).map(c=>c.sectionId));
+    const missingSections=execution.sections.filter(section=>
+      section.state==="WRITABLE"&&!strictSections.has(section.id));
+    const missingClaims=proposed.filter(claim=>
+      missingSections.some(section=>section.id===claim.sectionId));
+    const sourceCandidates=missingClaims.flatMap(claim=>
+      sources.flatMap(source=>{
+        const body=bodyRows.find(x=>x.sourceId===source.id);
+        if(!body?.bodyText)return [];
+        return rankEvidenceRecoveryExcerptsV1({
+          claimText:claim.text,bodyText:body.bodyText,maxCandidates:2,
+        }).map(candidate=>({
+          claimId:claim.id,sourceId:source.id,sourceUrl:source.url,
+          excerpt:candidate.excerpt,coverage:candidate.coverage,
+        }));
+      }));
+    const packet=buildSourceGroundedReplanPacketV1({
+      sections:missingSections.map(section=>({
+        id:section.id,heading:section.heading,mission:section.mission,
+      })),
+      claims:missingClaims,
+      candidates:sourceCandidates,
+      sources:runtime.evidenceGraph.sources,
+    });
+    const sourceFirstReadiness={
+      missingSections:missingSections.map(s=>s.id),
+      sections:packet.map(p=>({
+        sectionId:p.sectionId,heading:p.heading,
+        authoritativeQuotes:p.quotes.length,
+        sourceHosts:p.quotes.map(q=>new URL(q.sourceUrl).hostname),
+        sourceQuotePreviews:p.quotes.map(q=>q.excerpt.slice(0,160)),
+      })),
+      allMissingSectionsHaveSourceQuotes:
+        packet.every(p=>p.quotes.length>0),
+      callsNeededIfLiveRecoveryProceeds:
+        packet.length>0&&packet.every(p=>p.quotes.length>0)?1:0,
+      qualification:"Quote relevance and semantic entailment are NOT proven by this diagnostic.",
+    };
     console.log(JSON.stringify({
       mode:"READ_ONLY_EXISTING_SOURCES_CLAIM_DIAGNOSIS",
       articleId,briefId:article.briefId,articleStatus:article.status,
@@ -104,6 +147,7 @@ async function main(){
       checkedSources:sources.length,
       fetchFailures:bodyRows.filter(b=>b.status==="FETCH_FAILED").length,
       ...result,
+      sourceFirstReadiness,
       aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true,
     },null,2));
   }finally{
