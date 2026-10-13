@@ -37,6 +37,19 @@ export async function POST(
         error:"Confirm bounded paid research recovery for the current article version.",
       },{status:400});
     }
+    /*
+     * A full paid Writer+Critic+SERP recovery can outlive a browser
+     * request and creates duplicate charges when the UI retries.
+     * Until a durable job queue provides resumability, require an
+     * explicitly enabled operator-only HTTP path. Local CLI remains
+     * the recommended controlled execution mode.
+     */
+    if(process.env.GROWTH_OS_ENABLE_HTTP_PAID_RESEARCH_RECOVERY!=="true"){
+      return NextResponse.json({
+        code:"RECOVERY_CLI_ONLY",
+        error:"Paid research recovery is disabled in browser requests to prevent long-running timeouts and repeated charges. Run the explicit --execute command in your local terminal after the free preflight.",
+      },{status:409});
+    }
     const result=await recoverExistingArticleResearchV1({
       articleId:id,expectedUpdatedAt:input.expectedUpdatedAt,
     });
