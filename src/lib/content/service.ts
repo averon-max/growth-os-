@@ -5,6 +5,10 @@ import {
 } from "./final-article-version-integrity-v1";
 
 import {
+  assertSectionEvidenceCapacityV1,
+} from "./section-evidence-capacity-v1";
+
+import {
   assertArticlePreWriterAnswerSupportV2,
   assertArticlePreWriterRequiredCoverageV1,
 } from "./article-prewriter-evidence-gate-v1";
@@ -1437,6 +1441,19 @@ export async function generateArticleFromBrief(
   assertArticlePreWriterAnswerSupportV2(
     persistedArticleExecutionPlan
   );
+
+  /*
+   * EVIDENCE_BEFORE_EDITORIAL_VOLUME_V1
+   *
+   * A locked WRITABLE section with no material authority must not
+   * receive 200-300 words of generic safety advice merely because
+   * a soft word budget exists. Route it back to Research/Scope
+   * BEFORE paying the full Writer and SERP pipeline.
+   */
+  assertSectionEvidenceCapacityV1(
+    persistedArticleExecutionPlan.sections
+  );
+
   assertPreWriterMissionAuthorityV1({
     sections: persistedArticleExecutionPlan.sections,
     blueprints: masterRuntimeInspection.runtime.sectionBlueprints.sections,
