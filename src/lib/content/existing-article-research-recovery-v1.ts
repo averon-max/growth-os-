@@ -255,6 +255,7 @@ export async function recoverExistingArticleResearchV1({
     const newSupport=(id:string)=>newGraph.claimEvidence.some(e=>
       e.claimId===id&&e.kind==="VERIFIED_EXCERPT"&&
       e.relation==="SUPPORTS"&&!!e.excerpt?.trim());
+    const verifiedBeforeDiscovery=proposed.filter(c=>newSupport(c.id)).length;
     const unresolved=proposed.filter(c=>!newSupport(c.id));
     let fallbackSearches=0;
     if(unresolved.length){
@@ -341,6 +342,34 @@ export async function recoverExistingArticleResearchV1({
         });
       }
     }
+
+    /*
+     * SOURCE_GROUNDING_BEFORE_PAID_SEMANTIC_REVIEW_V1
+     *
+     * Do not pay for semantic entailment when the strict verifier
+     * cannot find >=1 NEW factual excerpt in EVERY existing section.
+     * Log factual matching counts first; they distinguish URL discovery
+     * from claim support and make provider failures diagnosable.
+     */
+    const verifiedBeforeSemantic=proposed.filter(c=>newSupport(c.id));
+    const strictBySection=writable.map(section=>({
+      sectionId:section.id,
+      proposed:proposed.filter(c=>c.sectionId===section.id).length,
+      lexicallyVerified:verifiedBeforeSemantic.filter(
+        c=>c.sectionId===section.id).length,
+    }));
+    console.info("[content research recovery claim grounding]",{
+      proposedClaims:proposed.length,
+      strictMatchesFromOriginalSources:verifiedBeforeDiscovery,
+      strictMatchesAfterDiscovery:verifiedBeforeSemantic.length,
+      sourceInventory:newGraph.sources.length,
+      fetchedFallbackDiscoverySources:fallbackSearches,
+      sections:strictBySection,
+    });
+    check(strictBySection.every(section=>section.lexicallyVerified>=1),
+      "MISSING_STRICT_CLAIM_EVIDENCE_IN_SECTIONS:"+
+      strictBySection.filter(s=>s.lexicallyVerified===0)
+        .map(s=>s.sectionId).join(","));
 
     /*
      * This review also REASSESSES the old 14 lexical matches. An
