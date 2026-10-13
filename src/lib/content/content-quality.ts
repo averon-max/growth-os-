@@ -8,7 +8,7 @@ import {
 
 import {
   normalizeMasterArticleProseSpacesV1,
-} from "./master-article-composer";
+} from "./article-prose-whitespace-v1";
 
 import {
   ContentGenerationError,
