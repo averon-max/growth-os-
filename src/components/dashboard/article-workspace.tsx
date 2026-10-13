@@ -43,6 +43,10 @@ import {
   ArticleStructureStats,
 } from "./article-structure-stats";
 
+import {
+  detectPersistedArticleEditorialRepetitionV1,
+} from "@/lib/content/editorial-repetition-guard-v1";
+
 
 type ArticleState = {
   id: string;
@@ -973,6 +977,48 @@ export function ArticleWorkspace({
     }
   }
 
+  async function repairEditorial(){
+    if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
+    const accepted=window.confirm(
+      "Repair repeated sections using verified saved evidence? "+
+      "This uses a limited number of paid AI requests, never re-runs "+
+      "Research or the full Writer, and saves only if all checks pass."
+    );
+    if(!accepted)return;
+    setBusy("editorial-repair");
+    setError(null);
+    try{
+      const response=await fetch(
+        "/api/content/articles/"+encodeURIComponent(article.id)+
+        "/repair-editorial",
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            expectedUpdatedAt:article.updatedAt,
+            authorizeBoundedPaidRepair:true,
+          }),
+        }
+      );
+      const result=await response.json();
+      if(!response.ok){
+        throw new Error(
+          typeof result?.error==="string"
+            ? result.error
+            : "Editorial repair did not complete. The original article is unchanged."
+        );
+      }
+      // The new persisted article is bound to a real replay artifact
+      // and current Evidence. Reload exact committed state from server.
+      window.location.reload();
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:
+        "Editorial repair failed. Original article was preserved.");
+    }finally{
+      setBusy(null);
+    }
+  }
+
   async function articleAction(
     action:
       "approve" |
@@ -1472,6 +1518,21 @@ ${article.bodyMarkdown}`
               "save"
                 ? "Saving…"
                 : "Save"}
+            </button>
+          ) : null}
+
+          {article.status==="IN_REVIEW"&&!editing &&
+            detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ? (
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={busy!==null}
+              onClick={()=>void repairEditorial()}
+            >
+              <Sparkles size={12}/>
+              {busy==="editorial-repair"?"Repairing & verifying…":
+                "Repair article"}
             </button>
           ) : null}
 
