@@ -101,3 +101,34 @@ export function detectHighConfidenceEditorialRepetitionV1(
   }
   return [];
 }
+
+
+/**
+ * Stored articles do not carry their original MasterWriterRun. Read
+ * only actual Markdown H2 boundaries (never synthetic planner labels).
+ * This gives Approve and Publish the same cheap editorial protection.
+ */
+export function detectPersistedArticleEditorialRepetitionV1(
+  bodyMarkdown:string
+):readonly EditorialRepetitionFindingV1[]{
+  const sections:{heading:string;bodyMarkdown:string}[]=[];
+  const lines=bodyMarkdown.split(/\r?\n/);
+  const fenceChar=String.fromCharCode(96);
+  let inFence=false;
+  let current:{heading:string;bodyMarkdown:string}|null=null;
+  for(const line of lines){
+    const trimmed=line.trimStart();
+    if(trimmed.startsWith(fenceChar.repeat(3))||
+       trimmed.startsWith("~~~")){
+      inFence=!inFence;
+    }
+    const match=!inFence ? /^ {0,3}##\s+(.+)$/.exec(line):null;
+    if(match){
+      current={heading:match[1].trim(),bodyMarkdown:""};
+      sections.push(current);
+    } else if(current){
+      current.bodyMarkdown+=(current.bodyMarkdown?"\n":"")+line;
+    }
+  }
+  return detectHighConfidenceEditorialRepetitionV1(sections);
+}
