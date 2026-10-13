@@ -977,6 +977,48 @@ export function ArticleWorkspace({
     }
   }
 
+  async function recoverResearch(){
+    if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
+    const accepted=window.confirm(
+      "Run source-first research recovery for THIS EXISTING article? "+
+      "This can use paid search and AI. It may re-write all under-researched "+
+      "sections, run the full nine critics and SERP Replay. "+
+      "Up to 1 planning call, 4 semantic-evidence batches and "+
+      "30 Writer/critic/replay model calls (provider retries may add requests). "+
+      "Nothing is saved unless all gates pass. No new article is created."
+    );
+    if(!accepted)return;
+    setBusy("research-recovery");
+    setError(null);
+    try{
+      const response=await fetch(
+        "/api/content/articles/"+encodeURIComponent(article.id)+
+        "/recover-research",
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            expectedUpdatedAt:article.updatedAt,
+            authorizePaidResearchRecovery:true,
+          }),
+        }
+      );
+      const result=await response.json();
+      if(!response.ok){
+        throw new Error(
+          typeof result?.error==="string"?result.error:
+            "Research recovery was not committed. The original article remains unchanged."
+        );
+      }
+      window.location.reload();
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:
+        "Research recovery failed. Existing article and sources were preserved.");
+    }finally{
+      setBusy(null);
+    }
+  }
+
   async function repairEditorial(){
     if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
     const accepted=window.confirm(
@@ -1518,6 +1560,22 @@ ${article.bodyMarkdown}`
               "save"
                 ? "Saving…"
                 : "Save"}
+            </button>
+          ) : null}
+
+          {article.status==="IN_REVIEW"&&!editing &&
+            detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ? (
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={busy!==null}
+              title="Recover missing factual support and rebuild this same article"
+              onClick={()=>void recoverResearch()}
+            >
+              <Sparkles size={12}/>
+              {busy==="research-recovery"?"Researching & verifying…":
+                "Recover research"}
             </button>
           ) : null}
 
