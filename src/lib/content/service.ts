@@ -187,6 +187,7 @@ import {
 
 import {
   detectPersistedArticleEditorialRepetitionV1,
+  EditorialRepetitionGateErrorV1,
 } from "./editorial-repetition-guard-v1";
 
 import type {
@@ -3868,10 +3869,7 @@ export async function approveArticle(
   const approvalEditorialFindings =
     detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
   if (approvalEditorialFindings.length > 0) {
-    throw new ContentGenerationError(
-      "ARTICLE_EDITORIAL_REPETITION_BLOCKED: Substantive section revision required before approval. "+
-      approvalEditorialFindings.map(f=>f.code).join(",")
-    );
+    throw new EditorialRepetitionGateErrorV1(approvalEditorialFindings);
   }
 
   assertStoredPublicationEvidenceV1(
@@ -4133,10 +4131,7 @@ export async function publishArticle(
   const publishEditorialFindings =
     detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
   if (publishEditorialFindings.length > 0) {
-    throw new ContentGenerationError(
-      "ARTICLE_EDITORIAL_REPETITION_BLOCKED: Substantive section revision required before publishing. "+
-      publishEditorialFindings.map(f=>f.code).join(",")
-    );
+    throw new EditorialRepetitionGateErrorV1(publishEditorialFindings);
   }
 
   assertStoredPublicationEvidenceV1(
