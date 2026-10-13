@@ -235,7 +235,7 @@ async function main(): Promise<void> {
     invariant(target.blueprint.heading===headings[3],
       "CHANGED_SECTION_BINDING_WRONG_OWNER");
     const oldReferencedEvidence=new Set(
-      (runtime.evidenceGraph.claimEvidence as Array<{id:string;claimId:string}>)
+      (runtime.evidenceGraph.claimEvidence as readonly Readonly<{id:string;claimId:string}>[])
         .filter(e=>e.claimId==="claim-score-inquiry").map(e=>e.id)
     );
     const old=originalSections[3];
