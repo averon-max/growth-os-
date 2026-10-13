@@ -1783,7 +1783,7 @@ const trigger: SectionRepairTriggerV1 =
           }>;
         }
     ).executionPlanAuthority?.targetWords ??
-    null;
+    null : null;
 
 
   let terminalDepthRepair =
