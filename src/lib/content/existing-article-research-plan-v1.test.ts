@@ -13,7 +13,7 @@ const plan={
     heading:"How does aspect "+i+" work?",
     state:"WRITABLE",
   })),
-} as ArticleExecutionPlanV1;
+} as unknown as ArticleExecutionPlanV1;
 const existing=[
   "Credit monitoring tracks updates to certain credit information.",
   "Credit monitoring sends an alert about some monitored changes.",
