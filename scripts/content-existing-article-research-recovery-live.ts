@@ -46,6 +46,16 @@ async function main(){
       "../src/lib/content/section-evidence-capacity-v1");
     const plan=parsePersistedArticleExecutionPlanV1(record.articleExecutionPlan);
     const problems=inspectSectionEvidenceCapacityV1(plan.sections);
+    const {resolveResearchRecoverySerpMarketV1}=await import(
+      "../src/lib/content/research-recovery-serp-market-v1");
+    const mission=record.searchMissionInput &&
+      typeof record.searchMissionInput==="object" &&
+      !Array.isArray(record.searchMissionInput)
+      ?record.searchMissionInput as Record<string,unknown>:{};
+    const searchMarket=resolveResearchRecoverySerpMarketV1({
+      language:typeof mission.language==="string"?mission.language:"",
+      location:typeof mission.location==="string"?mission.location:"",
+    });
     const {createHash}=await import("node:crypto");
     const {readExistingResearchPlanningCheckpointV1}=await import(
       "../src/lib/content/existing-article-research-checkpoint-v1");
@@ -60,6 +70,7 @@ async function main(){
       articleId:existing.id,briefId:existing.briefId,
       status:existing.status,updatedAt:existing.updatedAt.toISOString(),
       siblingArticleCount:siblingCount,
+      searchMarket,
       paidPlanningCheckpointCached:cachedPlan!==null,
       paidPlanningCheckpointReusedOnExecute:cachedPlan!==null,
       eligible:existing.status==="IN_REVIEW"&&
