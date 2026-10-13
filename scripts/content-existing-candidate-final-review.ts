@@ -349,7 +349,8 @@ async function main(): Promise<void> {
       article:candidateArticle,intelligence,
     });
     const preflight={
-      candidateSha256:revised.candidateArticleSha256,
+      candidateSha256:selectedCandidateSha,
+      candidateMode:v3 ? "V3_SUPPORTED_SECTION" : "V1_DIRECT_ANSWER",
       articleStatus:article.status,unchangedSections:4,
       claimEvidence:"VERIFIED",
       sourceSnapshotStillMatches:true,
@@ -384,7 +385,9 @@ async function main(): Promise<void> {
       maxModelCalls:4,maxEstimatedInputTokens:65000,maxRepairCalls:0,
     });
     const model=withContentRunBudgetV1({generator:geminiGenerator,budget});
-    const output=join(root,articleId+"-EXACT-CANDIDATE-REVIEW.json");
+    const output=join(root,articleId+(v3 ?
+      "-SUPPORTED-CANDIDATE-V3-REVIEW.json" :
+      "-EXACT-CANDIDATE-REVIEW.json"));
     // Prevent spending model calls if an earlier run already exists.
     try { await readFile(output,"utf8");
       throw new Error("EXACT_CANDIDATE_REVIEW_ALREADY_EXISTS");
@@ -395,7 +398,8 @@ async function main(): Promise<void> {
       version:"EXACT_SAVED_ARTICLE_FINAL_REVIEW_V1",
       status:"NOT_AUTHORIZED",
       briefId,articleId,
-      candidateSha256:revised.candidateArticleSha256,
+      candidateSha256:selectedCandidateSha,
+      candidateMode:v3 ? "V3_SUPPORTED_SECTION" : "V1_DIRECT_ANSWER",
       originalPlanSha256:revised.originalPlanSha256,
       sourceCheckpointSha256:saved.sha256,
       stagedEvidenceSha256:digest(JSON.stringify(staged)),
