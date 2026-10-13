@@ -77,10 +77,13 @@ async function main(): Promise<void> {
   const [briefId, articleId] = args;
   const live = args.includes("--run");
   const v3 = args.includes("--v3");
+  const resumeV3 = args.includes("--resume-v3");
   invariant([briefId, articleId].every(v=>/^[a-zA-Z0-9_-]{1,100}$/.test(v??"")),
-    "USAGE: BRIEF_ID ARTICLE_ID [--v3] [--run]");
-  invariant(args.length === 2+Number(v3)+Number(live) &&
-    args.every((value,index)=>index<2 || value==="--v3" || value==="--run"),
+    "USAGE: BRIEF_ID ARTICLE_ID [--v3] [--resume-v3] [--run]");
+  invariant(args.length === 2+Number(v3)+Number(live)+Number(resumeV3) &&
+    (!resumeV3 || v3) &&
+    args.every((value,index)=>index<2 ||
+      value==="--v3" || value==="--run" || value==="--resume-v3"),
     "UNKNOWN_ARGUMENTS");
   invariant(!live || process.env.GROWTH_OS_LIVE_REVIEW === "1",
     "EXPLICIT_GROWTH_OS_LIVE_REVIEW_OPT_IN_REQUIRED");
@@ -324,6 +327,29 @@ async function main(): Promise<void> {
     const rankReadyKeywords=unique([
       brief.primaryKeyword,...brief.secondaryKeywords,
     ]);
+
+    // MATCH PRODUCTION CONTEXT. service.ts uses the saved Stage-3 URL
+    // ownership candidates, falling back to real pages from the latest
+    // database crawl. Never synthesize a comparison page/owner/metric.
+    const persistedCriticContext=buildMasterArticleSemanticCriticContextV1(
+      projectedRuntime
+    );
+    const { buildCrawlCannibalizationCandidatesV1 } =
+      await import("../src/lib/content/crawl-cannibalization-context");
+    const realCrawlCandidates=
+      persistedCriticContext.cannibalizationCandidates.length > 0 ?
+        [] : await buildCrawlCannibalizationCandidatesV1({
+          websiteId:brief.websiteId,
+        });
+    const criticContext={
+      ...persistedCriticContext,
+      rankReadyKeywords,
+      cannibalizationCandidates:
+        persistedCriticContext.cannibalizationCandidates.length > 0 ?
+          persistedCriticContext.cannibalizationCandidates :
+          realCrawlCandidates,
+    };
+
     const deterministic=runDeterministicMasterArticleCriticsV1({
       contract,run:run as any,rankReadyKeywords,
     });
@@ -355,6 +381,13 @@ async function main(): Promise<void> {
       claimEvidence:"VERIFIED",
       sourceSnapshotStillMatches:true,
       primaryKeyword:brief.primaryKeyword,
+      cannibalizationContext:{
+        persistedCandidateCount:persistedCriticContext.cannibalizationCandidates.length,
+        latestCrawlCandidateCount:realCrawlCandidates.length,
+        effectiveCandidateCount:criticContext.cannibalizationCandidates.length,
+        candidateUrls:criticContext.cannibalizationCandidates
+          .slice(0,5).map(x=>x.url),
+      },
       deterministicCriticBlockers:deterministicBlockers,
       deterministicFindings,
       contentGate:{pass:contentGate.pass,blockers:contentGate.blockingIssues},
@@ -369,6 +402,8 @@ async function main(): Promise<void> {
       "DETERMINISTIC_CRITIC_BLOCKED:"+deterministicBlockers.join("|"));
     invariant(contentGate.pass&&publicationPolicy.pass,
       "CANDIDATE_CONTENT_OR_PUBLICATION_GATE_FAILED");
+    invariant(criticContext.cannibalizationCandidates.length>0,
+      "CANNIBALIZATION_REAL_SITE_CONTEXT_UNAVAILABLE");
     if(!live){
       console.log("DRY_RUN_PASS; NO_MODEL_CALLS; NO_DATABASE_WRITES");
       return;
@@ -385,14 +420,62 @@ async function main(): Promise<void> {
       maxModelCalls:4,maxEstimatedInputTokens:65000,maxRepairCalls:0,
     });
     const model=withContentRunBudgetV1({generator:geminiGenerator,budget});
-    const output=join(root,articleId+(v3 ?
-      "-SUPPORTED-CANDIDATE-V3-REVIEW.json" :
+    const output=join(root,articleId+(resumeV3 ?
+      "-SUPPORTED-CANDIDATE-V3-REVIEW-R2.json" :
+      v3 ? "-SUPPORTED-CANDIDATE-V3-REVIEW.json" :
       "-EXACT-CANDIDATE-REVIEW.json"));
     // Prevent spending model calls if an earlier run already exists.
     try { await readFile(output,"utf8");
       throw new Error("EXACT_CANDIDATE_REVIEW_ALREADY_EXISTS");
     } catch(e){
       if((e as NodeJS.ErrnoException).code!=="ENOENT")throw e;
+    }
+    // Resume the canonical semantic verifier only when the previous V3
+    // verdict and the exact article/evidence versions match cryptographically.
+    // A BLOCK verdict is NEVER eligible for reuse.
+    let savedSemanticReview:unknown=null;
+    if(resumeV3){
+      const oldPath=join(root,articleId+"-SUPPORTED-CANDIDATE-V3-REVIEW.json");
+      const oldReview=record(JSON.parse(await readFile(oldPath,"utf8")));
+      invariant(oldReview.version==="EXACT_SAVED_ARTICLE_FINAL_REVIEW_V1" &&
+        oldReview.status==="REVIEW_FAILED" &&
+        oldReview.candidateMode==="V3_SUPPORTED_SECTION" &&
+        oldReview.articleId===articleId && oldReview.briefId===briefId &&
+        oldReview.candidateSha256===selectedCandidateSha &&
+        oldReview.originalPlanSha256===revised.originalPlanSha256 &&
+        oldReview.sourceCheckpointSha256===saved.sha256 &&
+        oldReview.stagedEvidenceSha256===digest(JSON.stringify(staged)) &&
+        typeof oldReview.error==="string" &&
+        oldReview.error.startsWith(
+          "FINAL_MASTER_CRITICS_BLOCKED:CANNIBALIZATION_INSUFFICIENT_CONTEXT"
+        ),
+        "PREVIOUS_REVIEW_NOT_ELIGIBLE_FOR_SEMANTIC_REUSE");
+      const prior=record(oldReview.semanticVerification);
+      invariant(prior.version==="SECTION_SEMANTIC_VERIFICATION_V1" &&
+        (prior.status==="PASS" || prior.status==="WARN") &&
+        prior.sectionIndex===3 &&
+        Array.isArray(prior.units) &&
+        prior.provenance && typeof prior.provenance.modelName==="string",
+        "PREVIOUS_SEMANTIC_REVIEW_NOT_PASSED");
+      const canonical=finalizeSectionSemanticVerificationV1({
+        contract:target,
+        section:correctedSection as any,
+        modelName:prior.provenance.modelName,
+        candidate:{
+          units:prior.units.map((unit:any)=>({
+            unitId:unit.unitId,
+            classification:unit.classification,
+            matchedClaimId:unit.matchedClaimId,
+            evidenceIds:unit.evidenceIds,
+            rationale:unit.rationale,
+          })),
+        },
+      });
+      assertSectionSemanticVerificationPassed(canonical);
+      invariant(canonical.status===prior.status &&
+        canonical.unitCount===prior.unitCount,
+        "SEMANTIC_RESUME_CANONICAL_RESULT_DRIFT");
+      savedSemanticReview=canonical;
     }
     const result:Record<string,unknown>={
       version:"EXACT_SAVED_ARTICLE_FINAL_REVIEW_V1",
@@ -403,6 +486,7 @@ async function main(): Promise<void> {
       originalPlanSha256:revised.originalPlanSha256,
       sourceCheckpointSha256:saved.sha256,
       stagedEvidenceSha256:digest(JSON.stringify(staged)),
+      semanticReviewReuse:resumeV3,
       article:candidateArticle,
       semanticVerification:null,
       finalCritics:null,
@@ -412,20 +496,18 @@ async function main(): Promise<void> {
       modelBudget:null,
     };
     try {
-      const semantic=await model.verifySectionClaims({
-        contract:target,section:correctedSection as any,
-      });
+      const semantic=savedSemanticReview ??
+        await model.verifySectionClaims({
+          contract:target,section:correctedSection as any,
+        });
       result.semanticVerification=semantic;
       assertSectionSemanticVerificationPassed(semantic);
       semantics[3]=semantic;
       run.semanticVerifications=semantics;
 
-      const context={
-        ...buildMasterArticleSemanticCriticContextV1(projectedRuntime),
-        rankReadyKeywords,
-      };
       const finalCritics=await executeMasterArticleCriticsV1({
-        contract,run:run as any,generator:model,context,
+        contract,run:run as any,generator:model,
+        context:criticContext,
       });
       result.finalCritics=finalCritics;
       invariant(finalCritics.suite.status!=="BLOCK",
