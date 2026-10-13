@@ -26,8 +26,21 @@ function record(value:unknown):Record<string,any>{
   check(value!==null&&typeof value==="object"&&!Array.isArray(value),"INVALID_RECORD");
   return value as Record<string,any>;
 }
-function articleFields(a:{title:string;metaDescription:string;h1:string;bodyMarkdown:string}){
-  return {title:a.title,metaDescription:a.metaDescription,h1:a.h1,bodyMarkdown:a.bodyMarkdown};
+function articleFields(value:unknown){
+  const a=record(value);
+  check(
+    typeof a.title==="string" &&
+    typeof a.metaDescription==="string" &&
+    typeof a.h1==="string" &&
+    typeof a.bodyMarkdown==="string",
+    "ARTIFACT_ARTICLE_FIELDS_INVALID"
+  );
+  return {
+    title:a.title as string,
+    metaDescription:a.metaDescription as string,
+    h1:a.h1 as string,
+    bodyMarkdown:a.bodyMarkdown as string,
+  };
 }
 async function main(){
   const [briefId,articleId,flag,...extra]=process.argv.slice(2);
@@ -55,7 +68,7 @@ async function main(){
       "NOT_A_WHITESPACE_ONLY_REJECTED_ARTICLE");
 
     const { normalizeMasterArticleProseSpacesV1 }=
-      await import("../src/lib/content/master-article-composer");
+      await import("../src/lib/content/article-prose-whitespace-v1");
     check(normalizeMasterArticleProseSpacesV1(article.bodyMarkdown)===article.bodyMarkdown,
       "STORED_ARTICLE_HAS_ACTUAL_UNNORMALIZED_PROSE");
     const {auditArticle}=await import("../src/lib/content/content-quality");
