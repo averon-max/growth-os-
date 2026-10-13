@@ -118,6 +118,12 @@ export async function recoverExistingArticleResearchV1({
       !original.publishedAt && !original.publishedUrl &&
       original.updatedAt.getTime()===Date.parse(expectedUpdatedAt),
       "ARTICLE_STATE_CHANGED");
+    const siblingCount=await prisma.contentArticle.count({
+      where:{briefId:original.briefId,id:{not:articleId}},
+    });
+    // The snapshot belongs to the Brief, not Article. Never rewrite
+    // one article's shared research while other articles still use it.
+    check(siblingCount===0,"SHARED_BRIEF_EVIDENCE_SNAPSHOT");
     const evidence=await prisma.contentEvidenceSnapshot.findUnique({
       where:{briefId:original.briefId},select:{plan:true},
     });
@@ -451,6 +457,10 @@ export async function recoverExistingArticleResearchV1({
           orderBy:[{createdAt:"desc"},{id:"desc"}],
         }),
       ]);
+      const otherArticles=await tx.contentArticle.count({
+        where:{briefId:original.briefId,id:{not:articleId}},
+      });
+      check(otherArticles===0,"SHARED_BRIEF_EVIDENCE_SNAPSHOT");
       check(live&&live.status==="IN_REVIEW"&&
         live.updatedAt.getTime()===original.updatedAt.getTime() &&
         JSON.stringify(shape(live))===JSON.stringify(priorArticle)&&
