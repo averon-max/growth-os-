@@ -288,10 +288,17 @@ async function main(){
     await writeFile(output,JSON.stringify(artifact,null,2)+"\n",{
       flag:"wx",mode:0o600,
     });
+    const scoreHeading="## Does Credit Monitoring Affect Your Credit Score?";
+    const sectionStart=candidate.bodyMarkdown.indexOf(scoreHeading);
+    assert(sectionStart>=0,"SCORE_SECTION_NOT_FOUND_IN_CANDIDATE");
+    const following=candidate.bodyMarkdown.indexOf("\n\n## ",sectionStart+scoreHeading.length);
+    const currentSectionText=candidate.bodyMarkdown
+      .slice(sectionStart,following>=0?following:undefined).trim();
     console.log(JSON.stringify({
       result:"STAGED_SCORE_EVIDENCE_EXPANSION_VALID",
       output,verifiedClaims:verified.map(x=>x.id),unverifiedCandidates:missing,
       sourceReports:fetchReports,preWriterGate:"PASS",
+      existingScoreSectionText:currentSectionText,
       publicationEvidenceGate:"PASS",priorUnsupportedUnits:artifact.missingFactCount,
       candidateBodyUnchanged:true,existingDatabaseUnchanged:true,
       previousReviewPreserved:true,aiCalls:0,paidSearchCalls:0,
