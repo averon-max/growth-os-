@@ -29,36 +29,37 @@ export function decodeResearchDiscoveryCheckpointV1(
   try{raw=JSON.parse(value);}catch{return fail("NOT_JSON");}
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
     fail("NOT_OBJECT");
-  const result=raw as {version?:unknown;sources?:unknown};
+  const result=raw as Record<string,unknown>;
+  const rows:unknown=result.sources;
   if(result.version!=="RESEARCH_DISCOVERY_CHECKPOINT_V1"||
-    !Array.isArray(result.sources)||result.sources.length>24)
-    fail("SCHEMA");
+    !Array.isArray(rows)||rows.length>24)return fail("SCHEMA");
   const seen=new Set<string>();
-  return result.sources.map(entry=>{
+  return rows.map((entry:unknown):EvidenceSource=>{
     if(!entry||typeof entry!=="object"||Array.isArray(entry))
       fail("SOURCE_FORMAT");
     const s=entry as Record<string,unknown>;
-    if(typeof s.id!=="string"||!s.id.trim()||
-      typeof s.url!=="string"||typeof s.publisher!=="string"||
-      !types.has(String(s.sourceType))||
-      !tiers.has(String(s.authorityTier))||
-      seen.has(s.id))
-      fail("SOURCE_METADATA");
+    const id=s.id, url=s.url, publisher=s.publisher;
+    const sourceType=s.sourceType,authorityTier=s.authorityTier;
+    if(typeof id!=="string"||!id.trim()||
+      typeof url!=="string"||typeof publisher!=="string"||
+      typeof sourceType!=="string"||!types.has(sourceType)||
+      typeof authorityTier!=="string"||!tiers.has(authorityTier)||
+      seen.has(id))return fail("SOURCE_METADATA");
     let parsed:URL;
-    try{parsed=new URL(s.url);}catch{return fail("SOURCE_URL");}
+    try{parsed=new URL(url);}catch{return fail("SOURCE_URL");}
     if(!["https:","http:"].includes(parsed.protocol)||
-      parsed.username||parsed.password)fail("SOURCE_URL_UNSAFE");
-    seen.add(s.id);
+      parsed.username||parsed.password)return fail("SOURCE_URL_UNSAFE");
+    seen.add(id);
     const date=(v:unknown):Date=>{
-      if(typeof v!=="string")fail("SOURCE_DATE");
+      if(typeof v!=="string")return fail("SOURCE_DATE");
       const d=new Date(v);
-      if(!Number.isFinite(d.getTime()))fail("SOURCE_DATE");
+      if(!Number.isFinite(d.getTime()))return fail("SOURCE_DATE");
       return d;
     };
     return {
-      id:s.id,url:s.url,publisher:s.publisher,
-      sourceType:s.sourceType as EvidenceSource["sourceType"],
-      authorityTier:s.authorityTier as EvidenceSource["authorityTier"],
+      id,url,publisher,
+      sourceType:sourceType as EvidenceSource["sourceType"],
+      authorityTier:authorityTier as EvidenceSource["authorityTier"],
       retrievedAt:date(s.retrievedAt),
       ...(typeof s.jurisdiction==="string"
         ?{jurisdiction:s.jurisdiction}:{}),
