@@ -19,12 +19,18 @@ const existing=[
   "Credit monitoring sends an alert about some monitored changes.",
 ];
 function suggestions():ResearchExpansionProposalV1[]{
-  return Array.from({length:6},(_,i)=>({
+  const facts=[
+    "Different credit reports can include information from distinct data furnishers.",
+    "An automatic change notification may be sent through a configured messaging channel.",
+    "A monitoring alert cannot automatically remove a fraudulent account from a report.",
+    "Reading your own credit file is normally categorized as a soft inquiry.",
+    "A subscription can monitor data from one credit bureau instead of several.",
+    "An unfamiliar account can be disputed through the reporting bureau responsible.",
+  ];
+  return facts.map((text,i)=>({
     sectionId:"section-"+(i+1),
     proposedClaims:[{
-      text:"For facet "+i+
-        ", the reader can examine a separate verified source report.",
-      category:"FACT" as const,risk:"LOW" as const,
+      text,category:"FACT" as const,risk:"LOW" as const,
     }],
   }));
 }
