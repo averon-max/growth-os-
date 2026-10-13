@@ -1547,8 +1547,17 @@ ${article.bodyMarkdown}`
                 styles.primaryButton
               }
               disabled={
-                busy !==
-                null
+                busy !== null ||
+                detectPersistedArticleEditorialRepetitionV1(
+                  article.bodyMarkdown
+                ).length > 0
+              }
+              title={
+                detectPersistedArticleEditorialRepetitionV1(
+                  article.bodyMarkdown
+                ).length > 0
+                  ? "Resolve repeated low-information sections before approval"
+                  : "Approve verified article"
               }
               onClick={() =>
                 void articleAction(
