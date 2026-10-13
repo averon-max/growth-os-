@@ -19,6 +19,10 @@ import {
   computeArticleStructureStatsV1,
 } from "@/lib/content/article-structure-stats-v1";
 
+import {
+  detectPersistedArticleEditorialRepetitionV1,
+} from "@/lib/content/editorial-repetition-guard-v1";
+
 
 export function ArticleStructureStats({
   title,
@@ -63,7 +67,12 @@ export function ArticleStructureStats({
     );
 
 
-  const metrics = [
+  const editorialFindings=useMemo(
+    ()=>detectPersistedArticleEditorialRepetitionV1(bodyMarkdown),
+    [bodyMarkdown]
+  );
+
+    const metrics = [
     {
       label:
         "Words",
@@ -192,6 +201,15 @@ export function ArticleStructureStats({
         </span>
       </div>
 
+
+      {editorialFindings.length>0 && (
+        <div className={styles.editorialWarning} role="alert">
+          <strong>Editorial revision required.</strong>{" "}
+          Repeated explanations or advice were detected across
+          sections. Keyword coverage alone does not measure article quality.
+          Review section {editorialFindings[0].sectionIndex+1} before approval.
+        </div>
+      )}
 
       <div
         className={
