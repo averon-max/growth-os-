@@ -17,6 +17,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { geminiGenerator } from "./gemini-generator";
 import { createContentRunBudgetV1, withContentRunBudgetV1 } from "./content-run-budget-v1";
+import { assertSectionEvidenceCapacityV1 } from "./section-evidence-capacity-v1";
 import { assertStoredPublicationEvidenceV1 } from "./stored-publication-evidence-gate-v1";
 import { inspectMasterRuntimeSnapshot } from "./master-runtime-adapter";
 import { parsePersistedArticleExecutionPlanV1, bindArticleExecutionPlanToGenerationContractV1 } from "./article-execution-plan-binding-v1";
@@ -101,6 +102,10 @@ export async function repairExistingArticleEditorialV1(articleId:string,
     const runtime=inspection.runtime;
     const plan=parsePersistedArticleExecutionPlanV1(
       record(snap.plan).articleExecutionPlan);
+    // No extra provider call when stored research cannot support
+    // the requested substantive answer. Evidence recovery belongs
+    // upstream; a language-only edit must not impersonate it.
+    assertSectionEvidenceCapacityV1(plan.sections);
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(runtime),
     });
