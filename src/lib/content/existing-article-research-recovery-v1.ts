@@ -15,7 +15,7 @@
  *
  * No DB write, new brief, new article or old-checkpoint mutation on failure.
  * One plan call, <=4 semantic evidence batches, <=30 writer/critic/replay
- * provider calls, <=4 targeted SERP fallback claim searches.
+ * provider calls, <=6 targeted SERP fallback claim searches.
  * Provider transport retries may add physical requests; this limits
  * logical application dispatches, not provider-internal retries.
  */
@@ -207,8 +207,15 @@ export async function recoverExistingArticleResearchV1({
     const unresolved=proposed.filter(c=>!newSupport(c.id));
     let fallbackSearches=0;
     if(unresolved.length){
-      // One research expansion wave, max four distinct claim probes.
-      const probes=unresolved.slice(0,4);
+      // One wave: at most one outstanding factual question from each
+      // under-researched section. Avoid spending all fallback searches
+      // on the first section's claims.
+      const missingBySection=new Map<string,(typeof unresolved)[number]>();
+      for(const claim of unresolved){
+        if(!missingBySection.has(claim.sectionId))
+          missingBySection.set(claim.sectionId,claim);
+      }
+      const probes=[...missingBySection.values()].slice(0,6);
       fallbackSearches=probes.length;
       const mission=record(oldSnapshot.searchMissionInput??{});
       const fetched=await discoverClaimEvidenceFallbackSourcesV1({
