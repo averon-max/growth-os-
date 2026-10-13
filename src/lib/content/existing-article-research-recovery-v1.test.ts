@@ -109,6 +109,34 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("strictMatchesAfterDiscovery");
   });
 
+  it("attempts source-grounded restatement against real fetched quotes before any semantic review",()=>{
+    const discovery=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
+    const candidate=engine.indexOf("collectEvidenceClaimRecoveryCandidatesV1({");
+    const pack=engine.indexOf("buildSourceGroundedReplanPacketV1({");
+    const recovery=engine.indexOf("validateSourceGroundedClaimReplanV1({");
+    const reverify=engine.indexOf("claims:changed,");
+    const semantic=engine.indexOf("reviewAndConstrainVerifiedEvidenceV1({");
+    expect(candidate).toBeGreaterThan(discovery);
+    expect(pack).toBeGreaterThan(candidate);
+    expect(recovery).toBeGreaterThan(pack);
+    expect(reverify).toBeGreaterThan(recovery);
+    expect(semantic).toBeGreaterThan(reverify);
+    expect(engine).toContain("SOURCE_FIRST_NO_AUTHORITATIVE_QUOTE_FOR_SECTIONS");
+    expect(engine).toContain("resumedSourceReplan:cached!==null");
+  });
+  it("checkpoints the paid source-grounded model response, not source quotations as verified facts",()=>{
+    const packHash=engine.indexOf("const packetHash=hash({");
+    const cache=engine.indexOf("readExistingResearchPlanningCheckpointV1(sourceScope)");
+    const model=engine.indexOf("callContentAiJson(sourcePrompt");
+    const persist=engine.indexOf("saveExistingResearchPlanningCheckpointV1(sourceScope");
+    expect(packHash).toBeGreaterThan(0);
+    expect(cache).toBeGreaterThan(packHash);
+    expect(model).toBeGreaterThan(cache);
+    expect(persist).toBeGreaterThan(model);
+    expect(engine).toContain("assertResearchPlanningCheckpointWritableV1(sourceScope)");
+    expect(engine).toContain("SOURCE_GROUNDING_BEFORE_PAID_SEMANTIC_REVIEW_V1");
+  });
+
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
