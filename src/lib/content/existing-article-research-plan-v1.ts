@@ -84,3 +84,70 @@ export function validateResearchExpansionProposalsV1({
 }
 export const RESEARCH_RECOVERY_MAX_MODEL_CALLS_V1=1;
 export const RESEARCH_RECOVERY_MAX_NEW_CLAIMS_V1=18;
+
+
+/**
+ * Contract too-large but structurally valid model replies instead of
+ * discarding a paid planning result. Round-robin across REAL existing
+ * sections: first hypothesis from every section, then second, etc.
+ * This changes only selection, never invents/supports a factual claim.
+ * The canonical validator still checks every retained claim.
+ */
+export function budgetResearchExpansionProposalsV1({
+  plan,proposals,maxClaims=RESEARCH_RECOVERY_MAX_NEW_CLAIMS_V1,
+}:{
+  plan:Readonly<ArticleExecutionPlanV1>;
+  proposals:readonly ResearchExpansionProposalV1[];
+  maxClaims?:number;
+}):Readonly<{
+  proposals:readonly ResearchExpansionProposalV1[];
+  offeredClaims:number;
+  retainedClaims:number;
+  droppedClaims:number;
+}>{
+  verify(Array.isArray(proposals),"NOT_ARRAY");
+  verify(Number.isInteger(maxClaims)&&maxClaims>=1&&maxClaims<=18,
+    "INVALID_BUDGET");
+  const writable=plan.sections.filter(section=>section.state==="WRITABLE");
+  verify(writable.length>0&&writable.length<=maxClaims,
+    "NOT_ENOUGH_BUDGET_FOR_SECTIONS");
+  verify(proposals.length===writable.length,
+    "MISSING_OR_EXTRA_SECTION_RESEARCH");
+  const byId=new Map<string,ResearchExpansionProposalV1>();
+  const validIds=new Set(writable.map(s=>s.id));
+  for(const proposal of proposals){
+    verify(proposal&&typeof proposal.sectionId==="string"&&
+      validIds.has(proposal.sectionId)&&!byId.has(proposal.sectionId),
+      "SECTION_ID_INVALID_OR_DUPLICATED");
+    verify(Array.isArray(proposal.proposedClaims)&&
+      proposal.proposedClaims.length>=1&&proposal.proposedClaims.length<=4,
+      "SECTION_CLAIM_COUNT");
+    byId.set(proposal.sectionId,proposal);
+  }
+  const ordered=writable.map(section=>byId.get(section.id)!);
+  const offeredClaims=ordered.reduce(
+    (total,p)=>total+p.proposedClaims.length,0);
+  const selected=new Map(ordered.map(p=>[
+    p.sectionId,[] as ResearchExpansionProposalV1["proposedClaims"][number][],
+  ]));
+  let remaining=maxClaims;
+  for(let index=0;index<4&&remaining>0;index++){
+    for(const proposal of ordered){
+      const claim=proposal.proposedClaims[index];
+      if(!claim||remaining===0)continue;
+      selected.get(proposal.sectionId)!.push(claim);
+      remaining--;
+    }
+  }
+  const compact=ordered.map(p=>({
+    sectionId:p.sectionId,
+    proposedClaims:selected.get(p.sectionId)!,
+  }));
+  const retainedClaims=compact.reduce(
+    (total,p)=>total+p.proposedClaims.length,0);
+  return {
+    proposals:compact,
+    offeredClaims,retainedClaims,
+    droppedClaims:offeredClaims-retainedClaims,
+  };
+}
