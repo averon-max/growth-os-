@@ -185,6 +185,10 @@ import {
   ContentGenerationError,
 } from "./generator";
 
+import {
+  detectPersistedArticleEditorialRepetitionV1,
+} from "./editorial-repetition-guard-v1";
+
 import type {
   ContentBriefInput,
   ContentStrategy,
@@ -3856,6 +3860,20 @@ export async function approveArticle(
     );
   }
 
+  /*
+   * Editorial acceptance is separate from technical audit and keyword
+   * coverage. Old IN_REVIEW drafts must NOT escape the new guard simply
+   * because they were generated before its introduction.
+   */
+  const approvalEditorialFindings =
+    detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
+  if (approvalEditorialFindings.length > 0) {
+    throw new ContentGenerationError(
+      "ARTICLE_EDITORIAL_REPETITION_BLOCKED: Substantive section revision required before approval. "+
+      approvalEditorialFindings.map(f=>f.code).join(",")
+    );
+  }
+
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
   );
@@ -4107,6 +4125,17 @@ export async function publishArticle(
   ) {
     throw new Error(
       "Only approved articles can be published"
+    );
+  }
+
+  // Enforce on publish, too: existing APPROVED records may predate
+  // the current editorial quality policy.
+  const publishEditorialFindings =
+    detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
+  if (publishEditorialFindings.length > 0) {
+    throw new ContentGenerationError(
+      "ARTICLE_EDITORIAL_REPETITION_BLOCKED: Substantive section revision required before publishing. "+
+      publishEditorialFindings.map(f=>f.code).join(",")
     );
   }
 
