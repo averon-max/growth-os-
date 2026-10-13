@@ -97,6 +97,18 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).not.toContain('languageName:typeof mission.language==="string"');
   });
 
+  it("blocks paid semantic review if any section has no strict verified factual quote",()=>{
+    const strict=engine.indexOf("SOURCE_GROUNDING_BEFORE_PAID_SEMANTIC_REVIEW_V1");
+    const scope=engine.indexOf("strictBySection.every(section=>section.lexicallyVerified>=1)");
+    const semantic=engine.indexOf("reviewAndConstrainVerifiedEvidenceV1({");
+    expect(strict).toBeGreaterThan(0);
+    expect(scope).toBeGreaterThan(strict);
+    expect(semantic).toBeGreaterThan(scope);
+    expect(engine).toContain("MISSING_STRICT_CLAIM_EVIDENCE_IN_SECTIONS:");
+    expect(engine).toContain("strictMatchesFromOriginalSources");
+    expect(engine).toContain("strictMatchesAfterDiscovery");
+  });
+
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
