@@ -39,6 +39,7 @@ import {
 } from "@/components/dashboard/outcome-action-resume-panel";
 
 import styles from "@/components/dashboard/ui.module.css";
+import { groupContentArticlesV1 } from "@/lib/content/article-library-grouping-v1";
 
 export default async function ContentPage({
   searchParams,
@@ -205,6 +206,8 @@ export default async function ContentPage({
 
             primaryKeyword:
               true,
+            searchIntent:
+              true,
           },
         },
       },
@@ -215,8 +218,13 @@ export default async function ContentPage({
       },
 
       take:
-        25,
+        100,
     });
+
+  const articleCount=await prisma.contentArticle.count({
+    where:{brief:{websiteId:website.id}},
+  });
+  const articleGroups=groupContentArticlesV1(articles);
 
   return (
     <>
@@ -277,7 +285,7 @@ export default async function ContentPage({
             Articles
 
               <span className={styles.tabCount}>
-                {articles.length}
+                {articleCount}
               </span>
 </a>
 
@@ -381,50 +389,72 @@ export default async function ContentPage({
               </div>
 
               <span className={styles.sectionCount}>
-                {articles.length}
+                {articleCount}
               </span>
             </div>
 
             {articles.length ? (
               <div className={styles.contentArticleList}>
-                {articles.map((article) => (
-                  <Link
-                    key={article.id}
-                    href={`/dashboard/content/articles/${article.id}`}
-                    className={styles.contentArticleRow}
-                  >
-                    <div className={styles.contentArticleMain}>
-                      <FileText size={13} />
 
-                      <div>
-                        <strong>
-                          {article.title}
-                        </strong>
-
-                        <span>
-                          {article.brief.primaryKeyword ||
-                            article.brief.topic}
-                        </span>
+                {articleGroups.map(group=>(
+                  <div key={group.key} className={styles.contentArticleGroup}>
+                    <Link
+                      href={`/dashboard/content/articles/${group.head.id}`}
+                      className={styles.contentArticleRow}
+                    >
+                      <div className={styles.contentArticleMain}>
+                        <FileText size={13} />
+                        <div>
+                          <strong>{group.head.title}</strong>
+                          <span>
+                            {group.head.brief.primaryKeyword ||
+                              group.head.brief.topic}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className={styles.contentArticleMeta}>
-                      <span
-                        className={styles.contentArticleStatus}
-                        data-status={article.status}
-                      >
-                        {article.status
-                          .toLowerCase()
-                          .replaceAll("_", " ")}
-                      </span>
-
-                      <span>
-                        {article.updatedAt
-                          .toISOString()
-                          .slice(0, 10)}
-                      </span>
-                    </div>
-                  </Link>
+                      <div className={styles.contentArticleMeta}>
+                        <span
+                          className={styles.contentArticleStatus}
+                          data-status={group.head.status}
+                        >
+                          {group.head.status.toLowerCase().replaceAll("_"," ")}
+                        </span>
+                        <span>{group.head.updatedAt.toISOString().slice(0,10)}</span>
+                      </div>
+                    </Link>
+                    {group.related.length>0 ? (
+                      <details className={styles.contentRelatedDrafts}>
+                        <summary>
+                          {group.related.length} related drafts and previous attempts
+                          <span>View history</span>
+                        </summary>
+                        {group.related.map(article=>(
+                          <Link
+                            key={article.id}
+                            href={`/dashboard/content/articles/${article.id}`}
+                            className={styles.contentArticleRow}
+                          >
+                            <div className={styles.contentArticleMain}>
+                              <FileText size={13} />
+                              <div>
+                                <strong>{article.title}</strong>
+                                <span>{article.brief.primaryKeyword}</span>
+                              </div>
+                            </div>
+                            <div className={styles.contentArticleMeta}>
+                              <span
+                                className={styles.contentArticleStatus}
+                                data-status={article.status}
+                              >
+                                {article.status.toLowerCase().replaceAll("_"," ")}
+                              </span>
+                              <span>{article.updatedAt.toISOString().slice(0,10)}</span>
+                            </div>
+                          </Link>
+                        ))}
+                      </details>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             ) : (
