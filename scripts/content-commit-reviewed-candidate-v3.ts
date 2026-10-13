@@ -262,10 +262,9 @@ async function main(){
         updatedAt:current.updatedAt.toISOString(),
       },
       originalEvidencePlan:existingSnapshot.plan,
-      criticSummary:{
-        status:critics.suite.status,
-        findings:critics.suite.findings,
-      },
+      semanticVerification:semantic,
+      fullMasterCritics:critics,
+      finalReadiness:readiness,
     };
     console.log(JSON.stringify({
       mode:commit?"COMMIT_EXPLICITLY_REQUESTED":"READ_ONLY_FINAL_PERSISTENCE_PREFLIGHT",
