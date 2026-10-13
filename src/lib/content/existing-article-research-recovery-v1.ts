@@ -25,8 +25,13 @@ import {prisma} from "@/lib/prisma";
 import {callContentAiJson,geminiGenerator} from "./gemini-generator";
 import {
   validateResearchExpansionProposalsV1,
+  budgetResearchExpansionProposalsV1,
   type ResearchExpansionProposalV1,
 } from "./existing-article-research-plan-v1";
+import {
+  readExistingResearchPlanningCheckpointV1,
+  saveExistingResearchPlanningCheckpointV1,
+} from "./existing-article-research-checkpoint-v1";
 import {
   enrichLiveEvidenceGraphV1,
   discoverClaimEvidenceFallbackSourcesV1,
@@ -160,8 +165,10 @@ export async function recoverExistingArticleResearchV1({
       "NEVER publication facts; do not pretend any source supports them.",
       "Do not add sections, new questions, prices, statistics, product",
       "promises, legal rights, named source quotations or keyword variants.",
-      "Preserve each existing heading and factual intent. Add 1-4 NEW",
+      "Preserve each existing heading and factual intent. Add 1-3 NEW",
       "distinct informative factual facets for EVERY writable section.",
+      "GLOBAL HARD CEILING: no more than 18 proposals across ALL sections.",
+      "Prefer three distinct useful claims per section when there are six.",
       "Prefer mechanism details, exceptions, real limitations, comparisons,",
       "and specific reader actions, only if reasonably source-verifiable.",
       "Avoid paraphrasing an existing claim. One factual proposition per",
@@ -181,11 +188,35 @@ export async function recoverExistingArticleResearchV1({
       "Domains already discovered (not evidence by themselves): "+
         JSON.stringify(sourceDomains),
     ].join("\n");
-    const rawPlan=await callContentAiJson(planPrompt,{reasoningEffort:"low"});
+    const planningScope={
+      articleId,briefId:original.briefId,
+      updatedAt:original.updatedAt.toISOString(),
+      evidenceSha256:originalEvidenceFingerprint,
+    };
+    const storedPlanningResponse=
+      await readExistingResearchPlanningCheckpointV1(planningScope);
+    const rawPlan=storedPlanningResponse ??
+      await callContentAiJson(planPrompt,{reasoningEffort:"low"});
+    if(storedPlanningResponse===null){
+      // A failure in a later strict gate must never force paying for
+      // the same planning output again on the next local CLI run.
+      await saveExistingResearchPlanningCheckpointV1(
+        planningScope,rawPlan);
+    }
+    const bounded=budgetResearchExpansionProposalsV1({
+      plan:oldPlan,proposals:parsePlanResponse(rawPlan),
+    });
     const proposed=validateResearchExpansionProposalsV1({
       plan:oldPlan,
       existingClaimTexts:savedClaims.map(c=>c.text),
-      proposals:parsePlanResponse(rawPlan),
+      proposals:bounded.proposals,
+    });
+    console.info("[content research recovery planning]",{
+      resumedPaidPlan:storedPlanningResponse!==null,
+      offered:bounded.offeredClaims,
+      retained:bounded.retainedClaims,
+      trimmedWithoutAdditionalAi:bounded.droppedClaims,
+      planningModelCalls:storedPlanningResponse===null?1:0,
     });
     check(proposed.length<=18,"PLANNER_PROPOSALS_OVER_BUDGET");
 
