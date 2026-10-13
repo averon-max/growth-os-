@@ -1,5 +1,6 @@
 import {describe,expect,it} from "vitest";
 import fixture from "./__fixtures__/repetitive-credit-monitoring-reader-v1.json";
+import repairedFixture from "./__fixtures__/weak-editorial-after-repair-v1.json";
 import {
   detectHighConfidenceEditorialRepetitionV1,
   detectPersistedArticleEditorialRepetitionV1,
@@ -73,5 +74,41 @@ describe("persisted article editorial policy",()=>{
       "## Another subject","A different useful explanation.",
     ].join("\n");
     expect(detectPersistedArticleEditorialRepetitionV1(body)).toEqual([]);
+  });
+});
+
+describe("rephrased filler cannot evade the editorial quality gate",()=>{
+  it("blocks actual article after cosmetic one-section repair",()=>{
+    const issues=detectHighConfidenceEditorialRepetitionV1(
+      repairedFixture.sections);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.some(item=>
+      item.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS"
+    )).toBe(true);
+    expect(issues[0].affectedSections.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("blocks the same current article when loaded from persisted Markdown",()=>{
+    const markdown=repairedFixture.sections.map(section=>
+      "## "+section.heading+"\n\n"+section.bodyMarkdown).join("\n\n");
+    const issues=detectPersistedArticleEditorialRepetitionV1(markdown);
+    expect(issues.some(item=>
+      item.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS"
+    )).toBe(true);
+  });
+
+  it("does not block a long article merely for repeating a single shared definition",()=>{
+    const repeated="A general term is an umbrella description for the topic under discussion.";
+    const sections=Array.from({length:6},(_,i)=>({
+      heading:"Distinct heading "+i,
+      bodyMarkdown:repeated+"\n\n"+Array.from({length:165},(_,j)=>
+        "topic"+i+"detail"+j).join(" "),
+    }));
+    // A single repeated paragraph is a separate VERBATIM-reuse defect;
+    // this test asserts that it is not misclassified as the broader
+    // three-pair paraphrasing defect.
+    expect(detectHighConfidenceEditorialRepetitionV1(sections).some(x=>
+      x.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS"
+    )).toBe(false);
   });
 });
