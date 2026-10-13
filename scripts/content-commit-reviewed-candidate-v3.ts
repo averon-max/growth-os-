@@ -130,7 +130,7 @@ async function main(){
   const endMarker="\n\n## "+original[4].heading+"\n\n";
   const scoreStart=body.indexOf(startMarker),scoreEnd=body.indexOf(endMarker,scoreStart+startMarker.length);
   guard(scoreStart>=0&&scoreEnd>scoreStart &&
-    original.some((sec,i)=>i===3||body.includes("## "+sec.heading+"\n\n"+sec.bodyMarkdown)),
+    original.every((sec,i)=>i===3||body.includes("## "+sec.heading+"\n\n"+sec.bodyMarkdown)),
     "V3_SECTION_SCOPE_INVALID");
   const scoreBody=body.slice(scoreStart+startMarker.length,scoreEnd);
   guard(hash(scoreBody)===v3.scoreSectionBodySha256,
