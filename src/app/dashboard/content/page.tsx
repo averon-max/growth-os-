@@ -393,6 +393,13 @@ export default async function ContentPage({
               </span>
             </div>
 
+            {articleCount>articles.length ? (
+              <div className={styles.contentEmptyRow}>
+                Showing the {articles.length} most recently updated records of {articleCount}.
+                Older records are preserved.
+              </div>
+            ) : null}
+
             {articles.length ? (
               <div className={styles.contentArticleList}>
 
