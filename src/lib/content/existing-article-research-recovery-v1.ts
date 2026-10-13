@@ -267,15 +267,54 @@ export async function recoverExistingArticleResearchV1({
       e.relation==="SUPPORTS"&&!!e.excerpt?.trim());
     const verifiedBeforeDiscovery=proposed.filter(c=>newSupport(c.id)).length;
     const unresolved=proposed.filter(c=>!newSupport(c.id));
+    /*
+     * SOURCE_FIRST_BEFORE_PAID_SERP_V2
+     *
+     * First see whether current fetched sources already contain
+     * authoritative sentences with which to restate the missing
+     * speculative claims. This is a zero-DataForSEO pass.
+     *
+     * The existing source-first gate remains the actual authority:
+     * quotes are only candidates, not verified facts.
+     */
+    const missingBeforeDiscovery=writable.filter(section=>
+      !proposed.some(c=>c.sectionId===section.id&&newSupport(c.id)));
+    const missingBeforeDiscoveryIds=
+      new Set(missingBeforeDiscovery.map(s=>s.id));
+    const candidatesBeforeDiscovery=missingBeforeDiscovery.length
+      ?await collectEvidenceClaimRecoveryCandidatesV1({
+        graph:newGraph,
+        claims:proposed.filter(c=>missingBeforeDiscoveryIds.has(c.sectionId)),
+        maxPerClaim:3,
+      }):[];
+    const packetBeforeDiscovery=buildSourceGroundedReplanPacketV1({
+      sections:missingBeforeDiscovery.map(s=>({
+        id:s.id,heading:s.heading,mission:s.mission,
+      })),
+      claims:proposed.filter(c=>missingBeforeDiscoveryIds.has(c.sectionId)),
+      candidates:candidatesBeforeDiscovery,
+      sources:newGraph.sources,
+    });
+    const sectionsWithoutAnyQuote=new Set(packetBeforeDiscovery
+      .filter(section=>section.quotes.length===0)
+      .map(section=>section.sectionId));
+    console.info("[content research recovery source-first precheck]",{
+      missingStrictSections:missingBeforeDiscovery.length,
+      sectionsWithAuthoritativeCandidateQuotes:
+        packetBeforeDiscovery.length-sectionsWithoutAnyQuote.size,
+      sectionsStillNeedingDiscovery:[...sectionsWithoutAnyQuote],
+      skippedPaidSerpDiscovery:sectionsWithoutAnyQuote.size===0,
+    });
     let fallbackSearches=0;
     let discoveredSourceCount=0;
     let reusedSourceDiscoveryCheckpoint=false;
-    if(unresolved.length){
+    if(sectionsWithoutAnyQuote.size){
       // One wave: at most one outstanding factual question from each
       // under-researched section. Avoid spending all fallback searches
       // on the first section's claims.
       const missingBySection=new Map<string,(typeof unresolved)[number]>();
       for(const claim of unresolved){
+        if(!sectionsWithoutAnyQuote.has(claim.sectionId))continue;
         if(!missingBySection.has(claim.sectionId))
           missingBySection.set(claim.sectionId,claim);
       }
@@ -413,17 +452,26 @@ export async function recoverExistingArticleResearchV1({
       const missingSectionIds=new Set(missingGroundingSections.map(s=>s.id));
       const missingClaims=proposed.filter(c=>
         missingSectionIds.has(c.sectionId));
-      const fetchedCandidates=await collectEvidenceClaimRecoveryCandidatesV1({
-        graph:newGraph,claims:missingClaims,maxPerClaim:3,
-      });
-      const packet=buildSourceGroundedReplanPacketV1({
-        sections:missingGroundingSections.map(s=>({
-          id:s.id,heading:s.heading,mission:s.mission,
-        })),
-        claims:missingClaims,
-        candidates:fetchedCandidates,
-        sources:newGraph.sources,
-      });
+      const reusePrecheckedQuotes=
+        discoveredSourceCount===0 &&
+        missingGroundingSections.length===packetBeforeDiscovery.length &&
+        missingGroundingSections.every((s,i)=>
+          packetBeforeDiscovery[i]?.sectionId===s.id);
+      const fetchedCandidates=reusePrecheckedQuotes
+        ?candidatesBeforeDiscovery
+        :await collectEvidenceClaimRecoveryCandidatesV1({
+          graph:newGraph,claims:missingClaims,maxPerClaim:3,
+        });
+      const packet=reusePrecheckedQuotes
+        ?packetBeforeDiscovery
+        :buildSourceGroundedReplanPacketV1({
+          sections:missingGroundingSections.map(s=>({
+            id:s.id,heading:s.heading,mission:s.mission,
+          })),
+          claims:missingClaims,
+          candidates:fetchedCandidates,
+          sources:newGraph.sources,
+        });
       console.info("[content research recovery source-first packet]",{
         missingSections:missingGroundingSections.map(s=>s.id),
         fetchedNearExcerpts:fetchedCandidates.length,
