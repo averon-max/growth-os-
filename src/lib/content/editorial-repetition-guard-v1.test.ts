@@ -20,7 +20,7 @@ describe("reader-value editorial repetition guard",()=>{
       heading:"Subject "+index,
       bodyMarkdown:[
         "Credit monitoring is the subject of this section.",
-        Array.from({length:180},(_,i)=>"unique"+index+"x"+i).join(" "),
+        Array.from({length:210},(_,i)=>"unique"+index+"x"+i).join(" "),
       ].join("\n\n"),
     }));
     expect(detectHighConfidenceEditorialRepetitionV1(sections)).toEqual([]);
