@@ -45,6 +45,9 @@ export function validateResearchExpansionProposalsV1({
 }):readonly ResearchExpansionClaimV1[]{
   verify(Array.isArray(proposals),"NOT_ARRAY");
   verify(proposals.length<=plan.sections.length,"EXTRA_SECTIONS");
+  verify(proposals.reduce((sum,p)=>
+    sum+(Array.isArray(p.proposedClaims)?p.proposedClaims.length:0),0)<=18,
+    "TOTAL_PROPOSALS_LIMIT");
   const validSections=new Set(plan.sections
     .filter(s=>s.state==="WRITABLE").map(s=>s.id));
   const seen=new Set<string>();
