@@ -341,9 +341,35 @@ export async function recoverExistingArticleResearchV1({
       const fetched:Array<(typeof newGraph.sources)[number]>=
         cachedDiscovery===null?[]:
         decodeResearchDiscoveryCheckpointV1(cachedDiscovery);
+      let paidSearchCalls=0;
+      let reusedIndividualProbeCheckpoints=0;
       if(cachedDiscovery===null){
         await assertResearchPlanningCheckpointWritableV1(discoveryScope);
-      for(const probe of probes){
+      for(const [probeIndex,probe] of probes.entries()){
+        const probeFingerprint=hash({
+          version:"RESEARCH_DISCOVERY_SINGLE_PROBE_V1",
+          discoveryFingerprint,probeIndex,
+          claimId:probe.id,claimText:probe.text,
+        });
+        const probeScope={
+          articleId,briefId:original.briefId,
+          updatedAt:original.updatedAt.toISOString(),
+          evidenceSha256:probeFingerprint,
+          directory:discoveryScope.directory+"/probes/"+
+            probeIndex.toString()+"-"+probeFingerprint.slice(0,12),
+        };
+        const cachedProbe=await readExistingResearchPlanningCheckpointV1(
+          probeScope);
+        if(cachedProbe!==null){
+          reusedIndividualProbeCheckpoints++;
+          for(const item of decodeResearchDiscoveryCheckpointV1(cachedProbe)){
+            if(alreadySeen.has(item.url))continue;
+            fetched.push(item);
+            alreadySeen.add(item.url);
+          }
+          continue;
+        }
+        await assertResearchPlanningCheckpointWritableV1(probeScope);
         // One search per section, not one broad multi-claim search.
         // Reserve a place in the crawler's first-24 URL ceiling for
         // EVERY missing section instead of spending the whole budget
@@ -358,6 +384,7 @@ export async function recoverExistingArticleResearchV1({
           Parameters<typeof discoverClaimEvidenceFallbackSourcesV1>[0]["search"]
         >=async input=>{
           if(searchRequestsForProbe++>=1)return {organic:[]};
+          paidSearchCalls++;
           try{
             const {buildSerpIntelligence}=await import("./serp-intelligence");
             const serp=await buildSerpIntelligence({
@@ -395,12 +422,18 @@ export async function recoverExistingArticleResearchV1({
           throw providerSearchFailure;
         }
         let kept=0;
+        const newProbeSources:Array<(typeof newGraph.sources)[number]>=[];
         for(const source of found){
           if(alreadySeen.has(source.url))continue;
+          newProbeSources.push(source);
           fetched.push(source);
           alreadySeen.add(source.url);
           if(++kept===3)break;
         }
+        // Persist EACH completed query, even if it returned zero URLs.
+        // A provider outage on probe #6 cannot erase paid #1-5.
+        await saveExistingResearchPlanningCheckpointV1(
+          probeScope,encodeResearchDiscoveryCheckpointV1(newProbeSources));
       }
         // Save the complete URL inventory IMMEDIATELY after provider
         // discovery. Later failed source matching / Writer runs can
@@ -411,7 +444,8 @@ export async function recoverExistingArticleResearchV1({
       discoveredSourceCount=fetched.length;
       console.info("[content research recovery source discovery cache]",{
         reused:reusedSourceDiscoveryCheckpoint,
-        paidSearchCalls:reusedSourceDiscoveryCheckpoint?0:fallbackSearches,
+        reusedIndividualProbeCheckpoints,
+        paidSearchCalls,
         cachedSourceUrls:fetched.length,
       });
       if(fetched.length){
