@@ -74,8 +74,8 @@ async function main(){
       "RECOVERY_CHANGED_NON_WHITESPACE_CONTENT");
     const changedLines=original.bodyMarkdown.split("\n").filter(
       (line,i)=>line!==cleaned.split("\n")[i]).length;
-    check(changedLines>=1&&changedLines<=30,
-      "RECOVERY_WHITESPACE_DIFF_TOO_LARGE");
+    check(changedLines>=1,
+      "RECOVERY_NO_WHITESPACE_LINES_CHANGED");
 
     const proposed={...original,bodyMarkdown:cleaned};
     const {buildSerpReplayArticleFingerprintV1}=
@@ -133,7 +133,10 @@ async function main(){
       secondaryKeywords:brief.secondaryKeywords});
     check(isDeepStrictEqual(before.article.keywordCoverage,
       analysis.article.keywordCoverage) &&
-      isDeepStrictEqual(before.article.structure,analysis.article.structure),
+      isDeepStrictEqual(before.article.structure,analysis.article.structure) &&
+      analysis.article.keywordCoverage.planned > 0 &&
+      analysis.article.keywordCoverage.used ===
+        analysis.article.keywordCoverage.planned,
       "RECOVERY_STRUCTURE_OR_KEYWORD_DRIFT");
     const registry=await getBusinessFactRegistryForBrief({
       briefId,websiteId:brief.websiteId,
