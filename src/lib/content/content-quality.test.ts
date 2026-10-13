@@ -1,4 +1,8 @@
 import {
+  normalizeMasterArticleProseSpacesV1,
+} from "./master-article-composer";
+
+import {
   describe,
   expect,
   it,
@@ -244,5 +248,59 @@ describe("audit and Article Intelligence word count consistency", () => {
     };
     const audit = auditArticle({article,primaryKeyword:"credit monitoring"});
     expect(audit.wordCount).toBe(countWords(article.bodyMarkdown));
+  });
+});
+
+describe("canonical whitespace parity after Writer and SERP Replay", () => {
+  const article = {
+    title: "Credit monitoring guide",
+    metaDescription: "How credit monitoring helps people follow report changes.",
+    h1: "Credit monitoring guide",
+  };
+
+  it("does not reject legitimate nested Markdown indentation", () => {
+    const bodyMarkdown = "## Monitoring alerts\n\n- Look for changes\n    - Check the date\n    - Review an unfamiliar item\n\n    Preserved indentation.";
+    const a = auditArticle({
+      article:{...article,bodyMarkdown},
+      primaryKeyword:"credit monitoring",
+    });
+    expect(a.issues).not.toContain("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+  });
+
+  it("does not reject aligned tables, code or URLs after composition", () => {
+    const bodyMarkdown = [
+      "## Changes",
+      "",
+      "| Type    | Example    |",
+      "| ------- | ---------- |",
+      "| Inquiry | Report     |",
+      "",
+      "```ts",
+      "const x = 'one   two';",
+      "```",
+      "",
+      "Check `a   b` and https://example.com/a   to learn more.",
+    ].join("\n");
+    const composed = normalizeMasterArticleProseSpacesV1(bodyMarkdown);
+    const a = auditArticle({
+      article:{...article,bodyMarkdown:composed},
+      primaryKeyword:"credit monitoring",
+    });
+    expect(a.issues).not.toContain("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+  });
+
+  it("still detects malformed prose that canonical composition can fix", () => {
+    const bodyMarkdown = "## Monitoring\nThe service   checks report changes.";
+    const a = auditArticle({
+      article:{...article,bodyMarkdown},
+      primaryKeyword:"credit monitoring",
+    });
+    expect(a.issues).toContain("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+    const normalized=normalizeMasterArticleProseSpacesV1(bodyMarkdown);
+    expect(normalized).toContain("service checks");
+    expect(auditArticle({
+      article:{...article,bodyMarkdown:normalized},
+      primaryKeyword:"credit monitoring",
+    }).issues).not.toContain("BROKEN_ARTICLE_EXCESSIVE_SPACES");
   });
 });
