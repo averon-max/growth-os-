@@ -2,6 +2,7 @@ import {describe,expect,it} from "vitest";
 import fixture from "./__fixtures__/repetitive-credit-monitoring-reader-v1.json";
 import {
   detectHighConfidenceEditorialRepetitionV1,
+  detectPersistedArticleEditorialRepetitionV1,
 } from "./editorial-repetition-guard-v1";
 
 describe("reader-value editorial repetition guard",()=>{
@@ -52,5 +53,25 @@ describe("reader-value editorial repetition guard",()=>{
         "~~~text\nThe repeated phrase does not by itself constitute prose.\n~~~",
     }));
     expect(detectHighConfidenceEditorialRepetitionV1(sections)).toEqual([]);
+  });
+});
+
+
+describe("persisted article editorial policy",()=>{
+  it("rejects old in-review repetitive drafts even without original MasterWriterRun",()=>{
+    const markdown=fixture.sections.map(s=>
+      "## "+s.heading+"\n\n"+s.bodyMarkdown).join("\n\n");
+    const findings=detectPersistedArticleEditorialRepetitionV1(markdown);
+    expect(findings.some(f=>
+      f.code==="EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS"
+    )).toBe(true);
+  });
+  it("does not mistake H2-like lines inside code fences for sections",()=>{
+    const body=[
+      "## A subject","A substantive line.",
+      "~~~md","## Not a real section","~~~",
+      "## Another subject","A different useful explanation.",
+    ].join("\n");
+    expect(detectPersistedArticleEditorialRepetitionV1(body)).toEqual([]);
   });
 });
