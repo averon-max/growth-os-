@@ -219,7 +219,7 @@ export async function recoverExistingArticleResearchV1({
       fallbackSearches=probes.length;
       const mission=record(oldSnapshot.searchMissionInput??{});
       const alreadySeen=new Set(newGraph.sources.map(s=>s.url));
-      const fetched:typeof newGraph.sources[number][]=[];
+      const fetched:Array<(typeof newGraph.sources)[number]>=[];
       for(const probe of probes){
         // One search per section, not one broad multi-claim search.
         // Reserve a place in the crawler's first-24 URL ceiling for
