@@ -12,7 +12,7 @@ const findOnce=(source,anchor,label)=>{
   const count=source.split(anchor).length-1;
   if(count!==1)throw new Error("MAIN_SEMANTIC_ADAPTER_LAYOUT_"+label+"_NO_FILES_CHANGED:"+count);
 };
-const sourceImport='import { findExactSourceSentenceV1 } from "./exact-source-sentence-v1";';
+const sourceImport='import {\n  fetchSinglePage,\n} from "../crawler/crawler";';
 const qualifierImport='import { inspectClaimMaterialQualifiersV1 } from "./claim-material-qualifier-v1";';
 const qualifierAnchor="    /*\n     * VERIFIED_EXCERPT_NEGATIVE_TARGET_GATE_V1";
 const qualifierInsert=[
