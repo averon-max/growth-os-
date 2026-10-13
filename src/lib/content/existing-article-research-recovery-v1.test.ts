@@ -61,12 +61,16 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("originalArticle:priorArticle");
     expect(engine).not.toContain('status:"PUBLISHED"');
   });
-  it("requires explicit paid authorization and exact article version",()=>{
+  it("keeps browser recovery disabled by default and requires explicit local CLI authorization",()=>{
     expect(endpoint).toContain("requireWebsiteAccess(user.id,article.brief.websiteId)");
     expect(endpoint).toContain("authorizePaidResearchRecovery!==true");
-    expect(ui).toContain('expectedUpdatedAt:article.updatedAt');
-    expect(ui).toContain("window.confirm(");
-    expect(ui).toContain("Recover research");
+    expect(endpoint).toContain("GROWTH_OS_ENABLE_HTTP_PAID_RESEARCH_RECOVERY");
+    expect(endpoint).toContain("RECOVERY_CLI_ONLY");
+    expect(ui).toContain("window.prompt(");
+    expect(ui).toContain('npx tsx scripts/content-existing-article-research-recovery-live.ts');
+    expect(ui).toContain("--article=");
+    expect(ui).toContain("Research recovery (CLI)");
+    expect(ui).not.toContain('"/recover-research",');
   });
   it("reuses a paid planning response and contracts overcomplete claims before validating",()=>{
     const read=engine.indexOf("readExistingResearchPlanningCheckpointV1(planningScope)");
@@ -109,18 +113,20 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("strictMatchesAfterDiscovery");
   });
 
-  it("attempts source-grounded restatement against real fetched quotes before any semantic review",()=>{
-    const discovery=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
+  it("prechecks existing authoritative quotes BEFORE paid discovery, then strictly re-verifies",()=>{
     const candidate=engine.indexOf("collectEvidenceClaimRecoveryCandidatesV1({");
     const pack=engine.indexOf("buildSourceGroundedReplanPacketV1({");
+    const discovery=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
     const recovery=engine.indexOf("validateSourceGroundedClaimReplanV1({");
     const reverify=engine.indexOf("claims:changed,");
     const semantic=engine.indexOf("reviewAndConstrainVerifiedEvidenceV1({");
-    expect(candidate).toBeGreaterThan(discovery);
+    expect(candidate).toBeGreaterThan(0);
     expect(pack).toBeGreaterThan(candidate);
-    expect(recovery).toBeGreaterThan(pack);
+    expect(discovery).toBeGreaterThan(pack);
+    expect(recovery).toBeGreaterThan(discovery);
     expect(reverify).toBeGreaterThan(recovery);
     expect(semantic).toBeGreaterThan(reverify);
+    expect(engine).toContain("if(sectionsWithoutAnyQuote.size){");
     expect(engine).toContain("SOURCE_FIRST_NO_AUTHORITATIVE_QUOTE_FOR_SECTIONS");
     expect(engine).toContain("resumedSourceReplan:cached!==null");
   });
@@ -147,7 +153,11 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(save).toBeGreaterThan(search);
     expect(reverify).toBeGreaterThan(save);
     expect(engine).toContain("reusedSourceDiscoveryCheckpoint=cachedDiscovery!==null");
-    expect(engine).toContain("paidSearchCalls:reusedSourceDiscoveryCheckpoint?0:fallbackSearches");
+    expect(engine).toContain("paidSearchCalls,");
+    expect(engine).toContain("readExistingResearchPlanningCheckpointV1(\n          probeScope)");
+    expect(engine).toContain("encodeResearchDiscoveryCheckpointV1(newProbeSources)");
+    expect(engine).toContain("if(cachedProbe!==null){");
+    expect(engine).toContain("paidSearchCalls++");
   });
 
   it("limits multiple model stages before provider calls",()=>{
