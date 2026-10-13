@@ -90,7 +90,7 @@ function recycledLongPhraseGroups(
    */
   const sentenceTexts=sections.map(section=>
     prose(section.bodyMarkdown)
-      .split(/[.!?](?:\\s+|$)/)
+      .split(/[.!?](?:\s+|$)/)
       .map(sentence=>words(sentence).join(" "))
   );
   const seenSentenceLocations=new Set<string>();
