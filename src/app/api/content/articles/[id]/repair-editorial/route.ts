@@ -49,6 +49,13 @@ export async function POST(
     if(status===401||status===403){
       return NextResponse.json(body,{status});
     }
+    if(err instanceof Error &&
+      err.message.startsWith("SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT")){
+      return NextResponse.json({
+        code:"SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT",
+        error:"This article's existing sources cannot support its planned sections. No AI repair was run. Expand and verify Evidence before trying again.",
+      },{status:409});
+    }
     const message=err instanceof Error?err.message:"Recovery error";
     const publicFailure=message.startsWith("SAVED_EDITORIAL_") ||
       message.startsWith("MASTER_CRITIC_") ||
