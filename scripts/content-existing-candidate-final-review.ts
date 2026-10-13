@@ -14,7 +14,7 @@ import { loadEnvConfig } from "@next/env";
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-loadEnvConfig(process.cwd());
+loadEnvConfig(process.env.GROWTH_OS_ENV_ROOT?.trim() || process.cwd());
 
 const digest = (s: string): string =>
   createHash("sha256").update(s, "utf8").digest("hex");
@@ -82,7 +82,8 @@ async function main(): Promise<void> {
   invariant(!live || process.env.GROWTH_OS_LIVE_REVIEW === "1",
     "EXPLICIT_GROWTH_OS_LIVE_REVIEW_OPT_IN_REQUIRED");
 
-  const root = resolve(".growth-os-tmp/final-article-closure");
+  const root = resolve(process.env.GROWTH_OS_REVIEW_ARTIFACT_DIR?.trim() ||
+    ".growth-os-tmp/final-article-closure");
   const checkpointDir = resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR ??
     ".growth-os-tmp/article-checkpoints");
   const [candidateMd, candidateRaw, cpRaw, revisionRaw] = await Promise.all([
@@ -301,8 +302,13 @@ async function main(): Promise<void> {
     const deterministic=runDeterministicMasterArticleCriticsV1({
       contract,run:run as any,rankReadyKeywords,
     });
-    const deterministicBlockers=deterministic.flatMap(c=>
-      c.findings.filter(f=>f.severity==="BLOCK").map(f=>c.criticId+":"+f.code));
+    const deterministicFindings=deterministic.flatMap(c=>
+      c.findings.map(f=>({critic:c.criticId,code:f.code,severity:f.severity,
+        message:f.message,sectionIndex:f.location.scope==="SECTION" ?
+          f.location.sectionIndex : null})));
+    const deterministicBlockers=deterministicFindings
+      .filter(f=>f.severity==="BLOCK")
+      .map(f=>f.critic+":"+f.code);
     const audit=auditArticle({article:candidateArticle,primaryKeyword:brief.primaryKeyword});
     const intelligence=analyzeArticleAgainstPlan({
       ...candidateArticle,primaryKeyword:brief.primaryKeyword,
@@ -322,7 +328,9 @@ async function main(): Promise<void> {
       articleStatus:article.status,unchangedSections:4,
       claimEvidence:"VERIFIED",
       sourceSnapshotStillMatches:true,
+      primaryKeyword:brief.primaryKeyword,
       deterministicCriticBlockers:deterministicBlockers,
+      deterministicFindings,
       contentGate:{pass:contentGate.pass,blockers:contentGate.blockingIssues},
       publicationPolicy:{pass:publicationPolicy.pass,
         blockers:publicationPolicy.blockingIssues},

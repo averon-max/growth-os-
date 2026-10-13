@@ -327,6 +327,46 @@ export function runDeterministicIntentCriticV1({
 }
 
 
+/**
+ * PRIMARY_QUESTION_ANSWER_FORM_V1
+ *
+ * "What is credit monitoring?" and "Credit monitoring is ..." express the
+ * same search job. An exact question string should not have to appear in
+ * prose when the prose already supplies an explicit definition.
+ *
+ * This is intentionally narrow: only WHAT IS/ARE -> subject IS/ARE/MEANS/
+ * REFERS TO/DESCRIBES. We do not infer broad semantic equivalence, and
+ * headings alone never satisfy the rule.
+ */
+export function hasPrimaryDefinitionAnswerFormV1({
+  primaryKeyword,
+  bodyProse,
+}: {
+  primaryKeyword: string;
+  bodyProse: string;
+}): boolean {
+  const question = /^what\s+(?:is|are)\s+(.+?)\s*\??$/i.exec(
+    primaryKeyword.trim()
+  );
+  if (!question) return false;
+  const normalized = (value: string) => value
+    .toLocaleLowerCase("en-US")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[\x60*_~]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const subject = normalized(question[1]);
+  if (!subject || subject.split(" ").length > 12) return false;
+  const prose = " " + normalized(bodyProse) + " ";
+  // Require a contiguous answer-form predicate: a topic mention alone is
+  // not proof that the definitional information job has been answered.
+  return ["is", "are", "means", "refers to", "describes"].some(
+    predicate => prose.includes(" " + subject + " " + predicate + " ")
+  );
+}
+
+
 export function runDeterministicCoverageCriticV1({
   contract,
   run,
@@ -634,8 +674,12 @@ export function runDeterministicCoverageCriticV1({
       countExactPhrase(
         rankReadyProse,
         keyword
-      ) >
-      0
+      ) > 0 ||
+      (dedupeKey === rankReadyPrimary &&
+        hasPrimaryDefinitionAnswerFormV1({
+          primaryKeyword: keyword,
+          bodyProse: rankReadyProse,
+        }))
     ) {
       continue;
     }

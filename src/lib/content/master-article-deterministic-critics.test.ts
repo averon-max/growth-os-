@@ -14,6 +14,7 @@ import type {
 
 import {
   DETERMINISTIC_MASTER_CRITIC_IDS,
+  hasPrimaryDefinitionAnswerFormV1,
   runDeterministicCoverageCriticV1,
   runDeterministicEvidenceYmylCriticV1,
   runDeterministicInternalLinksCriticV1,
@@ -404,6 +405,42 @@ describe(
         rankReadyKeywords: ["missing primary phrase", "free credit monitoring"],
       });
       expect(withoutPrimary.findings.some(f => f.code === "RANK_READY_PLANNED_KEYWORD_MISSING" && f.severity === "BLOCK")).toBe(true);
+    });
+
+    it("accepts an explicit natural answer instead of repeating a question in prose", () => {
+      const candidate = run();
+      (candidate.article as any).bodyMarkdown =
+        "## What Credit Monitoring Does\n\nCredit monitoring is a service that tracks certain changes in credit reports.";
+      const result = runDeterministicCoverageCriticV1({
+        contract: contract(),
+        run: candidate,
+        rankReadyKeywords: ["what is credit monitoring"],
+      });
+      expect(result.findings.some(f => f.code === "RANK_READY_PLANNED_KEYWORD_MISSING")).toBe(false);
+    });
+
+    it("does not count an H1 or a bare subject mention as a definition answer", () => {
+      expect(hasPrimaryDefinitionAnswerFormV1({
+        primaryKeyword: "what is credit monitoring",
+        bodyProse: "Credit monitoring helps users notice certain changes.",
+      })).toBe(false);
+      expect(hasPrimaryDefinitionAnswerFormV1({
+        primaryKeyword: "what is credit monitoring software",
+        bodyProse: "Credit monitoring is a service.",
+      })).toBe(false);
+      const result = runDeterministicCoverageCriticV1({
+        contract: contract(), run: run(),
+        rankReadyKeywords: ["what is credit monitoring"],
+      });
+      expect(result.findings.some(f => f.code === "RANK_READY_PLANNED_KEYWORD_MISSING" &&
+        f.severity === "BLOCK")).toBe(true);
+    });
+
+    it("does not turn unrelated non-definition keyword queries into automatic passes", () => {
+      expect(hasPrimaryDefinitionAnswerFormV1({
+        primaryKeyword: "best credit monitoring service",
+        bodyProse: "Credit monitoring is a service.",
+      })).toBe(false);
     });
 
     it(
