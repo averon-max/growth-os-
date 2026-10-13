@@ -227,6 +227,8 @@ async function main(): Promise<void> {
       candidateArticleSha256:sha(JSON.stringify(candidate)),
       initialCandidateSha256:v2.candidateArticleSha256,
       checkpointSha256:saved.sha256,
+      sourceCheckpointSha256:saved.sha256,
+      changedSectionIndexes:[3],
       originalPlanSha256:v2.originalPlanSha256,
       evidenceExpansionSha256:sha(v2Raw),
       scoreSectionIndex:3,
