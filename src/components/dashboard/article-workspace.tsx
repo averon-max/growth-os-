@@ -979,44 +979,18 @@ export function ArticleWorkspace({
 
   async function recoverResearch(){
     if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
-    const accepted=window.confirm(
-      "Run source-first research recovery for THIS EXISTING article? "+
-      "This can use paid search and AI. It may re-write all under-researched "+
-      "sections, run the full nine critics and SERP Replay. "+
-      "Up to 1 planning call, 4 semantic-evidence batches and "+
-      "30 Writer/critic/replay model calls (provider retries may add requests). "+
-      "Nothing is saved unless all gates pass. No new article is created."
+    // Paid full-pipeline jobs may outlive the browser HTTP request.
+    // Give the operator an exact local CLI command instead of making
+    // a background paid POST that could time out or be accidentally retried.
+    const command="cd /Users/user/growth-os && NODE_OPTIONS=--conditions=react-server "+
+      "npx tsx scripts/content-existing-article-research-recovery-live.ts "+
+      "--article="+article.id+" --execute";
+    window.prompt(
+      "Research recovery is CLI-only until persistent jobs are available. "+
+      "This command can cost money. Run FREE preflight first; "+
+      "copy the command below only after checking evidence readiness.",
+      command
     );
-    if(!accepted)return;
-    setBusy("research-recovery");
-    setError(null);
-    try{
-      const response=await fetch(
-        "/api/content/articles/"+encodeURIComponent(article.id)+
-        "/recover-research",
-        {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
-            expectedUpdatedAt:article.updatedAt,
-            authorizePaidResearchRecovery:true,
-          }),
-        }
-      );
-      const result=await response.json();
-      if(!response.ok){
-        throw new Error(
-          typeof result?.error==="string"?result.error:
-            "Research recovery was not committed. The original article remains unchanged."
-        );
-      }
-      window.location.reload();
-    }catch(cause){
-      setError(cause instanceof Error?cause.message:
-        "Research recovery failed. Existing article and sources were preserved.");
-    }finally{
-      setBusy(null);
-    }
   }
 
   async function repairEditorial(){
@@ -1570,12 +1544,11 @@ ${article.bodyMarkdown}`
               type="button"
               className={styles.secondaryButton}
               disabled={busy!==null}
-              title="Recover missing factual support and rebuild this same article"
+              title="Copy terminal command for controlled research recovery (browser HTTP is disabled)"
               onClick={()=>void recoverResearch()}
             >
               <Sparkles size={12}/>
-              {busy==="research-recovery"?"Researching & verifying…":
-                "Recover research"}
+              Research recovery (CLI)
             </button>
           ) : null}
 
