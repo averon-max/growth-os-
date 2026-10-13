@@ -35,6 +35,40 @@ describe("pre-Writer information gain evidence capacity",()=>{
       state:"DEFERRED_NO_EVIDENCE",
     })])).toEqual([]);
   });
+  it("blocks a six-section explainer even when each section has one verified fact",()=>{
+    const parts=[
+      "What is the concept?",
+      "How does it work?",
+      "What are the limits?",
+      "Does it affect outcomes?",
+      "What should a reader compare?",
+      "How should the reader respond?",
+    ];
+    const sections=parts.map((heading,index)=>section({
+      id:"section-"+index,heading,
+      requiredClaimIds:["claim-"+index],
+      evidenceIds:["verified-"+index],
+    }));
+    expect(inspectSectionEvidenceCapacityV1(sections)).toMatchObject([
+      {
+        sectionId:"article-plan",
+        reason:"EXPLANATORY_ARTICLE_HAS_ONE_FACT_PER_SECTION",
+      },
+    ]);
+    expect(()=>assertSectionEvidenceCapacityV1(sections))
+      .toThrow(SectionEvidenceCapacityErrorV1);
+  });
+
+  it("accepts diversified verified explanations without a numerical word quota",()=>{
+    const sections=Array.from({length:6},(_,index)=>section({
+      id:"section-"+index,
+      heading:"How does factor "+index+" work?",
+      requiredClaimIds:["answer-"+index,"detail-"+index],
+      evidenceIds:["evidence-"+index],
+    }));
+    expect(inspectSectionEvidenceCapacityV1(sections)).toEqual([]);
+  });
+
   it("permits concise source-free framing that owns no substantive question",()=>{
     expect(inspectSectionEvidenceCapacityV1([section({
       heading:"Quick orientation",requiredQuestionIds:[],
