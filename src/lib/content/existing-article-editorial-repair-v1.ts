@@ -165,7 +165,8 @@ export async function repairExistingArticleEditorialV1(articleId:string,
         item.criticId==="EDITORIAL"&&
         item.findings.some(f=>
           f.code==="EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS" ||
-          f.code==="EDITORIAL_REPEATED_PARAGRAPH_ACROSS_SECTIONS")),
+          f.code==="EDITORIAL_REPEATED_PARAGRAPH_ACROSS_SECTIONS" ||
+          f.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS")),
       "SAVED_EDITORIAL_NEW_CRITIC_NOT_REPRODUCED");
 
     const repaired=await executeMasterArticleCriticRepairReplayV1({
