@@ -433,7 +433,7 @@ async function main(): Promise<void> {
     // Resume the canonical semantic verifier only when the previous V3
     // verdict and the exact article/evidence versions match cryptographically.
     // A BLOCK verdict is NEVER eligible for reuse.
-    let savedSemanticReview:unknown=null;
+    let savedSemanticReview:ReturnType<typeof finalizeSectionSemanticVerificationV1> | null=null;
     if(resumeV3){
       const oldPath=join(root,articleId+"-SUPPORTED-CANDIDATE-V3-REVIEW.json");
       const oldReview=record(JSON.parse(await readFile(oldPath,"utf8")));
