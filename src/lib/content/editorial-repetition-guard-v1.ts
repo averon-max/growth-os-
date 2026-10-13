@@ -13,7 +13,8 @@ export interface EditorialSectionV1 {
 export interface EditorialRepetitionFindingV1 {
   readonly code:
     "EDITORIAL_REPEATED_PARAGRAPH_ACROSS_SECTIONS" |
-    "EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS";
+    "EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS" |
+    "EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS";
   readonly sectionIndex:number;
   readonly repeatedPhrases:readonly string[];
   readonly affectedSections:readonly number[];
@@ -58,6 +59,69 @@ function independentRepeatedSentences(
   const a=sentences.flatMap((text,i)=>text.includes(five)?[i]:[]);
   const b=sentences.flatMap((text,i)=>text.includes(three)?[i]:[]);
   return a.some(i=>b.some(j=>i!==j));
+}
+
+/*
+ * VERSION_TWO_REPHRASED_ADVICE_V1
+ *
+ * One small sentence-level rewrite can evade the original 5+3 n-gram
+ * test without adding any useful detail. Detect repeated independent
+ * six-word advice fragments spread across THREE distinct section
+ * pairs and at least FOUR separate sections, then deduplicate nearby
+ * overlapping six-gram windows so a single copied sentence cannot
+ * inflate the score. Multiple topic-word mentions alone cannot pass.
+ */
+function recycledLongPhraseGroups(
+  sections:readonly EditorialSectionV1[]
+): {phrase:string;indices:readonly number[]}[]{
+  const related=sectionPhrases(sections,6)
+    .filter(x=>x.indices.length>=2)
+    .sort((a,b)=>b.indices.length-a.indices.length);
+  const groups:{phrase:string;indices:readonly number[]}[]=[];
+  for(const candidate of related){
+    const terms=new Set(candidate.phrase.split(" "));
+    const duplicate=groups.some(group=>{
+      const other=new Set(group.phrase.split(" "));
+      const intersection=[...terms].filter(x=>other.has(x)).length;
+      const union=new Set([...terms,...other]).size;
+      return union>0 && intersection/union>=0.5;
+    });
+    if(!duplicate)groups.push(candidate);
+  }
+  return groups;
+}
+
+function detectRephrasedBoilerplate(
+  sections:readonly EditorialSectionV1[]
+): EditorialRepetitionFindingV1|null{
+  const groups=recycledLongPhraseGroups(sections);
+  if(groups.length<3)return null;
+  const pairs=new Set<string>();
+  const touched=new Set<number>();
+  for(const group of groups){
+    for(let i=0;i<group.indices.length;i++){
+      for(let j=i+1;j<group.indices.length;j++){
+        const left=group.indices[i],right=group.indices[j];
+        pairs.add(String(left)+":"+String(right));
+        touched.add(left);touched.add(right);
+      }
+    }
+  }
+  if(pairs.size<3 || touched.size<4)return null;
+  const groupedByOwner=new Map<number,number>();
+  for(const group of groups){
+    for(const owner of group.indices)
+      groupedByOwner.set(owner,(groupedByOwner.get(owner)??0)+1);
+  }
+  const selected=[...groupedByOwner].sort((a,b)=>
+    b[1]-a[1]||b[0]-a[0])[0]?.[0];
+  if(selected===undefined)return null;
+  return {
+    code:"EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS",
+    sectionIndex:selected,
+    repeatedPhrases:groups.slice(0,5).map(group=>group.phrase),
+    affectedSections:[...touched].sort((a,b)=>a-b),
+  };
 }
 
 export function detectHighConfidenceEditorialRepetitionV1(
@@ -114,6 +178,8 @@ export function detectHighConfidenceEditorialRepetitionV1(
       }];
     }
   }
+  const rewritten=detectRephrasedBoilerplate(sections);
+  if(rewritten)return [rewritten];
   return [];
 }
 
