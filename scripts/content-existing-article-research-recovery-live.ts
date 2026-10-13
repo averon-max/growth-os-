@@ -46,11 +46,22 @@ async function main(){
       "../src/lib/content/section-evidence-capacity-v1");
     const plan=parsePersistedArticleExecutionPlanV1(record.articleExecutionPlan);
     const problems=inspectSectionEvidenceCapacityV1(plan.sections);
+    const {createHash}=await import("node:crypto");
+    const {readExistingResearchPlanningCheckpointV1}=await import(
+      "../src/lib/content/existing-article-research-checkpoint-v1");
+    const evidenceSha256=createHash("sha256")
+      .update(JSON.stringify(snapshot.plan),"utf8").digest("hex");
+    const cachedPlan=await readExistingResearchPlanningCheckpointV1({
+      articleId:existing.id,briefId:existing.briefId,
+      updatedAt:existing.updatedAt.toISOString(),evidenceSha256,
+    });
     console.log(JSON.stringify({
       mode:execute?"PAID_RECOVERY_EXPLICITLY_REQUESTED":"READ_ONLY_PREFLIGHT",
       articleId:existing.id,briefId:existing.briefId,
       status:existing.status,updatedAt:existing.updatedAt.toISOString(),
       siblingArticleCount:siblingCount,
+      paidPlanningCheckpointCached:cachedPlan!==null,
+      paidPlanningCheckpointReusedOnExecute:cachedPlan!==null,
       eligible:existing.status==="IN_REVIEW"&&
         existing.publishedAt===null&&siblingCount===0&&
         problems.length>0,
