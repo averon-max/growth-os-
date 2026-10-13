@@ -258,6 +258,7 @@ export async function recoverExistingArticleResearchV1({
     const verifiedBeforeDiscovery=proposed.filter(c=>newSupport(c.id)).length;
     const unresolved=proposed.filter(c=>!newSupport(c.id));
     let fallbackSearches=0;
+    let discoveredSourceCount=0;
     if(unresolved.length){
       // One wave: at most one outstanding factual question from each
       // under-researched section. Avoid spending all fallback searches
@@ -330,6 +331,7 @@ export async function recoverExistingArticleResearchV1({
           if(++kept===3)break;
         }
       }
+      discoveredSourceCount=fetched.length;
       if(fetched.length){
         newGraph=await enrichLiveEvidenceGraphV1({
           graph:{
@@ -363,7 +365,8 @@ export async function recoverExistingArticleResearchV1({
       strictMatchesFromOriginalSources:verifiedBeforeDiscovery,
       strictMatchesAfterDiscovery:verifiedBeforeSemantic.length,
       sourceInventory:newGraph.sources.length,
-      fetchedFallbackDiscoverySources:fallbackSearches,
+      fallbackSearches,
+      newlyDiscoveredSources:discoveredSourceCount,
       sections:strictBySection,
     });
     check(strictBySection.every(section=>section.lexicallyVerified>=1),
