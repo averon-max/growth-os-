@@ -53,9 +53,17 @@ export async function POST(
     const publicFailure=message.startsWith("SAVED_EDITORIAL_") ||
       message.startsWith("MASTER_CRITIC_") ||
       message.startsWith("ARTICLE_");
+    const safeCode=publicFailure?message.slice(0,130):
+      "EDITORIAL_RECOVERY_NOT_COMPLETED";
+    const actionable=message==="SAVED_EDITORIAL_FINAL_CHECKPOINT_REQUIRED"
+      ? "Verified checkpoint unavailable. Recovery stopped before paid calls; the existing article is unchanged."
+      : message==="SAVED_EDITORIAL_REAL_CRAWL_CONTEXT_REQUIRED"
+        ? "The existing site crawl lacks the comparison context needed by Master Critics. No article was changed."
+        : message==="SAVED_EDITORIAL_BOUNDED_REPAIR_FAILED"
+          ? "The evidence-backed section repair did not pass the critic gates. The existing article was preserved."
+          : "Editorial repair could not safely complete. The existing article was preserved.";
     return NextResponse.json({
-      code:publicFailure?message.slice(0,130):"EDITORIAL_RECOVERY_NOT_COMPLETED",
-      error:"Editorial repair could not safely complete. Your existing article was not replaced.",
+      code:safeCode,error:actionable,
     },{status:409});
   }
 }
