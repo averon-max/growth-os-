@@ -267,6 +267,8 @@ export function ContentCreateButton({
       string | null
     >(null);
 
+  const [existingContentHref,setExistingContentHref]=useState<string|null>(null);
+
   const [researching, setResearching] = useState(false);
   const [previewAnimation, setPreviewAnimation] = useState(false);
   const [researchReport, setResearchReport] =
@@ -485,6 +487,7 @@ export function ContentCreateButton({
       return;
     }
     setError(null);
+    setExistingContentHref(null);
 
     try {
       setStage(
@@ -542,6 +545,29 @@ export function ContentCreateButton({
 
       const briefJson =
         await briefResponse.json();
+
+      if (
+        !briefResponse.ok &&
+        briefResponse.status===409 &&
+        briefJson?.code==="CONTENT_TOPIC_ALREADY_EXISTS"
+      ) {
+        const id=briefJson?.existingArticleId;
+        const brief=briefJson?.existingBriefId;
+        setExistingContentHref(
+          typeof id==="string" && id.length>0
+            ? "/dashboard/content/articles/"+encodeURIComponent(id)
+            : typeof brief==="string" && brief.length>0
+              ? "/dashboard/content?websiteId="+encodeURIComponent(websiteId)+
+                "#brief-"+encodeURIComponent(brief)
+              : null
+        );
+        setStage("IDLE");
+        setError(
+          "An article or content brief already exists for that keyword. "+
+          "Open the existing work instead of paying for another generation."
+        );
+        return;
+      }
 
       if (
         !briefResponse.ok
@@ -1172,6 +1198,14 @@ export function ContentCreateButton({
                   }
                 >
                   {error}
+                  {existingContentHref && (
+                    <>
+                      {" "}
+                      <a href={existingContentHref}>
+                        Open existing article or brief
+                      </a>
+                    </>
+                  )}
                 </div>
               ) : null}
 
