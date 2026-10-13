@@ -3,6 +3,7 @@ import {
 } from "../crawler/crawler";
 
 import { findExactSourceSentenceV1 } from "./exact-source-sentence-v1";
+import { inspectClaimMaterialQualifiersV1 } from "./claim-material-qualifier-v1";
 
 import {
   defaultAuthorityTier,
@@ -976,6 +977,18 @@ export function findVerifiedExcerptCandidateV1({
     }
 
 
+
+    /*
+     * MATERIAL_SCOPE_AND_ORDER_VERIFICATION_V1
+     *
+     * The same topic words do not support an unsupported condition
+     * ("unexpected", "before deciding", "only"), even when lexical
+     * overlap, numeric values, and polarity already match.
+     * No model, new sources, or weaker fallback is used here.
+     */
+    if(!inspectClaimMaterialQualifiersV1({
+      claimText,excerpt,
+    }).passed)continue;
 
     /*
      * VERIFIED_EXCERPT_NEGATIVE_TARGET_GATE_V1
