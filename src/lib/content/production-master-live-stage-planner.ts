@@ -2,6 +2,8 @@ import {
   normalizeProductionClaimCategoryV2,
 } from "./production-claim-category-normalization-v2";
 
+import {reviewAndConstrainVerifiedEvidenceV1} from "./semantic-evidence-review-v1";
+
 import {
   inspectStagePlanInformationGainV1,
   INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
@@ -6184,6 +6186,31 @@ function inspectStagePlanCompleteness(
     }
   );
 
+
+  /*
+   * FINAL_EVIDENCE_SEMANTIC_ENTAILMENT_V1
+   *
+   * The lexical verifier checks vocabulary, numeric identity and
+   * negation; it does NOT prove that the excerpt states the complete
+   * proposition. A single bounded review after all evidence/claim
+   * re-planning checks full claim->excerpt support, before Section
+   * Contracts and any Writer spend. Never promotes unsupported
+   * material. Rejected verified pairs become REFERENCE_ONLY.
+   *
+   * At most four logical provider batches (18 pairs each).
+   * Model response failure aborts Stage Plan without persisting it.
+   */
+  const semanticEvidenceReview=await reviewAndConstrainVerifiedEvidenceV1({
+    claims:claimsInput,
+    graph:evidenceGraphInput,
+  });
+  evidenceGraphInput=semanticEvidenceReview.graph;
+  console.info("[content semantic evidence review]",{
+    reviewed:semanticEvidenceReview.reviewedPairs,
+    approved:semanticEvidenceReview.approvedPairs,
+    demoted:semanticEvidenceReview.demotedEvidenceIds.length,
+    logicalAiCalls:semanticEvidenceReview.calls,
+  });
 
   // ---- Stage 8A/8B ----
   const questions = [...new Set(plan.questions.map((q) => q.trim()).filter(Boolean))];
