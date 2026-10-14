@@ -48,6 +48,7 @@ import {
   discoverClaimEvidenceFallbackSourcesV1,
   collectEvidenceClaimRecoveryCandidatesV1,
   collectOfficialSectionProcedureCandidatesV1,
+  collectOfficialPostSemanticProcedureAlternativesV1,
 } from "./live-evidence-verification";
 import {reviewAndConstrainVerifiedEvidenceV1,
   reviewSemanticEvidenceWithContentAiV1,
@@ -782,6 +783,14 @@ export async function recoverExistingArticleResearchV1({
       return survivingNew.length<1||
         new Set([...survivingNew.map(c=>c.id),...prior]).size<2;
     });
+    const officialAlternatives=
+      await collectOfficialPostSemanticProcedureAlternativesV1({
+        graph:newGraph,
+        sections:deficient.map(s=>({
+          id:s.id,heading:s.heading,mission:s.mission,
+        })),
+        governmentSourceIds:governmentSeeds.map(s=>s.id),
+      });
     const narrowed=selectPostSemanticSourceNarrowingV1({
       sections:deficient.map(s=>({
         id:s.id,heading:s.heading,mission:s.mission,
@@ -790,6 +799,7 @@ export async function recoverExistingArticleResearchV1({
       originalEvidence:newGraph.claimEvidence,
       demotedEvidenceIds:semanticReview.demotedEvidenceIds,
       approvedClaimIds:[...initialApprovedIds],
+      officialAlternatives,
     });
     let secondPassReviewedPairs=0,secondPassApprovedPairs=0;
     if(narrowed.length){
@@ -826,7 +836,11 @@ export async function recoverExistingArticleResearchV1({
     }
     console.info("[content research recovery post-semantic narrow rescue]",{
       deficientSections:deficient.map(s=>s.id),
+      officialAlternativeQuotes:officialAlternatives.length,
       narrowedClaims:narrowed.map(n=>n.claimId),
+      officialAlternativeRescues:narrowed.filter(n=>
+        n.sourceEvidenceId==="UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE")
+        .map(n=>n.claimId),
       additionalReviewedPairs:secondPassReviewedPairs,
       additionalApprovedPairs:secondPassApprovedPairs,
       status:"STRICT_REFETCH_AND_SEMANTIC_REQUIRED",
