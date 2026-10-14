@@ -112,6 +112,92 @@ describe("source-first grounded claim restatement",()=>{
     expect(result.map(c=>c.id)).toEqual(["c1","c1b","c2"]);
     expect(result.find(c=>c.id==="c1b")?.text).toBe(secondQuote);
   });
+  it("fills a second fact in a shallow section using an unused authoritative quote",()=>{
+    const additional:ResearchExpansionClaimV1={
+      id:"c1-more",sectionId:"s1",category:"FACT",risk:"LOW",
+      text:"Credit monitoring prevents every fraudulent account before it opens.",
+    };
+    const secondSource="Credit monitoring can notify consumers when a new "+
+      "credit inquiry appears, but it does not prevent fraudulent accounts.";
+    const localClaims=[claims[0],additional,claims[1]];
+    const result=buildSourceGroundedReplanPacketV1({
+      sections:[
+        {id:"s1",heading:"Credit monitoring and alerts",
+          mission:"Explain alerts and limits"},
+        {id:"s2",heading:"After credit alerts",
+          mission:"What to do with inaccurate accounts"},
+      ],claims:localClaims,
+      candidates:[
+        {claimId:"c1",sourceId:"ftc",
+          sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote1,coverage:0.5},
+        {claimId:"c1-more",sourceId:"cfpb",
+          sourceUrl:src("cfpb","PRIMARY_GOVERNMENT","A").url,
+          excerpt:secondSource,coverage:0.5},
+        {claimId:"c2",sourceId:"ftc",
+          sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote2,coverage:0.5},
+      ],sources:[
+        src("ftc","PRIMARY_GOVERNMENT","A"),
+        src("cfpb","PRIMARY_GOVERNMENT","A"),
+      ],
+    });
+    const modelQuote=result[0].quotes.find(q=>q.claimId==="c1")!;
+    const otherQuote=result[0].quotes.find(q=>q.claimId==="c1-more")!;
+    expect(modelQuote.quoteId).not.toBe(otherQuote.quoteId);
+    const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:result,originalClaims:localClaims,replacements:[
+        {claimId:"c1",quoteId:modelQuote.quoteId,text:quote1},
+        {claimId:"c2",quoteId:result[1].quotes[0].quoteId,text:quote2},
+      ],
+    });
+    expect(recovered.claims.find(c=>c.id==="c1-more")?.text)
+      .toBe(secondSource);
+    expect(recovered.acceptedModelRestatements).toBe(2);
+    expect(recovered.literalSourceFallbacks).toBe(1);
+    expect(recovered.fallbackDetails).toContainEqual({
+      sectionId:"s1",claimId:"c1-more",sourceId:"cfpb",
+      reason:"SECOND_SECTION_FACT_FROM_DISTINCT_LITERAL_SOURCE",
+    });
+  });
+  it("refuses to fake a second fact from a duplicate source sentence",()=>{
+    const additional:ResearchExpansionClaimV1={
+      id:"c1-more",sectionId:"s1",category:"FACT",risk:"LOW",
+      text:"Credit monitoring prevents every fraudulent account before it opens.",
+    };
+    const result=buildSourceGroundedReplanPacketV1({
+      sections:[
+        {id:"s1",heading:"Credit monitoring",mission:"How alerts work"},
+        {id:"s2",heading:"Responding to alerts",mission:"Dispute incorrect items"},
+      ],claims:[claims[0],additional,claims[1]],
+      candidates:[
+        {claimId:"c1",sourceId:"ftc",
+          sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote1,coverage:0.5},
+        {claimId:"c1-more",sourceId:"cfpb",
+          sourceUrl:src("cfpb","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote1,coverage:0.5},
+        {claimId:"c2",sourceId:"ftc",
+          sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote2,coverage:0.5},
+      ],sources:[
+        src("ftc","PRIMARY_GOVERNMENT","A"),
+        src("cfpb","PRIMARY_GOVERNMENT","A"),
+      ],
+    });
+    const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:result,originalClaims:[claims[0],additional,claims[1]],
+      replacements:[
+        {claimId:"c1",quoteId:result[0].quotes.find(q=>q.claimId==="c1")!.quoteId,
+          text:quote1},
+        {claimId:"c2",quoteId:result[1].quotes[0].quoteId,text:quote2},
+      ],
+    });
+    expect(recovered.literalSourceFallbacks).toBe(0);
+    expect(recovered.claims.find(c=>c.id==="c1-more")?.text)
+      .toBe(additional.text);
+  });
+
   it("does not allow the same claim/quote to masquerade as two facts",()=>{
     const result=packet();
     expect(()=>validateSourceGroundedClaimReplanV1({
