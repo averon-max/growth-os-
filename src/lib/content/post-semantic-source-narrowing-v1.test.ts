@@ -1,6 +1,8 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
-import {selectPostSemanticSourceNarrowingV1} from "./post-semantic-source-narrowing-v1";
+import {selectPostSemanticSourceNarrowingV1,
+  isReaderInitiatedResponseStepV1,
+} from "./post-semantic-source-narrowing-v1";
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
 import type {ResearchExpansionClaimV1}
   from "./existing-article-research-plan-v1";
@@ -58,6 +60,58 @@ describe("bounded post-semantic narrowing",()=>{
       .toEqual([contents[1].id,contents[3].id]);
     expect(found.map(x=>x.text)).toEqual([comparison,correction]);
     expect(found.map(x=>x.sectionId)).toEqual(["section-5","section-6"]);
+  });
+  it("chooses the actual FTC correction instruction from the eight real audited candidates",()=>{
+    const ftcDispute=ftc("disputing-errors-your-credit-reports");
+    const ftcIdentity=ftc("what-know-about-identity-theft");
+    const cfpb:EvidenceSource={
+      ...ftc("how-do-i-dispute"),
+      id:"cfpb",publisher:"CFPB",
+      url:"https://www.consumerfinance.gov/ask-cfpb/how-do-i-dispute-an-error-on-my-credit-report-en-314/",
+    };
+    // Real quotes from the user's free source diagnostic, in ranking order.
+    const snippets=[
+      {source:ftcDispute,text:"How To Correct Mistakes Your In Credit Reports Monitor Your Credit Reports Report Scams Is Your Credit Report Accurate?"},
+      {source:ftcDispute,text:"Monitor Your Credit Reports Review your credit report to confirm that the credit bureau removed the inaccurate information from your report."},
+      {source:ftcDispute,text:"If the business finds the information they reported is inaccurate, it must notify all three nationwide credit bureaus so they can correct the information in yourfile."},
+      {source:ftcDispute,text:"If the credit bureau considers your request to be “frivolous” or “irrelevant,” they will stop investigating, but they need to notify you of that and give the reason."},
+      {source:ftcIdentity,text:"Identity monitoring services Companies that offer identity monitoring services check databases that collect different types of information to see if they containnew or inaccurate information about you — including things that might not show up on your credit report."},
+      {source:ftcIdentity,text:"Credit monitoring services Credit monitoring services keep an eye on your credit report and let you know if anything suspicious pops up."},
+      {source:cfpb,text:"If the investigation shows the furnisher provided wrong information about you, or the information cannot be verified, the furnisher must update or remove the information and notify all the credit reporting companies after correcting it."},
+      {source:ftcDispute,text:"To correct mistakes in your report, contact the credit bureau and the business that reported the inaccurate information."},
+    ];
+    expect(snippets.map(c=>isReaderInitiatedResponseStepV1(c.text)))
+      .toEqual([false,false,false,false,false,false,false,true]);
+    const chosen=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[1]],claims:[contents[2],contents[3]],
+      sources:[ftcDispute,ftcIdentity,cfpb],
+      originalEvidence:[],
+      demotedEvidenceIds:[],
+      approvedClaimIds:[contents[2].id],
+      officialAlternatives:snippets.map(({source,text})=>({
+        sectionId:"section-6",sourceId:source.id,
+        sourceUrl:source.url,text,
+      })),
+    });
+    expect(chosen).toHaveLength(1);
+    expect(chosen[0].text).toBe(snippets[7].text);
+    expect(chosen[0].sourceEvidenceId)
+      .toBe("UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE");
+    expect(chosen[0].claimId).toBe(contents[3].id);
+  });
+  it("accepts clear reader-directed steps but rejects headings and institutional duties",()=>{
+    expect(isReaderInitiatedResponseStepV1(
+      "If you find an incorrect account on your credit report, you should contact the credit bureau to dispute the mistake."
+    )).toBe(true);
+    expect(isReaderInitiatedResponseStepV1(
+      "Review your credit report to confirm that inaccurate information has been removed."
+    )).toBe(true);
+    expect(isReaderInitiatedResponseStepV1(
+      "If the credit bureau finds an error, it must notify the other reporting agencies to correct the record."
+    )).toBe(false);
+    expect(isReaderInitiatedResponseStepV1(
+      "Review Your Credit Report Contact Other Agencies Report Fraud?"
+    )).toBe(false);
   });
   it("uses another official instruction for section-6 when the rejected excerpt is only headings",()=>{
     const source=ftc("disputing-errors-your-credit-reports");
