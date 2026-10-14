@@ -13,6 +13,7 @@ on:
       - "src/lib/content/source-grounded-claim-replan-v1.test.ts"
       - "src/lib/content/post-semantic-source-narrowing-v1.ts"
       - "src/lib/content/post-semantic-source-narrowing-v1.test.ts"
+      - "scripts/content-existing-article-official-response-facts-audit.ts"
       - "src/lib/content/live-evidence-verification.ts"
       - "src/lib/content/existing-article-research-recovery-v1.ts"
       - "src/lib/content/existing-article-research-recovery-v1.test.ts"
