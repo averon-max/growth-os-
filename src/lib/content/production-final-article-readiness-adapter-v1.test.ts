@@ -287,6 +287,46 @@ describe(
 
 
     it(
+      "accepts actual production SERP Replay READY instead of rejecting it as unknown",
+      () => {
+        const result = buildProductionFinalArticleReadinessV1({
+          plan: plan(),
+          writerRun: goodWriterRun(),
+          articleBodyMarkdown: buildCompliantArticleBody(plan()),
+          contentGatePass: true,
+          publicationPolicyPass: true,
+          serpReplay: { status: "READY", blockers: [] },
+          serpReplayWarning: null,
+        });
+
+        expect(result.status).toBe("PASS");
+        expect(result.blockers).not.toContain(
+          "FINAL_READINESS_SERP_REPLAY_FAILED"
+        );
+      }
+    );
+
+    it(
+      "blocks an actual production SERP Replay BLOCK instead of accepting it",
+      () => {
+        const result = buildProductionFinalArticleReadinessV1({
+          plan: plan(),
+          writerRun: goodWriterRun(),
+          articleBodyMarkdown: buildCompliantArticleBody(plan()),
+          contentGatePass: true,
+          publicationPolicyPass: true,
+          serpReplay: { status: "BLOCK", blockers: ["SERP_REPLAY_BLOCK"] },
+          serpReplayWarning: null,
+        });
+
+        expect(result.status).toBe("FAIL");
+        expect(result.blockers).toContain(
+          "FINAL_READINESS_SERP_REPLAY_FAILED"
+        );
+      }
+    );
+
+    it(
       "fails the historical shallow 249-word shape because coverage is missing",
       () => {
         const shallowWriterRun = {
