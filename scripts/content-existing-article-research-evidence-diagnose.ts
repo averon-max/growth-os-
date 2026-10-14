@@ -15,9 +15,18 @@ loadEnvConfig(process.cwd());
 
 async function main(){
   const articleId=process.argv[2];
+  const extras=process.argv.slice(3);
+  const allSources=extras.includes("--all-sources");
+  const focusArgument=extras.find(arg=>arg.startsWith("--focus="));
+  const focusIds=focusArgument
+    ?focusArgument.slice("--focus=".length).split(",").filter(Boolean):[];
   if(!articleId||!/^[a-zA-Z0-9_-]{5,100}$/.test(articleId)||
-    process.argv.length!==3)
-    throw new Error("USAGE: content-existing-article-research-evidence-diagnose.ts ARTICLE_ID");
+    extras.some(arg=>arg!=="--all-sources"&&
+      !/^--focus=section-[a-zA-Z0-9,-]+$/.test(arg))||
+    (focusArgument!==undefined&&
+      (focusIds.length===0||focusIds.length>8||
+       new Set(focusIds).size!==focusIds.length)))
+    throw new Error("USAGE: content-existing-article-research-evidence-diagnose.ts ARTICLE_ID [--all-sources] [--focus=section-4,section-5]");
   const {prisma}=await import("../src/lib/prisma");
   try{
     const article=await prisma.contentArticle.findUnique({
@@ -61,8 +70,18 @@ async function main(){
         runtime.claimLedger.claims.map(c=>c.text),
       proposals:bounded.proposals,
     });
-    const sources=runtime.evidenceGraph.sources.slice(0,24)
+    // Default keeps the historical 24-page diagnostic unchanged.
+    // Explicit opt-in scans up to 64 ALREADY SAVED public sources,
+    // including sources previously skipped by the production 24-URL
+    // fetch ceiling. No paid searches, model calls or DB mutations.
+    const sources=runtime.evidenceGraph.sources
+      .slice(0,allSources?64:24)
       .map(s=>({id:s.id,url:s.url}));
+    const focus=new Set(focusIds);
+    const focusedClaims=focus.size>0
+      ?proposed.filter(claim=>focus.has(claim.sectionId)):proposed;
+    if(focusedClaims.length===0)
+      throw new Error("FOCUS_SECTIONS_NOT_IN_SAVED_PLAN");
     const {fetchSinglePage}=await import("../src/lib/crawler/crawler");
     const bodyRows:Array<{
       sourceId:string;bodyText:string|null;
@@ -93,7 +112,7 @@ async function main(){
     const {inspectResearchRecoveryEvidenceV1}=await import(
       "../src/lib/content/research-recovery-evidence-diagnostics-v1");
     const result=inspectResearchRecoveryEvidenceV1({
-      claims:proposed,sources,bodies:bodyRows,
+      claims:focusedClaims,sources,bodies:bodyRows,
     });
     const {rankEvidenceRecoveryExcerptsV1}=await import(
       "../src/lib/content/live-evidence-verification");
@@ -102,8 +121,10 @@ async function main(){
     const strictSections=new Set(result.claimDiagnostics
       .filter(c=>c.strictMatches>0).map(c=>c.sectionId));
     const missingSections=execution.sections.filter(section=>
-      section.state==="WRITABLE"&&!strictSections.has(section.id));
-    const missingClaims=proposed.filter(claim=>
+      section.state==="WRITABLE"&&
+      (focus.size===0||focus.has(section.id))&&
+      !strictSections.has(section.id));
+    const missingClaims=focusedClaims.filter(claim=>
       missingSections.some(section=>section.id===claim.sectionId));
     const sourceCandidates=missingClaims.flatMap(claim=>
       sources.flatMap(source=>{
@@ -143,8 +164,13 @@ async function main(){
       articleId,briefId:article.briefId,articleStatus:article.status,
       cachedPaidPlanner:true,
       proposedClaims:proposed.length,
+      auditedClaims:focusedClaims.length,
+      focusedSections:focusIds,
+      scannedEntireSavedInventory:allSources,
       sourceInventoryTotal:runtime.evidenceGraph.sources.length,
       checkedSources:sources.length,
+      unscannedSources:Math.max(0,runtime.evidenceGraph.sources.length-
+        sources.length),
       fetchFailures:bodyRows.filter(b=>b.status==="FETCH_FAILED").length,
       ...result,
       sourceFirstReadiness,
