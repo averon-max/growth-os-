@@ -46,7 +46,11 @@ import {
   discoverClaimEvidenceFallbackSourcesV1,
   collectEvidenceClaimRecoveryCandidatesV1,
 } from "./live-evidence-verification";
-import {reviewAndConstrainVerifiedEvidenceV1} from "./semantic-evidence-review-v1";
+import {reviewAndConstrainVerifiedEvidenceV1,
+  reviewSemanticEvidenceWithContentAiV1,
+  type SemanticEvidencePairV1,
+  type SemanticEvidenceJudgmentV1,
+} from "./semantic-evidence-review-v1";
 import {
   buildSourceGroundedReplanPacketV1,
   recoverSourceGroundedClaimReplanFromCachedModelV1,
@@ -661,9 +665,41 @@ export async function recoverExistingArticleResearchV1({
      * This review also REASSESSES the old 14 lexical matches. An
      * unsupported old claim is not automatically inherited forever.
      */
+    // Pay for each exact (claim, currently fetched excerpt) semantic
+    // batch at most once per immutable article/evidence input. Cached
+    // judgments are NOT reusable evidence by themselves: the pipeline
+    // MUST still live-refetch and strictly re-verify the same excerpts.
+    let semanticPaidBatchCalls=0;
+    let semanticCachedBatchCalls=0;
+    const semanticJudge=async(
+      pairs:readonly SemanticEvidencePairV1[],
+    ):Promise<readonly SemanticEvidenceJudgmentV1[]>=>{
+      const evidenceHash=hash({
+        version:"RESEARCH_RECOVERY_SEMANTIC_BATCH_V1",
+        pairs,
+      });
+      const scope={
+        articleId,briefId:original.briefId,
+        updatedAt:original.updatedAt.toISOString(),
+        evidenceSha256:evidenceHash,
+        directory:".growth-os-tmp/research-recovery/semantic/"+
+          evidenceHash.slice(0,20),
+      };
+      const cached=await readExistingResearchPlanningCheckpointV1(scope);
+      if(cached!==null){
+        semanticCachedBatchCalls++;
+        return JSON.parse(cached) as SemanticEvidenceJudgmentV1[];
+      }
+      await assertResearchPlanningCheckpointWritableV1(scope);
+      const verdicts=await reviewSemanticEvidenceWithContentAiV1(pairs);
+      await saveExistingResearchPlanningCheckpointV1(
+        scope,JSON.stringify(verdicts));
+      semanticPaidBatchCalls++;
+      return verdicts;
+    };
     const semanticReview=await reviewAndConstrainVerifiedEvidenceV1({
       claims:[...savedClaims,...proposed],
-      graph:newGraph,
+      graph:newGraph,judge:semanticJudge,
     });
     const graphAfterReview=semanticReview.graph;
     const verifiedIds=new Set(graphAfterReview.claimEvidence.filter(e=>
@@ -678,6 +714,8 @@ export async function recoverExistingArticleResearchV1({
     console.info("[content research recovery post-semantic authority]",{
       reviewedPairs:semanticReview.reviewedPairs,
       approvedPairs:semanticReview.approvedPairs,
+      cachedSemanticBatches:semanticCachedBatchCalls,
+      paidSemanticBatches:semanticPaidBatchCalls,
       sections:oldPlan.sections.filter(s=>s.state==="WRITABLE")
         .map(section=>{
           const priorIds=section.requiredClaimIds.filter(id=>
