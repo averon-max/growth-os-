@@ -19,13 +19,17 @@ async function main(){
   const args=process.argv.slice(2);
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
+  const previewPostSemantic=args.includes("--preview-post-semantic");
+  if(execute&&previewPostSemantic)
+    throw new Error("EXECUTE_AND_PREVIEW_ARE_MUTUALLY_EXCLUSIVE");
   const governmentSourceUrls=args
     .filter(a=>a.startsWith("--government-source="))
     .map(a=>a.slice("--government-source=".length));
   if(!articleId||!/^[A-Za-z0-9_-]{5,100}$/.test(articleId)||
-    args.some(a=>a!=="--execute"&&!a.startsWith("--article=")&&
+    args.some(a=>a!=="--execute"&&a!=="--preview-post-semantic"&&
+      !a.startsWith("--article=")&&
       !a.startsWith("--government-source="))){
-    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute]");
+    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute | --preview-post-semantic]");
   }
   // Validate before any paid or potentially networked execution.
   const {buildResearchRecoveryGovernmentSeedsV1}=await import(
@@ -74,7 +78,8 @@ async function main(){
       updatedAt:existing.updatedAt.toISOString(),evidenceSha256,
     });
     console.log(JSON.stringify({
-      mode:execute?"PAID_RECOVERY_EXPLICITLY_REQUESTED":"READ_ONLY_PREFLIGHT",
+      mode:execute?"PAID_RECOVERY_EXPLICITLY_REQUESTED":
+        previewPostSemantic?"CACHED_ONLY_POST_SEMANTIC_PREVIEW":"READ_ONLY_PREFLIGHT",
       articleId:existing.id,briefId:existing.briefId,
       status:existing.status,updatedAt:existing.updatedAt.toISOString(),
       siblingArticleCount:siblingCount,
@@ -88,7 +93,7 @@ async function main(){
       evidenceGaps:problems,
       ...(execute?{}:{aiCalls:0,databaseUnchanged:true}),
     },null,2));
-    if(!execute){
+    if(!execute&&!previewPostSemantic){
       console.log("NO_AI_CALLS_NO_DATABASE_WRITES_TO_RUN_PAID_PASS_EXECUTE");
       return;
     }
@@ -99,10 +104,12 @@ async function main(){
       "../src/lib/content/existing-article-research-recovery-v1");
     const result=await recoverExistingArticleResearchV1({
       articleId,expectedUpdatedAt:existing.updatedAt.toISOString(),
-      governmentSourceUrls,
+      governmentSourceUrls,previewPostSemantic,
     });
     console.log(JSON.stringify(result,null,2));
-    console.log("SAME_ARTICLE_ID_RESEARCH_RECOVERY_FINISHED");
+    console.log(previewPostSemantic
+      ?"READ_ONLY_CACHED_POST_SEMANTIC_PREVIEW_FINISHED"
+      :"SAME_ARTICLE_ID_RESEARCH_RECOVERY_FINISHED");
   }finally{
     await prisma.$disconnect();
   }
