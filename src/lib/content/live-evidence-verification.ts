@@ -2878,6 +2878,62 @@ export async function collectOfficialSectionProcedureCandidatesV1({
   return result;
 }
 
+/**
+ * Secondary official procedure sentences for one post-semantic rescue.
+ * A previous speculative claim can be rejected even though another
+ * actionable sentence exists in the SAME government page. We return
+ * LITERAL sentences only (never evidence authority); the caller must
+ * re-fetch and re-check before allowing the Writer to use them.
+ */
+export interface OfficialPostSemanticProcedureAlternativeV1{
+  readonly sectionId:string;
+  readonly sourceId:string;
+  readonly sourceUrl:string;
+  readonly text:string;
+}
+export async function collectOfficialPostSemanticProcedureAlternativesV1({
+  graph,sections,governmentSourceIds,
+}:{
+  graph:EvidenceGraphInput;
+  sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
+  governmentSourceIds:readonly string[];
+}):Promise<readonly OfficialPostSemanticProcedureAlternativeV1[]>{
+  if(sections.length===0||governmentSourceIds.length===0)return [];
+  const allowed=new Set(governmentSourceIds);
+  const government=graph.sources.filter(source=>
+    allowed.has(source.id)&&source.sourceType==="PRIMARY_GOVERNMENT"&&
+    source.authorityTier==="A").slice(0,6);
+  if(government.length===0)return [];
+  const bodies=await fetchSourceBodies({
+    sources:government,claimEvidence:[],
+  },6);
+  const result:OfficialPostSemanticProcedureAlternativeV1[]=[];
+  for(const section of sections){
+    const ranked=government.flatMap(source=>{
+      const body=bodies.get(source.id);
+      if(!body)return [];
+      return rankOfficialProceduralFactSentencesV1({
+        heading:section.heading,mission:section.mission,
+        bodyText:body,maxCandidates:8,
+      }).map(sentence=>({...sentence,source}));
+    }).sort((a,b)=>b.score-a.score||
+      a.source.url.localeCompare(b.source.url));
+    const seen=new Set<string>();
+    for(const item of ranked){
+      const key=normalize(item.excerpt);
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      result.push({
+        sectionId:section.id,sourceId:item.source.id,
+        sourceUrl:item.source.url,text:item.excerpt,
+      });
+      // At most eight existing-source suggestions PER section.
+      if(seen.size>=8)break;
+    }
+  }
+  return result;
+}
+
 export async function collectEvidenceClaimRecoveryCandidatesV1({
   graph,
   claims,
