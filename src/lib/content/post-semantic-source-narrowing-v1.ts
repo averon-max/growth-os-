@@ -7,8 +7,6 @@
  * fetched and lexically verified source excerpt. It is never approved
  * here: a subsequent clean strict refetch + semantic pass is required.
  */
-import {findVerifiedExcerptCandidateV1}
-  from "./live-evidence-verification";
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
 import type {ResearchExpansionClaimV1}
   from "./existing-article-research-plan-v1";
@@ -86,11 +84,10 @@ export function selectPostSemanticSourceNarrowingV1({
             sentence.toLowerCase()===claim.text.toLowerCase()||
             usedTexts.has(sentence.toLowerCase())||
             prior.some(x=>similarity(x,sentence)>0.7))return false;
-          // Matching a literal excerpt does not make it a verified
-          // claim; the normal refetch and semantic review must follow.
-          return findVerifiedExcerptCandidateV1({
-            claimText:sentence,bodyText:e.excerpt!,
-          })!==null;
+          // This is ONLY a candidate literal sentence. The caller
+          // must re-fetch the page, pass the unchanged strict verifier,
+          // and then obtain an independent semantic verdict.
+          return true;
         }).map(sentence=>({
           claim,source:src,evidence:e,sentence,
           score:tokens(sentence).filter(t=>focus.has(t)).length+
