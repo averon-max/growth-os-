@@ -103,7 +103,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
 
   it("blocks paid semantic review if any section has no strict verified factual quote",()=>{
     const strict=engine.indexOf("SOURCE_GROUNDING_BEFORE_PAID_SEMANTIC_REVIEW_V1");
-    const scope=engine.indexOf("strictBySection.every(section=>section.lexicallyVerified>=1)");
+    const scope=engine.indexOf("strictBySection.every(section=>section.lexicallyVerified>=2)");
     const semantic=engine.indexOf("reviewAndConstrainVerifiedEvidenceV1({");
     expect(strict).toBeGreaterThan(0);
     expect(scope).toBeGreaterThan(strict);
@@ -177,6 +177,31 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("literalSourceFallbacks");
   });
 
+  it("only expands original persisted source fetch cap for this explicit recovery",()=>{
+    const live=read("./live-evidence-verification.ts");
+    expect(live).toContain("maxSources=MAX_EVIDENCE_FETCH_SOURCES");
+    expect(live).toContain("Math.max(1,Math.min(64,Math.floor(maxSources)))");
+    expect(engine).toContain("sources:[...researchSources]");
+    expect(engine).toContain("claims:proposed,maxSources:64");
+    expect(engine).toContain("maxPerClaim:3,maxSources:64");
+  });
+  it("permits explicit safe government evidence sources, never direct proof",()=>{
+    const cli=read("../../../scripts/content-existing-article-research-recovery-live.ts");
+    expect(engine).toContain("buildResearchRecoveryGovernmentSeedsV1(");
+    expect(engine).toContain("governmentSourceUrls");
+    expect(cli).toContain("--government-source=");
+    expect(cli).toContain("buildResearchRecoveryGovernmentSeedsV1(governmentSourceUrls,[])");
+    expect(cli).toContain("governmentSourceUrls,");
+  });
+  it("avoids paying a second time for the same semantic review pairs",()=>{
+    expect(engine).toContain("RESEARCH_RECOVERY_SEMANTIC_BATCH_V1");
+    expect(engine).toContain("readExistingResearchPlanningCheckpointV1(scope)");
+    expect(engine).toContain("saveExistingResearchPlanningCheckpointV1(\n        scope,JSON.stringify(verdicts)");
+    expect(engine).toContain("reviewSemanticEvidenceWithContentAiV1(pairs)");
+    expect(engine).toContain("graph:newGraph,judge:semanticJudge");
+    expect(engine).toContain("cachedSemanticBatches:semanticCachedBatchCalls");
+    expect(engine).toContain("paidSemanticBatches:semanticPaidBatchCalls");
+  });
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
