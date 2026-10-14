@@ -303,54 +303,76 @@ export function recoverSourceGroundedClaimReplanFromCachedModelV1({
   const usedQuotes=new Set(repaired.map(entry=>entry.quoteId));
   const countInSection=(sectionId:string)=>repaired.filter(entry=>
     claimById.get(entry.claimId)?.sectionId===sectionId).length;
-  for(const section of packet){
-    const targetCount=Math.min(2,section.quotes.length);
-    while(countInSection(section.sectionId)<targetCount){
-      const choices=section.quotes.flatMap(quote=>{
-        const claim=claimById.get(quote.claimId);
-        if(!claim||claim.sectionId!==section.sectionId||
-          usedClaims.has(claim.id)||usedQuotes.has(quote.quoteId))
-          return [];
-        return literalSourceSentencesV1(quote.excerpt)
-          .filter(sentence=>
-            sentence.toLowerCase()!==claim.text.toLowerCase()&&
-            !repaired.some(entry=>entry.text.toLowerCase()===
-              sentence.toLowerCase()))
-          .map(sentence=>({
-            quote,claim,sentence,
-            relevance:Math.max(
-              lexicalIdentityV1(sentence,section.heading+" "+section.mission),
-              lexicalIdentityV1(sentence,claim.text),
-            ),
-          }));
-      }).filter(candidate=>candidate.relevance>0)
-        .sort((a,b)=>b.relevance-a.relevance||
-          b.quote.coverage-a.quote.coverage||
-          a.quote.quoteId.localeCompare(b.quote.quoteId)||
-          a.sentence.localeCompare(b.sentence));
-      const selected=choices[0];
-      if(!selected){
-        if(countInSection(section.sectionId)===0)
-          throw code("MISSING_SECTION_WITHOUT_STRICT_RELEVANT_QUOTE:"+
-            section.sectionId);
-        // Never fill the depth budget with an unrelated or duplicate
-        // source sentence; an upstream depth gate remains authoritative.
-        break;
+  /*
+   * TWO-PASS FAIR SOURCE COVERAGE
+   *
+   * First restore ONE supported fact for every section that the cached
+   * model omitted. Only once all sections have coverage may another
+   * section take a second quote. Otherwise earlier sections can take
+   * a shared literal sentence as an optional second fact and starve
+   * a later section of its ONLY supported source sentence.
+   *
+   * On the minimum-coverage pass prefer unique text, but allow a
+   * previously used sentence if that is the only authorized source
+   * quote for the section: it still must pass strict live verification
+   * and semantic entailment, and must never count as an extra fact.
+   * The depth pass requires distinct wording across ALL sections.
+   */
+  for(const minimumCoverage of [true,false]){
+    for(const section of packet){
+      const targetCount=minimumCoverage
+        ?1:Math.min(2,section.quotes.length);
+      while(countInSection(section.sectionId)<targetCount){
+        const choices=section.quotes.flatMap(quote=>{
+          const claim=claimById.get(quote.claimId);
+          if(!claim||claim.sectionId!==section.sectionId||
+            usedClaims.has(claim.id)||usedQuotes.has(quote.quoteId))
+            return [];
+          return literalSourceSentencesV1(quote.excerpt)
+            .filter(sentence=>
+              sentence.toLowerCase()!==claim.text.toLowerCase())
+            .map(sentence=>({
+              quote,claim,sentence,
+              duplicated:repaired.some(entry=>
+                entry.text.toLowerCase()===sentence.toLowerCase()),
+              relevance:Math.max(
+                lexicalIdentityV1(
+                  sentence,section.heading+" "+section.mission),
+                lexicalIdentityV1(sentence,claim.text),
+              ),
+            }));
+        }).filter(candidate=>candidate.relevance>0&&
+          (minimumCoverage||!candidate.duplicated))
+          .sort((a,b)=>
+            Number(a.duplicated)-Number(b.duplicated)||
+            b.relevance-a.relevance||
+            b.quote.coverage-a.quote.coverage||
+            a.quote.quoteId.localeCompare(b.quote.quoteId)||
+            a.sentence.localeCompare(b.sentence));
+        const selected=choices[0];
+        if(!selected){
+          if(countInSection(section.sectionId)===0)
+            throw code("MISSING_SECTION_WITHOUT_STRICT_RELEVANT_QUOTE:"+
+              section.sectionId);
+          // Never fill editorial depth with a duplicate or an off-topic
+          // sentence. The post-semantic information gain gate remains.
+          break;
+        }
+        const omitted=countInSection(section.sectionId)===0;
+        repaired.push({
+          claimId:selected.claim.id,quoteId:selected.quote.quoteId,
+          text:selected.sentence,
+        });
+        fallbackDetails.push({
+          sectionId:section.sectionId,claimId:selected.claim.id,
+          sourceId:selected.quote.sourceId,
+          reason:omitted
+            ?"MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE"
+            :"SECOND_SECTION_FACT_FROM_DISTINCT_LITERAL_SOURCE",
+        });
+        usedClaims.add(selected.claim.id);
+        usedQuotes.add(selected.quote.quoteId);
       }
-      const omitted=countInSection(section.sectionId)===0;
-      repaired.push({
-        claimId:selected.claim.id,quoteId:selected.quote.quoteId,
-        text:selected.sentence,
-      });
-      fallbackDetails.push({
-        sectionId:section.sectionId,claimId:selected.claim.id,
-        sourceId:selected.quote.sourceId,
-        reason:omitted
-          ?"MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE"
-          :"SECOND_SECTION_FACT_FROM_DISTINCT_LITERAL_SOURCE",
-      });
-      usedClaims.add(selected.claim.id);
-      usedQuotes.add(selected.quote.quoteId);
     }
   }
   const claims=validateSourceGroundedClaimReplanV1({
