@@ -1,0 +1,36 @@
+name: Writer closure checks
+
+on:
+  pull_request:
+    branches:
+      - fix/writer-direct-answer-replan-20261012
+    paths:
+      - "src/lib/content/master-article-critic-repair-execution.ts"
+      - "src/lib/content/master-article-critic-repair-execution.test.ts"
+      - "src/lib/content/production-final-article-readiness-adapter-v1.ts"
+      - "src/lib/content/production-final-article-readiness-adapter-v1.test.ts"
+      - ".github/workflows/writer-closure-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Local placeholder for Prisma generate and tests; no live DB access.
+      DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies and generate Prisma client
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Focused Writer regression
+        run: npx vitest run src/lib/content/master-article-critic-repair-execution.test.ts src/lib/content/production-final-article-readiness-adapter-v1.test.ts
