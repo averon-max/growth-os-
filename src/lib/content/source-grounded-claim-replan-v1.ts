@@ -81,11 +81,12 @@ export function buildSourceGroundedReplanPacketV1({
     });
     const usedHosts=new Set<string>();
     const quotes:SourceGroundedReplanQuoteV1[]=[];
-    for(const match of ranked){
+    const usedClaimIds=new Set<string>();
+    const selectQuote=(match:EvidenceClaimRecoveryCandidateV1)=>{
       let host="";
       try{host=new URL(match.sourceUrl).hostname.toLowerCase();}
-      catch{continue;}
-      if(usedHosts.has(host))continue;
+      catch{return false;}
+      if(usedHosts.has(host))return false;
       const excerpt=match.excerpt.trim();
       quotes.push({
         quoteId:"quote-"+digest([
@@ -98,7 +99,19 @@ export function buildSourceGroundedReplanPacketV1({
         coverage:match.coverage,
       });
       usedHosts.add(host);
+      usedClaimIds.add(match.claimId);
+      return true;
+    };
+    // Give several distinct atomic facets a chance before spending
+    // all four quote slots on the first high-ranked claim.
+    for(const match of ranked){
+      if(usedClaimIds.has(match.claimId))continue;
+      selectQuote(match);
       if(quotes.length>=4)break;
+    }
+    for(const match of ranked){
+      if(quotes.length>=4)break;
+      selectQuote(match);
     }
     result.push({
       sectionId:section.id,heading:section.heading,
@@ -115,7 +128,12 @@ export function validateSourceGroundedClaimReplanV1({
   replacements:readonly SourceGroundedClaimReplacementV1[];
   originalClaims:readonly ResearchExpansionClaimV1[];
 }):readonly ResearchExpansionClaimV1[]{
-  if(!Array.isArray(replacements)||replacements.length!==packet.length)
+  // One or two separately sourced, atomic facts may be recovered
+  // for each missing section. More facts require more source authority,
+  // NOT repeating the same quote or inventing a new claim id.
+  if(!Array.isArray(replacements)||
+    replacements.length<packet.length||
+    replacements.length>packet.length*2)
     throw code("REPLACEMENT_SECTION_COVERAGE");
   const claimed=new Map(originalClaims.map(c=>[c.id,c] as const));
   const authorized=new Map(packet.flatMap(section=>
@@ -123,7 +141,8 @@ export function validateSourceGroundedClaimReplanV1({
       ...q,sectionId:section.sectionId,
     }] as const)));
   const requiredSections=new Set(packet.map(s=>s.sectionId));
-  const seenClaims=new Set<string>(),seenSections=new Set<string>();
+  const seenClaims=new Set<string>(),seenQuotes=new Set<string>();
+  const sectionCounts=new Map<string,number>();
   const patches=new Map<string,ResearchExpansionClaimV1>();
   for(const output of replacements){
     if(!output||typeof output.claimId!=="string"||
@@ -135,7 +154,8 @@ export function validateSourceGroundedClaimReplanV1({
     const replacement=output.text.trim();
     if(!existing||!quote||existing.sectionId!==quote.sectionId||
       existing.id!==quote.claimId||
-      seenClaims.has(existing.id)||seenSections.has(existing.sectionId)||
+      seenClaims.has(existing.id)||seenQuotes.has(quote.quoteId)||
+      (sectionCounts.get(existing.sectionId)??0)>=2||
       !requiredSections.has(existing.sectionId))
       throw code("UNAUTHORIZED_CLAIM_OR_QUOTE");
     if(replacement.length<24||replacement.length>320||
@@ -150,9 +170,11 @@ export function validateSourceGroundedClaimReplanV1({
       throw code("UNMODIFIED_SPECULATIVE_CLAIM");
     patches.set(existing.id,{...existing,text:replacement});
     seenClaims.add(existing.id);
-    seenSections.add(existing.sectionId);
+    seenQuotes.add(quote.quoteId);
+    sectionCounts.set(existing.sectionId,
+      (sectionCounts.get(existing.sectionId)??0)+1);
   }
-  if(seenSections.size!==requiredSections.size)
+  if([...requiredSections].some(id=>!sectionCounts.has(id)))
     throw code("MISSING_SECTION_REPLACEMENT");
   return originalClaims.map(c=>patches.get(c.id)??c);
 }
