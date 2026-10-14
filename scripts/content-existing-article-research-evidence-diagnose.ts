@@ -4,8 +4,9 @@
  *
  * No DataForSEO, OpenAI, database mutations, new articles or new
  * checkpoints. Real public HTTP page refetch through SSRF-safe crawler.
- * Default: first 24 pages. Explicit --all-sources: up to 64
- * previously saved sources, concurrency=3, <=8s each.
+ * Default: first 24 pages. Explicit --all-sources: up to 72
+ * saved or preflight-validated government sources, concurrency=3,
+ * <=8s each.
  *
  * NODE_OPTIONS=--conditions=react-server npx tsx \
  *  scripts/content-existing-article-research-evidence-diagnose.ts ARTICLE_ID \
@@ -19,16 +20,20 @@ async function main(){
   const articleId=process.argv[2];
   const extras=process.argv.slice(3);
   const allSources=extras.includes("--all-sources");
+  const governmentSourceUrls=extras
+    .filter(a=>a.startsWith("--government-source="))
+    .map(a=>a.slice("--government-source=".length));
   const focusArgument=extras.find(arg=>arg.startsWith("--focus="));
   const focusIds=focusArgument
     ?focusArgument.slice("--focus=".length).split(",").filter(Boolean):[];
   if(!articleId||!/^[a-zA-Z0-9_-]{5,100}$/.test(articleId)||
     extras.some(arg=>arg!=="--all-sources"&&
+      !arg.startsWith("--government-source=")&&
       !/^--focus=section-[a-zA-Z0-9,-]+$/.test(arg))||
     (focusArgument!==undefined&&
       (focusIds.length===0||focusIds.length>8||
        new Set(focusIds).size!==focusIds.length)))
-    throw new Error("USAGE: content-existing-article-research-evidence-diagnose.ts ARTICLE_ID [--all-sources] [--focus=section-4,section-5]");
+    throw new Error("USAGE: content-existing-article-research-evidence-diagnose.ts ARTICLE_ID [--all-sources] [--focus=section-6] [--government-source=https://consumer.ftc.gov/...]");
   const {prisma}=await import("../src/lib/prisma");
   try{
     const article=await prisma.contentArticle.findUnique({
@@ -76,8 +81,13 @@ async function main(){
     // Explicit opt-in scans up to 64 ALREADY SAVED public sources,
     // including sources previously skipped by the production 24-URL
     // fetch ceiling. No paid searches, model calls or DB mutations.
-    const sources=runtime.evidenceGraph.sources
-      .slice(0,allSources?64:24)
+    const {buildResearchRecoveryGovernmentSeedsV1}=await import(
+      "../src/lib/content/research-recovery-authoritative-sources-v1");
+    const seeds=buildResearchRecoveryGovernmentSeedsV1(
+      governmentSourceUrls,runtime.evidenceGraph.sources);
+    const researchSources=[...seeds,...runtime.evidenceGraph.sources];
+    const sources=researchSources
+      .slice(0,allSources?72:24)
       .map(s=>({id:s.id,url:s.url}));
     const focus=new Set(focusIds);
     const focusedClaims=focus.size>0
@@ -118,14 +128,16 @@ async function main(){
     });
     const {rankEvidenceRecoveryExcerptsV1}=await import(
       "../src/lib/content/live-evidence-verification");
-    const {buildSourceGroundedReplanPacketV1}=await import(
+    const {buildSourceGroundedReplanPacketV1,
+      findSourceGroundedDiscoveryGapsV1}=await import(
       "../src/lib/content/source-grounded-claim-replan-v1");
-    const strictSections=new Set(result.claimDiagnostics
-      .filter(c=>c.strictMatches>0).map(c=>c.sectionId));
+    const strictClaimIds=new Set(result.claimDiagnostics
+      .filter(c=>c.strictMatches>0).map(c=>c.claimId));
     const missingSections=execution.sections.filter(section=>
       section.state==="WRITABLE"&&
       (focus.size===0||focus.has(section.id))&&
-      !strictSections.has(section.id));
+      focusedClaims.filter(c=>c.sectionId===section.id&&
+        strictClaimIds.has(c.id)).length<2);
     const missingClaims=focusedClaims.filter(claim=>
       missingSections.some(section=>section.id===claim.sectionId));
     const sourceCandidates=missingClaims.flatMap(claim=>
@@ -145,20 +157,27 @@ async function main(){
       })),
       claims:missingClaims,
       candidates:sourceCandidates,
-      sources:runtime.evidenceGraph.sources,
+      sources:researchSources,
+    });
+    const discoveryGaps=findSourceGroundedDiscoveryGapsV1({
+      packet,verifiedClaimIds:[...strictClaimIds],
     });
     const sourceFirstReadiness={
       missingSections:missingSections.map(s=>s.id),
       sections:packet.map(p=>({
         sectionId:p.sectionId,heading:p.heading,
         authoritativeQuotes:p.quotes.length,
+        distinctQuotedClaimIds:[...new Set(p.quotes.map(q=>q.claimId))],
         sourceHosts:p.quotes.map(q=>new URL(q.sourceUrl).hostname),
         sourceQuotePreviews:p.quotes.map(q=>q.excerpt.slice(0,160)),
       })),
+      sectionsStillNeedingDiscovery:discoveryGaps,
       allMissingSectionsHaveSourceQuotes:
         packet.every(p=>p.quotes.length>0),
+      hasTwoDistinctClaimCandidatesPerSection:
+        discoveryGaps.length===0,
       callsNeededIfLiveRecoveryProceeds:
-        packet.length>0&&packet.every(p=>p.quotes.length>0)?1:0,
+        packet.length>0&&discoveryGaps.length===0?1:0,
       qualification:"Quote relevance and semantic entailment are NOT proven by this diagnostic.",
     };
     console.log(JSON.stringify({
@@ -169,9 +188,11 @@ async function main(){
       auditedClaims:focusedClaims.length,
       focusedSections:focusIds,
       scannedEntireSavedInventory:allSources,
+      governmentSourceSeedsRequested:governmentSourceUrls.length,
+      governmentSourceSeedsAdded:seeds.length,
       sourceInventoryTotal:runtime.evidenceGraph.sources.length,
       checkedSources:sources.length,
-      unscannedSources:Math.max(0,runtime.evidenceGraph.sources.length-
+      unscannedSources:Math.max(0,researchSources.length-
         sources.length),
       fetchFailures:bodyRows.filter(b=>b.status==="FETCH_FAILED").length,
       ...result,
