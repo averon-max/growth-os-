@@ -34,6 +34,11 @@ const similarity=(a:string,b:string)=>{
 const procedureQuestion=(s:string)=>
   /\b(?:what (?:should|can|do)|how (?:do|to|can)|steps? to)\b/i.test(s);
 const action=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place|notify)\b/i;
+const directedAction=(sentence:string)=>
+  action.test(sentence)&&(
+    /\b(?:you|your|should|must)\b/i.test(sentence)||
+    /^(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place)\b/i.test(sentence)
+  );
 const sentenceParts=(text:string):readonly string[]=>text
   .replace(/\s+/g," ").trim()
   .split(/(?<=[.!?])\s+/)
@@ -62,6 +67,9 @@ export function selectPostSemanticSourceNarrowingV1({
     const rejected=sectionClaims.filter(c=>!approved.has(c.id));
     if(rejected.length===0)continue;
     const focus=new Set(tokens(section.heading+" "+section.mission));
+    const headingTokens=new Set(tokens(section.heading));
+    const missionSpecific=new Set(tokens(section.mission)
+      .filter(t=>!headingTokens.has(t)));
     const prior=good.map(c=>c.text);
     const candidates=rejected.flatMap(claim=>
       originalEvidence.filter(e=>e.claimId===claim.id&&
@@ -74,7 +82,7 @@ export function selectPostSemanticSourceNarrowingV1({
         return sentenceParts(e.excerpt!).filter(sentence=>{
           const shared=tokens(sentence).filter(t=>focus.has(t)).length;
           if(shared<2||
-            procedureQuestion(section.heading)&&!action.test(sentence)||
+            procedureQuestion(section.heading)&&!directedAction(sentence)||
             sentence.toLowerCase()===claim.text.toLowerCase()||
             usedTexts.has(sentence.toLowerCase())||
             prior.some(x=>similarity(x,sentence)>0.7))return false;
@@ -85,7 +93,8 @@ export function selectPostSemanticSourceNarrowingV1({
           })!==null;
         }).map(sentence=>({
           claim,source:src,evidence:e,sentence,
-          score:tokens(sentence).filter(t=>focus.has(t)).length,
+          score:tokens(sentence).filter(t=>focus.has(t)).length+
+            4*tokens(sentence).filter(t=>missionSpecific.has(t)).length,
         }));
       }));
     candidates.sort((a,b)=>
