@@ -2949,26 +2949,50 @@ export interface PostSemanticComparisonAlternativeV1 {
   readonly sourceUrl:string;
   readonly text:string;
 }
+/**
+ * Shared with post-semantic claim selection. A "what should you look
+ * for in ..." service-scope question is a comparison, NOT an action
+ * plan to fix a credit file.
+ */
+export function isServiceChoiceSectionV1(heading:string):boolean{
+  return /\b(?:how\s+(?:(?:to|do\s+you|should\s+you)\s+)?(?:choose|compare|select)|what\s+(?:(?:should|can|do)\s+you\s+)?(?:look\s+for|compare|consider)|which\s+(?:features?|factors?)\s+(?:should|do)\s+you\s+(?:compare|consider))\b/i
+    .test(heading);
+}
+/**
+ * Selection information must describe a concrete service dimension,
+ * not merely restate the definition of monitoring or number of bureaus.
+ * This selects source candidates only, never fact authority.
+ */
+export function isServiceChoiceSourceFactV1(sentence:string):boolean{
+  if(!/\b(?:credit|monitoring|service|services|report|reports)\b/i.test(sentence))
+    return false;
+  const costOrFeatures=/\b(?:costs?|prices?|fees?|free|paid|premium|features?|subscriptions?|plans?)\b/i;
+  const alertTypes=/\b(?:alerts?|notifications?|notifies|notify)\b/i.test(sentence)&&
+    /\b(?:changes?|accounts?|inquir(?:y|ies)|activities?|events?|reports?|fraud|identity|suspicious)\b/i.test(sentence);
+  const scopeDifference=/\b(?:includes?|covers?|tracks?|monitors?|detects?|checks?|does not cover|does not include)\b/i.test(sentence)&&
+    /\b(?:inquir(?:y|ies)|new accounts?|identity|fraud|changes? to|types? of|account activity)\b/i.test(sentence);
+  return costOrFeatures.test(sentence)||alertTypes||scopeDifference;
+}
 export function rankCreditMonitoringComparisonSentencesV1({
   heading,mission,bodyText,
 }:{
   heading:string;mission:string;bodyText:string;
 }):readonly string[]{
-  if(!/\\b(?:how to (?:choose|compare|select)|what to (?:look for|compare))\\b/i
-    .test(heading))return [];
+  if(!isServiceChoiceSectionV1(heading))return [];
   const topic=new Set(semanticTokens(heading+" "+mission));
-  const comparison=/\\b(?:costs?|prices?|fees?|free|paid|premium|features?|alerts?|plans?|subscription|coverage)\\b/i;
-  const subject=/\\b(?:credit|monitoring|services?|reports?|bureaus?)\\b/i;
+  const comparison=/\b(?:costs?|prices?|fees?|free|paid|premium|features?|alerts?|plans?|subscriptions?|coverage|notifications?|notifies|notify|includes?|covers?|tracks?|inquir(?:y|ies)|changes?)\b/i;
+  const subject=/\b(?:credit|monitoring|services?|reports?|bureaus?)\b/i;
   const ranked=sentenceWindows(bodyText)
     .filter(s=>s.length>=65&&s.length<=320&&
       /[.!]$/.test(s)&&!s.includes("?")&&
-      s.split(/(?<=[.!?])\\s+/).length===1&&
-      comparison.test(s)&&subject.test(s))
+      s.split(/(?<=[.!?])\s+/).length===1&&
+      comparison.test(s)&&subject.test(s)&&
+      isServiceChoiceSourceFactV1(s))
     .map(text=>({
       text,shared:semanticTokens(text).filter(t=>topic.has(t)).length,
-      specific:/\\b(?:cost|price|fee|free|paid|premium|subscription|feature)\\b/i.test(text),
+      specific:/\b(?:costs?|prices?|fees?|free|paid|premium|subscriptions?|features?|alerts?|notifications?|accounts?|inquir(?:y|ies)|changes?|identity|fraud)\b/i.test(text),
     }))
-    .filter(x=>x.shared>=2&&x.specific)
+    .filter(x=>x.shared>=1&&x.specific)
     .sort((a,b)=>b.shared-a.shared||a.text.length-b.text.length);
   const seen=new Set<string>(),out:string[]=[];
   for(const x of ranked){
