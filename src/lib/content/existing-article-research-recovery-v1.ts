@@ -20,6 +20,8 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {buildResearchRecoveryGovernmentSeedsV1}
+  from "./research-recovery-authoritative-sources-v1";
 import {
   encodeResearchDiscoveryCheckpointV1,
   decodeResearchDiscoveryCheckpointV1,
@@ -117,9 +119,10 @@ function siteDomain(url:string):string|null{
 }
 
 export async function recoverExistingArticleResearchV1({
-  articleId,expectedUpdatedAt,
+  articleId,expectedUpdatedAt,governmentSourceUrls=[],
 }:{
   articleId:string;expectedUpdatedAt:string;
+  governmentSourceUrls?:readonly string[];
 }){
   check(/^[a-zA-Z0-9_-]{5,100}$/.test(articleId),"ARTICLE_ID_INVALID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -161,8 +164,19 @@ export async function recoverExistingArticleResearchV1({
     const priorArticle=shape(original);
     const originalEvidenceFingerprint=hash(evidence.plan);
     const savedClaims=originalRuntime.claimLedger.claims;
+    const governmentSeeds=buildResearchRecoveryGovernmentSeedsV1(
+      governmentSourceUrls,originalRuntime.evidenceGraph.sources);
+    const researchSources=[
+      ...governmentSeeds,...originalRuntime.evidenceGraph.sources,
+    ];
+    console.info("[content research recovery source inventory]",{
+      saved:originalRuntime.evidenceGraph.sources.length,
+      explicitlyAuthorizedGovernmentSources:governmentSeeds.length,
+      fetchLimit:64,
+      governmentSourceHosts:governmentSeeds.map(s=>new URL(s.url).hostname),
+    });
     const sourceDomains=[...new Set(
-      originalRuntime.evidenceGraph.sources.map(s=>siteDomain(s.url))
+      researchSources.map(s=>siteDomain(s.url))
         .filter((host):host is string=>Boolean(host))
     )].slice(0,30);
     check(sourceDomains.length>0,"SOURCE_INVENTORY_EMPTY");
@@ -257,10 +271,10 @@ export async function recoverExistingArticleResearchV1({
      */
     let newGraph=await enrichLiveEvidenceGraphV1({
       graph:{
-        sources:[...originalRuntime.evidenceGraph.sources],
+        sources:[...researchSources],
         claimEvidence:[...originalRuntime.evidenceGraph.claimEvidence],
       },
-      claims:proposed,
+      claims:proposed,maxSources:64,
     });
     const newSupport=(id:string)=>newGraph.claimEvidence.some(e=>
       e.claimId===id&&e.kind==="VERIFIED_EXCERPT"&&
@@ -278,14 +292,15 @@ export async function recoverExistingArticleResearchV1({
      * quotes are only candidates, not verified facts.
      */
     const missingBeforeDiscovery=writable.filter(section=>
-      !proposed.some(c=>c.sectionId===section.id&&newSupport(c.id)));
+      proposed.filter(c=>c.sectionId===section.id&&newSupport(c.id))
+        .length<2);
     const missingBeforeDiscoveryIds=
       new Set(missingBeforeDiscovery.map(s=>s.id));
     const candidatesBeforeDiscovery=missingBeforeDiscovery.length
       ?await collectEvidenceClaimRecoveryCandidatesV1({
         graph:newGraph,
         claims:proposed.filter(c=>missingBeforeDiscoveryIds.has(c.sectionId)),
-        maxPerClaim:3,
+        maxPerClaim:3,maxSources:64,
       }):[];
     const packetBeforeDiscovery=buildSourceGroundedReplanPacketV1({
       sections:missingBeforeDiscovery.map(s=>({
@@ -456,7 +471,7 @@ export async function recoverExistingArticleResearchV1({
             sources:[...fetched,...newGraph.sources],
             claimEvidence:[...newGraph.claimEvidence],
           },
-          claims:proposed,
+          claims:proposed,maxSources:64,
         });
       }
     }
@@ -481,7 +496,8 @@ export async function recoverExistingArticleResearchV1({
      */
     let sourceGroundedReplanCount=0;
     const missingGroundingSections=writable.filter(section=>
-      !proposed.some(c=>c.sectionId===section.id&&newSupport(c.id)));
+      proposed.filter(c=>c.sectionId===section.id&&newSupport(c.id))
+        .length<2);
     if(missingGroundingSections.length){
       const missingSectionIds=new Set(missingGroundingSections.map(s=>s.id));
       const missingClaims=proposed.filter(c=>
@@ -495,6 +511,7 @@ export async function recoverExistingArticleResearchV1({
         ?candidatesBeforeDiscovery
         :await collectEvidenceClaimRecoveryCandidatesV1({
           graph:newGraph,claims:missingClaims,maxPerClaim:3,
+          maxSources:64,
         });
       const packet=reusePrecheckedQuotes
         ?packetBeforeDiscovery
@@ -597,7 +614,7 @@ export async function recoverExistingArticleResearchV1({
       proposed=grounded;
       sourceGroundedReplanCount=changed.length;
       newGraph=await enrichLiveEvidenceGraphV1({
-        graph:newGraph,claims:changed,
+        graph:newGraph,claims:changed,maxSources:64,
       });
       console.info("[content research recovery source-first verified]",{
         resumedSourceReplan:cached!==null,
@@ -632,9 +649,12 @@ export async function recoverExistingArticleResearchV1({
       reusedSourceDiscoveryCheckpoint,
       sections:strictBySection,
     });
-    check(strictBySection.every(section=>section.lexicallyVerified>=1),
+    // Full article recovery must provide multiple independent factual
+    // claims per section BEFORE spending on semantic model review.
+    // Existing old claims may be demoted and cannot be counted here.
+    check(strictBySection.every(section=>section.lexicallyVerified>=2),
       "MISSING_STRICT_CLAIM_EVIDENCE_IN_SECTIONS:"+
-      strictBySection.filter(s=>s.lexicallyVerified===0)
+      strictBySection.filter(s=>s.lexicallyVerified<2)
         .map(s=>s.sectionId).join(","));
 
     /*
