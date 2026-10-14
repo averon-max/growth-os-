@@ -4,10 +4,12 @@
  *
  * No DataForSEO, OpenAI, database mutations, new articles or new
  * checkpoints. Real public HTTP page refetch through SSRF-safe crawler.
- * Only 24 pages maximum, concurrency=3, <=8s each.
+ * Default: first 24 pages. Explicit --all-sources: up to 64
+ * previously saved sources, concurrency=3, <=8s each.
  *
  * NODE_OPTIONS=--conditions=react-server npx tsx \
- *  scripts/content-existing-article-research-evidence-diagnose.ts ARTICLE_ID
+ *  scripts/content-existing-article-research-evidence-diagnose.ts ARTICLE_ID \
+ *  --all-sources --focus=section-4,section-5,section-6
  */
 import {loadEnvConfig} from "@next/env";
 import {createHash} from "node:crypto";
