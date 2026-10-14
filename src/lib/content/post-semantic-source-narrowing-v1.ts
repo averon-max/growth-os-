@@ -14,6 +14,8 @@ import type {
   OfficialPostSemanticProcedureAlternativeV1,
   PostSemanticComparisonAlternativeV1,
 } from "./live-evidence-verification";
+import {isServiceChoiceSectionV1,isServiceChoiceSourceFactV1}
+  from "./live-evidence-verification";
 
 type Section={id:string;heading:string;mission:string};
 export interface PostSemanticNarrowingV1{
@@ -33,12 +35,13 @@ const similarity=(a:string,b:string)=>{
   return [...x].filter(k=>y.has(k)).length/
     Math.max(1,new Set([...x,...y]).size);
 };
-const comparisonQuestion=(s:string)=>
-  /\b(?:how to (?:choose|compare|select)|what to (?:look for|compare))\b/i
-    .test(s);
-const comparisonFact=(text:string)=>
-  /\b(?:costs?|prices?|fees?|free|paid|premium|features?|subscription)\b/i.test(text)&&
-  /\b(?:credit|monitoring|service|services|report|reports)\b/i.test(text);
+const comparisonQuestion=isServiceChoiceSectionV1;
+const comparisonFact=isServiceChoiceSourceFactV1;
+const repeatedBureauFacet=(sentence:string,known:readonly string[])=>
+  /\b(?:one|two|three|all|each|every|single)\b/i.test(sentence)&&
+  /\bbureaus?\b/i.test(sentence)&&known.some(text=>
+    /\bbureaus?\b/i.test(text)&&
+    /\b(?:one|two|three|all|each|every|single)\b/i.test(text));
 const procedureQuestion=(s:string)=>
   /\b(?:what (?:should|can|do)|how (?:do|to|can)|steps? to)\b/i.test(s)&&
   // "How to choose/compare" is an evaluation, not a repair action.
@@ -106,7 +109,7 @@ export function selectPostSemanticSourceNarrowingV1({
             procedureQuestion(section.heading)&&
               !isReaderInitiatedResponseStepV1(sentence)||
             comparisonQuestion(section.heading)&&
-              !comparisonFact(sentence)||
+              (!comparisonFact(sentence)||repeatedBureauFacet(sentence,prior))||
             sentence.toLowerCase()===claim.text.toLowerCase()||
             usedTexts.has(sentence.toLowerCase())||
             prior.some(x=>similarity(x,sentence)>0.7))return false;
@@ -177,6 +180,7 @@ export function selectPostSemanticSourceNarrowingV1({
         const sentence=alt.text.trim();
         if(sentence.length<65||sentence.length>320||
           !/[.!]$/.test(sentence)||!comparisonFact(sentence)||
+          repeatedBureauFacet(sentence,prior)||
           usedTexts.has(sentence.toLowerCase())||
           prior.some(p=>similarity(p,sentence)>0.7))continue;
         const shared=tokens(sentence).filter(t=>focus.has(t)).length;
