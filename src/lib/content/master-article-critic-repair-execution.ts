@@ -870,9 +870,34 @@ export async function executeMasterArticleCriticRepairReplayV1({
       finalCritics.suite.status === "BLOCK" ||
       missingCount(finalCritics) >= missingCount(initialCritics)
     ) {
-      throw new ContentGenerationError(
-        "OPTIONAL_KEYWORD_REPAIR_DID_NOT_IMPROVE_SAFELY"
+      // The original passed every mandatory critic. An optional
+      // keyword-only WARN repair must not turn it into a failed article.
+      // The attempted edit is discarded, not persisted or re-used by
+      // SERP Replay or final publication readiness.
+      console.warn(
+        "[content optional keyword repair rollback]",
+        {
+          code: "OPTIONAL_KEYWORD_REPAIR_DID_NOT_IMPROVE_SAFELY",
+          originalMissingKeywords: missingCount(initialCritics),
+          attemptedMissingKeywords: missingCount(finalCritics),
+          attemptedCriticStatus: finalCritics.suite.status,
+        }
       );
+      assertMasterArticleCriticExecutionPassed(initialCritics);
+      return Object.freeze({
+        version: "MASTER_ARTICLE_CRITIC_REPAIR_EXECUTION_V1" as const,
+        initialCritics,
+        repairPlan,
+        run,
+        finalCritics: initialCritics,
+        repairs: Object.freeze([]),
+        provenance: Object.freeze({
+          criticReplayCount: 1 as const,
+          repairedSectionCount: 0,
+          repairAttemptCount: audits.length,
+          wholeArticleRewriteCount: 0 as const,
+        }),
+      });
     }
   }
 
