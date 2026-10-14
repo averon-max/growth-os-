@@ -36,6 +36,7 @@ const procedureQuestion=(s:string)=>
   // "How to choose/compare" is an evaluation, not a repair action.
   !/\b(?:choose|compare|select|pick|evaluate|decide)\b/i.test(s);
 const action=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place|notify)\b/i;
+const humanResponseAction=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|submit|call|place|freeze|block)\b/i;
 const directedAction=(sentence:string)=>
   action.test(sentence)&&(
     /\b(?:you|your|should|must)\b/i.test(sentence)||
@@ -120,7 +121,7 @@ export function selectPostSemanticSourceNarrowingV1({
         const shared=tokens(sentence).filter(t=>focus.has(t)).length;
         if(sentence.length<55||sentence.length>320||
           !/[.!?]$/.test(sentence)||shared<2||
-          !directedAction(sentence)||
+          !directedAction(sentence)||!humanResponseAction.test(sentence)||
           usedTexts.has(sentence.toLowerCase())||
           prior.some(p=>similarity(p,sentence)>0.7))continue;
         const candidateClaim=rejected.find(c=>
