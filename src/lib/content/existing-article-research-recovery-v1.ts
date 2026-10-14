@@ -47,7 +47,7 @@ import {
 import {reviewAndConstrainVerifiedEvidenceV1} from "./semantic-evidence-review-v1";
 import {
   buildSourceGroundedReplanPacketV1,
-  validateSourceGroundedClaimReplanV1,
+  recoverSourceGroundedClaimReplanFromCachedModelV1,
   type SourceGroundedClaimReplacementV1,
 } from "./source-grounded-claim-replan-v1";
 import {buildEvidenceGraph} from "./evidence-graph";
@@ -572,10 +572,22 @@ export async function recoverExistingArticleResearchV1({
       const parsed=record(JSON.parse(sourceRaw));
       check(Array.isArray(parsed.replacements),
         "SOURCE_FIRST_MODEL_FORMAT");
-      const grounded=validateSourceGroundedClaimReplanV1({
+      // A cached paid model response may contain an otherwise correctly
+      // sourced paraphrase that fails the STRICT lexical matcher.
+      // Reuse its quote ownership and use a literal source sentence
+      // rather than paying for another speculative model rewrite.
+      const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
         packet,
         originalClaims:proposed,
         replacements:parsed.replacements as SourceGroundedClaimReplacementV1[],
+      });
+      const grounded=recovered.claims;
+      console.info("[content research recovery cached model rescue]",{
+        cachedModelResponse:cached!==null,
+        acceptedModelRestatements:recovered.acceptedModelRestatements,
+        literalSourceFallbacks:recovered.literalSourceFallbacks,
+        repairedClaimIds:recovered.fallbackDetails.map(x=>x.claimId),
+        extraAiCalls:0,
       });
       // No VERIFIED evidence for these sections was previously found.
       // Re-verify the new wording against the exact same graph; the
