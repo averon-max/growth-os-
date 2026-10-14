@@ -79,6 +79,33 @@ describe("source-first grounded claim restatement",()=>{
     })).toEqual(["s1"]);
   });
 
+  it("prefers a government instruction over a misleading near-match for the same claim",()=>{
+    const current=claims[1];
+    const originalNear="Credit monitoring may send you alerts when you "+
+      "have new accounts or inquiries recorded.";
+    const trueAction="If you find an error on your credit report, "+
+      "you should contact the credit reporting company to dispute it.";
+    const section={id:"s2",heading:"What should you do after an alert?",
+      mission:"How to respond to inaccurate credit information"};
+    const p=buildSourceGroundedReplanPacketV1({
+      sections:[section],claims:[current],
+      candidates:[
+        {claimId:current.id,sourceId:"ftc",
+          sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:originalNear,coverage:0.85},
+        {claimId:current.id,sourceId:"cfpb",
+          sourceUrl:src("cfpb","PRIMARY_GOVERNMENT","A").url,
+          excerpt:trueAction,coverage:0.46,
+          provenance:"SECTION_FIRST_GOVERNMENT_PROCEDURE"},
+      ],
+      sources:[src("ftc","PRIMARY_GOVERNMENT","A"),
+        src("cfpb","PRIMARY_GOVERNMENT","A")],
+    });
+    expect(p[0].quotes[0].sourceId).toBe("cfpb");
+    expect(p[0].quotes[0].excerpt).toBe(trueAction);
+    expect(p[0].quotes.every(q=>q.claimId===current.id)).toBe(true);
+  });
+
   it("preserves section/claim identities and only offers real source excerpts",()=>{
     const result=packet();
     expect(result).toHaveLength(2);
