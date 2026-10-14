@@ -520,7 +520,7 @@ export async function recoverExistingArticleResearchV1({
           packet.filter(p=>p.quotes.length===0)
             .map(p=>p.sectionId).join(","));
       const packetHash=hash({
-        version:"SOURCE_GROUNDED_ATOMIC_REPLAN_V1",
+        version:"SOURCE_GROUNDED_ATOMIC_REPLAN_V2_MULTI_FACT",
         evidenceHash:originalEvidenceFingerprint,
         packet,
       });
