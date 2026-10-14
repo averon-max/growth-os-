@@ -49,6 +49,7 @@ import {
   collectEvidenceClaimRecoveryCandidatesV1,
   collectOfficialSectionProcedureCandidatesV1,
   collectOfficialPostSemanticProcedureAlternativesV1,
+  collectPostSemanticComparisonAlternativesV1,
 } from "./live-evidence-verification";
 import {isReaderInitiatedResponseStepV1}
   from "./post-semantic-source-narrowing-v1";
@@ -802,6 +803,21 @@ export async function recoverExistingArticleResearchV1({
         })),
         governmentSourceIds:governmentSeeds.map(s=>s.id),
       });
+    // Revisit the bounded, already-saved sources behind rejected
+    // comparison facts. A false broad claim about "beyond reports"
+    // must not block a different exact sentence about prices/features.
+    // These remain unverified until live refetch AND semantic approval.
+    const comparisonAlternatives=
+      await collectPostSemanticComparisonAlternativesV1({
+        graph:newGraph,
+        sections:deficient.map(s=>({
+          id:s.id,heading:s.heading,mission:s.mission,
+        })),
+        demotedEvidenceIds:semanticReview.demotedEvidenceIds,
+        targetClaimIds:proposed.filter(c=>
+          deficient.some(section=>section.id===c.sectionId)&&
+          !initialApprovedIds.has(c.id)).map(c=>c.id),
+      });
     const narrowed=selectPostSemanticSourceNarrowingV1({
       sections:deficient.map(s=>({
         id:s.id,heading:s.heading,mission:s.mission,
@@ -810,7 +826,7 @@ export async function recoverExistingArticleResearchV1({
       originalEvidence:newGraph.claimEvidence,
       demotedEvidenceIds:semanticReview.demotedEvidenceIds,
       approvedClaimIds:[...initialApprovedIds],
-      officialAlternatives,
+      officialAlternatives,comparisonAlternatives,
     });
     if(previewPostSemantic){
       const sourceById=new Map(newGraph.sources.map(src=>[src.id,src]));
@@ -822,6 +838,7 @@ export async function recoverExistingArticleResearchV1({
         priorSemanticReviewed:semanticReview.reviewedPairs,
         priorSemanticApproved:semanticReview.approvedPairs,
         officialAlternativeQuotes:officialAlternatives.length,
+        comparisonAlternativeQuotes:comparisonAlternatives.length,
         sections:deficient.map(section=>{
           const sourceIds=officialAlternatives.filter(x=>
             x.sectionId===section.id);
@@ -839,6 +856,13 @@ export async function recoverExistingArticleResearchV1({
             rejectedLexicalPairs:originallyReviewed.filter(e=>
               semanticReview.demotedEvidenceIds.includes(e.id)).length,
             officialAlternatives:sourceIds.length,
+            comparisonAlternatives:comparisonAlternatives.filter(x=>
+              x.sectionId===section.id).map(x=>({
+                exactSentence:x.text,
+                sourceUrl:x.sourceUrl,
+                candidateOnly:true,
+              })).slice(0,8),
+            heading:section.heading,mission:section.mission,
             readerActionAlternatives:sourceIds.filter(x=>
               isReaderInitiatedResponseStepV1(x.text)).map(x=>({
               exactSentence:x.text,
@@ -904,6 +928,7 @@ export async function recoverExistingArticleResearchV1({
     console.info("[content research recovery post-semantic narrow rescue]",{
       deficientSections:deficient.map(s=>s.id),
       officialAlternativeQuotes:officialAlternatives.length,
+      comparisonAlternativeQuotes:comparisonAlternatives.length,
       narrowedClaims:narrowed.map(n=>n.claimId),
       officialAlternativeRescues:narrowed.filter(n=>
         n.sourceEvidenceId==="UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE")
