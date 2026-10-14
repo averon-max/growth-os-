@@ -224,6 +224,37 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("cachedSemanticBatches:semanticCachedBatchCalls");
     expect(engine).toContain("paidSemanticBatches:semanticPaidBatchCalls");
   });
+  it("preview fails CLOSED before any uncached paid stage and before DB writes",()=>{
+    const cli=read("../../../scripts/content-existing-article-research-recovery-live.ts");
+    const plan=engine.indexOf('check(!previewPostSemantic,"PREVIEW_REQUIRES_CACHED_PLANNING")');
+    const planningSpend=engine.indexOf('await callContentAiJson(planPrompt');
+    const discoveryGuard=engine.indexOf('"PREVIEW_REQUIRES_DISCOVERY_OR_EXTRA_RESEARCH"');
+    const discoverySpend=engine.indexOf('await discoverClaimEvidenceFallbackSourcesV1({');
+    const sourceGuard=engine.indexOf('"PREVIEW_REQUIRES_CACHED_SOURCE_REPLAN"');
+    const sourceSpend=engine.indexOf('await callContentAiJson(sourcePrompt');
+    const semanticGuard=engine.indexOf('"PREVIEW_REQUIRES_CACHED_SEMANTIC_BATCH"');
+    const semanticSpend=engine.indexOf('await reviewSemanticEvidenceWithContentAiV1(pairs)');
+    const previewExit=engine.indexOf('result:"READ_ONLY_CACHED_POST_SEMANTIC_PREVIEW"');
+    const narrowReview=engine.indexOf('const narrowGraph=await enrichLiveEvidenceGraphV1({');
+    const writer=engine.indexOf("executeMasterWriterV1(");
+    const dbWrite=engine.indexOf("tx.contentArticle.updateMany({");
+    expect(plan).toBeGreaterThan(0);
+    expect(planningSpend).toBeGreaterThan(plan);
+    expect(discoveryGuard).toBeGreaterThan(0);
+    expect(discoverySpend).toBeGreaterThan(discoveryGuard);
+    expect(sourceGuard).toBeGreaterThan(0);
+    expect(sourceSpend).toBeGreaterThan(sourceGuard);
+    expect(semanticGuard).toBeGreaterThan(0);
+    expect(semanticSpend).toBeGreaterThan(semanticGuard);
+    expect(previewExit).toBeGreaterThan(semanticSpend);
+    expect(narrowReview).toBeGreaterThan(previewExit);
+    expect(writer).toBeGreaterThan(previewExit);
+    expect(dbWrite).toBeGreaterThan(writer);
+    expect(cli).toContain("EXECUTE_AND_PREVIEW_ARE_MUTUALLY_EXCLUSIVE");
+    expect(cli).toContain('a!=="--preview-post-semantic"');
+    expect(cli).toContain("governmentSourceUrls,previewPostSemantic");
+    expect(cli).toContain('READ_ONLY_CACHED_POST_SEMANTIC_PREVIEW_FINISHED');
+  });
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
