@@ -10,6 +10,8 @@
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
 import type {ResearchExpansionClaimV1}
   from "./existing-article-research-plan-v1";
+import type {OfficialPostSemanticProcedureAlternativeV1}
+  from "./live-evidence-verification";
 
 type Section={id:string;heading:string;mission:string};
 export interface PostSemanticNarrowingV1{
@@ -34,6 +36,7 @@ const procedureQuestion=(s:string)=>
   // "How to choose/compare" is an evaluation, not a repair action.
   !/\b(?:choose|compare|select|pick|evaluate|decide)\b/i.test(s);
 const action=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place|notify)\b/i;
+const humanResponseAction=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|submit|call|place|freeze|block)\b/i;
 const directedAction=(sentence:string)=>
   action.test(sentence)&&(
     /\b(?:you|your|should|must)\b/i.test(sentence)||
@@ -46,7 +49,7 @@ const sentenceParts=(text:string):readonly string[]=>text
   .filter(s=>s.length>=55&&s.length<=320&&/[.!?]$/.test(s));
 export function selectPostSemanticSourceNarrowingV1({
   sections,claims,sources,originalEvidence,demotedEvidenceIds,
-  approvedClaimIds,
+  approvedClaimIds,officialAlternatives=[],
 }:{
   sections:readonly Section[];
   claims:readonly ResearchExpansionClaimV1[];
@@ -54,6 +57,7 @@ export function selectPostSemanticSourceNarrowingV1({
   originalEvidence:readonly ClaimEvidence[];
   demotedEvidenceIds:readonly string[];
   approvedClaimIds:readonly string[];
+  officialAlternatives?:readonly OfficialPostSemanticProcedureAlternativeV1[];
 }):readonly PostSemanticNarrowingV1[]{
   const sourceById=new Map(sources.map(s=>[s.id,s] as const));
   const demoted=new Set(demotedEvidenceIds);
@@ -96,6 +100,46 @@ export function selectPostSemanticSourceNarrowingV1({
             4*tokens(sentence).filter(t=>missionSpecific.has(t)).length,
         }));
       }));
+    // Rejecting a too-broad old assertion does NOT mean every OTHER
+    // sentence on its official source page is unsupported. If there
+    // is no suitable literal from the rejected evidence pair, allow
+    // an independent, previously fetched official sentence for this
+    // existing, still-rejected claim. Strict live re-fetch + semantic
+    // review in the calling pipeline remain mandatory.
+    if(candidates.length===0&&procedureQuestion(section.heading)){
+      for(const alt of officialAlternatives.filter(x=>
+        x.sectionId===section.id)){
+        const source=sourceById.get(alt.sourceId);
+        if(!source||source.sourceType!=="PRIMARY_GOVERNMENT"||
+          source.authorityTier!=="A")continue;
+        let url:URL;
+        try{url=new URL(alt.sourceUrl);}catch{continue;}
+        if(url.protocol!=="https:"||
+          !url.hostname.toLowerCase().endsWith(".gov")||
+          source.url!==alt.sourceUrl)continue;
+        const sentence=alt.text.trim();
+        const shared=tokens(sentence).filter(t=>focus.has(t)).length;
+        if(sentence.length<55||sentence.length>320||
+          !/[.!?]$/.test(sentence)||shared<2||
+          !directedAction(sentence)||!humanResponseAction.test(sentence)||
+          usedTexts.has(sentence.toLowerCase())||
+          prior.some(p=>similarity(p,sentence)>0.7))continue;
+        const candidateClaim=rejected.find(c=>
+          c.text.toLowerCase()!==sentence.toLowerCase());
+        if(!candidateClaim)continue;
+        candidates.push({
+          claim:candidateClaim,source,
+          evidence:{
+            id:"UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE",
+            claimId:candidateClaim.id,sourceId:source.id,
+            kind:"REFERENCE_ONLY",relation:"PARTIALLY_SUPPORTS",
+          } as ClaimEvidence,
+          sentence,
+          score:shared+4*tokens(sentence)
+            .filter(t=>missionSpecific.has(t)).length,
+        });
+      }
+    }
     candidates.sort((a,b)=>
       (a.source.sourceType==="PRIMARY_GOVERNMENT"?0:1)-
       (b.source.sourceType==="PRIMARY_GOVERNMENT"?0:1)||
