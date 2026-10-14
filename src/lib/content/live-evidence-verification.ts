@@ -1127,7 +1127,7 @@ async function fetchSourceBodies(
   const sources =
     graph.sources.slice(
       0,
-      Math.max(1,Math.min(64,Math.floor(maxSources)))
+      Math.max(1,Math.min(72,Math.floor(maxSources)))
     );
 
 
