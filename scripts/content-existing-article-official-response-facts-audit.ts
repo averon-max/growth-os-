@@ -52,6 +52,10 @@ async function main(){
       graph:{sources:seeds,claimEvidence:[]},
       sections,governmentSourceIds:seeds.map(s=>s.id),
     });
+    const {isReaderInitiatedResponseStepV1}=await import(
+      "../src/lib/content/post-semantic-source-narrowing-v1");
+    const readerActions=candidateSteps.filter(s=>
+      isReaderInitiatedResponseStepV1(s.text));
     console.log(JSON.stringify({
       mode:"READ_ONLY_POST_SEMANTIC_OFFICIAL_STEPS_AUDIT",
       articleId,articleStatus:article.status,
@@ -60,8 +64,15 @@ async function main(){
       alternativeCandidates:candidateSteps.map((s,i)=>({
         rank:i+1,sourceHost:new URL(s.sourceUrl).hostname,
         sourceUrl:s.sourceUrl,exactSentence:s.text,
+        readerInitiatedAction:isReaderInitiatedResponseStepV1(s.text),
         status:"UNVERIFIED_SOURCE_CANDIDATE_ONLY",
       })),
+      readerActionCandidates:readerActions.length,
+      firstReaderAction:readerActions.length>0?{
+        sourceUrl:readerActions[0].sourceUrl,
+        exactSentence:readerActions[0].text,
+        status:"UNVERIFIED_SOURCE_CANDIDATE_ONLY",
+      }:null,
       nextGate:"STRICT_PAGE_REFETCH_AND_SEMANTIC_REVIEW",
       aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true,
     },null,2));
