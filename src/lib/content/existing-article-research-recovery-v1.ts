@@ -50,6 +50,8 @@ import {
   collectOfficialSectionProcedureCandidatesV1,
   collectOfficialPostSemanticProcedureAlternativesV1,
 } from "./live-evidence-verification";
+import {isReaderInitiatedResponseStepV1}
+  from "./post-semantic-source-narrowing-v1";
 import {reviewAndConstrainVerifiedEvidenceV1,
   reviewSemanticEvidenceWithContentAiV1,
   type SemanticEvidencePairV1,
@@ -837,6 +839,21 @@ export async function recoverExistingArticleResearchV1({
             rejectedLexicalPairs:originallyReviewed.filter(e=>
               semanticReview.demotedEvidenceIds.includes(e.id)).length,
             officialAlternatives:sourceIds.length,
+            readerActionAlternatives:sourceIds.filter(x=>
+              isReaderInitiatedResponseStepV1(x.text)).map(x=>({
+              exactSentence:x.text,
+              sourceUrl:x.sourceUrl,
+              candidateOnly:true,
+            })),
+            demotedLexicalSources:originallyReviewed.filter(e=>
+              semanticReview.demotedEvidenceIds.includes(e.id))
+              .map(e=>({
+                claimId:e.claimId,
+                excerptPreview:e.excerpt?.slice(0,180)??"",
+                sourceUrl:sourceById.get(e.sourceId)?.url??"",
+                sourceTier:sourceById.get(e.sourceId)?.authorityTier??"",
+                sourceType:sourceById.get(e.sourceId)?.sourceType??"",
+              })).slice(0,6),
             selectedNewFacts:narrowed.filter(n=>
               n.sectionId===section.id).map(n=>({
                 claimId:n.claimId,
