@@ -1857,6 +1857,7 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
  */
 
 export interface EvidenceClaimRecoveryCandidateV1 {
+  readonly provenance?:"SECTION_FIRST_GOVERNMENT_PROCEDURE";
   readonly claimId:
     string;
 
@@ -2867,6 +2868,7 @@ export async function collectOfficialSectionProcedureCandidatesV1({
         claimId:assigned.id,sourceId:entry.source.id,
         sourceUrl:entry.source.url,excerpt:entry.excerpt,
         coverage:entry.coverage,
+        provenance:"SECTION_FIRST_GOVERNMENT_PROCEDURE",
       });
       available.splice(available.findIndex(c=>c.id===assigned.id),1);
       usedHosts.add(host);usedTexts.add(sentence);
