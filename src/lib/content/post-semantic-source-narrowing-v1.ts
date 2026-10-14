@@ -35,13 +35,7 @@ const procedureQuestion=(s:string)=>
   /\b(?:what (?:should|can|do)|how (?:do|to|can)|steps? to)\b/i.test(s)&&
   // "How to choose/compare" is an evaluation, not a repair action.
   !/\b(?:choose|compare|select|pick|evaluate|decide)\b/i.test(s);
-const action=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place|notify)\b/i;
 const humanResponseAction=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|submit|call|place|freeze|block)\b/i;
-const directedAction=(sentence:string)=>
-  action.test(sentence)&&(
-    /\b(?:you|your|should|must)\b/i.test(sentence)||
-    /^(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place)\b/i.test(sentence)
-  );
 /**
  * Distinguish an actual consumer instruction from website navigation,
  * a company's duty or a description of an alerting product.
