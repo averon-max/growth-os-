@@ -160,6 +160,23 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("paidSearchCalls++");
   });
 
+  it("recovers cached model paraphrases using strict literal sentences without another AI call",()=>{
+    const paidCache=engine.indexOf("readExistingResearchPlanningCheckpointV1(sourceScope)");
+    const model=engine.indexOf("callContentAiJson(sourcePrompt");
+    const cachedResponse=engine.indexOf("const parsed=record(JSON.parse(sourceRaw))");
+    const sourceRecovery=engine.indexOf("recoverSourceGroundedClaimReplanFromCachedModelV1({");
+    const reverify=engine.indexOf("claims:changed,");
+    const semantics=engine.indexOf("reviewAndConstrainVerifiedEvidenceV1({");
+    expect(paidCache).toBeGreaterThan(0);
+    expect(model).toBeGreaterThan(paidCache);
+    expect(cachedResponse).toBeGreaterThan(model);
+    expect(sourceRecovery).toBeGreaterThan(cachedResponse);
+    expect(reverify).toBeGreaterThan(sourceRecovery);
+    expect(semantics).toBeGreaterThan(reverify);
+    expect(engine).toContain("extraAiCalls:0");
+    expect(engine).toContain("literalSourceFallbacks");
+  });
+
   it("limits multiple model stages before provider calls",()=>{
     expect(engine).toContain("maxModelCalls:30");
     expect(engine).toContain("maxEstimatedInputTokens:125000");
