@@ -53,6 +53,7 @@ import {reviewAndConstrainVerifiedEvidenceV1,
 } from "./semantic-evidence-review-v1";
 import {
   buildSourceGroundedReplanPacketV1,
+  findSourceGroundedDiscoveryGapsV1,
   recoverSourceGroundedClaimReplanFromCachedModelV1,
   type SourceGroundedClaimReplacementV1,
 } from "./source-grounded-claim-replan-v1";
@@ -314,9 +315,14 @@ export async function recoverExistingArticleResearchV1({
       candidates:candidatesBeforeDiscovery,
       sources:newGraph.sources,
     });
-    const sectionsWithoutAnyQuote=new Set(packetBeforeDiscovery
-      .filter(section=>section.quotes.length===0)
-      .map(section=>section.sectionId));
+    // Needing TWO facts is not solved by finding ONE relevant quote.
+    // Count independent claim IDs; citations to one speculative
+    // claim never count as a second factual facet.
+    const sectionsWithoutAnyQuote=new Set(
+      findSourceGroundedDiscoveryGapsV1({
+        packet:packetBeforeDiscovery,
+        verifiedClaimIds:proposed.filter(c=>newSupport(c.id)).map(c=>c.id),
+      }));
     console.info("[content research recovery source-first precheck]",{
       missingStrictSections:missingBeforeDiscovery.length,
       sectionsWithAuthoritativeCandidateQuotes:
@@ -332,15 +338,18 @@ export async function recoverExistingArticleResearchV1({
       // under-researched section. Avoid spending all fallback searches
       // on the first section's claims.
       const missingBySection=new Map<string,(typeof unresolved)[number]>();
-      for(const claim of unresolved){
-        if(!sectionsWithoutAnyQuote.has(claim.sectionId))continue;
-        if(!missingBySection.has(claim.sectionId))
-          missingBySection.set(claim.sectionId,claim);
+      const quotedIds=new Set(packetBeforeDiscovery.flatMap(section=>
+        section.quotes.map(q=>q.claimId)));
+      for(const section of writable){
+        if(!sectionsWithoutAnyQuote.has(section.id))continue;
+        const lacking=unresolved.filter(c=>c.sectionId===section.id);
+        const probe=lacking.find(c=>!quotedIds.has(c.id))??lacking[0];
+        if(probe)missingBySection.set(section.id,probe);
       }
       const probes=[...missingBySection.values()].slice(0,6);
       fallbackSearches=probes.length;
       const discoveryFingerprint=hash({
-        version:"BOUNDED_RESEARCH_SOURCE_DISCOVERY_V1",
+        version:"BOUNDED_RESEARCH_SOURCE_DISCOVERY_V2_DISTINCT_CLAIM_DEPTH",
         evidence:originalEvidenceFingerprint,
         market:searchMarket,primary:original.brief.primaryKeyword,
         probes:probes.map(c=>({id:c.id,text:c.text})),
@@ -397,6 +406,16 @@ export async function recoverExistingArticleResearchV1({
         // fallback-provider signatures (old and new). At most ONE
         // provider search is made for this section's probe, regardless
         // of how many query strings the legacy fallback iterator emits.
+        // A claim may be speculative and poorly searchable. Search
+        // the locked EXISTING section's question/mission instead.
+        // This cannot add an H2, change the article intent or approve
+        // evidence; discovered URLs still need live verification.
+        const targetSection=writable.find(s=>s.id===probe.sectionId);
+        const targetSearchQuery=(
+          [targetSection?.heading,targetSection?.mission]
+            .filter(Boolean).join(" ")||
+          original.brief.primaryKeyword
+        ).replace(/\\s+/g," ").trim().slice(0,180);
         let searchRequestsForProbe=0;
         let providerSearchFailure:Error|null=null;
         const search:NonNullable<
@@ -407,7 +426,7 @@ export async function recoverExistingArticleResearchV1({
           try{
             const {buildSerpIntelligence}=await import("./serp-intelligence");
             const serp=await buildSerpIntelligence({
-              keyword:input.keyword,
+              keyword:targetSearchQuery||input.keyword,
               locationName:searchMarket.locationName,
               languageName:searchMarket.languageName,
             });
