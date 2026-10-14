@@ -69,6 +69,59 @@ describe("source-first grounded claim restatement",()=>{
     expect(output.map(c=>c.id)).toEqual(["c1","c2"]);
     expect(output[0].text).toBe(replacements[0].text);
   });
+  it("recovers TWO different evidence-backed facts within one existing H2",()=>{
+    const additional={
+      id:"c1b",sectionId:"s1",category:"FACT" as const,
+      risk:"LOW" as const,
+      text:"Credit monitoring sends an alert only when lenders call users.",
+    };
+    const secondQuote="While credit monitoring helps identify changes, it does not "+
+      "stop someone from attempting to open an account.";
+    const secClaims=[claims[0],additional,claims[1]];
+    const packet=buildSourceGroundedReplanPacketV1({
+      sections:[
+        {id:"s1",heading:"Credit monitoring details",mission:"Explain scope and limits"},
+        {id:"s2",heading:"Respond to alerts",mission:"What to do after an alert"},
+      ],
+      claims:secClaims,
+      candidates:[
+        {claimId:"c1",sourceId:"ftc",sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote1,coverage:0.45},
+        {claimId:"c1b",sourceId:"cfpb",sourceUrl:src("cfpb","PRIMARY_GOVERNMENT","A").url,
+          excerpt:secondQuote,coverage:0.48},
+        {claimId:"c2",sourceId:"ftc",sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote2,coverage:0.45},
+      ],
+      sources:[
+        src("ftc","PRIMARY_GOVERNMENT","A"),
+        src("cfpb","PRIMARY_GOVERNMENT","A"),
+      ],
+    });
+    expect(new Set(packet[0].quotes.map(q=>q.claimId)))
+      .toEqual(new Set(["c1","c1b"]));
+    const first=packet[0].quotes.find(q=>q.claimId==="c1")!;
+    const second=packet[0].quotes.find(q=>q.claimId==="c1b")!;
+    const result=validateSourceGroundedClaimReplanV1({
+      packet,originalClaims:secClaims,replacements:[
+        {claimId:"c1",quoteId:first.quoteId,text:quote1},
+        {claimId:"c1b",quoteId:second.quoteId,text:secondQuote},
+        {claimId:"c2",quoteId:packet[1].quotes[0].quoteId,text:quote2},
+      ],
+    });
+    expect(result.map(c=>c.id)).toEqual(["c1","c1b","c2"]);
+    expect(result.find(c=>c.id==="c1b")?.text).toBe(secondQuote);
+  });
+  it("does not allow the same claim/quote to masquerade as two facts",()=>{
+    const result=packet();
+    expect(()=>validateSourceGroundedClaimReplanV1({
+      packet:result,originalClaims:claims,replacements:[
+        {claimId:"c1",quoteId:result[0].quotes[0].quoteId,text:quote1},
+        {claimId:"c1",quoteId:result[0].quotes[0].quoteId,text:quote1},
+        {claimId:"c2",quoteId:result[1].quotes[0].quoteId,text:quote2},
+      ],
+    })).toThrow("UNAUTHORIZED_CLAIM_OR_QUOTE");
+  });
+
   it("does not accept invented or cross-section quote ownership",()=>{
     const result=packet();
     expect(()=>validateSourceGroundedClaimReplanV1({
