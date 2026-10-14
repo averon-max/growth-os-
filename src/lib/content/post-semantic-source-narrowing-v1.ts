@@ -30,7 +30,9 @@ const similarity=(a:string,b:string)=>{
     Math.max(1,new Set([...x,...y]).size);
 };
 const procedureQuestion=(s:string)=>
-  /\b(?:what (?:should|can|do)|how (?:do|to|can)|steps? to)\b/i.test(s);
+  /\b(?:what (?:should|can|do)|how (?:do|to|can)|steps? to)\b/i.test(s)&&
+  // "How to choose/compare" is an evaluation, not a repair action.
+  !/\b(?:choose|compare|select|pick|evaluate|decide)\b/i.test(s);
 const action=/\b(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place|notify)\b/i;
 const directedAction=(sentence:string)=>
   action.test(sentence)&&(
