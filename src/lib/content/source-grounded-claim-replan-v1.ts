@@ -121,6 +121,29 @@ export function buildSourceGroundedReplanPacketV1({
   }
   return result;
 }
+/**
+ * Source quote candidate coverage is NOT semantic entailment. It is
+ * only a zero-AI estimate of whether two DISTINCT existing claim IDs
+ * can be supported before deciding if another bounded discovery
+ * query is needed. A single on-topic quote must not suppress research
+ * for a long article section requiring a second atomic fact.
+ */
+export function findSourceGroundedDiscoveryGapsV1({
+  packet,verifiedClaimIds,
+}:{
+  packet:readonly SourceGroundedReplanSectionV1[];
+  verifiedClaimIds:readonly string[];
+}):readonly string[]{
+  const verified=new Set(verifiedClaimIds);
+  return packet.filter(section=>{
+    const eligible=new Set(section.claimIds.filter(id=>verified.has(id)));
+    for(const quote of section.quotes){
+      if(section.claimIds.includes(quote.claimId))
+        eligible.add(quote.claimId);
+    }
+    return eligible.size<2;
+  }).map(section=>section.sectionId);
+}
 export function validateSourceGroundedClaimReplanV1({
   packet,replacements,originalClaims,
 }:{

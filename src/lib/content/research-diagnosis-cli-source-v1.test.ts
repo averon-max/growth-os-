@@ -6,7 +6,15 @@ const cli=readFileSync(new URL("../../../scripts/content-existing-article-resear
 describe("read-only saved-source research diagnostic",()=>{
   it("does not silently expand the historical 24 URL audit",()=>{
     expect(cli).toContain('const allSources=extras.includes("--all-sources")');
-    expect(cli).toContain(".slice(0,allSources?64:24)");
+    expect(cli).toContain(".slice(0,allSources?72:24)");
+  });
+  it("diagnoses distinct claim facts with optional safe government seeds",()=>{
+    expect(cli).toContain('arg.startsWith("--government-source=")');
+    expect(cli).toContain("buildResearchRecoveryGovernmentSeedsV1(");
+    expect(cli).toContain("sources:researchSources,");
+    expect(cli).toContain("findSourceGroundedDiscoveryGapsV1({");
+    expect(cli).toContain("sectionsStillNeedingDiscovery:discoveryGaps");
+    expect(cli).toContain("hasTwoDistinctClaimCandidatesPerSection:");
   });
   it("accepts narrowly scoped section diagnostics without changing the saved plan",()=>{
     expect(cli).toContain('arg.startsWith("--focus=")');

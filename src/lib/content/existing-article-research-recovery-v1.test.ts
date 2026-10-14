@@ -113,6 +113,28 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("strictMatchesAfterDiscovery");
   });
 
+  it("does not mistake a single cited claim for section evidence depth",()=>{
+    const gap=engine.indexOf("findSourceGroundedDiscoveryGapsV1({");
+    const discovery=engine.indexOf("if(sectionsWithoutAnyQuote.size){");
+    expect(gap).toBeGreaterThan(0);
+    expect(discovery).toBeGreaterThan(gap);
+    expect(engine).toContain("const probe=lacking.find(c=>!quotedIds.has(c.id))");
+    expect(engine).toContain('version:"BOUNDED_RESEARCH_SOURCE_DISCOVERY_V2_DISTINCT_CLAIM_DEPTH"');
+  });
+  it("searches the existing H2 question instead of blindly searching speculative claims",()=>{
+    expect(engine).toContain("const targetSection=writable.find(s=>s.id===probe.sectionId)");
+    expect(engine).toContain("targetSection?.heading,targetSection?.mission");
+    expect(engine).toContain("keyword:targetSearchQuery||input.keyword");
+    expect(engine).toContain('targetSearchQuery=(');
+  });
+  it("refuses a paid model restatement if only one distinct sourced fact remains",()=>{
+    const gate=engine.indexOf("SOURCE_FIRST_NO_SECOND_DISTINCT_CLAIM_FOR_SECTIONS:");
+    const prompt=engine.indexOf("const sourcePrompt=[");
+    expect(gate).toBeGreaterThan(0);
+    expect(prompt).toBeGreaterThan(gate);
+    expect(engine).toContain("missingSecondFacts.length===0");
+  });
+
   it("prechecks existing authoritative quotes BEFORE paid discovery, then strictly re-verifies",()=>{
     const candidate=engine.indexOf("collectEvidenceClaimRecoveryCandidatesV1({");
     const pack=engine.indexOf("buildSourceGroundedReplanPacketV1({");
