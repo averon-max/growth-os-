@@ -2980,7 +2980,7 @@ export function rankCreditMonitoringComparisonSentencesV1({
 }):readonly string[]{
   if(!isServiceChoiceSectionV1(heading))return [];
   const topic=new Set(semanticTokens(heading+" "+mission));
-  const comparison=/\b(?:costs?|prices?|fees?|free|paid|premium|features?|alerts?|plans?|subscription|coverage|notifications?)\b/i;
+  const comparison=/\b(?:costs?|prices?|fees?|free|paid|premium|features?|alerts?|plans?|subscriptions?|coverage|notifications?|notifies|notify|includes?|covers?|tracks?|inquir(?:y|ies)|changes?)\b/i;
   const subject=/\b(?:credit|monitoring|services?|reports?|bureaus?)\b/i;
   const ranked=sentenceWindows(bodyText)
     .filter(s=>s.length>=65&&s.length<=320&&
@@ -2990,7 +2990,7 @@ export function rankCreditMonitoringComparisonSentencesV1({
       isServiceChoiceSourceFactV1(s))
     .map(text=>({
       text,shared:semanticTokens(text).filter(t=>topic.has(t)).length,
-      specific:/\b(?:cost|price|fee|free|paid|premium|subscription|feature|alerts?|notifications?|accounts?|inquir(?:y|ies))\b/i.test(text),
+      specific:/\b(?:costs?|prices?|fees?|free|paid|premium|subscriptions?|features?|alerts?|notifications?|accounts?|inquir(?:y|ies)|changes?|identity|fraud)\b/i.test(text),
     }))
     .filter(x=>x.shared>=1&&x.specific)
     .sort((a,b)=>b.shared-a.shared||a.text.length-b.text.length);
