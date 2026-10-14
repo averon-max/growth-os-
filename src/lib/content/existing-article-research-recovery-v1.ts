@@ -20,6 +20,8 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {selectPostSemanticSourceNarrowingV1}
+  from "./post-semantic-source-narrowing-v1";
 import {buildResearchRecoveryGovernmentSeedsV1}
   from "./research-recovery-authoritative-sources-v1";
 import {
@@ -758,19 +760,89 @@ export async function recoverExistingArticleResearchV1({
       claims:[...savedClaims,...proposed],
       graph:newGraph,judge:semanticJudge,
     });
-    const graphAfterReview=semanticReview.graph;
+    /*
+     * A quote that looks lexically relevant can fail genuine semantic
+     * entailment (e.g. an assertion about beyond-report monitoring
+     * backed only by a source about ordinary credit reports).
+     * Perform ONE deterministic SOURCE-LITERAL narrowing for deficient
+     * sections, then re-fetch and semantically review only those
+     * changed claims. Never reclassify a rejected citation as accepted.
+     */
+    let graphAfterReview=semanticReview.graph;
+    let narrowedClaims=proposed;
+    const initialApprovedIds=new Set(graphAfterReview.claimEvidence
+      .filter(e=>e.kind==="VERIFIED_EXCERPT"&&
+        e.relation==="SUPPORTS"&&!!e.excerpt?.trim())
+      .map(e=>e.claimId));
+    const deficient=writable.filter(section=>{
+      const survivingNew=proposed.filter(c=>
+        c.sectionId===section.id&&initialApprovedIds.has(c.id));
+      const prior=section.requiredClaimIds.filter(id=>
+        initialApprovedIds.has(id));
+      return survivingNew.length<1||
+        new Set([...survivingNew.map(c=>c.id),...prior]).size<2;
+    });
+    const narrowed=selectPostSemanticSourceNarrowingV1({
+      sections:deficient.map(s=>({
+        id:s.id,heading:s.heading,mission:s.mission,
+      })),
+      claims:proposed,sources:newGraph.sources,
+      originalEvidence:newGraph.claimEvidence,
+      demotedEvidenceIds:semanticReview.demotedEvidenceIds,
+      approvedClaimIds:[...initialApprovedIds],
+    });
+    let secondPassReviewedPairs=0,secondPassApprovedPairs=0;
+    if(narrowed.length){
+      const changesById=new Map(narrowed.map(c=>[c.claimId,c]));
+      narrowedClaims=proposed.map(c=>{
+        const replacement=changesById.get(c.id);
+        return replacement?{...c,text:replacement.text}:c;
+      });
+      const changed=narrowedClaims.filter(c=>changesById.has(c.id));
+      const changedIds=new Set(changed.map(c=>c.id));
+      const existingEdges=graphAfterReview.claimEvidence
+        .filter(e=>!changedIds.has(e.claimId));
+      // Old failed claim excerpts must NEVER survive as new authority
+      // under the same claim ID after wording changes.
+      const narrowGraph=await enrichLiveEvidenceGraphV1({
+        graph:{sources:[...newGraph.sources],claimEvidence:[]},
+        claims:changed,maxSources:72,
+      });
+      const narrowEdges=narrowGraph.claimEvidence.filter(e=>
+        changedIds.has(e.claimId)&&
+        e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS");
+      check(narrowEdges.length<=18,"NARROWING_REVIEW_BUDGET");
+      const second=await reviewAndConstrainVerifiedEvidenceV1({
+        claims:changed,
+        graph:{sources:narrowGraph.sources,claimEvidence:narrowEdges},
+        judge:semanticJudge,
+      });
+      graphAfterReview={
+        sources:narrowGraph.sources,
+        claimEvidence:[...existingEdges,...second.graph.claimEvidence],
+      };
+      secondPassReviewedPairs=second.reviewedPairs;
+      secondPassApprovedPairs=second.approvedPairs;
+    }
+    console.info("[content research recovery post-semantic narrow rescue]",{
+      deficientSections:deficient.map(s=>s.id),
+      narrowedClaims:narrowed.map(n=>n.claimId),
+      additionalReviewedPairs:secondPassReviewedPairs,
+      additionalApprovedPairs:secondPassApprovedPairs,
+      status:"STRICT_REFETCH_AND_SEMANTIC_REQUIRED",
+    });
     const verifiedIds=new Set(graphAfterReview.claimEvidence.filter(e=>
       e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS"&&
       !!e.excerpt?.trim()).map(e=>e.claimId));
-    const newSupported=proposed.filter(c=>verifiedIds.has(c.id));
+    const newSupported=narrowedClaims.filter(c=>verifiedIds.has(c.id));
     check(newSupported.length>=writable.length,
       "INSUFFICIENT_NEW_VERIFIED_CLAIMS");
     // Make a post-semantic depth failure actionable without exposing
     // quotes, provider keys, private article text or changing the gate.
     // The semantic reviewer may demote previously lexical-only support.
     console.info("[content research recovery post-semantic authority]",{
-      reviewedPairs:semanticReview.reviewedPairs,
-      approvedPairs:semanticReview.approvedPairs,
+      reviewedPairs:semanticReview.reviewedPairs+secondPassReviewedPairs,
+      approvedPairs:semanticReview.approvedPairs+secondPassApprovedPairs,
       cachedSemanticBatches:semanticCachedBatchCalls,
       paidSemanticBatches:semanticPaidBatchCalls,
       sections:oldPlan.sections.filter(s=>s.state==="WRITABLE")
@@ -885,8 +957,10 @@ export async function recoverExistingArticleResearchV1({
         version:"EXISTING_ARTICLE_RESEARCH_RECOVERY_V1",
         previousSnapshotSha256:originalEvidenceFingerprint,
         newClaims:newSupported.map(c=>c.id),
-        semanticReviewedPairs:semanticReview.reviewedPairs,
-        semanticApprovedPairs:semanticReview.approvedPairs,
+        semanticReviewedPairs:semanticReview.reviewedPairs+
+          secondPassReviewedPairs,
+        semanticApprovedPairs:semanticReview.approvedPairs+
+          secondPassApprovedPairs,
       },
     };
     const checked=inspectMasterRuntimeSnapshot(revisedSnapshot);
