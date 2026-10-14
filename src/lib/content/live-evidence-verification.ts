@@ -2980,20 +2980,22 @@ export function rankCreditMonitoringComparisonSentencesV1({
   return out;
 }
 export async function collectPostSemanticComparisonAlternativesV1({
-  graph,sections,demotedEvidenceIds,
+  graph,sections,demotedEvidenceIds,targetClaimIds,
 }:{
   graph:EvidenceGraphInput;
   sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
   demotedEvidenceIds:readonly string[];
+  targetClaimIds:readonly string[];
 }):Promise<readonly PostSemanticComparisonAlternativeV1[]>{
   const demoted=new Set(demotedEvidenceIds);
+  const target=new Set(targetClaimIds);
   const trusted=new Map(graph.sources.filter(s=>
     ["A","B","C"].includes(s.authorityTier)&&
     ["PRIMARY_GOVERNMENT","PRIMARY_OFFICIAL","REPUTABLE_SECONDARY",
       "ACADEMIC"].includes(s.sourceType)).map(s=>[s.id,s] as const));
   const selected=graph.claimEvidence.filter(e=>
-    demoted.has(e.id)&&trusted.has(e.sourceId)&&
-    e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS");
+    demoted.has(e.id)&&target.has(e.claimId)&&
+    trusted.has(e.sourceId)&&e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS");
   const unique=new Set<string>(),sources:EvidenceGraphInput["sources"][number][]=[];
   for(const e of selected){
     if(unique.has(e.sourceId))continue;
