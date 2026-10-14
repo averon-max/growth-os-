@@ -128,10 +128,11 @@ function siteDomain(url:string):string|null{
 }
 
 export async function recoverExistingArticleResearchV1({
-  articleId,expectedUpdatedAt,governmentSourceUrls=[],
+  articleId,expectedUpdatedAt,governmentSourceUrls=[],previewPostSemantic=false,
 }:{
   articleId:string;expectedUpdatedAt:string;
   governmentSourceUrls?:readonly string[];
+  previewPostSemantic?:boolean;
 }){
   check(/^[a-zA-Z0-9_-]{5,100}$/.test(articleId),"ARTICLE_ID_INVALID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -246,6 +247,7 @@ export async function recoverExistingArticleResearchV1({
     const storedPlanningResponse=
       await readExistingResearchPlanningCheckpointV1(planningScope);
     if(storedPlanningResponse===null){
+      check(!previewPostSemantic,"PREVIEW_REQUIRES_CACHED_PLANNING");
       await assertResearchPlanningCheckpointWritableV1(planningScope);
     }
     const rawPlan=storedPlanningResponse ??
@@ -361,6 +363,8 @@ export async function recoverExistingArticleResearchV1({
     let discoveredSourceCount=0;
     let reusedSourceDiscoveryCheckpoint=false;
     if(sectionsWithoutAnyQuote.size){
+      check(!previewPostSemantic,
+        "PREVIEW_REQUIRES_DISCOVERY_OR_EXTRA_RESEARCH");
       // One wave: at most one outstanding factual question from each
       // under-researched section. Avoid spending all fallback searches
       // on the first section's claims.
@@ -613,8 +617,11 @@ export async function recoverExistingArticleResearchV1({
           packetHash.slice(0,20),
       };
       const cached=await readExistingResearchPlanningCheckpointV1(sourceScope);
-      if(cached===null)
+      if(cached===null){
+        check(!previewPostSemantic,
+          "PREVIEW_REQUIRES_CACHED_SOURCE_REPLAN");
         await assertResearchPlanningCheckpointWritableV1(sourceScope);
+      }
       const sourcePrompt=[
         "You are restoring the factual plan for an SEO article using",
         "ONLY supplied VERBATIM excerpts of already fetched real pages.",
@@ -750,6 +757,8 @@ export async function recoverExistingArticleResearchV1({
         semanticCachedBatchCalls++;
         return JSON.parse(cached) as SemanticEvidenceJudgmentV1[];
       }
+      check(!previewPostSemantic,
+        "PREVIEW_REQUIRES_CACHED_SEMANTIC_BATCH");
       await assertResearchPlanningCheckpointWritableV1(scope);
       const verdicts=await reviewSemanticEvidenceWithContentAiV1(pairs);
       await saveExistingResearchPlanningCheckpointV1(
@@ -801,6 +810,47 @@ export async function recoverExistingArticleResearchV1({
       approvedClaimIds:[...initialApprovedIds],
       officialAlternatives,
     });
+    if(previewPostSemantic){
+      const sourceById=new Map(newGraph.sources.map(src=>[src.id,src]));
+      const selectedIds=new Set(narrowed.map(n=>n.claimId));
+      return {
+        articleId,status:"IN_REVIEW" as const,
+        result:"READ_ONLY_CACHED_POST_SEMANTIC_PREVIEW" as const,
+        deficientSections:deficient.map(s=>s.id),
+        priorSemanticReviewed:semanticReview.reviewedPairs,
+        priorSemanticApproved:semanticReview.approvedPairs,
+        officialAlternativeQuotes:officialAlternatives.length,
+        sections:deficient.map(section=>{
+          const sourceIds=officialAlternatives.filter(x=>
+            x.sectionId===section.id);
+          const scopedClaims=proposed.filter(c=>c.sectionId===section.id);
+          const originallyReviewed=newGraph.claimEvidence.filter(e=>
+            scopedClaims.some(c=>c.id===e.claimId)&&
+            e.kind==="VERIFIED_EXCERPT"&&
+            e.relation==="SUPPORTS");
+          return {
+            sectionId:section.id,
+            existingApprovedClaims:scopedClaims
+              .filter(c=>initialApprovedIds.has(c.id)).map(c=>c.id),
+            rejectedClaims:scopedClaims
+              .filter(c=>!initialApprovedIds.has(c.id)).map(c=>c.id),
+            rejectedLexicalPairs:originallyReviewed.filter(e=>
+              semanticReview.demotedEvidenceIds.includes(e.id)).length,
+            officialAlternatives:sourceIds.length,
+            selectedNewFacts:narrowed.filter(n=>
+              n.sectionId===section.id).map(n=>({
+                claimId:n.claimId,
+                text:n.text,
+                sourceUrl:sourceById.get(n.sourceId)?.url??"",
+                candidateOnly:true,
+              })),
+            hasRescueCandidate:scopedClaims.some(c=>selectedIds.has(c.id)),
+          };
+        }),
+        aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true,
+        warning:"CANDIDATES_NOT_VERIFIED;PAID_SEMANTIC_AND_WRITER_NOT_RUN",
+      };
+    }
     let secondPassReviewedPairs=0,secondPassApprovedPairs=0;
     if(narrowed.length){
       const changesById=new Map(narrowed.map(c=>[c.claimId,c]));
