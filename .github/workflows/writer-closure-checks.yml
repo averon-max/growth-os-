@@ -9,6 +9,8 @@ on:
       - "src/lib/content/master-article-critic-repair-execution.test.ts"
       - "src/lib/content/production-final-article-readiness-adapter-v1.ts"
       - "src/lib/content/production-final-article-readiness-adapter-v1.test.ts"
+      - "src/lib/content/source-grounded-claim-replan-v1.ts"
+      - "src/lib/content/source-grounded-claim-replan-v1.test.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
