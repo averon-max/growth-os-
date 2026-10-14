@@ -3,6 +3,10 @@ import {readFileSync} from "node:fs";
 import {selectPostSemanticSourceNarrowingV1,
   isReaderInitiatedResponseStepV1,
 } from "./post-semantic-source-narrowing-v1";
+import {
+  isServiceChoiceSectionV1,
+  rankCreditMonitoringComparisonSentencesV1,
+} from "./live-evidence-verification";
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
 import type {ResearchExpansionClaimV1}
   from "./existing-article-research-plan-v1";
@@ -82,6 +86,43 @@ describe("bounded post-semantic narrowing",()=>{
     expect(result).toHaveLength(1);
     expect(result[0].text).toBe(trueSentence);
     expect(result[0].claimId).toBe(contents[3].id);
+  });
+  it("recognizes the exact saved section-5 question and ranks real service-scope facts",()=>{
+    const heading="What should you look for in a credit monitoring service?";
+    const mission="Help readers identify service-scope questions before choosing or using a service.";
+    expect(isServiceChoiceSectionV1(heading)).toBe(true);
+    expect(isServiceChoiceSectionV1("What should you do after a credit monitoring alert?"))
+      .toBe(false);
+    const alertScope="Credit monitoring services may send alerts about new accounts and inquiries added to your credit report.";
+    const costScope="Some credit monitoring services charge monthly fees, while other service plans offer free monitoring features.";
+    const oldBureau="Some credit monitoring services with premium features cover all three bureaus instead of only one bureau.";
+    const unknown="Insurance companies offer premium features and different policy discounts for vehicle ownership.";
+    const ranked=rankCreditMonitoringComparisonSentencesV1({
+      heading,mission,
+      bodyText:[unknown,alertScope,costScope,oldBureau].join(" "),
+    });
+    expect(ranked).toContain(alertScope);
+    expect(ranked).toContain(costScope);
+    expect(ranked).not.toContain(unknown);
+    const source=ftc("service-selection");
+    const selected=selectPostSemanticSourceNarrowingV1({
+      sections:[{id:"section-5",heading,mission}],
+      claims:[contents[0],contents[1]],sources:[source],
+      originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[0].id],
+      comparisonAlternatives:[{
+        sectionId:"section-5",sourceId:source.id,
+        sourceUrl:source.url,text:oldBureau,
+      },{
+        sectionId:"section-5",sourceId:source.id,
+        sourceUrl:source.url,text:alertScope,
+      }],
+    });
+    expect(selected).toHaveLength(1);
+    expect(selected[0].claimId).toBe(contents[1].id);
+    expect(selected[0].text).toBe(alertScope);
+    expect(selected[0].sourceEvidenceId)
+      .toBe("UNVERIFIED_TRUSTED_COMPARISON_ALTERNATIVE");
   });
   it("recovers price and feature differences for choosing monitoring services",()=>{
     const source=ftc("monitoring-costs");
