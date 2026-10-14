@@ -373,10 +373,21 @@ describe("optional coverage self-healing production wiring", () => {
     expect(service).toContain("finalCritics: masterCriticExecution");
   });
 
-  it("requires safe, measurable keyword improvement after nine critics", () => {
+  it("rolls back an unsafe optional keyword-only edit to the already accepted article", () => {
     const repair=source("./master-article-critic-repair-execution.ts");
-    expect(repair).toContain("OPTIONAL_KEYWORD_REPAIR_DID_NOT_IMPROVE_SAFELY");
-    expect(repair).toContain('finalCritics.suite.status === "BLOCK"');
-    expect(repair).toContain("missingCount(finalCritics) >= missingCount(initialCritics)");
+    const start=repair.indexOf("if (optionalKeywordRepair) {");
+    const end=repair.indexOf("const residualPlan =",start);
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    const optional=repair.slice(start,end);
+    expect(optional).toContain("OPTIONAL_KEYWORD_REPAIR_DID_NOT_IMPROVE_SAFELY");
+    expect(optional).toContain('finalCritics.suite.status === "BLOCK"');
+    expect(optional).toContain("missingCount(finalCritics) >= missingCount(initialCritics)");
+    expect(optional).toContain("assertMasterArticleCriticExecutionPassed(initialCritics)");
+    expect(optional).toContain("run,");
+    expect(optional).toContain("finalCritics: initialCritics,");
+    expect(optional).toContain("repairs: Object.freeze([])");
+    expect(optional).toContain("repairedSectionCount: 0");
+    expect(optional).not.toContain("throw new ContentGenerationError(");
   });
 });
