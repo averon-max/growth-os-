@@ -2,6 +2,7 @@ import {describe,expect,it} from "vitest";
 import {
   buildSourceGroundedReplanPacketV1,
   validateSourceGroundedClaimReplanV1,
+  recoverSourceGroundedClaimReplanFromCachedModelV1,
 } from "./source-grounded-claim-replan-v1";
 import type {EvidenceSource}
   from "./evidence-graph";
@@ -120,6 +121,86 @@ describe("source-first grounded claim restatement",()=>{
         {claimId:"c2",quoteId:result[1].quotes[0].quoteId,text:quote2},
       ],
     })).toThrow("UNAUTHORIZED_CLAIM_OR_QUOTE");
+  });
+
+  it("rescues a cached paid paraphrase with its EXACT sourced sentence without a model call",()=>{
+    const result=packet();
+    const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:result,originalClaims:claims,
+      replacements:[
+        {claimId:"c1",quoteId:result[0].quotes[0].quoteId,
+          text:"Credit monitoring always prevents identity theft before it happens."},
+        {claimId:"c2",quoteId:result[1].quotes[0].quoteId,text:quote2},
+      ],
+    });
+    expect(recovered.literalSourceFallbacks).toBe(1);
+    expect(recovered.acceptedModelRestatements).toBe(1);
+    expect(recovered.claims[0].id).toBe("c1");
+    expect(recovered.claims[0].text).toBe(quote1);
+    expect(recovered.fallbackDetails[0].sourceId).toBe("ftc");
+  });
+  it("cannot rescue an invented source/claim cross-link or make up a missing quote",()=>{
+    const result=packet();
+    expect(()=>recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:result,originalClaims:claims,
+      replacements:[
+        {claimId:"c1",quoteId:result[1].quotes[0].quoteId,
+          text:"Credit monitoring prevents identity theft."},
+        {claimId:"c2",quoteId:result[0].quotes[0].quoteId,text:quote2},
+      ],
+    })).toThrow("MODEL_UNAUTHORIZED_CLAIM_OR_QUOTE");
+    const unusable=structuredClone(result);
+    unusable[0].quotes[0].excerpt="Unknown fact.";
+    expect(()=>recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:unusable,originalClaims:claims,
+      replacements:[
+        {claimId:"c1",quoteId:unusable[0].quotes[0].quoteId,
+          text:"Credit monitoring prevents identity theft."},
+        {claimId:"c2",quoteId:unusable[1].quotes[0].quoteId,text:quote2},
+      ],
+    })).toThrow("NO_STRICT_LITERAL_SOURCE_FACT_FOR:c1");
+  });
+  it("recovers two assigned fact sentences without inventing a third",()=>{
+    const extra:ResearchExpansionClaimV1={
+      id:"c1more",sectionId:"s1",category:"FACT",risk:"LOW",
+      text:"All credit monitoring services stop new-account fraud.",
+    };
+    const source2="Credit monitoring tools may send notifications when "+
+      "changes appear in your credit report.";
+    const localClaims=[claims[0],extra,claims[1]];
+    const result=buildSourceGroundedReplanPacketV1({
+      sections:[
+        {id:"s1",heading:"Credit monitoring",mission:"What the service does"},
+        {id:"s2",heading:"Responding to alerts",mission:"Disputing errors"},
+      ],
+      claims:localClaims,
+      candidates:[
+        {claimId:"c1",sourceId:"ftc",sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote1,coverage:0.5},
+        {claimId:"c1more",sourceId:"cfpb",sourceUrl:src("cfpb","PRIMARY_GOVERNMENT","A").url,
+          excerpt:source2,coverage:0.5},
+        {claimId:"c2",sourceId:"ftc",sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote2,coverage:0.5},
+      ],
+      sources:[src("ftc","PRIMARY_GOVERNMENT","A"),
+        src("cfpb","PRIMARY_GOVERNMENT","A")],
+    });
+    const quoteMore=result[0].quotes.find(q=>q.claimId==="c1more")!;
+    const quoteFirst=result[0].quotes.find(q=>q.claimId==="c1")!;
+    const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:result,originalClaims:localClaims,
+      replacements:[
+        {claimId:"c1",quoteId:quoteFirst.quoteId,
+          text:"The service prevents all unauthorized changes."},
+        {claimId:"c1more",quoteId:quoteMore.quoteId,
+          text:"Credit monitoring always stops financial fraud."},
+        {claimId:"c2",quoteId:result[1].quotes[0].quoteId,text:quote2},
+      ],
+    });
+    expect(recovered.literalSourceFallbacks).toBe(2);
+    expect(recovered.claims).toHaveLength(3);
+    expect(recovered.claims[0].text).toBe(quote1);
+    expect(recovered.claims[1].text).toBe(source2);
   });
 
   it("does not accept invented or cross-section quote ownership",()=>{
