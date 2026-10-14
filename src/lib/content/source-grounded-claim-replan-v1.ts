@@ -201,7 +201,8 @@ export interface SourceGroundedCachedModelRecoveryV1 {
   readonly fallbackDetails:readonly Readonly<{
     sectionId:string;claimId:string;sourceId:string;
     reason:"MODEL_PARAPHRASE_NOT_STRICTLY_VERIFIED" |
-      "MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE";
+      "MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE" |
+      "SECOND_SECTION_FACT_FROM_DISTINCT_LITERAL_SOURCE";
   }>[];
 }
 
@@ -285,62 +286,72 @@ export function recoverSourceGroundedClaimReplanFromCachedModelV1({
     });
   }
   /*
-   * A paid source-grounded model may return valid restatements for
-   * three sections but omit the fourth. Do not spend a second model
-   * call to restate a sentence that is already in a fetched source.
+   * A saved model response can provide one real fact per section while
+   * the old article has no remaining independently verified prior fact.
+   * Recover a SECOND atomic fact only where a separate, unused quote
+   * for a distinct existing claim is available in the same section.
    *
-   * This is NOT an exemption from evidence requirements: recover at
-   * most ONE missing fact per uncovered section; its claim/quote must
-   * belong to that exact section; the literal sentence must pass the
-   * canonical lexical verifier; downstream live refetch and semantic
-   * entailment review remain mandatory before any DB changes.
-   *
-   * Fail closed if all sections were omitted or a section has no
-   * usable, topically related literal source sentence.
+   * This reuses locally cached, already fetched source material:
+   * no new model calls, sources, claim IDs, H2s or relaxed gates.
+   * Fail closed on a model response with no section coverage at all.
+   * Each candidate must pass the SAME strict lexical verifier here
+   * and again through production live refetch + semantic entailment.
    */
   if(repaired.length===0)
     throw code("NO_MODEL_SECTION_REPLACEMENTS");
-  const representedSections=new Set(repaired.map(entry=>
-    claimById.get(entry.claimId)?.sectionId));
   const usedClaims=new Set(repaired.map(entry=>entry.claimId));
   const usedQuotes=new Set(repaired.map(entry=>entry.quoteId));
+  const countInSection=(sectionId:string)=>repaired.filter(entry=>
+    claimById.get(entry.claimId)?.sectionId===sectionId).length;
   for(const section of packet){
-    if(representedSections.has(section.sectionId))continue;
-    const choices=section.quotes.flatMap(quote=>{
-      const claim=claimById.get(quote.claimId);
-      if(!claim||claim.sectionId!==section.sectionId||
-        usedClaims.has(claim.id)||usedQuotes.has(quote.quoteId))
-        return [];
-      return literalSourceSentencesV1(quote.excerpt)
-        .filter(sentence=>sentence.toLowerCase()!==claim.text.toLowerCase())
-        .map(sentence=>({
-          quote,claim,sentence,
-          relevance:Math.max(
-            lexicalIdentityV1(sentence,section.heading+" "+section.mission),
-            lexicalIdentityV1(sentence,claim.text),
-          ),
-        }));
-    }).filter(candidate=>candidate.relevance>0)
-      .sort((a,b)=>b.relevance-a.relevance||
-        b.quote.coverage-a.quote.coverage||
-        a.quote.quoteId.localeCompare(b.quote.quoteId)||
-        a.sentence.localeCompare(b.sentence));
-    const selected=choices[0];
-    if(!selected)
-      throw code("MISSING_SECTION_WITHOUT_STRICT_RELEVANT_QUOTE:"+
-        section.sectionId);
-    repaired.push({
-      claimId:selected.claim.id,quoteId:selected.quote.quoteId,
-      text:selected.sentence,
-    });
-    fallbackDetails.push({
-      sectionId:section.sectionId,claimId:selected.claim.id,
-      sourceId:selected.quote.sourceId,
-      reason:"MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE",
-    });
-    representedSections.add(section.sectionId);
-    usedClaims.add(selected.claim.id);
-    usedQuotes.add(selected.quote.quoteId);
+    const targetCount=Math.min(2,section.quotes.length);
+    while(countInSection(section.sectionId)<targetCount){
+      const choices=section.quotes.flatMap(quote=>{
+        const claim=claimById.get(quote.claimId);
+        if(!claim||claim.sectionId!==section.sectionId||
+          usedClaims.has(claim.id)||usedQuotes.has(quote.quoteId))
+          return [];
+        return literalSourceSentencesV1(quote.excerpt)
+          .filter(sentence=>
+            sentence.toLowerCase()!==claim.text.toLowerCase()&&
+            !repaired.some(entry=>entry.text.toLowerCase()===
+              sentence.toLowerCase()))
+          .map(sentence=>({
+            quote,claim,sentence,
+            relevance:Math.max(
+              lexicalIdentityV1(sentence,section.heading+" "+section.mission),
+              lexicalIdentityV1(sentence,claim.text),
+            ),
+          }));
+      }).filter(candidate=>candidate.relevance>0)
+        .sort((a,b)=>b.relevance-a.relevance||
+          b.quote.coverage-a.quote.coverage||
+          a.quote.quoteId.localeCompare(b.quote.quoteId)||
+          a.sentence.localeCompare(b.sentence));
+      const selected=choices[0];
+      if(!selected){
+        if(countInSection(section.sectionId)===0)
+          throw code("MISSING_SECTION_WITHOUT_STRICT_RELEVANT_QUOTE:"+
+            section.sectionId);
+        // Never fill the depth budget with an unrelated or duplicate
+        // source sentence; an upstream depth gate remains authoritative.
+        break;
+      }
+      const omitted=countInSection(section.sectionId)===0;
+      repaired.push({
+        claimId:selected.claim.id,quoteId:selected.quote.quoteId,
+        text:selected.sentence,
+      });
+      fallbackDetails.push({
+        sectionId:section.sectionId,claimId:selected.claim.id,
+        sourceId:selected.quote.sourceId,
+        reason:omitted
+          ?"MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE"
+          :"SECOND_SECTION_FACT_FROM_DISTINCT_LITERAL_SOURCE",
+      });
+      usedClaims.add(selected.claim.id);
+      usedQuotes.add(selected.quote.quoteId);
+    }
   }
   const claims=validateSourceGroundedClaimReplanV1({
     packet,replacements:repaired,originalClaims,

@@ -652,6 +652,30 @@ export async function recoverExistingArticleResearchV1({
     const newSupported=proposed.filter(c=>verifiedIds.has(c.id));
     check(newSupported.length>=writable.length,
       "INSUFFICIENT_NEW_VERIFIED_CLAIMS");
+    // Make a post-semantic depth failure actionable without exposing
+    // quotes, provider keys, private article text or changing the gate.
+    // The semantic reviewer may demote previously lexical-only support.
+    console.info("[content research recovery post-semantic authority]",{
+      reviewedPairs:semanticReview.reviewedPairs,
+      approvedPairs:semanticReview.approvedPairs,
+      sections:oldPlan.sections.filter(s=>s.state==="WRITABLE")
+        .map(section=>{
+          const priorIds=section.requiredClaimIds.filter(id=>
+            verifiedIds.has(id));
+          const newIds=newSupported.filter(c=>
+            c.sectionId===section.id).map(c=>c.id);
+          const allIds=new Set([...priorIds,...newIds]);
+          const evidenceCount=new Set(graphAfterReview.claimEvidence
+            .filter(e=>allIds.has(e.claimId)&&
+              e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS")
+            .map(e=>e.id)).size;
+          return {
+            sectionId:section.id,priorVerified:priorIds.length,
+            newVerified:newIds.length,combinedVerified:allIds.size,
+            verifiedEvidenceCount:evidenceCount,
+          };
+        }),
+    });
     const scopedSections=oldPlan.sections.map(section=>{
       const originalIds=section.requiredClaimIds.filter(id=>
         verifiedIds.has(id));
