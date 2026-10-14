@@ -399,7 +399,7 @@ export async function recoverExistingArticleResearchV1({
         }
         await assertResearchPlanningCheckpointWritableV1(probeScope);
         // One search per section, not one broad multi-claim search.
-        // Reserve a place in the crawler's first-24 URL ceiling for
+        // Reserve a place in the crawler's bounded URL ceiling for
         // EVERY missing section instead of spending the whole budget
         // on URLs from the first query.
         // Explicit search callback works with BOTH production
@@ -415,7 +415,7 @@ export async function recoverExistingArticleResearchV1({
           [targetSection?.heading,targetSection?.mission]
             .filter(Boolean).join(" ")||
           original.brief.primaryKeyword
-        ).replace(/\\s+/g," ").trim().slice(0,180);
+        ).replace(/\s+/g," ").trim().slice(0,180);
         let searchRequestsForProbe=0;
         let providerSearchFailure:Error|null=null;
         const search:NonNullable<
@@ -559,6 +559,17 @@ export async function recoverExistingArticleResearchV1({
         "SOURCE_FIRST_NO_AUTHORITATIVE_QUOTE_FOR_SECTIONS:"+
           packet.filter(p=>p.quotes.length===0)
             .map(p=>p.sectionId).join(","));
+      // A credible citation is only a candidate. Before paying for
+      // another model restatement, require TWO different claim IDs
+      // to have strict evidence or authorized candidate quotes.
+      // Insufficient research stops here, never padded by Writer.
+      const missingSecondFacts=findSourceGroundedDiscoveryGapsV1({
+        packet,
+        verifiedClaimIds:proposed.filter(c=>newSupport(c.id)).map(c=>c.id),
+      });
+      check(missingSecondFacts.length===0,
+        "SOURCE_FIRST_NO_SECOND_DISTINCT_CLAIM_FOR_SECTIONS:"+
+          missingSecondFacts.join(","));
       const packetHash=hash({
         version:"SOURCE_GROUNDED_ATOMIC_REPLAN_V2_MULTI_FACT",
         evidenceHash:originalEvidenceFingerprint,
