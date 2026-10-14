@@ -45,6 +45,7 @@ import {
   enrichLiveEvidenceGraphV1,
   discoverClaimEvidenceFallbackSourcesV1,
   collectEvidenceClaimRecoveryCandidatesV1,
+  collectOfficialSectionProcedureCandidatesV1,
 } from "./live-evidence-verification";
 import {reviewAndConstrainVerifiedEvidenceV1,
   reviewSemanticEvidenceWithContentAiV1,
@@ -301,12 +302,35 @@ export async function recoverExistingArticleResearchV1({
         .length<2);
     const missingBeforeDiscoveryIds=
       new Set(missingBeforeDiscovery.map(s=>s.id));
-    const candidatesBeforeDiscovery=missingBeforeDiscovery.length
+    const speculativeNearCandidates=missingBeforeDiscovery.length
       ?await collectEvidenceClaimRecoveryCandidatesV1({
         graph:newGraph,
         claims:proposed.filter(c=>missingBeforeDiscoveryIds.has(c.sectionId)),
         maxPerClaim:3,maxSources:72,
       }):[];
+    // Extract actual procedural instructions from opt-in government
+    // pages BEFORE asking a model to rewrite unsupported hypotheses.
+    // These are candidate literal sentences, never verified claims.
+    const officialProcedureCandidates=
+      await collectOfficialSectionProcedureCandidatesV1({
+        graph:newGraph,
+        sections:missingBeforeDiscovery.map(s=>({
+          id:s.id,heading:s.heading,mission:s.mission,
+        })),
+        claims:proposed,
+        governmentSourceIds:governmentSeeds.map(s=>s.id),
+      });
+    const candidatesBeforeDiscovery=[
+      ...officialProcedureCandidates,...speculativeNearCandidates,
+    ];
+    console.info("[content research recovery source-first procedure]",{
+      proceduralCandidates:officialProcedureCandidates.length,
+      sections:[...new Set(officialProcedureCandidates.map(c=>
+        proposed.find(p=>p.id===c.claimId)?.sectionId))],
+      governmentHosts:[...new Set(officialProcedureCandidates.map(c=>
+        new URL(c.sourceUrl).hostname))],
+      factAuthority:"CANDIDATE_ONLY",
+    });
     const packetBeforeDiscovery=buildSourceGroundedReplanPacketV1({
       sections:missingBeforeDiscovery.map(s=>({
         id:s.id,heading:s.heading,mission:s.mission,
@@ -532,10 +556,13 @@ export async function recoverExistingArticleResearchV1({
           packetBeforeDiscovery[i]?.sectionId===s.id);
       const fetchedCandidates=reusePrecheckedQuotes
         ?candidatesBeforeDiscovery
-        :await collectEvidenceClaimRecoveryCandidatesV1({
-          graph:newGraph,claims:missingClaims,maxPerClaim:3,
-          maxSources:72,
-        });
+        :[
+          ...officialProcedureCandidates,
+          ...await collectEvidenceClaimRecoveryCandidatesV1({
+            graph:newGraph,claims:missingClaims,maxPerClaim:3,
+            maxSources:72,
+          }),
+        ];
       const packet=reusePrecheckedQuotes
         ?packetBeforeDiscovery
         :buildSourceGroundedReplanPacketV1({
