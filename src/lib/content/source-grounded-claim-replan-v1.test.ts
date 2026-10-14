@@ -1,6 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {
   buildSourceGroundedReplanPacketV1,
+  findSourceGroundedDiscoveryGapsV1,
   validateSourceGroundedClaimReplanV1,
   recoverSourceGroundedClaimReplanFromCachedModelV1,
 } from "./source-grounded-claim-replan-v1";
@@ -46,6 +47,38 @@ function packet(){
   });
 }
 describe("source-first grounded claim restatement",()=>{
+  it("requests discovery for one quote when two independent facts are needed",()=>{
+    const two=packet();
+    expect(findSourceGroundedDiscoveryGapsV1({
+      packet:two,verifiedClaimIds:[],
+    })).toEqual(["s1","s2"]);
+    expect(findSourceGroundedDiscoveryGapsV1({
+      packet:two,verifiedClaimIds:["c1","c2"],
+    })).toEqual(["s1","s2"]);
+    // A second quoted claim, not two citations to the same claim,
+    // supplies sufficient candidate depth to skip paid discovery.
+    const second={...two[0].quotes[0],
+      claimId:"c1b",quoteId:"independent-quote"};
+    const deep={...two[0],claimIds:["c1","c1b"],
+      quotes:[...two[0].quotes,second]};
+    expect(findSourceGroundedDiscoveryGapsV1({
+      packet:[deep,two[1]],verifiedClaimIds:[],
+    })).toEqual(["s2"]);
+  });
+  it("counts an existing strict claim plus a different quote, not repeated citations",()=>{
+    const two=packet();
+    const different={...two[0],claimIds:["c1","c1b"],
+      quotes:[{...two[0].quotes[0],claimId:"c1b"}]};
+    expect(findSourceGroundedDiscoveryGapsV1({
+      packet:[different],verifiedClaimIds:["c1"],
+    })).toEqual([]);
+    const repeated={...different,quotes:[two[0].quotes[0],
+      {...two[0].quotes[0],quoteId:"second-source-same-claim"}]};
+    expect(findSourceGroundedDiscoveryGapsV1({
+      packet:[repeated],verifiedClaimIds:[],
+    })).toEqual(["s1"]);
+  });
+
   it("preserves section/claim identities and only offers real source excerpts",()=>{
     const result=packet();
     expect(result).toHaveLength(2);
