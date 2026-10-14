@@ -128,7 +128,11 @@ export function selectPostSemanticSourceNarrowingV1({
         if(!candidateClaim)continue;
         candidates.push({
           claim:candidateClaim,source,
-          evidence:{id:"UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE"},
+          evidence:{
+            id:"UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE",
+            claimId:candidateClaim.id,sourceId:source.id,
+            kind:"REFERENCE_ONLY",relation:"PARTIALLY_SUPPORTS",
+          } as ClaimEvidence,
           sentence,
           score:shared+4*tokens(sentence)
             .filter(t=>missionSpecific.has(t)).length,
