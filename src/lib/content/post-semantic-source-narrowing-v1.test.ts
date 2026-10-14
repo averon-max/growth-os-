@@ -1,4 +1,5 @@
 import {describe,expect,it} from "vitest";
+import {readFileSync} from "node:fs";
 import {selectPostSemanticSourceNarrowingV1} from "./post-semantic-source-narrowing-v1";
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
 import type {ResearchExpansionClaimV1}
@@ -108,6 +109,18 @@ describe("bounded post-semantic narrowing",()=>{
       }],
     });
     expect(untrusted).toEqual([]);
+  });
+  it("keeps the official step preview read-only and excludes paid calls",()=>{
+    const script=readFileSync(new URL(
+      "../../../scripts/content-existing-article-official-response-facts-audit.ts",
+      import.meta.url),"utf8");
+    expect(script).toContain("collectOfficialPostSemanticProcedureAlternativesV1({");
+    expect(script).toContain('id==="section-6"');
+    expect(script).toContain("UNVERIFIED_SOURCE_CANDIDATE_ONLY");
+    expect(script).toContain("aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true");
+    expect(script).not.toContain("buildSerpIntelligence(");
+    expect(script).not.toContain("callContentAiJson(");
+    expect(script).not.toContain("prisma.contentArticle.update(");
   });
   it("does not replace approved facts or use an alternate for a comparison section",()=>{
     const source=ftc("steps");
