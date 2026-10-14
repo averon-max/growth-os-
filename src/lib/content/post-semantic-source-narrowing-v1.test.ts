@@ -58,6 +58,70 @@ describe("bounded post-semantic narrowing",()=>{
     expect(found.map(x=>x.text)).toEqual([comparison,correction]);
     expect(found.map(x=>x.sectionId)).toEqual(["section-5","section-6"]);
   });
+  it("uses another official instruction for section-6 when the rejected excerpt is only headings",()=>{
+    const source=ftc("disputing-errors-your-credit-reports");
+    const headings="How monitoring works. What an alert means. "+
+      "Common questions about the credit monitoring service.";
+    const actionable="If you find an error on your credit report, "+
+      "you should contact the credit reporting company to dispute "+
+      "the incorrect item.";
+    const found=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[1]],claims:[contents[2],contents[3]],
+      sources:[source],
+      originalEvidence:[edge("old",contents[3].id,source.id,headings)],
+      demotedEvidenceIds:["old"],
+      approvedClaimIds:[contents[2].id],
+      officialAlternatives:[{
+        sectionId:"section-6",sourceId:source.id,sourceUrl:source.url,
+        text:actionable,
+      }],
+    });
+    expect(found).toHaveLength(1);
+    expect(found[0]).toEqual({
+      claimId:contents[3].id,sectionId:"section-6",
+      text:actionable,sourceId:source.id,
+      sourceEvidenceId:"UNVERIFIED_OFFICIAL_PROCEDURE_ALTERNATIVE",
+    });
+  });
+  it("does not grant fallback authority or accept marketing prose as recovery",()=>{
+    const source=ftc("steps");
+    const marketing="Credit monitoring services send your alerts whenever "+
+      "the credit score changes in your credit reports.";
+    const found=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[1]],claims:[contents[2],contents[3]],
+      sources:[source],originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[2].id],
+      officialAlternatives:[{
+        sectionId:"section-6",sourceId:source.id,sourceUrl:source.url,
+        text:marketing,
+      }],
+    });
+    expect(found).toEqual([]);
+    const untrusted=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[1]],claims:[contents[2],contents[3]],
+      sources:[{...source,sourceType:"UGC",authorityTier:"F"}],
+      originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[2].id],
+      officialAlternatives:[{
+        sectionId:"section-6",sourceId:source.id,sourceUrl:source.url,
+        text:correction,
+      }],
+    });
+    expect(untrusted).toEqual([]);
+  });
+  it("does not replace approved facts or use an alternate for a comparison section",()=>{
+    const source=ftc("steps");
+    const found=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[0]],claims:[contents[0],contents[1]],
+      sources:[source],originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[0].id],
+      officialAlternatives:[{
+        sectionId:"section-5",sourceId:source.id,sourceUrl:source.url,
+        text:correction,
+      }],
+    });
+    expect(found).toEqual([]);
+  });
   it("never selects unsupported or unreviewed source entries",()=>{
     const source=ftc("corrections");
     const result=selectPostSemanticSourceNarrowingV1({
