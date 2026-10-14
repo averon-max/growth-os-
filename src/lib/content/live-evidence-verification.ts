@@ -2934,6 +2934,98 @@ export async function collectOfficialPostSemanticProcedureAlternativesV1({
   return result;
 }
 
+/**
+ * Comparison sections can fail semantic review even when the fetched
+ * page contains OTHER, narrower facts about price, features, or alert
+ * differences. Look only at a bounded set of the same rejected-claim
+ * source pages and return complete source sentences, NOT authority.
+ *
+ * This does not use SERP search, AI, or new source URLs. The caller
+ * must re-fetch and semantically review every proposed replacement.
+ */
+export interface PostSemanticComparisonAlternativeV1 {
+  readonly sectionId:string;
+  readonly sourceId:string;
+  readonly sourceUrl:string;
+  readonly text:string;
+}
+export function rankCreditMonitoringComparisonSentencesV1({
+  heading,mission,bodyText,
+}:{
+  heading:string;mission:string;bodyText:string;
+}):readonly string[]{
+  if(!/\\b(?:how to (?:choose|compare|select)|what to (?:look for|compare))\\b/i
+    .test(heading))return [];
+  const topic=new Set(semanticTokens(heading+" "+mission));
+  const comparison=/\\b(?:costs?|prices?|fees?|free|paid|premium|features?|alerts?|plans?|subscription|coverage)\\b/i;
+  const subject=/\\b(?:credit|monitoring|services?|reports?|bureaus?)\\b/i;
+  const ranked=sentenceWindows(bodyText)
+    .filter(s=>s.length>=65&&s.length<=320&&
+      /[.!]$/.test(s)&&!s.includes("?")&&
+      s.split(/(?<=[.!?])\\s+/).length===1&&
+      comparison.test(s)&&subject.test(s))
+    .map(text=>({
+      text,shared:semanticTokens(text).filter(t=>topic.has(t)).length,
+      specific:/\\b(?:cost|price|fee|free|paid|premium|subscription|feature)\\b/i.test(text),
+    }))
+    .filter(x=>x.shared>=2&&x.specific)
+    .sort((a,b)=>b.shared-a.shared||a.text.length-b.text.length);
+  const seen=new Set<string>(),out:string[]=[];
+  for(const x of ranked){
+    const key=normalize(x.text);
+    if(!key||seen.has(key))continue;
+    seen.add(key);out.push(x.text);
+    if(out.length>=6)break;
+  }
+  return out;
+}
+export async function collectPostSemanticComparisonAlternativesV1({
+  graph,sections,demotedEvidenceIds,targetClaimIds,
+}:{
+  graph:EvidenceGraphInput;
+  sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
+  demotedEvidenceIds:readonly string[];
+  targetClaimIds:readonly string[];
+}):Promise<readonly PostSemanticComparisonAlternativeV1[]>{
+  const demoted=new Set(demotedEvidenceIds);
+  const target=new Set(targetClaimIds);
+  const trusted=new Map(graph.sources.filter(s=>
+    ["A","B","C"].includes(s.authorityTier)&&
+    ["PRIMARY_GOVERNMENT","PRIMARY_OFFICIAL","REPUTABLE_SECONDARY",
+      "ACADEMIC"].includes(s.sourceType)).map(s=>[s.id,s] as const));
+  const selected=graph.claimEvidence.filter(e=>
+    demoted.has(e.id)&&target.has(e.claimId)&&
+    trusted.has(e.sourceId)&&e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS");
+  const unique=new Set<string>(),sources:EvidenceGraphInput["sources"][number][]=[];
+  for(const e of selected){
+    if(unique.has(e.sourceId))continue;
+    const s=trusted.get(e.sourceId);
+    if(!s)continue;
+    unique.add(e.sourceId);sources.push(s);
+    if(sources.length>=6)break;
+  }
+  if(!sources.length)return [];
+  const bodies=await fetchSourceBodies({
+    sources,claimEvidence:[],
+  },6);
+  const out:PostSemanticComparisonAlternativeV1[]=[];
+  for(const section of sections){
+    for(const source of sources){
+      const body=bodies.get(source.id);
+      if(!body)continue;
+      for(const text of rankCreditMonitoringComparisonSentencesV1({
+        heading:section.heading,mission:section.mission,bodyText:body,
+      })){
+        out.push({sectionId:section.id,sourceId:source.id,
+          sourceUrl:source.url,text});
+        if(out.filter(x=>x.sectionId===section.id).length>=12)break;
+      }
+      if(out.filter(x=>x.sectionId===section.id).length>=12)break;
+    }
+  }
+  return out;
+}
+
 export async function collectEvidenceClaimRecoveryCandidatesV1({
   graph,
   claims,

@@ -61,6 +61,63 @@ describe("bounded post-semantic narrowing",()=>{
     expect(found.map(x=>x.text)).toEqual([comparison,correction]);
     expect(found.map(x=>x.sectionId)).toEqual(["section-5","section-6"]);
   });
+  it("reproduces the current cached preview: the FTC step still qualifies with only one topic token",()=>{
+    const source=ftc("disputing-errors-your-credit-reports");
+    const trueSentence="To correct mistakes in your report, contact the credit bureau and the business that reported the inaccurate information.";
+    const narrowMission={
+      id:"section-6",
+      heading:"What should you do after a credit monitoring alert?",
+      mission:"Explain actionable next steps and avoid unnecessary delays",
+    };
+    const result=selectPostSemanticSourceNarrowingV1({
+      sections:[narrowMission],
+      claims:[contents[2],contents[3]],
+      sources:[source],originalEvidence:[],
+      demotedEvidenceIds:[],approvedClaimIds:[contents[2].id],
+      officialAlternatives:[{
+        sectionId:"section-6",sourceId:source.id,
+        sourceUrl:source.url,text:trueSentence,
+      }],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe(trueSentence);
+    expect(result[0].claimId).toBe(contents[3].id);
+  });
+  it("recovers price and feature differences for choosing monitoring services",()=>{
+    const source=ftc("monitoring-costs");
+    const sentence="Credit monitoring services often charge monthly fees and different plans may provide different monitoring features.";
+    const result=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[0]],claims:[contents[0],contents[1]],
+      sources:[source],originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[0].id],
+      comparisonAlternatives:[{
+        sectionId:"section-5",sourceId:source.id,
+        sourceUrl:source.url,text:sentence,
+      }],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].claimId).toBe(contents[1].id);
+    expect(result[0].text).toBe(sentence);
+    expect(result[0].sourceEvidenceId)
+      .toBe("UNVERIFIED_TRUSTED_COMPARISON_ALTERNATIVE");
+  });
+  it("rejects off-topic prices and already-covered bureau-only statements",()=>{
+    const source=ftc("costs");
+    const invalid=[
+      "Insurance services often charge monthly fees and different plans may provide various added features.",
+      "Some monitoring services cover one bureau while other monitoring services cover all three bureaus.",
+    ];
+    const result=selectPostSemanticSourceNarrowingV1({
+      sections:[sections[0]],claims:[contents[0],contents[1]],
+      sources:[source],originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[0].id],
+      comparisonAlternatives:invalid.map(text=>({
+        sectionId:"section-5",sourceId:source.id,
+        sourceUrl:source.url,text,
+      })),
+    });
+    expect(result).toEqual([]);
+  });
   it("chooses the actual FTC correction instruction from the eight real audited candidates",()=>{
     const ftcDispute=ftc("disputing-errors-your-credit-reports");
     const ftcIdentity=ftc("what-know-about-identity-theft");

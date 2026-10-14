@@ -10,8 +10,10 @@
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
 import type {ResearchExpansionClaimV1}
   from "./existing-article-research-plan-v1";
-import type {OfficialPostSemanticProcedureAlternativeV1}
-  from "./live-evidence-verification";
+import type {
+  OfficialPostSemanticProcedureAlternativeV1,
+  PostSemanticComparisonAlternativeV1,
+} from "./live-evidence-verification";
 
 type Section={id:string;heading:string;mission:string};
 export interface PostSemanticNarrowingV1{
@@ -31,6 +33,12 @@ const similarity=(a:string,b:string)=>{
   return [...x].filter(k=>y.has(k)).length/
     Math.max(1,new Set([...x,...y]).size);
 };
+const comparisonQuestion=(s:string)=>
+  /\b(?:how to (?:choose|compare|select)|what to (?:look for|compare))\b/i
+    .test(s);
+const comparisonFact=(text:string)=>
+  /\b(?:costs?|prices?|fees?|free|paid|premium|features?|subscription)\b/i.test(text)&&
+  /\b(?:credit|monitoring|service|services|report|reports)\b/i.test(text);
 const procedureQuestion=(s:string)=>
   /\b(?:what (?:should|can|do)|how (?:do|to|can)|steps? to)\b/i.test(s)&&
   // "How to choose/compare" is an evaluation, not a repair action.
@@ -57,7 +65,7 @@ const sentenceParts=(text:string):readonly string[]=>text
   .filter(s=>s.length>=55&&s.length<=320&&/[.!?]$/.test(s));
 export function selectPostSemanticSourceNarrowingV1({
   sections,claims,sources,originalEvidence,demotedEvidenceIds,
-  approvedClaimIds,officialAlternatives=[],
+  approvedClaimIds,officialAlternatives=[],comparisonAlternatives=[],
 }:{
   sections:readonly Section[];
   claims:readonly ResearchExpansionClaimV1[];
@@ -66,6 +74,7 @@ export function selectPostSemanticSourceNarrowingV1({
   demotedEvidenceIds:readonly string[];
   approvedClaimIds:readonly string[];
   officialAlternatives?:readonly OfficialPostSemanticProcedureAlternativeV1[];
+  comparisonAlternatives?:readonly PostSemanticComparisonAlternativeV1[];
 }):readonly PostSemanticNarrowingV1[]{
   const sourceById=new Map(sources.map(s=>[s.id,s] as const));
   const demoted=new Set(demotedEvidenceIds);
@@ -96,6 +105,8 @@ export function selectPostSemanticSourceNarrowingV1({
           if(shared<2||
             procedureQuestion(section.heading)&&
               !isReaderInitiatedResponseStepV1(sentence)||
+            comparisonQuestion(section.heading)&&
+              !comparisonFact(sentence)||
             sentence.toLowerCase()===claim.text.toLowerCase()||
             usedTexts.has(sentence.toLowerCase())||
             prior.some(x=>similarity(x,sentence)>0.7))return false;
@@ -129,7 +140,12 @@ export function selectPostSemanticSourceNarrowingV1({
         const sentence=alt.text.trim();
         const shared=tokens(sentence).filter(t=>focus.has(t)).length;
         if(sentence.length<55||sentence.length>320||
-          !/[.!?]$/.test(sentence)||shared<2||
+          !/[.!?]$/.test(sentence)||
+          // A source-backed consumer instruction about a CREDIT report
+          // addresses credit-alert response even if the saved mission
+          // uses different verbs ("act", "respond", "investigate").
+          (shared<2&&!(shared>=1&&focus.has("credit")&&
+            /\bcredit\s+(?:report|bureau)\b/i.test(sentence)))||
           !isReaderInitiatedResponseStepV1(sentence)||
           !humanResponseAction.test(sentence)||
           usedTexts.has(sentence.toLowerCase())||
@@ -146,6 +162,36 @@ export function selectPostSemanticSourceNarrowingV1({
           } as ClaimEvidence,
           sentence,
           score:shared+4*tokens(sentence)
+            .filter(t=>missionSpecific.has(t)).length,
+        });
+      }
+    }
+    if(candidates.length===0&&comparisonQuestion(section.heading)){
+      for(const alt of comparisonAlternatives.filter(x=>
+        x.sectionId===section.id)){
+        const source=sourceById.get(alt.sourceId);
+        if(!source||!["A","B","C"].includes(source.authorityTier)||
+          !["PRIMARY_GOVERNMENT","PRIMARY_OFFICIAL","ACADEMIC",
+            "REPUTABLE_SECONDARY"].includes(source.sourceType)||
+          source.url!==alt.sourceUrl)continue;
+        const sentence=alt.text.trim();
+        if(sentence.length<65||sentence.length>320||
+          !/[.!]$/.test(sentence)||!comparisonFact(sentence)||
+          usedTexts.has(sentence.toLowerCase())||
+          prior.some(p=>similarity(p,sentence)>0.7))continue;
+        const shared=tokens(sentence).filter(t=>focus.has(t)).length;
+        if(shared<2)continue;
+        const claim=rejected.find(c=>
+          c.text.toLowerCase()!==sentence.toLowerCase());
+        if(!claim)continue;
+        candidates.push({
+          claim,source,
+          evidence:{
+            id:"UNVERIFIED_TRUSTED_COMPARISON_ALTERNATIVE",
+            claimId:claim.id,sourceId:source.id,
+            kind:"REFERENCE_ONLY",relation:"PARTIALLY_SUPPORTS",
+          } as ClaimEvidence,
+          sentence,score:shared+4*tokens(sentence)
             .filter(t=>missionSpecific.has(t)).length,
         });
       }
