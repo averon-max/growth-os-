@@ -147,7 +147,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     const read=engine.indexOf("readExistingResearchPlanningCheckpointV1(\n        discoveryScope)");
     const search=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
     const save=engine.indexOf("encodeResearchDiscoveryCheckpointV1(fetched)");
-    const reverify=engine.indexOf("claims:proposed,\n        });",search);
+    const reverify=engine.indexOf("claims:proposed,maxSources:64,\n        });",search);
     expect(read).toBeGreaterThan(0);
     expect(search).toBeGreaterThan(read);
     expect(save).toBeGreaterThan(search);
