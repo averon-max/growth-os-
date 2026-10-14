@@ -176,7 +176,7 @@ export async function recoverExistingArticleResearchV1({
     console.info("[content research recovery source inventory]",{
       saved:originalRuntime.evidenceGraph.sources.length,
       explicitlyAuthorizedGovernmentSources:governmentSeeds.length,
-      fetchLimit:64,
+      fetchLimit:72,
       governmentSourceHosts:governmentSeeds.map(s=>new URL(s.url).hostname),
     });
     const sourceDomains=[...new Set(
@@ -278,7 +278,7 @@ export async function recoverExistingArticleResearchV1({
         sources:[...researchSources],
         claimEvidence:[...originalRuntime.evidenceGraph.claimEvidence],
       },
-      claims:proposed,maxSources:64,
+      claims:proposed,maxSources:72,
     });
     const newSupport=(id:string)=>newGraph.claimEvidence.some(e=>
       e.claimId===id&&e.kind==="VERIFIED_EXCERPT"&&
@@ -304,7 +304,7 @@ export async function recoverExistingArticleResearchV1({
       ?await collectEvidenceClaimRecoveryCandidatesV1({
         graph:newGraph,
         claims:proposed.filter(c=>missingBeforeDiscoveryIds.has(c.sectionId)),
-        maxPerClaim:3,maxSources:64,
+        maxPerClaim:3,maxSources:72,
       }):[];
     const packetBeforeDiscovery=buildSourceGroundedReplanPacketV1({
       sections:missingBeforeDiscovery.map(s=>({
@@ -475,7 +475,7 @@ export async function recoverExistingArticleResearchV1({
             sources:[...fetched,...newGraph.sources],
             claimEvidence:[...newGraph.claimEvidence],
           },
-          claims:proposed,maxSources:64,
+          claims:proposed,maxSources:72,
         });
       }
     }
@@ -515,7 +515,7 @@ export async function recoverExistingArticleResearchV1({
         ?candidatesBeforeDiscovery
         :await collectEvidenceClaimRecoveryCandidatesV1({
           graph:newGraph,claims:missingClaims,maxPerClaim:3,
-          maxSources:64,
+          maxSources:72,
         });
       const packet=reusePrecheckedQuotes
         ?packetBeforeDiscovery
@@ -618,7 +618,7 @@ export async function recoverExistingArticleResearchV1({
       proposed=grounded;
       sourceGroundedReplanCount=changed.length;
       newGraph=await enrichLiveEvidenceGraphV1({
-        graph:newGraph,claims:changed,maxSources:64,
+        graph:newGraph,claims:changed,maxSources:72,
       });
       console.info("[content research recovery source-first verified]",{
         resumedSourceReplan:cached!==null,
