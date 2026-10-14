@@ -139,6 +139,73 @@ describe("source-first grounded claim restatement",()=>{
     expect(recovered.claims[0].text).toBe(quote1);
     expect(recovered.fallbackDetails[0].sourceId).toBe("ftc");
   });
+  it("reuses a cached source sentence for the ONE model-omitted section of four",()=>{
+    const c3:ResearchExpansionClaimV1={
+      id:"c3",sectionId:"s3",category:"FACT",risk:"LOW",
+      text:"Credit monitoring prevents all account fraud.",
+    };
+    const c4:ResearchExpansionClaimV1={
+      id:"c4",sectionId:"s4",category:"FACT",risk:"LOW",
+      text:"Monitoring only checks changes to current bank balances.",
+    };
+    const quote3="Credit monitoring may alert you to changes in a credit "+
+      "report, but it does not prevent identity theft.";
+    const quote4="A credit monitoring service can alert you when a new "+
+      "inquiry appears in your credit report.";
+    const allClaims=[...claims,c3,c4];
+    const four=buildSourceGroundedReplanPacketV1({
+      sections:[
+        {id:"s1",heading:"How monitoring works",mission:"Alert delivery"},
+        {id:"s2",heading:"After credit alerts",mission:"Disputing errors"},
+        {id:"s3",heading:"Monitoring limits",mission:"Does not prevent theft"},
+        {id:"s4",heading:"Credit monitoring coverage",mission:"New credit inquiries"},
+      ],claims:allClaims,
+      candidates:[
+        {claimId:"c1",sourceId:"ftc",sourceUrl:src("ftc","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote1,coverage:0.45},
+        {claimId:"c2",sourceId:"cfpb",sourceUrl:src("cfpb","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote2,coverage:0.45},
+        {claimId:"c3",sourceId:"gov3",sourceUrl:src("gov3","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote3,coverage:0.45},
+        {claimId:"c4",sourceId:"gov4",sourceUrl:src("gov4","PRIMARY_GOVERNMENT","A").url,
+          excerpt:quote4,coverage:0.45},
+      ],sources:["ftc","cfpb","gov3","gov4"].map(id=>
+        src(id,"PRIMARY_GOVERNMENT","A")),
+    });
+    const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:four,originalClaims:allClaims,replacements:[
+        {claimId:"c1",quoteId:four[0].quotes[0].quoteId,text:quote1},
+        {claimId:"c2",quoteId:four[1].quotes[0].quoteId,text:quote2},
+        {claimId:"c3",quoteId:four[2].quotes[0].quoteId,text:quote3},
+      ],
+    });
+    expect(recovered.acceptedModelRestatements).toBe(3);
+    expect(recovered.literalSourceFallbacks).toBe(1);
+    expect(recovered.claims).toHaveLength(4);
+    expect(recovered.claims.find(c=>c.id==="c4")?.text).toBe(quote4);
+    expect(recovered.fallbackDetails).toContainEqual({
+      sectionId:"s4",claimId:"c4",sourceId:"gov4",
+      reason:"MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE",
+    });
+  });
+  it("fails closed if an omitted section has only off-topic literal text",()=>{
+    const result=packet().map((section,index)=>index===1
+      ?{...section,quotes:section.quotes.map(q=>({
+        ...q,excerpt:"The weather in Calgary is usually cold and windy "+
+          "during the winter months.",
+      }))}:section);
+    expect(()=>recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:result,originalClaims:claims,replacements:[
+        {claimId:"c1",quoteId:result[0].quotes[0].quoteId,text:quote1},
+      ],
+    })).toThrow("MISSING_SECTION_WITHOUT_STRICT_RELEVANT_QUOTE:s2");
+  });
+  it("never treats a completely omitted model response as verified research",()=>{
+    expect(()=>recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:packet(),originalClaims:claims,replacements:[],
+    })).toThrow("NO_MODEL_SECTION_REPLACEMENTS");
+  });
+
   it("cannot rescue an invented source/claim cross-link or make up a missing quote",()=>{
     const result=packet();
     expect(()=>recoverSourceGroundedClaimReplanFromCachedModelV1({
