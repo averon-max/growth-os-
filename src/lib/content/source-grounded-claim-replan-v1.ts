@@ -75,7 +75,13 @@ export function buildSourceGroundedReplanPacketV1({
       const tier=(v:EvidenceClaimRecoveryCandidateV1)=>
         bySource.get(v.sourceId)?.authorityTier==="A"?0:
         bySource.get(v.sourceId)?.authorityTier==="B"?1:2;
+      const actionCandidate=(c:EvidenceClaimRecoveryCandidateV1)=>
+        c.provenance==="SECTION_FIRST_GOVERNMENT_PROCEDURE"?0:1;
+      // Trusted government procedure excerpts are directly about the
+      // fixed section question; near claim matches often are not.
+      // Preference changes QUOTE DISCOVERY only, never validation.
       return tier(a)-tier(b)||
+        actionCandidate(a)-actionCandidate(b)||
         b.coverage-a.coverage||
         a.sourceUrl.localeCompare(b.sourceUrl);
     });

@@ -1857,6 +1857,7 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
  */
 
 export interface EvidenceClaimRecoveryCandidateV1 {
+  readonly provenance?:"SECTION_FIRST_GOVERNMENT_PROCEDURE";
   readonly claimId:
     string;
 
@@ -2761,6 +2762,121 @@ export function rankEvidenceRecoveryExcerptsV1({
   return unique;
 }
 
+
+/**
+ * SOURCE-FIRST PROCEDURAL FACT CANDIDATES
+ *
+ * For a practical "what should I do / how to" section, discover
+ * literal, actionable sentences on explicitly seeded government
+ * pages independently of speculative LLM claim wording.
+ * This creates CANDIDATES only. Existing live re-fetch, strict
+ * lexical validation and semantic entailment still own authority.
+ */
+export function rankOfficialProceduralFactSentencesV1({
+  heading,mission,bodyText,maxCandidates=5,
+}:{
+  heading:string;mission:string;bodyText:string;maxCandidates?:number;
+}):readonly Readonly<{excerpt:string;coverage:number;score:number}>[]{
+  if(!/\b(?:what (?:should|do|can)|how (?:to|do|can)|steps? to)\b/i
+    .test(heading))return [];
+  const topic=new Set(semanticTokens(heading+" "+mission).filter(
+    t=>!new Set(["what","should","after","before","how","when","step",
+      "do","does","action","take","first","next"]).has(t)));
+  if(topic.size===0)return [];
+  const action=/\b(?:contact|dispute|review|check|report|verify|request|file|correct|investigate|compare|send|call|notify|provide|submit|look for)\b/i;
+  const reader=/\b(?:you|your|should|must|if you|to (?:dispute|report|contact|check|review|file|request))\b/i;
+  const ranked=sentenceWindows(bodyText)
+    .filter(sentence=>sentence.length>=65&&sentence.length<=320&&
+      /[.!?]$/.test(sentence)&&
+      sentence.split(/(?<=[.!?])\s+/).length===1&&
+      action.test(sentence)&&reader.test(sentence))
+    .map(excerpt=>{
+      const shared=semanticTokens(excerpt)
+        .filter(t=>topic.has(t)).length;
+      const actionMatches=excerpt.match(new RegExp(action.source,"gi"))??[];
+      return {
+        excerpt,score:shared*5+Math.min(3,actionMatches.length),
+        coverage:Math.min(0.95,0.35+shared*0.11),
+        shared,
+      };
+    })
+    .filter(item=>item.shared>=1)
+    .sort((a,b)=>b.score-a.score||
+      a.excerpt.length-b.excerpt.length);
+  const result:Readonly<{excerpt:string;coverage:number;score:number}>[]=[];
+  const seen=new Set<string>();
+  for(const item of ranked){
+    const key=normalize(item.excerpt);
+    if(!key||seen.has(key))continue;
+    seen.add(key);
+    result.push({excerpt:item.excerpt,coverage:item.coverage,score:item.score});
+    if(result.length>=Math.max(1,Math.min(8,maxCandidates)))break;
+  }
+  return result;
+}
+
+export async function collectOfficialSectionProcedureCandidatesV1({
+  graph,sections,claims,governmentSourceIds,
+}:{
+  graph:EvidenceGraphInput;
+  sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
+  claims:readonly MinimalClaim[];
+  governmentSourceIds:readonly string[];
+}):Promise<readonly EvidenceClaimRecoveryCandidateV1[]>{
+  if(sections.length===0||governmentSourceIds.length===0)return [];
+  const governmentIds=new Set(governmentSourceIds);
+  const government=graph.sources.filter(source=>
+    governmentIds.has(source.id)&&
+    source.sourceType==="PRIMARY_GOVERNMENT"&&
+    source.authorityTier==="A").slice(0,6);
+  if(government.length===0)return [];
+  const bodies=await fetchSourceBodies({
+    sources:government,claimEvidence:[],
+  },6);
+  const result:EvidenceClaimRecoveryCandidateV1[]=[];
+  for(const section of sections){
+    const owned=claims.filter(c=>c.id&&
+      c.id.startsWith("research-"+section.id+"-"));
+    if(owned.length===0)continue;
+    const ranked=government.flatMap(source=>{
+      const body=bodies.get(source.id);
+      if(!body)return [];
+      return rankOfficialProceduralFactSentencesV1({
+        heading:section.heading,mission:section.mission,bodyText:body,
+        maxCandidates:6,
+      }).map(candidate=>({...candidate,source}));
+    }).sort((a,b)=>b.score-a.score||
+      a.source.url.localeCompare(b.source.url));
+    const usedHosts=new Set<string>(),usedTexts=new Set<string>();
+    const available=[...owned],count=Math.min(2,owned.length);
+    for(const entry of ranked){
+      const host=new URL(entry.source.url).hostname;
+      const sentence=normalize(entry.excerpt);
+      if(usedHosts.has(host)||usedTexts.has(sentence))continue;
+      // Match a different EXISTING claim ID to each literal source
+      // fact. The claim wording is a hypothesis and is replaced
+      // only by a separately strictly-verified restatement.
+      const eligible=available
+        .map(c=>({c,score:lexicalRecoveryCoverageV1({
+          claimText:c.text,excerpt:entry.excerpt,
+        })}))
+        .sort((a,b)=>b.score-a.score||
+          a.c.id.localeCompare(b.c.id));
+      const assigned=eligible[0]?.c;
+      if(!assigned)break;
+      result.push({
+        claimId:assigned.id,sourceId:entry.source.id,
+        sourceUrl:entry.source.url,excerpt:entry.excerpt,
+        coverage:entry.coverage,
+        provenance:"SECTION_FIRST_GOVERNMENT_PROCEDURE",
+      });
+      available.splice(available.findIndex(c=>c.id===assigned.id),1);
+      usedHosts.add(host);usedTexts.add(sentence);
+      if(usedHosts.size>=count)break;
+    }
+  }
+  return result;
+}
 
 export async function collectEvidenceClaimRecoveryCandidatesV1({
   graph,
