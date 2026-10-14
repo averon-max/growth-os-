@@ -160,6 +160,68 @@ describe("source-first grounded claim restatement",()=>{
       reason:"SECOND_SECTION_FACT_FROM_DISTINCT_LITERAL_SOURCE",
     });
   });
+  it("reserves an authoritative fact for later section-6 before optional second facts",()=>{
+    const lateFact="Credit monitoring services may send an alert when "+
+      "someone requests a new credit account.";
+    const s3Fact="When you see an unfamiliar entry in your credit "+
+      "report, you can contact a credit reporting company.";
+    const localClaims:ResearchExpansionClaimV1[]=[
+      claims[0],
+      {id:"c1-extra",sectionId:"s1",category:"FACT",risk:"LOW",
+        text:"New credit account requests always freeze financial accounts."},
+      claims[1],
+      {id:"c3",sectionId:"s3",category:"FACT",risk:"LOW",
+        text:"Credit report records can never be corrected."},
+      {id:"c6",sectionId:"s6",category:"FACT",risk:"LOW",
+        text:"New credit accounts cannot be requested with monitoring."},
+    ];
+    const s=(id:string)=>src(id,"PRIMARY_GOVERNMENT","A");
+    const packet4=buildSourceGroundedReplanPacketV1({
+      sections:[
+        {id:"s1",heading:"Credit monitoring alerts",
+          mission:"Explain how account requests lead to notifications"},
+        {id:"s2",heading:"Dispute a report error",
+          mission:"How to dispute inaccuracies"},
+        {id:"s3",heading:"Checking report entries",
+          mission:"How to respond to unfamiliar report entries"},
+        {id:"s6",heading:"New credit account requests",
+          mission:"Explain alerts for new credit account requests"},
+      ],
+      claims:localClaims,
+      candidates:[
+        {claimId:"c1",sourceId:"ftc",sourceUrl:s("ftc").url,
+          excerpt:quote1,coverage:0.5},
+        {claimId:"c1-extra",sourceId:"cfpb",sourceUrl:s("cfpb").url,
+          excerpt:lateFact,coverage:0.7},
+        {claimId:"c2",sourceId:"consumer",sourceUrl:s("consumer").url,
+          excerpt:quote2,coverage:0.5},
+        {claimId:"c3",sourceId:"report",sourceUrl:s("report").url,
+          excerpt:s3Fact,coverage:0.5},
+        {claimId:"c6",sourceId:"monitoring",sourceUrl:s("monitoring").url,
+          excerpt:lateFact,coverage:0.6},
+      ],
+      sources:["ftc","cfpb","consumer","report","monitoring"].map(s),
+    });
+    const quoteFor=(sectionId:string,claimId:string)=>
+      packet4.find(p=>p.sectionId===sectionId)!.quotes
+        .find(q=>q.claimId===claimId)!.quoteId;
+    const recovered=recoverSourceGroundedClaimReplanFromCachedModelV1({
+      packet:packet4,originalClaims:localClaims,replacements:[
+        {claimId:"c1",quoteId:quoteFor("s1","c1"),text:quote1},
+        {claimId:"c2",quoteId:quoteFor("s2","c2"),text:quote2},
+        {claimId:"c3",quoteId:quoteFor("s3","c3"),text:s3Fact},
+      ],
+    });
+    expect(recovered.claims.find(c=>c.id==="c6")?.text).toBe(lateFact);
+    expect(recovered.claims.find(c=>c.id==="c1-extra")?.text)
+      .toBe(localClaims[1].text);
+    expect(recovered.literalSourceFallbacks).toBe(1);
+    expect(recovered.fallbackDetails[0]).toEqual({
+      sectionId:"s6",claimId:"c6",sourceId:"monitoring",
+      reason:"MODEL_OMITTED_SECTION_RECOVERED_FROM_LITERAL_SOURCE",
+    });
+  });
+
   it("refuses to fake a second fact from a duplicate source sentence",()=>{
     const additional:ResearchExpansionClaimV1={
       id:"c1-more",sectionId:"s1",category:"FACT",risk:"LOW",
