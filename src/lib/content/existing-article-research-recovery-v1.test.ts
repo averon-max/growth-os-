@@ -147,7 +147,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     const read=engine.indexOf("readExistingResearchPlanningCheckpointV1(\n        discoveryScope)");
     const search=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
     const save=engine.indexOf("encodeResearchDiscoveryCheckpointV1(fetched)");
-    const reverify=engine.indexOf("claims:proposed,maxSources:64,\n        });",search);
+    const reverify=engine.indexOf("claims:proposed,maxSources:72,\n        });",search);
     expect(read).toBeGreaterThan(0);
     expect(search).toBeGreaterThan(read);
     expect(save).toBeGreaterThan(search);
@@ -180,10 +180,10 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
   it("only expands original persisted source fetch cap for this explicit recovery",()=>{
     const live=read("./live-evidence-verification.ts");
     expect(live).toContain("maxSources=MAX_EVIDENCE_FETCH_SOURCES");
-    expect(live).toContain("Math.max(1,Math.min(64,Math.floor(maxSources)))");
+    expect(live).toContain("Math.max(1,Math.min(72,Math.floor(maxSources)))");
     expect(engine).toContain("sources:[...researchSources]");
-    expect(engine).toContain("claims:proposed,maxSources:64");
-    expect(engine).toContain("maxPerClaim:3,maxSources:64");
+    expect(engine).toContain("claims:proposed,maxSources:72");
+    expect(engine).toContain("maxPerClaim:3,maxSources:72");
   });
   it("permits explicit safe government evidence sources, never direct proof",()=>{
     const cli=read("../../../scripts/content-existing-article-research-recovery-live.ts");
