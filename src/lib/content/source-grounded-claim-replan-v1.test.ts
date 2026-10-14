@@ -149,8 +149,10 @@ describe("source-first grounded claim restatement",()=>{
         {claimId:"c2",quoteId:result[0].quotes[0].quoteId,text:quote2},
       ],
     })).toThrow("MODEL_UNAUTHORIZED_CLAIM_OR_QUOTE");
-    const unusable=structuredClone(result);
-    unusable[0].quotes[0].excerpt="Unknown fact.";
+    const unusable=result.map((section,index)=>index===0
+      ?{...section,quotes:section.quotes.map((quote,quoteIndex)=>
+        quoteIndex===0?{...quote,excerpt:"Unknown fact."}:quote)}
+      :section);
     expect(()=>recoverSourceGroundedClaimReplanFromCachedModelV1({
       packet:unusable,originalClaims:claims,
       replacements:[
