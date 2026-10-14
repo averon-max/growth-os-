@@ -117,7 +117,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     const candidate=engine.indexOf("collectEvidenceClaimRecoveryCandidatesV1({");
     const pack=engine.indexOf("buildSourceGroundedReplanPacketV1({");
     const discovery=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
-    const recovery=engine.indexOf("validateSourceGroundedClaimReplanV1({");
+    const recovery=engine.indexOf("recoverSourceGroundedClaimReplanFromCachedModelV1({");
     const reverify=engine.indexOf("claims:changed,");
     const semantic=engine.indexOf("reviewAndConstrainVerifiedEvidenceV1({");
     expect(candidate).toBeGreaterThan(0);
