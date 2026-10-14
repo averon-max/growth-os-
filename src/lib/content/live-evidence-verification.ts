@@ -2776,18 +2776,18 @@ export function rankOfficialProceduralFactSentencesV1({
 }:{
   heading:string;mission:string;bodyText:string;maxCandidates?:number;
 }):readonly Readonly<{excerpt:string;coverage:number;score:number}>[]{
-  if(!/\\b(?:what (?:should|do|can)|how (?:to|do|can)|steps? to)\\b/i
+  if(!/\b(?:what (?:should|do|can)|how (?:to|do|can)|steps? to)\b/i
     .test(heading))return [];
   const topic=new Set(semanticTokens(heading+" "+mission).filter(
     t=>!new Set(["what","should","after","before","how","when","step",
       "do","does","action","take","first","next"]).has(t)));
   if(topic.size===0)return [];
-  const action=/\\b(?:contact|dispute|review|check|report|verify|request|file|correct|investigate|compare|send|call|notify|provide|submit|look for)\\b/i;
-  const reader=/\\b(?:you|your|should|must|if you|to (?:dispute|report|contact|check|review|file|request))\\b/i;
+  const action=/\b(?:contact|dispute|review|check|report|verify|request|file|correct|investigate|compare|send|call|notify|provide|submit|look for)\b/i;
+  const reader=/\b(?:you|your|should|must|if you|to (?:dispute|report|contact|check|review|file|request))\b/i;
   const ranked=sentenceWindows(bodyText)
     .filter(sentence=>sentence.length>=65&&sentence.length<=320&&
       /[.!?]$/.test(sentence)&&
-      sentence.split(/(?<=[.!?])\\s+/).length===1&&
+      sentence.split(/(?<=[.!?])\s+/).length===1&&
       action.test(sentence)&&reader.test(sentence))
     .map(excerpt=>{
       const shared=semanticTokens(excerpt)
