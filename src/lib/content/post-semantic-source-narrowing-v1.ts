@@ -42,6 +42,20 @@ const directedAction=(sentence:string)=>
     /\b(?:you|your|should|must)\b/i.test(sentence)||
     /^(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|send|submit|call|place)\b/i.test(sentence)
   );
+/**
+ * Distinguish an actual consumer instruction from website navigation,
+ * a company's duty or a description of an alerting product.
+ *
+ * This is a CANDIDATE FILTER, never a verification or semantic verdict.
+ * Require an explicit reader-directed imperative or a reader-focused
+ * "if you..." / "to correct..." clause leading to an action verb.
+ */
+export function isReaderInitiatedResponseStepV1(sentence:string):boolean{
+  const clean=sentence.trim();
+  if(clean.length<55||clean.length>320||!/[.!]$/.test(clean)||
+    clean.includes("?"))return false;
+  return /^(?:(?:if|when)\s+you\b[^,]{0,140},\s*)?(?:to\s+(?:correct|dispute|verify|review|check|report|investigate|protect|resolve|fix)\b[^,]{0,140},\s*)?(?:you\s+(?:should|must|can|need\s+to)\s+)?(?:contact|dispute|review|check|report|file|investigate|correct|verify|request|submit|call|place|freeze|block)\b/i.test(clean);
+}
 const sentenceParts=(text:string):readonly string[]=>text
   .replace(/\s+/g," ").trim()
   .split(/(?<=[.!?])\s+/)
@@ -86,7 +100,8 @@ export function selectPostSemanticSourceNarrowingV1({
         return sentenceParts(e.excerpt!).filter(sentence=>{
           const shared=tokens(sentence).filter(t=>focus.has(t)).length;
           if(shared<2||
-            procedureQuestion(section.heading)&&!directedAction(sentence)||
+            procedureQuestion(section.heading)&&
+              !isReaderInitiatedResponseStepV1(sentence)||
             sentence.toLowerCase()===claim.text.toLowerCase()||
             usedTexts.has(sentence.toLowerCase())||
             prior.some(x=>similarity(x,sentence)>0.7))return false;
@@ -121,7 +136,8 @@ export function selectPostSemanticSourceNarrowingV1({
         const shared=tokens(sentence).filter(t=>focus.has(t)).length;
         if(sentence.length<55||sentence.length>320||
           !/[.!?]$/.test(sentence)||shared<2||
-          !directedAction(sentence)||!humanResponseAction.test(sentence)||
+          !isReaderInitiatedResponseStepV1(sentence)||
+          !humanResponseAction.test(sentence)||
           usedTexts.has(sentence.toLowerCase())||
           prior.some(p=>similarity(p,sentence)>0.7))continue;
         const candidateClaim=rejected.find(c=>
