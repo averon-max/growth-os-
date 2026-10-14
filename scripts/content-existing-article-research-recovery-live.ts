@@ -19,10 +19,18 @@ async function main(){
   const args=process.argv.slice(2);
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
+  const governmentSourceUrls=args
+    .filter(a=>a.startsWith("--government-source="))
+    .map(a=>a.slice("--government-source=".length));
   if(!articleId||!/^[A-Za-z0-9_-]{5,100}$/.test(articleId)||
-    args.some(a=>a!=="--execute"&&!a.startsWith("--article="))){
-    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--execute]");
+    args.some(a=>a!=="--execute"&&!a.startsWith("--article=")&&
+      !a.startsWith("--government-source="))){
+    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute]");
   }
+  // Validate before any paid or potentially networked execution.
+  const {buildResearchRecoveryGovernmentSeedsV1}=await import(
+    "../src/lib/content/research-recovery-authoritative-sources-v1");
+  buildResearchRecoveryGovernmentSeedsV1(governmentSourceUrls,[]);
   const {prisma}=await import("../src/lib/prisma");
   try{
     const existing=await prisma.contentArticle.findUnique({
@@ -71,6 +79,7 @@ async function main(){
       status:existing.status,updatedAt:existing.updatedAt.toISOString(),
       siblingArticleCount:siblingCount,
       searchMarket,
+      governmentSourceSeedsRequested:governmentSourceUrls.length,
       paidPlanningCheckpointCached:cachedPlan!==null,
       paidPlanningCheckpointReusedOnExecute:cachedPlan!==null,
       eligible:existing.status==="IN_REVIEW"&&
@@ -90,6 +99,7 @@ async function main(){
       "../src/lib/content/existing-article-research-recovery-v1");
     const result=await recoverExistingArticleResearchV1({
       articleId,expectedUpdatedAt:existing.updatedAt.toISOString(),
+      governmentSourceUrls,
     });
     console.log(JSON.stringify(result,null,2));
     console.log("SAME_ARTICLE_ID_RESEARCH_RECOVERY_FINISHED");

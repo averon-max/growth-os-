@@ -1104,7 +1104,8 @@ function stableHash(
 
 async function fetchSourceBodies(
   graph:
-    EvidenceGraphInput
+    EvidenceGraphInput,
+  maxSources=MAX_EVIDENCE_FETCH_SOURCES
 ): Promise<
   Map<
     string,
@@ -1126,7 +1127,7 @@ async function fetchSourceBodies(
   const sources =
     graph.sources.slice(
       0,
-      MAX_EVIDENCE_FETCH_SOURCES
+      Math.max(1,Math.min(72,Math.floor(maxSources)))
     );
 
 
@@ -2765,6 +2766,7 @@ export async function collectEvidenceClaimRecoveryCandidatesV1({
   graph,
   claims,
   maxPerClaim = 3,
+  maxSources = MAX_EVIDENCE_FETCH_SOURCES,
 }: {
   graph:
     EvidenceGraphInput;
@@ -2774,6 +2776,7 @@ export async function collectEvidenceClaimRecoveryCandidatesV1({
 
   maxPerClaim?:
     number;
+  maxSources?:number;
 }): Promise<
   readonly Readonly<
     EvidenceClaimRecoveryCandidateV1
@@ -2781,7 +2784,7 @@ export async function collectEvidenceClaimRecoveryCandidatesV1({
 > {
   const bodies =
     await fetchSourceBodies(
-      graph
+      graph,maxSources
     );
 
   const output:
@@ -3002,16 +3005,18 @@ export function selectVerifiedClaimSourcesV1({
 export async function enrichLiveEvidenceGraphV1({
   graph,
   claims,
+  maxSources=MAX_EVIDENCE_FETCH_SOURCES,
 }: {
   graph:
     EvidenceGraphInput;
 
   claims:
     readonly MinimalClaim[];
+  maxSources?:number;
 }): Promise<EvidenceGraphInput> {
   const bodies =
     await fetchSourceBodies(
-      graph
+      graph,maxSources
     );
 
 

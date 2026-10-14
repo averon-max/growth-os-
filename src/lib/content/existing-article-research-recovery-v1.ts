@@ -20,6 +20,8 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {buildResearchRecoveryGovernmentSeedsV1}
+  from "./research-recovery-authoritative-sources-v1";
 import {
   encodeResearchDiscoveryCheckpointV1,
   decodeResearchDiscoveryCheckpointV1,
@@ -44,7 +46,11 @@ import {
   discoverClaimEvidenceFallbackSourcesV1,
   collectEvidenceClaimRecoveryCandidatesV1,
 } from "./live-evidence-verification";
-import {reviewAndConstrainVerifiedEvidenceV1} from "./semantic-evidence-review-v1";
+import {reviewAndConstrainVerifiedEvidenceV1,
+  reviewSemanticEvidenceWithContentAiV1,
+  type SemanticEvidencePairV1,
+  type SemanticEvidenceJudgmentV1,
+} from "./semantic-evidence-review-v1";
 import {
   buildSourceGroundedReplanPacketV1,
   recoverSourceGroundedClaimReplanFromCachedModelV1,
@@ -117,9 +123,10 @@ function siteDomain(url:string):string|null{
 }
 
 export async function recoverExistingArticleResearchV1({
-  articleId,expectedUpdatedAt,
+  articleId,expectedUpdatedAt,governmentSourceUrls=[],
 }:{
   articleId:string;expectedUpdatedAt:string;
+  governmentSourceUrls?:readonly string[];
 }){
   check(/^[a-zA-Z0-9_-]{5,100}$/.test(articleId),"ARTICLE_ID_INVALID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -161,8 +168,19 @@ export async function recoverExistingArticleResearchV1({
     const priorArticle=shape(original);
     const originalEvidenceFingerprint=hash(evidence.plan);
     const savedClaims=originalRuntime.claimLedger.claims;
+    const governmentSeeds=buildResearchRecoveryGovernmentSeedsV1(
+      governmentSourceUrls,originalRuntime.evidenceGraph.sources);
+    const researchSources=[
+      ...governmentSeeds,...originalRuntime.evidenceGraph.sources,
+    ];
+    console.info("[content research recovery source inventory]",{
+      saved:originalRuntime.evidenceGraph.sources.length,
+      explicitlyAuthorizedGovernmentSources:governmentSeeds.length,
+      fetchLimit:72,
+      governmentSourceHosts:governmentSeeds.map(s=>new URL(s.url).hostname),
+    });
     const sourceDomains=[...new Set(
-      originalRuntime.evidenceGraph.sources.map(s=>siteDomain(s.url))
+      researchSources.map(s=>siteDomain(s.url))
         .filter((host):host is string=>Boolean(host))
     )].slice(0,30);
     check(sourceDomains.length>0,"SOURCE_INVENTORY_EMPTY");
@@ -257,10 +275,10 @@ export async function recoverExistingArticleResearchV1({
      */
     let newGraph=await enrichLiveEvidenceGraphV1({
       graph:{
-        sources:[...originalRuntime.evidenceGraph.sources],
+        sources:[...researchSources],
         claimEvidence:[...originalRuntime.evidenceGraph.claimEvidence],
       },
-      claims:proposed,
+      claims:proposed,maxSources:72,
     });
     const newSupport=(id:string)=>newGraph.claimEvidence.some(e=>
       e.claimId===id&&e.kind==="VERIFIED_EXCERPT"&&
@@ -278,14 +296,15 @@ export async function recoverExistingArticleResearchV1({
      * quotes are only candidates, not verified facts.
      */
     const missingBeforeDiscovery=writable.filter(section=>
-      !proposed.some(c=>c.sectionId===section.id&&newSupport(c.id)));
+      proposed.filter(c=>c.sectionId===section.id&&newSupport(c.id))
+        .length<2);
     const missingBeforeDiscoveryIds=
       new Set(missingBeforeDiscovery.map(s=>s.id));
     const candidatesBeforeDiscovery=missingBeforeDiscovery.length
       ?await collectEvidenceClaimRecoveryCandidatesV1({
         graph:newGraph,
         claims:proposed.filter(c=>missingBeforeDiscoveryIds.has(c.sectionId)),
-        maxPerClaim:3,
+        maxPerClaim:3,maxSources:72,
       }):[];
     const packetBeforeDiscovery=buildSourceGroundedReplanPacketV1({
       sections:missingBeforeDiscovery.map(s=>({
@@ -456,7 +475,7 @@ export async function recoverExistingArticleResearchV1({
             sources:[...fetched,...newGraph.sources],
             claimEvidence:[...newGraph.claimEvidence],
           },
-          claims:proposed,
+          claims:proposed,maxSources:72,
         });
       }
     }
@@ -481,7 +500,8 @@ export async function recoverExistingArticleResearchV1({
      */
     let sourceGroundedReplanCount=0;
     const missingGroundingSections=writable.filter(section=>
-      !proposed.some(c=>c.sectionId===section.id&&newSupport(c.id)));
+      proposed.filter(c=>c.sectionId===section.id&&newSupport(c.id))
+        .length<2);
     if(missingGroundingSections.length){
       const missingSectionIds=new Set(missingGroundingSections.map(s=>s.id));
       const missingClaims=proposed.filter(c=>
@@ -495,6 +515,7 @@ export async function recoverExistingArticleResearchV1({
         ?candidatesBeforeDiscovery
         :await collectEvidenceClaimRecoveryCandidatesV1({
           graph:newGraph,claims:missingClaims,maxPerClaim:3,
+          maxSources:72,
         });
       const packet=reusePrecheckedQuotes
         ?packetBeforeDiscovery
@@ -597,7 +618,7 @@ export async function recoverExistingArticleResearchV1({
       proposed=grounded;
       sourceGroundedReplanCount=changed.length;
       newGraph=await enrichLiveEvidenceGraphV1({
-        graph:newGraph,claims:changed,
+        graph:newGraph,claims:changed,maxSources:72,
       });
       console.info("[content research recovery source-first verified]",{
         resumedSourceReplan:cached!==null,
@@ -632,18 +653,53 @@ export async function recoverExistingArticleResearchV1({
       reusedSourceDiscoveryCheckpoint,
       sections:strictBySection,
     });
-    check(strictBySection.every(section=>section.lexicallyVerified>=1),
+    // Full article recovery must provide multiple independent factual
+    // claims per section BEFORE spending on semantic model review.
+    // Existing old claims may be demoted and cannot be counted here.
+    check(strictBySection.every(section=>section.lexicallyVerified>=2),
       "MISSING_STRICT_CLAIM_EVIDENCE_IN_SECTIONS:"+
-      strictBySection.filter(s=>s.lexicallyVerified===0)
+      strictBySection.filter(s=>s.lexicallyVerified<2)
         .map(s=>s.sectionId).join(","));
 
     /*
      * This review also REASSESSES the old 14 lexical matches. An
      * unsupported old claim is not automatically inherited forever.
      */
+    // Pay for each exact (claim, currently fetched excerpt) semantic
+    // batch at most once per immutable article/evidence input. Cached
+    // judgments are NOT reusable evidence by themselves: the pipeline
+    // MUST still live-refetch and strictly re-verify the same excerpts.
+    let semanticPaidBatchCalls=0;
+    let semanticCachedBatchCalls=0;
+    const semanticJudge=async(
+      pairs:readonly SemanticEvidencePairV1[],
+    ):Promise<readonly SemanticEvidenceJudgmentV1[]>=>{
+      const evidenceHash=hash({
+        version:"RESEARCH_RECOVERY_SEMANTIC_BATCH_V1",
+        pairs,
+      });
+      const scope={
+        articleId,briefId:original.briefId,
+        updatedAt:original.updatedAt.toISOString(),
+        evidenceSha256:evidenceHash,
+        directory:".growth-os-tmp/research-recovery/semantic/"+
+          evidenceHash.slice(0,20),
+      };
+      const cached=await readExistingResearchPlanningCheckpointV1(scope);
+      if(cached!==null){
+        semanticCachedBatchCalls++;
+        return JSON.parse(cached) as SemanticEvidenceJudgmentV1[];
+      }
+      await assertResearchPlanningCheckpointWritableV1(scope);
+      const verdicts=await reviewSemanticEvidenceWithContentAiV1(pairs);
+      await saveExistingResearchPlanningCheckpointV1(
+        scope,JSON.stringify(verdicts));
+      semanticPaidBatchCalls++;
+      return verdicts;
+    };
     const semanticReview=await reviewAndConstrainVerifiedEvidenceV1({
       claims:[...savedClaims,...proposed],
-      graph:newGraph,
+      graph:newGraph,judge:semanticJudge,
     });
     const graphAfterReview=semanticReview.graph;
     const verifiedIds=new Set(graphAfterReview.claimEvidence.filter(e=>
@@ -658,6 +714,8 @@ export async function recoverExistingArticleResearchV1({
     console.info("[content research recovery post-semantic authority]",{
       reviewedPairs:semanticReview.reviewedPairs,
       approvedPairs:semanticReview.approvedPairs,
+      cachedSemanticBatches:semanticCachedBatchCalls,
+      paidSemanticBatches:semanticPaidBatchCalls,
       sections:oldPlan.sections.filter(s=>s.state==="WRITABLE")
         .map(section=>{
           const priorIds=section.requiredClaimIds.filter(id=>
