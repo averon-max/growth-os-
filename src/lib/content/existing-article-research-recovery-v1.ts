@@ -110,6 +110,10 @@ import {evaluateArticlePublicationPolicy} from "./article-publication-policy";
 import {getBusinessFactRegistryForBrief} from "./evidence-snapshot";
 import {assertStoredPublicationEvidenceV1}
   from "./stored-publication-evidence-gate-v1";
+import {extractExternalEvidenceSources}
+  from "./external-evidence-sources";
+import {buildResearchRecoveryPublicationSourcesV1}
+  from "./research-recovery-publication-bridge-v1";
 import {buildSerpReplayArticleFingerprintV1}
   from "./serp-replay-fingerprint";
 import {detectPersistedArticleEditorialRepetitionV1}
@@ -1112,8 +1116,19 @@ export async function recoverExistingArticleResearchV1({
       ...originalRuntime,evidenceGraph:graph,claimLedger:ledger,
       sectionBlueprints:blueprints,
     };
+    const publicationEvidence=buildResearchRecoveryPublicationSourcesV1({
+      existing:extractExternalEvidenceSources(oldSnapshot),
+      graph,ledger,sections:scopedSections,
+    });
+    console.info("[content research recovery publication evidence bridge]",{
+      originalSources:extractExternalEvidenceSources(oldSnapshot).length,
+      strictVerifiedSourcesAdded:publicationEvidence.length-
+        extractExternalEvidenceSources(oldSnapshot).length,
+      candidateOrSnippetPromotions:0,
+    });
     const revisedSnapshot={
       ...oldSnapshot,
+      externalEvidenceSources:publicationEvidence,
       masterRuntime:newRuntime,
       articleExecutionPlan:newPlan,
       researchRecovery:{
