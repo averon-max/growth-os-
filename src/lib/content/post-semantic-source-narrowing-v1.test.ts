@@ -5,6 +5,8 @@ import {selectPostSemanticSourceNarrowingV1,
 } from "./post-semantic-source-narrowing-v1";
 import {
   isServiceChoiceSectionV1,
+  isServiceChoiceSourceFactV1,
+  scoreServiceChoiceDecisionFactV1,
   rankCreditMonitoringComparisonSentencesV1,
 } from "./live-evidence-verification";
 import type {EvidenceSource,ClaimEvidence} from "./evidence-graph";
@@ -122,6 +124,46 @@ describe("bounded post-semantic narrowing",()=>{
     expect(selected[0].claimId).toBe(contents[1].id);
     expect(selected[0].text).toBe(alertScope);
     expect(selected[0].sourceEvidenceId)
+      .toBe("UNVERIFIED_TRUSTED_COMPARISON_ALTERNATIVE");
+  });
+  it("chooses exact free-vs-paid functionality fact from the eight REAL section5 source previews",()=>{
+    const heading="What should you look for in a credit monitoring service?";
+    const mission="Help readers identify service-scope questions before choosing or using a service.";
+    const equifax=ftc("educational-credit-monitoring");
+    const chase=ftc("credit-journey");
+    const quotes=[
+      "Some things to consider when comparing credit monitoring services include: Cost.",
+      "Credit monitoring services check for changes to your credit reports, including hard inquiries.",
+      "Many credit monitoring services offer free trials, and this may be a good way to test out a service before paying for it.",
+      "While you can get some basic credit monitoring services for free, you typically need to pay for more functionality.",
+      "It's a good idea to combine credit monitoring with other protective measures, such as security freezes and fraud alerts, to help best protect yourself.",
+      "Reading Time: 3 minutes Highlights In this article Highlights: Credit monitoring services track changes to your credit reports and alert you about the changes.",
+      "We monitor changes to your credit limits, utilization and balances so you can help maintain your credit health.",
+      "Consider signing up for Chase Credit Journey to help track and monitor activities that affect your credit score and credit report for free.",
+    ];
+    const flags=quotes.map(isServiceChoiceSourceFactV1);
+    expect(flags).toEqual([false,true,true,true,false,false,false,true]);
+    expect(scoreServiceChoiceDecisionFactV1(quotes[3]))
+      .toBeGreaterThan(scoreServiceChoiceDecisionFactV1(quotes[2]));
+    expect(rankCreditMonitoringComparisonSentencesV1({
+      heading,mission,bodyText:quotes.join(" "),
+    })).toContain(quotes[3]);
+    const chosen=selectPostSemanticSourceNarrowingV1({
+      sections:[{id:"section-5",heading,mission}],
+      claims:[contents[0],contents[1]],
+      sources:[equifax,chase],
+      originalEvidence:[],demotedEvidenceIds:[],
+      approvedClaimIds:[contents[0].id],
+      comparisonAlternatives:quotes.map((text,i)=>({
+        sectionId:"section-5",
+        sourceId:i>=6?chase.id:equifax.id,
+        sourceUrl:i>=6?chase.url:equifax.url,text,
+      })),
+    });
+    expect(chosen).toHaveLength(1);
+    expect(chosen[0].claimId).toBe(contents[1].id);
+    expect(chosen[0].text).toBe(quotes[3]);
+    expect(chosen[0].sourceEvidenceId)
       .toBe("UNVERIFIED_TRUSTED_COMPARISON_ALTERNATIVE");
   });
   it("recovers price and feature differences for choosing monitoring services",()=>{
