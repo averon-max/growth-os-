@@ -64,6 +64,22 @@ describe("research-to-publication source authority bridge",()=>{
     expect(result.pass).toBe(true);
     expect(result.blockingIssues).toEqual([]);
   });
+  it("upgrades a discovered snippet only by adding separately verified authority",()=>{
+    const {graph,ledger}=fixture();
+    const discovered={
+      id:"discovered-money",url,domain:"money.com",
+      title:"Money",excerpt:moneySentence,
+      evidenceLevel:"SEARCH_SNIPPET" as const,
+      authority:"PUBLISHER" as const,
+      discoveredBy:["SERP_ORGANIC" as const],
+    };
+    const sources=buildResearchRecoveryPublicationSourcesV1({
+      existing:[discovered],graph,ledger,sections:[section],
+    });
+    expect(sources).toHaveLength(2);
+    expect(sources[0].evidenceLevel).toBe("SEARCH_SNIPPET");
+    expect(sources[1].evidenceLevel).toBe("VERIFIED_EXCERPT");
+  });
   it("never promotes snippet-only evidence, even when the text is identical",()=>{
     const {graph,ledger}=fixture("SEARCH_SNIPPET");
     expect(buildResearchRecoveryPublicationSourcesV1({
