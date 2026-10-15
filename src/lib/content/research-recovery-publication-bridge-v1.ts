@@ -49,7 +49,9 @@ export function buildResearchRecoveryPublicationSourcesV1({
   const claims=new Map(ledger.claims.map(c=>[c.id,c] as const));
   const sources=new Map(graph.sources.map(s=>[s.id,s] as const));
   const additions:ExternalEvidenceSource[]=[];
-  const seen=new Set(existing.map(s=>s.url+"|"+s.excerpt));
+  // A cached SERP snippet is not a duplicate of a newly verified quote.
+  const seen=new Set(existing.filter(s=>s.evidenceLevel==="VERIFIED_EXCERPT")
+    .map(s=>s.url+"|"+s.excerpt));
   for(const evidence of graph.claimEvidence){
     if(!evidenceIds.has(evidence.id) || !requiredIds.has(evidence.claimId) ||
       evidence.kind!=="VERIFIED_EXCERPT" ||
