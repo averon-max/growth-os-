@@ -85,7 +85,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(cli).toContain("--preview-writer-contract");
     expect(cli).toContain("WRITER_CONTRACT_PREVIEW_MUST_BE_READ_ONLY");
     expect(engine).toContain('"READ_ONLY_WRITER_CONTRACT_PREVIEW"');
-    expect(engine).toContain("CANDIDATE_ONLY;NO_ARCHIVED_SECTION_REBOUND_OR_PAID_VALIDATION");
+    expect(engine).toContain("CANDIDATES_ONLY;NO_NEW_SEMANTIC_REVIEW_OR_POST_CRITIC_SNAPSHOT");
     expect(engine).toContain("RESUME_ONLY_WRITER_CHECKPOINT_NOT_COMPLETE");
     expect(inspection).toContain("readMasterWriterSectionProgressV1({");
     expect(inspection).toContain("assertSectionClaimReconciliationPassed(canonical)");
@@ -130,6 +130,43 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
     expect(engine).toContain("directory:editorialCheckpointDir");
     expect(engine).toContain("check(keywordPolicy.pass");
+  });
+  it("runs the exact independent Content and Publication policy on saved editorial body in free Writer preview",()=>{
+    const free=engine.indexOf("if(previewWriterContract){");
+    const compose=engine.indexOf("const composed=composeMasterArticleV1({",free);
+    const audit=engine.indexOf("const oldAudit=auditArticle({",compose);
+    const intel=engine.indexOf("const cachedIntelligence=analyzeArticleAgainstPlan({",audit);
+    const registry=engine.indexOf("const readonlyRegistry=await getBusinessFactRegistryForBrief({",intel);
+    const content=engine.indexOf("const diagnosticContent=evaluateContentGate({",registry);
+    const publication=engine.indexOf("const diagnosticPolicy=evaluateArticlePublicationPolicy({",content);
+    const result=engine.indexOf('result:"READ_ONLY_WRITER_CONTRACT_PREVIEW"',publication);
+    const writer=engine.indexOf("const writer=await executeMasterWriterV1({",result);
+    expect(free).toBeGreaterThan(0);
+    expect(compose).toBeGreaterThan(free);
+    expect(audit).toBeGreaterThan(compose);
+    expect(intel).toBeGreaterThan(audit);
+    expect(registry).toBeGreaterThan(intel);
+    expect(content).toBeGreaterThan(registry);
+    expect(publication).toBeGreaterThan(content);
+    expect(result).toBeGreaterThan(publication);
+    expect(writer).toBeGreaterThan(result);
+    expect(engine).toContain("exactPostCriticArticleNotGuaranteed:true");
+    expect(engine).toContain("contentBlockingIssues:diagnosticContent.blockingIssues");
+    expect(engine).toContain("publicationBlockingIssues:diagnosticPolicy.blockingIssues");
+    expect(engine).toContain("finalGatePreview,");
+    expect(engine).toContain("databaseUnchanged:true");
+    expect(engine).toContain("aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true");
+  });
+  it("logs concrete rule violations BEFORE final fail-closed Content and Publication stop",()=>{
+    const log=engine.indexOf("[content research recovery final content/publication gates]");
+    const gate=engine.indexOf('"FINAL_CONTENT_OR_PUBLICATION_POLICY_BLOCKED"',log);
+    const serp=engine.indexOf("executeSerpReplayV1({",gate);
+    expect(log).toBeGreaterThan(0);
+    expect(gate).toBeGreaterThan(log);
+    expect(serp).toBeGreaterThan(gate);
+    expect(engine).toContain("contentBlockingIssues:content.blockingIssues");
+    expect(engine).toContain("publicationBlockingIssues:policy.blockingIssues");
+    expect(engine).toContain("databaseUnchanged:true");
   });
   it("reports exactly which previously used keywords disappeared, without bypassing keyword or critic gates",()=>{
     const audit=engine.indexOf("const keywordPolicy=evaluateResearchRecoveryKeywordPolicyV1({");
