@@ -81,6 +81,7 @@ import {
   createContentRunBudgetV1,withContentRunBudgetV1,
 } from "./content-run-budget-v1";
 import {executeMasterWriterV1} from "./master-writer-orchestrator";
+import {composeMasterArticleV1} from "./master-article-composer";
 import {
   fingerprintMasterWriterContractV1,
   readMasterWriterSectionProgressV1,
@@ -1187,12 +1188,95 @@ export async function recoverExistingArticleResearchV1({
     };
     console.info("[content writer contract drift inspection]",writerPreview);
     if(previewWriterContract){
+      // The last paid Master Critic may pass and the FINAL content or
+      // publication gate still reject the composed body. Diagnose that
+      // separately BEFORE any more model calls, using the already
+      // checksum-validated editorial checkpoint and the exact in-memory
+      // recovered evidence snapshot. This is read-only; source
+      // compatibility alone never authorizes publication.
+      const savedCandidate=archivedEditorialInspection.candidate?.checkpoint;
+      let finalGatePreview:null|{
+        readonly candidateSource:string;
+        readonly exactPostCriticArticleNotGuaranteed:true;
+        readonly qualityScore:number;
+        readonly wordCount:number;
+        readonly h2Count:number;
+        readonly h3Count:number;
+        readonly contentPass:boolean;
+        readonly contentBlockingIssues:readonly string[];
+        readonly contentWarnings:readonly string[];
+        readonly contentClaimFindings:readonly {
+          code:string;reason:string;sentence:string;
+        }[];
+        readonly publicationPass:boolean;
+        readonly publicationBlockingIssues:readonly string[];
+        readonly publicationEvidenceFindings:readonly {
+          code:string;reason:string;sentence:string;
+        }[];
+        readonly planAvailable:boolean;
+        readonly missingExactKeywords:readonly string[];
+      }=null;
+      if(savedCandidate &&
+        savedCandidate.accepted.length===contract.sectionContracts.length){
+        const composed=composeMasterArticleV1({
+          contract,
+          shell:savedCandidate.shell,
+          sections:savedCandidate.accepted.map(a=>a.section),
+        });
+        const oldCandidate=shape(composed);
+        const oldAudit=auditArticle({
+          article:oldCandidate,
+          primaryKeyword:original.brief.primaryKeyword,
+        });
+        const cachedIntelligence=analyzeArticleAgainstPlan({
+          ...oldCandidate,plan:revisedSnapshot,
+          primaryKeyword:original.brief.primaryKeyword,
+          secondaryKeywords:original.brief.secondaryKeywords,
+        });
+        const readonlyRegistry=await getBusinessFactRegistryForBrief({
+          briefId:original.briefId,websiteId:original.brief.websiteId,
+        });
+        const diagnosticContent=evaluateContentGate({
+          article:oldCandidate,
+          primaryKeyword:original.brief.primaryKeyword,
+          audit:oldAudit,registry:readonlyRegistry,
+        });
+        const diagnosticPolicy=evaluateArticlePublicationPolicy({
+          article:oldCandidate,intelligence:cachedIntelligence,
+        });
+        finalGatePreview={
+          candidateSource:"SHA256_VERIFIED_ARCHIVED_EDITORIAL_CHECKPOINT",
+          exactPostCriticArticleNotGuaranteed:true,
+          qualityScore:diagnosticContent.qualityScore,
+          wordCount:oldAudit.wordCount,
+          h2Count:oldAudit.h2Count,
+          h3Count:oldAudit.h3Count,
+          contentPass:diagnosticContent.pass,
+          contentBlockingIssues:diagnosticContent.blockingIssues,
+          contentWarnings:diagnosticContent.warnings,
+          contentClaimFindings:diagnosticContent.claimFindings
+            .map(f=>({code:f.code,reason:f.reason,
+              sentence:f.sentence.slice(0,250)})).slice(0,12),
+          publicationPass:diagnosticPolicy.pass,
+          publicationBlockingIssues:diagnosticPolicy.blockingIssues,
+          publicationEvidenceFindings:diagnosticPolicy.evidenceFindings
+            .map(f=>({code:f.code,reason:f.reason,
+              sentence:f.sentence.slice(0,250)})).slice(0,12),
+          planAvailable:cachedIntelligence.planAvailable,
+          missingExactKeywords:cachedIntelligence.article
+            .keywordCoverage.items.filter(i=>!i.used)
+            .map(i=>i.keyword),
+        };
+        console.info("[content recovered final gate read-only diagnostic]",
+          finalGatePreview);
+      }
       return {
         articleId,status:"IN_REVIEW" as const,
         result:"READ_ONLY_WRITER_CONTRACT_PREVIEW" as const,
         ...writerPreview,
+        finalGatePreview,
         aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true,
-        warning:"CANDIDATE_ONLY;NO_ARCHIVED_SECTION_REBOUND_OR_PAID_VALIDATION",
+        warning:"CANDIDATES_ONLY;NO_NEW_SEMANTIC_REVIEW_OR_POST_CRITIC_SNAPSHOT",
       };
     }
     const editorialCheckpointDir=resolve(
@@ -1444,6 +1528,20 @@ export async function recoverExistingArticleResearchV1({
     });
     const policy=evaluateArticlePublicationPolicy({
       article:candidate,intelligence,
+    });
+    console.info("[content research recovery final content/publication gates]",{
+      contentPass:content.pass,
+      contentBlockingIssues:content.blockingIssues,
+      qualityScore:content.qualityScore,
+      claimFindings:content.claimFindings.map(f=>({
+        code:f.code,reason:f.reason,sentence:f.sentence.slice(0,250),
+      })).slice(0,12),
+      publicationPass:policy.pass,
+      publicationBlockingIssues:policy.blockingIssues,
+      evidenceFindings:policy.evidenceFindings.map(f=>({
+        code:f.code,reason:f.reason,sentence:f.sentence.slice(0,250),
+      })).slice(0,12),
+      databaseUnchanged:true,
     });
     check(content.pass&&policy.pass,
       "FINAL_CONTENT_OR_PUBLICATION_POLICY_BLOCKED");
