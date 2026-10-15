@@ -20,6 +20,7 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {resolve} from "node:path";
 import {selectPostSemanticSourceNarrowingV1}
   from "./post-semantic-source-narrowing-v1";
 import {buildResearchRecoveryGovernmentSeedsV1}
@@ -80,6 +81,11 @@ import {
   createContentRunBudgetV1,withContentRunBudgetV1,
 } from "./content-run-budget-v1";
 import {executeMasterWriterV1} from "./master-writer-orchestrator";
+import {
+  fingerprintMasterWriterContractV1,
+  readMasterWriterSectionProgressV1,
+  writeMasterWriterSectionProgressV1,
+} from "./master-writer-section-progress-v1";
 import {buildMasterArticleSemanticCriticContextV1}
   from "./master-article-semantic-critic-context";
 import {buildCrawlCannibalizationCandidatesV1}
@@ -1108,7 +1114,37 @@ export async function recoverExistingArticleResearchV1({
     const generator=withContentRunBudgetV1({
       generator:geminiGenerator,budget,
     });
-    const writer=await executeMasterWriterV1({contract,generator});
+    // Do not spend the same 6-section Writer budget a second time
+    // because a later SEO/Critic/SERP gate fails. Resume ONLY the exact
+    // hash-matched, integrity-checked article contract and model.
+    const writerModelName=generator.modelName;
+    const writerContractHash=fingerprintMasterWriterContractV1(
+      contract,writerModelName);
+    const writerCheckpointDir=resolve(
+      ".growth-os-tmp/article-checkpoints/research-recovery",
+      writerContractHash.slice(0,20));
+    const priorWriterProgress=await readMasterWriterSectionProgressV1({
+      directory:writerCheckpointDir,
+      articleId,briefId:original.briefId,
+      contractHash:writerContractHash,modelName:writerModelName,
+    });
+    console.info("[content research recovery writer checkpoint]",{
+      reusedVerifiedSections:priorWriterProgress?.accepted.length??0,
+      contractMatched:priorWriterProgress!==null,
+      secureLocalCheckpoint:true,
+    });
+    const writer=await executeMasterWriterV1({
+      contract,generator,
+      resumeProgress:priorWriterProgress,
+      onProgress:async ({shell,accepted})=>{
+        await writeMasterWriterSectionProgressV1({
+          directory:writerCheckpointDir,
+          articleId,briefId:original.briefId,
+          contractHash:writerContractHash,modelName:writerModelName,
+          shell,accepted,
+        });
+      },
+    });
     const storedContext=buildMasterArticleSemanticCriticContextV1(
       checked.runtime);
     const crawl=storedContext.cannibalizationCandidates.length
@@ -1153,11 +1189,28 @@ export async function recoverExistingArticleResearchV1({
       primaryKeyword:original.brief.primaryKeyword,
       secondaryKeywords:original.brief.secondaryKeywords,
     });
+    const newCoverage=intelligence.article.keywordCoverage;
+    const oldCoverage=priorIntelligence.article.keywordCoverage;
+    const oldUsed=new Set(oldCoverage.items.filter(item=>item.used)
+      .map(item=>item.keyword.trim().toLowerCase()));
+    const lostKeywords=newCoverage.items.filter(item=>
+      oldUsed.has(item.keyword.trim().toLowerCase())&&!item.used)
+      .map(item=>item.keyword);
+    const newlyUsed=newCoverage.items.filter(item=>
+      !oldUsed.has(item.keyword.trim().toLowerCase())&&item.used)
+      .map(item=>item.keyword);
+    console.info("[content research recovery keyword comparison]",{
+      previousUsed:oldCoverage.used,
+      previousMissing:oldCoverage.missing,
+      generatedUsed:newCoverage.used,
+      generatedMissing:newCoverage.missing,
+      lostKeywords,newlyUsed,
+      finalCriticStatus:repaired.finalCritics.suite.status,
+      bodyChangedWithoutDBWrite:true,
+    });
     check(
-      intelligence.article.keywordCoverage.used>=
-        priorIntelligence.article.keywordCoverage.used &&
-      intelligence.article.keywordCoverage.missing<=
-        priorIntelligence.article.keywordCoverage.missing,
+      newCoverage.used>=oldCoverage.used &&
+      newCoverage.missing<=oldCoverage.missing,
       "KEYWORD_COVERAGE_REGRESSED"
     );
     const previousAudit=auditArticle({
