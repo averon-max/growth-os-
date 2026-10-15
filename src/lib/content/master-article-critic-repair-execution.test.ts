@@ -129,10 +129,16 @@ describe(
     it(
       "classifies upstream blockers before any repair capability or model call",
       () => {
-        const execution =
+        // The pre-critic editorial recovery has its own strictly
+        // bounded repair call. This assertion belongs exclusively to
+        // the ORIGINAL Master Critic transaction, so isolate its body.
+        const fullExecution =
           source(
             "./master-article-critic-repair-execution.ts"
           );
+        const execution=fullExecution.slice(fullExecution.indexOf(
+          "export async function executeMasterArticleCriticRepairReplayV1({"
+        ));
 
 
         const plan =
