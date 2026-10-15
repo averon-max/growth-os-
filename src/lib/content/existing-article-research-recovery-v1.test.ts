@@ -102,8 +102,34 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(replay).toBeGreaterThan(critic);
     expect(engine).toContain("onProgress:async updated=>");
     expect(engine).toContain("research-recovery-editorial");
-    expect(engine).toContain("contract,run:editorialReadyWriter,generator,context");
-    expect(engine).toContain("contract,run:editorialReadyWriter,initialCritics:firstCritics");
+    expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
+    expect(engine).toContain("contract,run:rankReadyWriter,initialCritics:firstCritics");
+  });
+  it("prefers an already verified editorial-clean archived checkpoint over repeating paid Writer and precritic edits",()=>{
+    expect(engine).toContain("archivedEditorialInspection=await inspectArchivedWriterProgressV1({");
+    expect(engine).toContain("preferArchivedEditorial=resumeExistingWriterOnly");
+    expect(engine).toContain("restoredEditorialCleanProse:preferArchivedEditorial");
+    expect(engine).toContain("savedEditorialProgress?.accepted.length");
+    expect(engine).toContain("directory:reboundDirectory");
+    expect(engine).toContain("originalWriterRegenerated:false");
+    expect(engine).toContain("archivedEditorialCompatible:archivedEditorialInspection.compatible");
+  });
+  it("restores a genuine planned keyword before paid article-level critics, not by relaxing the SEO gate",()=>{
+    const original=engine.indexOf("const editorialReadyWriter=await repairPreCriticEditorialRepetitionV1({");
+    const covered=engine.indexOf("const beforeCriticPolicy=evaluateResearchRecoveryKeywordPolicyV1({",original);
+    const repair=engine.indexOf("const rankReadyWriter=await recoverPreCriticPlannedKeywordV1({",covered);
+    const preflight=engine.indexOf('"PRECRITIC_PLANNED_KEYWORD_NOT_RESTORED"',repair);
+    const fullCritic=engine.indexOf("const firstCritics=await executeMasterArticleCriticsV1({",preflight);
+    const finalGate=engine.indexOf('"KEYWORD_COVERAGE_BELOW_REQUIRED_LEVEL"',fullCritic);
+    expect(covered).toBeGreaterThan(original);
+    expect(repair).toBeGreaterThan(covered);
+    expect(preflight).toBeGreaterThan(repair);
+    expect(fullCritic).toBeGreaterThan(preflight);
+    expect(finalGate).toBeGreaterThan(fullCritic);
+    expect(engine).toContain("missingKeywords:keywordsToRestore");
+    expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
+    expect(engine).toContain("directory:editorialCheckpointDir");
+    expect(engine).toContain("check(keywordPolicy.pass");
   });
   it("reports exactly which previously used keywords disappeared, without bypassing keyword or critic gates",()=>{
     const audit=engine.indexOf("const keywordPolicy=evaluateResearchRecoveryKeywordPolicyV1({");
