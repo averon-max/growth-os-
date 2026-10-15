@@ -7,6 +7,9 @@ import {
   expect,
   it,
 } from "vitest";
+import fixture from "./__fixtures__/repetitive-credit-monitoring-reader-v1.json";
+import {choosePreCriticKeywordSectionV1}
+  from "./master-article-critic-repair-execution";
 
 
 function source(
@@ -26,6 +29,49 @@ function source(
 describe(
   "Master Article Critic Repair Execution V1",
   () => {
+    it("routes missing 3 bureau credit monitoring to actual service-choice section, not generic section zero",()=>{
+      const sections=fixture.sections.map(s=>({
+        heading:s.heading,bodyMarkdown:s.bodyMarkdown,
+      })) as never;
+      const contract={
+        sectionContracts:fixture.sections.map((s,i)=>({
+          blueprint:{
+            heading:s.heading,
+            requiredClaims:["claim-"+i],
+          },
+          claimLedger:{
+            claims:[{
+              id:"claim-"+i,status:"VERIFIED",
+              text:i===4
+                ?"Credit monitoring services differ in bureau coverage and paid features."
+                :i===0
+                  ?"Credit monitoring tracks report changes and alerts."
+                  :"Section-specific verified fact",
+            }],
+          },
+        })),
+      } as never;
+      const target=choosePreCriticKeywordSectionV1({
+        keyword:"3 bureau credit monitoring",
+        contract,sections,
+      });
+      expect(target?.index).toBe(4);
+      expect(target?.score).toBeGreaterThan(0);
+    });
+    it("preserves editorial safety and mandatory QA with bounded precritic keyword repair",()=>{
+      const sourceText=source("./master-article-critic-repair-execution.ts");
+      const point=sourceText.indexOf("export async function recoverPreCriticPlannedKeywordV1({");
+      const next=sourceText.indexOf("MASTER_CRITIC_SINGLE_REPAIR_CYCLE_V1",point);
+      const scope=sourceText.slice(point,next);
+      expect(scope).toContain("PRECRITIC_KEYWORD_REPAIR_OVER_BUDGET");
+      expect(scope).toContain("PRECRITIC_KEYWORD_NOT_NATURALLY_USED:");
+      expect(scope).toContain("verifyGeneratedSectionOnlyV1({");
+      expect(scope).toContain("detectHighConfidenceEditorialRepetitionV1(");
+      expect(scope).toContain("PRECRITIC_KEYWORD_REINTRODUCED_EDITORIAL_REPETITION");
+      expect(scope).toContain("await onProgress(working)");
+      expect(scope).toContain("Do NOT add claims,");
+      expect(scope).toContain("tryRecoverMissingKeywordV1({");
+    });
     it("pre-critic editorial recovery keeps all 6 verified sections and hard-stops without an information-gain fix",()=>{
       const engine=source("./master-article-critic-repair-execution.ts");
       const point=engine.indexOf("export async function repairPreCriticEditorialRepetitionV1({");
