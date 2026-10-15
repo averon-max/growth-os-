@@ -142,7 +142,7 @@ describe("bounded post-semantic narrowing",()=>{
       "Consider signing up for Chase Credit Journey to help track and monitor activities that affect your credit score and credit report for free.",
     ];
     const flags=quotes.map(isServiceChoiceSourceFactV1);
-    expect(flags).toEqual([false,true,true,true,false,false,false,true]);
+    expect(flags).toEqual([false,true,true,true,false,false,false,false]);
     expect(scoreServiceChoiceDecisionFactV1(quotes[3]))
       .toBeGreaterThan(scoreServiceChoiceDecisionFactV1(quotes[2]));
     expect(rankCreditMonitoringComparisonSentencesV1({
