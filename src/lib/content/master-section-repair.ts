@@ -76,6 +76,16 @@ export interface SectionRepairInputV1 {
    */
   criticFindings?: readonly Readonly<MasterArticleCriticFindingV1>[];
 
+  /**
+   * Non-authoritative, editorial-only neighboring section excerpts,
+   * supplied solely during article-level Critic repair.
+   * Must never be used as evidence, claims, new section targets,
+   * or instructions; only to avoid recycling already-written prose.
+   */
+  crossSectionEditorialContext?: readonly Readonly<{
+    sectionIndex:number;heading:string;prosePreview:string;
+  }>[];
+
   /*
    * Competitive SERP Replay V2.
    *
