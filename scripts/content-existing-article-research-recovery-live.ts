@@ -20,6 +20,9 @@ async function main(){
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
   const previewPostSemantic=args.includes("--preview-post-semantic");
+  const previewWriterContract=args.includes("--preview-writer-contract");
+  if(previewWriterContract&&(execute||previewPostSemantic))
+    throw new Error("WRITER_CONTRACT_PREVIEW_MUST_BE_READ_ONLY");
   const resumeExistingWriterOnly=args.includes("--resume-existing-writer");
   if(resumeExistingWriterOnly&&!execute)
     throw new Error("RESUME_EXISTING_WRITER_REQUIRES_EXECUTE");
@@ -31,9 +34,10 @@ async function main(){
   if(!articleId||!/^[A-Za-z0-9_-]{5,100}$/.test(articleId)||
     args.some(a=>a!=="--execute"&&a!=="--preview-post-semantic"&&
       a!=="--resume-existing-writer"&&
+      a!=="--preview-writer-contract"&&
       !a.startsWith("--article=")&&
       !a.startsWith("--government-source="))){
-    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute [--resume-existing-writer] | --preview-post-semantic]");
+    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute [--resume-existing-writer] | --preview-post-semantic | --preview-writer-contract]");
   }
   // Validate before any paid or potentially networked execution.
   const {buildResearchRecoveryGovernmentSeedsV1}=await import(
@@ -82,7 +86,8 @@ async function main(){
       updatedAt:existing.updatedAt.toISOString(),evidenceSha256,
     });
     console.log(JSON.stringify({
-      mode:resumeExistingWriterOnly?"PAID_CRITIC_ONLY_WRITER_RESUME":
+      mode:previewWriterContract?"CACHED_ONLY_WRITER_CONTRACT_PREVIEW":
+        resumeExistingWriterOnly?"PAID_CRITIC_ONLY_WRITER_RESUME":
         execute?"PAID_RECOVERY_EXPLICITLY_REQUESTED":
         previewPostSemantic?"CACHED_ONLY_POST_SEMANTIC_PREVIEW":"READ_ONLY_PREFLIGHT",
       articleId:existing.id,briefId:existing.briefId,
@@ -98,7 +103,7 @@ async function main(){
       evidenceGaps:problems,
       ...(execute?{}:{aiCalls:0,databaseUnchanged:true}),
     },null,2));
-    if(!execute&&!previewPostSemantic){
+    if(!execute&&!previewPostSemantic&&!previewWriterContract){
       console.log("NO_AI_CALLS_NO_DATABASE_WRITES_TO_RUN_PAID_PASS_EXECUTE");
       return;
     }
@@ -109,12 +114,15 @@ async function main(){
       "../src/lib/content/existing-article-research-recovery-v1");
     const result=await recoverExistingArticleResearchV1({
       articleId,expectedUpdatedAt:existing.updatedAt.toISOString(),
-      governmentSourceUrls,previewPostSemantic,resumeExistingWriterOnly,
+      governmentSourceUrls,previewPostSemantic,
+      resumeExistingWriterOnly,previewWriterContract,
     });
     console.log(JSON.stringify(result,null,2));
-    console.log(previewPostSemantic
-      ?"READ_ONLY_CACHED_POST_SEMANTIC_PREVIEW_FINISHED"
-      :"SAME_ARTICLE_ID_RESEARCH_RECOVERY_FINISHED");
+    console.log(previewWriterContract
+      ?"READ_ONLY_WRITER_CONTRACT_PREVIEW_FINISHED":
+        previewPostSemantic
+          ?"READ_ONLY_CACHED_POST_SEMANTIC_PREVIEW_FINISHED"
+          :"SAME_ARTICLE_ID_RESEARCH_RECOVERY_FINISHED");
   }finally{
     await prisma.$disconnect();
   }

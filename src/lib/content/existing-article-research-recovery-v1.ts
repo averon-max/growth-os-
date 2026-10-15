@@ -111,6 +111,12 @@ import {detectPersistedArticleEditorialRepetitionV1}
   from "./editorial-repetition-guard-v1";
 import {evaluateResearchRecoveryKeywordPolicyV1}
   from "./research-recovery-keyword-policy-v1";
+import {inspectArchivedWriterProgressV1}
+  from "./writer-recovery-archived-progress-v1";
+import {verifyGeneratedSectionOnlyV1}
+  from "./master-section-repair";
+import {readMasterWriterSectionProgressV1 as readVerifiedWriterProgressV1}
+  from "./master-writer-section-progress-v1";
 import {normalizeMasterArticleProseSpacesV1}
   from "./article-prose-whitespace-v1";
 
@@ -143,12 +149,13 @@ function siteDomain(url:string):string|null{
 
 export async function recoverExistingArticleResearchV1({
   articleId,expectedUpdatedAt,governmentSourceUrls=[],previewPostSemantic=false,
-  resumeExistingWriterOnly=false,
+  resumeExistingWriterOnly=false,previewWriterContract=false,
 }:{
   articleId:string;expectedUpdatedAt:string;
   governmentSourceUrls?:readonly string[];
   previewPostSemantic?:boolean;
   resumeExistingWriterOnly?:boolean;
+  previewWriterContract?:boolean;
 }){
   check(/^[a-zA-Z0-9_-]{5,100}$/.test(articleId),"ARTICLE_ID_INVALID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -263,6 +270,8 @@ export async function recoverExistingArticleResearchV1({
     const storedPlanningResponse=
       await readExistingResearchPlanningCheckpointV1(planningScope);
     if(storedPlanningResponse===null){
+      check(!previewWriterContract,
+        "WRITER_PREVIEW_REQUIRES_CACHED_PLANNING");
       check(!resumeExistingWriterOnly,
         "RESUME_ONLY_REQUIRES_CACHED_PLANNING");
       check(!previewPostSemantic,"PREVIEW_REQUIRES_CACHED_PLANNING");
@@ -381,6 +390,8 @@ export async function recoverExistingArticleResearchV1({
     let discoveredSourceCount=0;
     let reusedSourceDiscoveryCheckpoint=false;
     if(sectionsWithoutAnyQuote.size){
+      check(!previewWriterContract,
+        "WRITER_PREVIEW_REQUIRES_CACHED_DISCOVERY");
       check(!resumeExistingWriterOnly,
         "RESUME_ONLY_REQUIRES_CACHED_SOURCE_DISCOVERY");
       check(!previewPostSemantic,
@@ -654,6 +665,8 @@ export async function recoverExistingArticleResearchV1({
         previewPaidCallsAllowed:false,
       });
       if(reusedResponse===null){
+        check(!previewWriterContract,
+          "WRITER_PREVIEW_REQUIRES_CACHED_SOURCE_REPLAN");
         check(!resumeExistingWriterOnly,
           "RESUME_ONLY_REQUIRES_CACHED_SOURCE_REPLAN");
         check(!previewPostSemantic,
@@ -795,6 +808,8 @@ export async function recoverExistingArticleResearchV1({
         semanticCachedBatchCalls++;
         return JSON.parse(cached) as SemanticEvidenceJudgmentV1[];
       }
+      check(!previewWriterContract,
+        "WRITER_PREVIEW_REQUIRES_CACHED_SEMANTIC_BATCH");
       check(!resumeExistingWriterOnly,
         "RESUME_ONLY_REQUIRES_CACHED_SEMANTIC_BATCH");
       check(!previewPostSemantic,
@@ -1141,6 +1156,32 @@ export async function recoverExistingArticleResearchV1({
       articleId,briefId:original.briefId,
       contractHash:writerContractHash,modelName:writerModelName,
     });
+    const archiveInspection=await inspectArchivedWriterProgressV1({
+      rootDirectory:resolve(
+        ".growth-os-tmp/article-checkpoints/research-recovery"),
+      articleId,briefId:original.briefId,
+      modelName:writerModelName,contract,
+    });
+    const writerPreview={
+      currentContractHashPrefix:writerContractHash.slice(0,20),
+      currentExactCheckpointSections:priorWriterProgress?.accepted.length??0,
+      archivedWriterPrefix:archiveInspection.archivedPrefix,
+      archivedVerifiedSections:archiveInspection.verifiedSections,
+      archivedCandidatesInspected:archiveInspection.candidatesInspected,
+      archivedCompatible:archiveInspection.compatible,
+      rejectionReasons:archiveInspection.rejectionReasons,
+      archiveRebindRequiresFreshPaidSectionSemanticVerification:true,
+    };
+    console.info("[content writer contract drift inspection]",writerPreview);
+    if(previewWriterContract){
+      return {
+        articleId,status:"IN_REVIEW" as const,
+        result:"READ_ONLY_WRITER_CONTRACT_PREVIEW" as const,
+        ...writerPreview,
+        aiCalls:0,dataForSeoCalls:0,databaseUnchanged:true,
+        warning:"CANDIDATE_ONLY;NO_ARCHIVED_SECTION_REBOUND_OR_PAID_VALIDATION",
+      };
+    }
     const editorialCheckpointDir=resolve(
       ".growth-os-tmp/article-checkpoints/research-recovery-editorial",
       writerContractHash.slice(0,20));
@@ -1156,15 +1197,57 @@ export async function recoverExistingArticleResearchV1({
         savedEditorialProgress!==null,
       secureLocalCheckpoint:true,
     });
+    // Rebind historical full Writer output only through CURRENT
+    // source/claim reconciliation, then fresh semantic checks.
+    // NEVER rewrite the original immutable historical checkpoint.
+    let activeWriterProgress=savedEditorialProgress??priorWriterProgress;
+    if(resumeExistingWriterOnly &&
+       (activeWriterProgress?.accepted.length??0)!==
+         contract.sectionContracts.length){
+      check(archiveInspection.compatible&&archiveInspection.candidate,
+        "RESUME_ONLY_ARCHIVED_WRITER_EVIDENCE_CHANGED:"+
+        archiveInspection.rejectionReasons.join(","));
+      const old=archiveInspection.candidate.checkpoint;
+      const accepted=[...(priorWriterProgress?.accepted??[])];
+      for(let index=accepted.length;index<contract.sectionContracts.length;
+          index++){
+        const current=contract.sectionContracts[index];
+        const historical=old.accepted[index];
+        check(!!current&&!!historical,
+          "RESUME_ONLY_ARCHIVED_SECTION_MISSING:"+index);
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:current,section:historical.section,generator,
+        });
+        accepted.push({
+          ...verified,repair:historical.repair,
+        });
+        // Atomic current-contract checkpoint. If the process stops,
+        // the verified prefix is reused on the next attempt.
+        await writeMasterWriterSectionProgressV1({
+          directory:writerCheckpointDir,
+          articleId,briefId:original.briefId,
+          contractHash:writerContractHash,modelName:writerModelName,
+          shell:old.shell,accepted,
+        });
+        console.info("[content archived writer section rebound]",{
+          sectionIndex:index,semanticStatus:verified.semanticVerification.status,
+          totalVerified:accepted.length,
+          originalWriterRegenerated:false,
+        });
+      }
+      activeWriterProgress=await readVerifiedWriterProgressV1({
+        directory:writerCheckpointDir,
+        articleId,briefId:original.briefId,
+        contractHash:writerContractHash,modelName:writerModelName,
+      });
+    }
     if(resumeExistingWriterOnly)
-      check((priorWriterProgress?.accepted.length??0)===
-        contract.sectionContracts.length ||
-        (savedEditorialProgress?.accepted.length??0)===
+      check((activeWriterProgress?.accepted.length??0)===
         contract.sectionContracts.length,
-        "RESUME_ONLY_WRITER_CONTRACT_CHECKPOINT_MISSING");
+        "RESUME_ONLY_WRITER_CHECKPOINT_NOT_COMPLETE");
     const writer=await executeMasterWriterV1({
       contract,generator,
-      resumeProgress:savedEditorialProgress??priorWriterProgress,
+      resumeProgress:activeWriterProgress,
       onProgress:async ({shell,accepted})=>{
         await writeMasterWriterSectionProgressV1({
           directory:writerCheckpointDir,
