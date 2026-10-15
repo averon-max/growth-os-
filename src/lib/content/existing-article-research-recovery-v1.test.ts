@@ -85,7 +85,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(cli).toContain("--preview-writer-contract");
     expect(cli).toContain("WRITER_CONTRACT_PREVIEW_MUST_BE_READ_ONLY");
     expect(engine).toContain('"READ_ONLY_WRITER_CONTRACT_PREVIEW"');
-    expect(engine).toContain("CANDIDATE_ONLY;NO_ARCHIVED_SECTION_REBOUND_OR_PAID_VALIDATION");
+    expect(engine).toContain("CANDIDATES_ONLY;NO_NEW_SEMANTIC_REVIEW_OR_POST_CRITIC_SNAPSHOT");
     expect(engine).toContain("RESUME_ONLY_WRITER_CHECKPOINT_NOT_COMPLETE");
     expect(inspection).toContain("readMasterWriterSectionProgressV1({");
     expect(inspection).toContain("assertSectionClaimReconciliationPassed(canonical)");
