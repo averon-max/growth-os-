@@ -8,6 +8,10 @@ import {
 } from "./writer-recovery-archived-progress-v1";
 import {writeMasterWriterSectionProgressV1}
   from "./master-writer-section-progress-v1";
+import type {MasterWriterSectionProgressV1}
+  from "./master-writer-section-progress-v1";
+import type {ArticleGenerationContractV1}
+  from "./article-generation-contract";
 
 const articleId="cmv606xg60006siqlir66uq23";
 const briefId="cmv606xbp0004siqlh7pbecns";
@@ -37,7 +41,7 @@ const progress={
     semanticVerification:{status:"PASS"},
     repair:{sectionIndex:0},
   }],
-} as never;
+} as unknown as MasterWriterSectionProgressV1;
 const contract={
   sectionContracts:[{
     blueprint:{
@@ -47,7 +51,7 @@ const contract={
     evidenceGraph:{sources:[],claimEvidence:[]},
     claimLedger:{claims:[]},
   }],
-} as never;
+} as unknown as ArticleGenerationContractV1;
 
 describe("historical Writer checkpoint cannot silently authorize new facts",()=>{
   it("accepts only same section/claim ownership before paid semantic verification",()=>{
