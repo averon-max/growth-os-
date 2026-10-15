@@ -52,7 +52,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(save).toBeGreaterThan(writer);
     expect(critic).toBeGreaterThan(save);
     expect(keyword).toBeGreaterThan(critic);
-    expect(engine).toContain("resumeProgress:savedEditorialProgress??priorWriterProgress");
+    expect(engine).toContain("resumeProgress:activeWriterProgress");
     expect(engine).toContain("writerContractHash.slice(0,20)");
     expect(engine).toContain("secureLocalCheckpoint:true");
     expect(engine).not.toContain("writeMasterWriterSectionProgressV1({\n      directory:process.env");
@@ -61,15 +61,37 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     const cli=read("../../../scripts/content-existing-article-research-recovery-live.ts");
     expect(cli).toContain("--resume-existing-writer");
     expect(cli).toContain("RESUME_EXISTING_WRITER_REQUIRES_EXECUTE");
-    expect(cli).toContain("governmentSourceUrls,previewPostSemantic,resumeExistingWriterOnly");
+    expect(cli).toContain("resumeExistingWriterOnly,previewWriterContract");
     expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_PLANNING");
     expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_SOURCE_REPLAN");
     expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_SEMANTIC_BATCH");
-    expect(engine).toContain("RESUME_ONLY_WRITER_CONTRACT_CHECKPOINT_MISSING");
+    expect(engine).toContain("RESUME_ONLY_ARCHIVED_WRITER_EVIDENCE_CHANGED:");
     expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_SOURCE_DISCOVERY");
     expect(engine).toContain("savedEditorialProgress??priorWriterProgress");
     expect(engine).toContain("contractHash:writerContractHash,modelName:writerModelName");
     expect(engine).not.toContain("prisma.contentArticle.create");
+  });
+  it("inspects historical verified Writer progress for drift without paying or bypassing authorizations",()=>{
+    const cli=read("../../../scripts/content-existing-article-research-recovery-live.ts");
+    const inspection=read("./writer-recovery-archived-progress-v1.ts");
+    const inspect=engine.indexOf("const archiveInspection=await inspectArchivedWriterProgressV1({");
+    const preview=engine.indexOf("if(previewWriterContract){",inspect);
+    const rebound=engine.indexOf("await verifyGeneratedSectionOnlyV1({",preview);
+    const regen=engine.indexOf("const writer=await executeMasterWriterV1({",rebound);
+    expect(inspect).toBeGreaterThan(0);
+    expect(preview).toBeGreaterThan(inspect);
+    expect(rebound).toBeGreaterThan(preview);
+    expect(regen).toBeGreaterThan(rebound);
+    expect(cli).toContain("--preview-writer-contract");
+    expect(cli).toContain("WRITER_CONTRACT_PREVIEW_MUST_BE_READ_ONLY");
+    expect(engine).toContain('"READ_ONLY_WRITER_CONTRACT_PREVIEW"');
+    expect(engine).toContain("CANDIDATE_ONLY;NO_ARCHIVED_SECTION_REBOUND_OR_PAID_VALIDATION");
+    expect(engine).toContain("RESUME_ONLY_WRITER_CHECKPOINT_NOT_COMPLETE");
+    expect(inspection).toContain("readMasterWriterSectionProgressV1({");
+    expect(inspection).toContain("assertSectionClaimReconciliationPassed(canonical)");
+    expect(inspection).toContain("SECTION_APPROVED_EVIDENCE_CHANGED:");
+    expect(inspection).not.toContain("callContentAi");
+    expect(inspection).not.toContain("prisma.");
   });
   it("repairs any Writer cross-section repetition BEFORE first paid whole-article Critic",()=>{
     const edit=engine.indexOf("const editorialReadyWriter=await repairPreCriticEditorialRepetitionV1({");
