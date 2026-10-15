@@ -549,7 +549,7 @@ export function ContentCreateButton({
       if (
         !briefResponse.ok &&
         briefResponse.status===409 &&
-        briefJson?.code==="CONTENT_TOPIC_ALREADY_EXISTS"
+        ["CONTENT_TOPIC_ALREADY_EXISTS","CONTENT_TOPIC_NEAR_DUPLICATE"].includes(briefJson?.code)
       ) {
         const id=briefJson?.existingArticleId;
         const brief=briefJson?.existingBriefId;
@@ -562,9 +562,14 @@ export function ContentCreateButton({
               : null
         );
         setStage("IDLE");
-        setError(
-          "An article or content brief already exists for that keyword. "+
-          "Open the existing work instead of paying for another generation."
+        const typoSuggestion=briefJson?.code==="CONTENT_TOPIC_NEAR_DUPLICATE" &&
+          typeof briefJson?.suggestedKeyword==="string"
+          ? briefJson.suggestedKeyword:null;
+        setError(typoSuggestion
+          ? 'Possible typo. Did you mean "'+typoSuggestion+
+            '"? Open the existing article instead of paying for another research run.'
+          : "An article or content brief already exists for that keyword. "+
+            "Open the existing work instead of paying for another generation."
         );
         return;
       }

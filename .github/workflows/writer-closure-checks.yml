@@ -30,6 +30,10 @@ on:
       - "scripts/content-existing-article-research-recovery-live.ts"
       - "scripts/content-existing-article-research-evidence-diagnose.ts"
       - "src/lib/content/research-diagnosis-cli-source-v1.test.ts"
+      - "src/lib/content/content-topic-typo-guard-v1.ts"
+      - "src/lib/content/content-topic-typo-guard-v1.test.ts"
+      - "src/app/api/content/briefs/route.ts"
+      - "src/components/dashboard/content-create-button.tsx"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
