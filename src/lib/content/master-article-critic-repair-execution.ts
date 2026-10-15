@@ -50,6 +50,9 @@ import {
   ContentGenerationError,
 } from "./generator";
 
+import {detectHighConfidenceEditorialRepetitionV1}
+  from "./editorial-repetition-guard-v1";
+
 
 export interface MasterArticleCriticSectionRepairAuditV1 {
   version:
@@ -464,6 +467,16 @@ export async function executeMasterArticleCriticRepairReplayV1({
     ];
 
 
+  const initialRepeat=detectHighConfidenceEditorialRepetitionV1(
+    run.sections.map(section=>({
+      heading:section.heading,bodyMarkdown:section.bodyMarkdown,
+    })));
+  console.info("[content master critic pre-repair repetition]",{
+    initialFindingCodes:initialRepeat.map(x=>x.code),
+    initialAffectedSections:initialRepeat.flatMap(x=>x.affectedSections),
+    initialCriticStatus:initialCritics.suite.status,
+  });
+
   const audits:
     MasterArticleCriticSectionRepairAuditV1[] =
       [];
@@ -648,6 +661,19 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
             criticFindings:
               task.findings,
+
+            // Editorial-only "already explained" context. No
+            // additional fact, source or claim is authorized.
+            crossSectionEditorialContext:sections.flatMap((other,j)=>{
+              if(j===index)return [];
+              const text=other.bodyMarkdown;
+              return [{
+                sectionIndex:j,heading:other.heading,
+                prosePreview:text.length<=2200?text:
+                  text.slice(0,1100)+"\n[...existing prose omitted...]\n"+
+                  text.slice(-1050),
+              }];
+            }),
           });
       }
     } catch (
@@ -814,6 +840,28 @@ export async function executeMasterArticleCriticRepairReplayV1({
         ),
     });
 
+
+  const finalDeterministicRepeat=detectHighConfidenceEditorialRepetitionV1(
+    sections.map(section=>({
+      heading:section.heading,bodyMarkdown:section.bodyMarkdown,
+    })));
+  console.info("[content master critic post-repair repetition]",{
+    before:initialRepeat.map(x=>({
+      code:x.code,affectedSections:x.affectedSections,
+      repeatedPhrases:x.repeatedPhrases,
+    })),
+    after:finalDeterministicRepeat.map(x=>({
+      code:x.code,affectedSections:x.affectedSections,
+      repeatedPhrases:x.repeatedPhrases,
+    })),
+    repairTaskCount:audits.length,
+  });
+  // No second whole-article model call when a local revision just
+  // INTRODUCED deterministic high-confidence cross-section boilerplate.
+  if(initialRepeat.length===0&&finalDeterministicRepeat.length>0)
+    throw new ContentGenerationError(
+      "MASTER_CRITIC_REPAIR_INTRODUCED_EDITORIAL_REPETITION:"+
+      finalDeterministicRepeat[0].code);
 
   /*
    * ONE complete replay.
