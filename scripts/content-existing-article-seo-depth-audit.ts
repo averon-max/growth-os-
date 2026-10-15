@@ -6,21 +6,28 @@
  *   scripts/content-existing-article-seo-depth-audit.ts ARTICLE_ID
  */
 import {loadEnvConfig} from "@next/env";
-import {prisma} from "../src/lib/prisma";
-import {countExactPhrase,countWords}
-  from "../src/lib/content/article-analyzer";
-import {resolveArticleLengthContractV1}
-  from "../src/lib/content/article-length-contract-v1";
-import {inspectMasterRuntimeSnapshot}
-  from "../src/lib/content/master-runtime-adapter";
-import {parsePersistedArticleExecutionPlanV1}
-  from "../src/lib/content/article-execution-plan-binding-v1";
-loadEnvConfig(process.cwd());
+
+// Bootstrap the environment before importing Prisma or any repository modules.
+// Worktrees can point to the parent checkout's .env.local without exposing it.
+loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim() || process.cwd());
 
 async function main(){
   const articleId=process.argv[2];
   if(!articleId || !/^[a-zA-Z0-9_-]{5,100}$/.test(articleId))
     throw new Error("USAGE: content-existing-article-seo-depth-audit.ts ARTICLE_ID");
+  // Imports are intentionally dynamic: ESM static imports are hoisted
+  // and previously evaluated prisma.ts before loadEnvConfig(), causing
+  // DATABASE_URL_MISSING even when a valid local .env existed.
+  const {prisma}=await import("../src/lib/prisma");
+  try {
+    const {countExactPhrase,countWords}=
+      await import("../src/lib/content/article-analyzer");
+    const {resolveArticleLengthContractV1}=
+      await import("../src/lib/content/article-length-contract-v1");
+    const {inspectMasterRuntimeSnapshot}=
+      await import("../src/lib/content/master-runtime-adapter");
+    const {parsePersistedArticleExecutionPlanV1}=
+      await import("../src/lib/content/article-execution-plan-binding-v1");
   const article=await prisma.contentArticle.findUnique({
     where:{id:articleId},
     include:{brief:{include:{evidenceSnapshot:true}}},
@@ -95,9 +102,12 @@ async function main(){
     modelCalls:0,searchCalls:0,databaseUnchanged:true,
     warning:"Exact keyword coverage is not a proxy for semantic quality. No source-backed section edits or SERP replay occurred.",
   },null,2));
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 main().catch(error=>{
   console.error("SEO_DEPTH_AUDIT_FAILED:",
     error instanceof Error?error.message:String(error));
   process.exitCode=1;
-}).finally(()=>prisma.$disconnect());
+});
