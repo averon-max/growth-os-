@@ -456,6 +456,177 @@ export async function repairPreCriticEditorialRepetitionV1({
 }
 
 
+/**
+ * PRE-CRITIC PLANNED KEYWORD RECOVERY V1
+ *
+ * A keyword missing from an otherwise verified Writer must be restored
+ * BEFORE the costly full-article semantic critic. Prefer the section
+ * whose question and verified claims actually concern that phrase.
+ * Preserve the section contract and existing approved facts. A phrase
+ * alone never grants evidence authority. Every actual change is
+ * verified by the existing source-constrained section semantic gate.
+ *
+ * No recursive repair, no new headings, no synthetic facts, no
+ * relaxation of editorial or final SEO coverage policy.
+ */
+export async function recoverPreCriticPlannedKeywordV1({
+  contract,run,generator,missingKeywords,onProgress,
+}:{
+  contract:Readonly<ArticleGenerationContractV1>;
+  run:Readonly<MasterWriterRunV1>;
+  generator:unknown;
+  missingKeywords:readonly string[];
+  onProgress?:(updated:Readonly<MasterWriterRunV1>)=>Promise<void>;
+}):Promise<Readonly<MasterWriterRunV1>>{
+  const wanted=[...new Set(missingKeywords.map(k=>k.trim())
+    .filter(k=>/^[a-z0-9][a-z0-9 &'/-]{2,100}$/i.test(k)))];
+  if(wanted.length===0)return run;
+  if(!supportsMasterSectionRepairGenerator(generator)||
+    !supportsMasterSectionSemanticVerifier(generator))
+    throw new ContentGenerationError(
+      "PRECRITIC_KEYWORD_REPAIR_GENERATOR_UNAVAILABLE");
+  if(wanted.length>2)
+    throw new ContentGenerationError(
+      "PRECRITIC_KEYWORD_REPAIR_OVER_BUDGET");
+  const sections=[...run.sections];
+  const reconciliations=[...run.reconciliations];
+  const semantics=[...run.semanticVerifications];
+  let working:Readonly<MasterWriterRunV1>=run;
+  const keywords=new Set<string>();
+  for(const keyword of wanted){
+    const lower=keyword.toLocaleLowerCase("en-US");
+    const tokens=[...new Set(lower.match(/[a-z0-9]+/g)??[])]
+      .filter(t=>!["a","the","of","and","what","how","for","in"].includes(t));
+    const scores=contract.sectionContracts.map((sc,index)=>{
+      const heading=sc.blueprint.heading.toLocaleLowerCase("en-US");
+      const body=sections[index]?.bodyMarkdown.toLocaleLowerCase("en-US")??"";
+      const ownClaims=new Set(sc.blueprint.requiredClaims);
+      const facts=sc.claimLedger.claims.filter(c=>
+        ownClaims.has(c.id)&&c.status==="VERIFIED")
+        .map(c=>c.text.toLocaleLowerCase("en-US")).join(" ");
+      const overlap=(text:string)=>tokens.reduce((n,t)=>
+        n+(new RegExp("(?<![a-z0-9])"+t+"(?![a-z0-9])","i")
+          .test(text)?1:0),0);
+      const bureauOption=lower.includes("bureau")&&
+        /\b(?:service|services|choos|compar|look for|plan|plans)\b/.test(heading);
+      return {
+        index,score:overlap(heading)*4+
+          overlap(facts)*5+
+          Math.min(overlap(body),3)+
+          (bureauOption?18:0),
+      };
+    }).sort((a,b)=>b.score-a.score||a.index-b.index);
+    const choice=scores[0];
+    if(!choice||choice.score<4)
+      throw new ContentGenerationError(
+        "PRECRITIC_KEYWORD_MISSION_UNSUPPORTED:"+keyword);
+    const index=choice.index;
+    const sectionContract=contract.sectionContracts[index];
+    const original=sections[index];
+    const originalReconciliation=reconciliations[index];
+    const originalSemantic=semantics[index];
+    if(!sectionContract||!original||!originalReconciliation||!originalSemantic)
+      throw new ContentGenerationError(
+        "PRECRITIC_KEYWORD_SECTION_MISSING:"+index);
+    const reason=createMasterArticleCriticFindingV1({
+      criticId:"TECHNICAL_SEO",
+      code:"RANK_READY_PLANNED_KEYWORD_MISSING",
+      severity:"WARN",
+      location:{
+        scope:"SECTION",sectionIndex:index,
+        sectionNumber:sectionContract.sectionNumber,
+        heading:sectionContract.blueprint.heading,
+      },
+      repairScope:"SECTION",
+      message:'Production-planned keyword "'+keyword+
+        '" is missing from the article.',
+      recommendation:"Integrate the EXACT phrase naturally ONCE in "+
+        "existing explanatory prose answering THIS section's H2. "+
+        "Preserve all evidence-backed statements, required claims, "+
+        "qualifiers and existing H3 headings. Do NOT add claims, "+
+        "unsupported bureau coverage promises, headings, keyword "+
+        "lists, standalone boilerplate or repetitive reader advice. "+
+        "If the phrase cannot be introduced accurately based on "+
+        "the approved evidence, do not force it.",
+      evidence:{
+        claimIds:[],evidenceIds:[],queryNodeIds:[],sourceIds:[],
+      },
+    });
+    const bounds=(sectionContract as typeof sectionContract & {
+      executionPlanAuthority?:{targetWords?:{
+        min:number;preferred:number;max:number;
+      }};
+    }).executionPlanAuthority?.targetWords;
+    const currentWords=countSectionWordsV1(original.bodyMarkdown);
+    const normalized=tryRecoverMissingKeywordV1({
+      markdown:original.bodyMarkdown,
+      findings:[reason],maxWords:bounds?.max,
+    });
+    const draft=normalized!==null
+      ?{...original,bodyMarkdown:normalized}
+      :await generator.repairSection({
+        contract:sectionContract,section:original,
+        reconciliation:originalReconciliation,
+        semanticVerification:originalSemantic,
+        attempt:1,
+        depthRepair:bounds?{
+          currentWords,
+          minWords:Math.max(bounds.min,
+            Math.min(currentWords,bounds.preferred)),
+          preferredWords:bounds.preferred,maxWords:bounds.max,
+        }:undefined,
+        criticFindings:[reason],
+        crossSectionEditorialContext:sections.flatMap((neighbor,j)=>{
+          if(j===index)return [];
+          const text=neighbor.bodyMarkdown;
+          return [{
+            sectionIndex:j,heading:neighbor.heading,
+            prosePreview:text.length<=2200?text:
+              text.slice(0,1100)+"\n[...existing prose omitted...]\n"+
+              text.slice(-1050),
+          }];
+        }),
+      });
+    if(draft.bodyMarkdown===original.bodyMarkdown)
+      throw new ContentGenerationError(
+        "PRECRITIC_KEYWORD_REPAIR_NO_CHANGE:"+keyword);
+    const phraseCount=draft.bodyMarkdown.toLocaleLowerCase("en-US")
+      .split(lower).length-1;
+    if(phraseCount!==1)
+      throw new ContentGenerationError(
+        "PRECRITIC_KEYWORD_NOT_NATURALLY_USED:"+keyword);
+    const verified=await verifyGeneratedSectionOnlyV1({
+      contract:sectionContract,section:draft,generator,
+    });
+    sections[index]=verified.section;
+    reconciliations[index]=verified.reconciliation;
+    semantics[index]=verified.semanticVerification;
+    const repeats=detectHighConfidenceEditorialRepetitionV1(
+      sections.map(section=>({
+        heading:section.heading,bodyMarkdown:section.bodyMarkdown,
+      })));
+    if(repeats.length)
+      throw new ContentGenerationError(
+        "PRECRITIC_KEYWORD_REINTRODUCED_EDITORIAL_REPETITION:"+
+        repeats[0].code);
+    working=rebuildWriterRun({
+      contract,run:working,
+      sections,reconciliations,semanticVerifications:semantics,
+    });
+    keywords.add(keyword);
+    console.info("[content precritic keyword recovery]",{
+      keyword,sectionIndex:index,
+      recovered:true,
+      method:normalized!==null?"EXACT_SPELLING":"TARGETED_SECTION_REPAIR",
+      semanticStatus:verified.semanticVerification.status,
+      editorialRepetitionCount:0,
+    });
+    if(onProgress)await onProgress(working);
+  }
+  return working;
+}
+
+
 /*
  * MASTER_CRITIC_SINGLE_REPAIR_CYCLE_V1
  *
