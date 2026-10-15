@@ -171,7 +171,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
   it("previews removing exactly one rejected price sentence for FREE using unmodified policy",()=>{
     const start=engine.indexOf("if(previewWriterContract){");
     const price=engine.indexOf("const priceEvidence=diagnosticPolicy.evidenceFindings.filter",start);
-    const removal=engine.indexOf("removeUnsupportedPriceSentenceV1({",price);
+    const removal=engine.indexOf("inspectUnsupportedPriceSentenceRemovalV1({",price);
     const policy=engine.indexOf("const policyAfter=evaluateArticlePublicationPolicy({",removal);
     const status=engine.indexOf("priceRemovalPreview,",policy);
     const writer=engine.indexOf("const writer=await executeMasterWriterV1({",status);
@@ -182,6 +182,8 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(writer).toBeGreaterThan(status);
     expect(engine).toContain("CURRENT_SOURCE_SEMANTIC_VERIFICATION_STILL_REQUIRED");
     expect(engine).toContain("contentPassAfter:gateAfter.pass");
+    expect(engine).toContain('reason:priceInspection?.reason??"NOT_ELIGIBLE"');
+    expect(engine).toContain("sectionMinimumWords:priceInspection?.minWords??null");
     expect(engine).toContain("publicationPassAfter:policyAfter.pass");
     expect(engine).toContain("keywordCoverageAfter:intelligenceAfter.article.keywordCoverage.used");
   });
