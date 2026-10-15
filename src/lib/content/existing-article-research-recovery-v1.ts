@@ -94,6 +94,7 @@ import {executeMasterArticleCriticsV1,assertMasterArticleCriticExecutionPassed}
   from "./master-article-critic-fusion";
 import {executeMasterArticleCriticRepairReplayV1,
   repairPreCriticEditorialRepetitionV1,
+  recoverPreCriticPlannedKeywordV1,
 } from "./master-article-critic-repair-execution";
 import {executeSerpReplayV1} from "./serp-replay";
 import {buildProductionFinalArticleReadinessV1}
@@ -1162,14 +1163,26 @@ export async function recoverExistingArticleResearchV1({
       articleId,briefId:original.briefId,
       modelName:writerModelName,contract,
     });
+    // Prioritize an already source-verified, editorial-clean revision
+    // over the immutable original Writer whose prose still repeated.
+    const archivedEditorialInspection=await inspectArchivedWriterProgressV1({
+      rootDirectory:resolve(
+        ".growth-os-tmp/article-checkpoints/research-recovery-editorial"),
+      articleId,briefId:original.briefId,
+      modelName:writerModelName,contract,
+    });
+    const preferredArchive=archivedEditorialInspection.compatible
+      ?archivedEditorialInspection:archiveInspection;
     const writerPreview={
       currentContractHashPrefix:writerContractHash.slice(0,20),
       currentExactCheckpointSections:priorWriterProgress?.accepted.length??0,
-      archivedWriterPrefix:archiveInspection.archivedPrefix,
-      archivedVerifiedSections:archiveInspection.verifiedSections,
-      archivedCandidatesInspected:archiveInspection.candidatesInspected,
-      archivedCompatible:archiveInspection.compatible,
-      rejectionReasons:archiveInspection.rejectionReasons,
+      archivedWriterPrefix:preferredArchive.archivedPrefix,
+      archivedVerifiedSections:preferredArchive.verifiedSections,
+      archivedCandidatesInspected:preferredArchive.candidatesInspected,
+      archivedCompatible:preferredArchive.compatible,
+      archivedEditorialCompatible:archivedEditorialInspection.compatible,
+      archivedEditorialPrefix:archivedEditorialInspection.archivedPrefix,
+      rejectionReasons:preferredArchive.rejectionReasons,
       archiveRebindRequiresFreshPaidSectionSemanticVerification:true,
     };
     console.info("[content writer contract drift inspection]",writerPreview);
@@ -1201,14 +1214,26 @@ export async function recoverExistingArticleResearchV1({
     // source/claim reconciliation, then fresh semantic checks.
     // NEVER rewrite the original immutable historical checkpoint.
     let activeWriterProgress=savedEditorialProgress??priorWriterProgress;
+    const exactEditorialComplete=
+      (savedEditorialProgress?.accepted.length??0)===
+        contract.sectionContracts.length;
+    const preferArchivedEditorial=resumeExistingWriterOnly &&
+      !exactEditorialComplete && archivedEditorialInspection.compatible;
     if(resumeExistingWriterOnly &&
-       (activeWriterProgress?.accepted.length??0)!==
-         contract.sectionContracts.length){
-      check(archiveInspection.compatible&&archiveInspection.candidate,
+       (preferArchivedEditorial ||
+        (activeWriterProgress?.accepted.length??0)!==
+          contract.sectionContracts.length)){
+      const archive=preferArchivedEditorial
+        ?archivedEditorialInspection:archiveInspection;
+      check(archive.compatible&&archive.candidate,
         "RESUME_ONLY_ARCHIVED_WRITER_EVIDENCE_CHANGED:"+
-        archiveInspection.rejectionReasons.join(","));
-      const old=archiveInspection.candidate.checkpoint;
-      const accepted=[...(priorWriterProgress?.accepted??[])];
+        archive.rejectionReasons.join(","));
+      const old=archive.candidate.checkpoint;
+      const reboundDirectory=preferArchivedEditorial
+        ?editorialCheckpointDir:writerCheckpointDir;
+      const currentProgress=preferArchivedEditorial
+        ?savedEditorialProgress:priorWriterProgress;
+      const accepted=[...(currentProgress?.accepted??[])];
       for(let index=accepted.length;index<contract.sectionContracts.length;
           index++){
         const current=contract.sectionContracts[index];
@@ -1218,13 +1243,9 @@ export async function recoverExistingArticleResearchV1({
         const verified=await verifyGeneratedSectionOnlyV1({
           contract:current,section:historical.section,generator,
         });
-        accepted.push({
-          ...verified,repair:historical.repair,
-        });
-        // Atomic current-contract checkpoint. If the process stops,
-        // the verified prefix is reused on the next attempt.
+        accepted.push({...verified,repair:historical.repair});
         await writeMasterWriterSectionProgressV1({
-          directory:writerCheckpointDir,
+          directory:reboundDirectory,
           articleId,briefId:original.briefId,
           contractHash:writerContractHash,modelName:writerModelName,
           shell:old.shell,accepted,
@@ -1232,11 +1253,12 @@ export async function recoverExistingArticleResearchV1({
         console.info("[content archived writer section rebound]",{
           sectionIndex:index,semanticStatus:verified.semanticVerification.status,
           totalVerified:accepted.length,
+          restoredEditorialCleanProse:preferArchivedEditorial,
           originalWriterRegenerated:false,
         });
       }
       activeWriterProgress=await readVerifiedWriterProgressV1({
-        directory:writerCheckpointDir,
+        directory:reboundDirectory,
         articleId,briefId:original.briefId,
         contractHash:writerContractHash,modelName:writerModelName,
       });
@@ -1274,6 +1296,69 @@ export async function recoverExistingArticleResearchV1({
         });
       },
     });
+    const beforeCriticIntelligence=analyzeArticleAgainstPlan({
+      ...shape(editorialReadyWriter.article),plan:revisedSnapshot,
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+    });
+    const beforeCriticPolicy=evaluateResearchRecoveryKeywordPolicyV1({
+      previous:analyzeArticleAgainstPlan({
+        ...priorArticle,plan:oldSnapshot,
+        primaryKeyword:original.brief.primaryKeyword,
+        secondaryKeywords:original.brief.secondaryKeywords,
+      }).article,
+      current:beforeCriticIntelligence.article,
+    });
+    const keywordsToRestore=beforeCriticPolicy.pass
+      ?[]:beforeCriticIntelligence.article.keywordCoverage.items
+        .filter(item=>!item.used)
+        .map(item=>item.keyword);
+    console.info("[content precritic keyword coverage]",{
+      used:beforeCriticPolicy.used,planned:beforeCriticPolicy.planned,
+      minimumRequired:beforeCriticPolicy.requiredUsed,
+      missingKeywords:keywordsToRestore,
+      primaryInH1:beforeCriticPolicy.primaryInH1,
+      primaryInBody:beforeCriticPolicy.primaryInBody,
+    });
+    const rankReadyWriter=await recoverPreCriticPlannedKeywordV1({
+      contract,run:editorialReadyWriter,generator,
+      missingKeywords:keywordsToRestore,
+      onProgress:async updated=>{
+        await writeMasterWriterSectionProgressV1({
+          directory:editorialCheckpointDir,
+          articleId,briefId:original.briefId,
+          contractHash:writerContractHash,modelName:writerModelName,
+          shell:updated.shell,
+          accepted:updated.sections.map((section,index)=>({
+            section,
+            reconciliation:updated.reconciliations[index]!,
+            semanticVerification:updated.semanticVerifications[index]!,
+            repair:updated.repairs[index]!,
+          })),
+        });
+      },
+    });
+    const preCriticIntelligence=analyzeArticleAgainstPlan({
+      ...shape(rankReadyWriter.article),plan:revisedSnapshot,
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+    });
+    const preCriticPolicy=evaluateResearchRecoveryKeywordPolicyV1({
+      previous:analyzeArticleAgainstPlan({
+        ...priorArticle,plan:oldSnapshot,
+        primaryKeyword:original.brief.primaryKeyword,
+        secondaryKeywords:original.brief.secondaryKeywords,
+      }).article,
+      current:preCriticIntelligence.article,
+    });
+    console.info("[content precritic keyword gate]",{
+      pass:preCriticPolicy.pass,
+      used:preCriticPolicy.used,minimumRequired:preCriticPolicy.requiredUsed,
+      primaryInH1:preCriticPolicy.primaryInH1,
+      primaryInBody:preCriticPolicy.primaryInBody,
+    });
+    check(preCriticPolicy.pass,
+      "PRECRITIC_PLANNED_KEYWORD_NOT_RESTORED");
     const storedContext=buildMasterArticleSemanticCriticContextV1(
       checked.runtime);
     const crawl=storedContext.cannibalizationCandidates.length
@@ -1289,10 +1374,10 @@ export async function recoverExistingArticleResearchV1({
         ?storedContext.cannibalizationCandidates:crawl,
     };
     const firstCritics=await executeMasterArticleCriticsV1({
-      contract,run:editorialReadyWriter,generator,context,
+      contract,run:rankReadyWriter,generator,context,
     });
     const repaired=await executeMasterArticleCriticRepairReplayV1({
-      contract,run:editorialReadyWriter,initialCritics:firstCritics,
+      contract,run:rankReadyWriter,initialCritics:firstCritics,
       generator,context,
     });
     assertMasterArticleCriticExecutionPassed(repaired.finalCritics);
