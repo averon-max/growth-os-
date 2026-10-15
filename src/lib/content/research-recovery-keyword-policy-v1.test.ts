@@ -25,6 +25,7 @@ describe("same-article SEO recovery keyword safeguards",()=>{
   );
   it("accepts a factually stronger article missing one optional exact variant, preserving primary and 80 percent coverage",()=>{
     const current=analyse(
+      "Credit monitoring helps people review credit report changes. "+
       "Credit monitoring services check changes to your credit reports. "+
       "Credit monitoring alerts may require reviewing credit report errors. "+
       "Identity theft monitoring is a different service.",
