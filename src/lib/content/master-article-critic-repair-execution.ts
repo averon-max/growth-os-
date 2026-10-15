@@ -611,7 +611,7 @@ export async function recoverPreCriticPlannedKeywordV1({
       throw new ContentGenerationError(
         "PRECRITIC_KEYWORD_REPAIR_NO_CHANGE:"+keyword);
     const phraseCount=draft.bodyMarkdown.toLocaleLowerCase("en-US")
-      .split(lower).length-1;
+      .split(keyword.toLocaleLowerCase("en-US")).length-1;
     if(phraseCount!==1)
       throw new ContentGenerationError(
         "PRECRITIC_KEYWORD_NOT_NATURALLY_USED:"+keyword);
