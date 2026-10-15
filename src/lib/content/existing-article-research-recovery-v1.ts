@@ -82,7 +82,7 @@ import {
 } from "./content-run-budget-v1";
 import {executeMasterWriterV1} from "./master-writer-orchestrator";
 import {composeMasterArticleV1} from "./master-article-composer";
-import {removeUnsupportedPriceSentenceV1}
+import {inspectUnsupportedPriceSentenceRemovalV1}
   from "./unsupported-price-sentence-recovery-v1";
 import {
   fingerprintMasterWriterContractV1,
@@ -1222,6 +1222,11 @@ export async function recoverExistingArticleResearchV1({
           eligible:boolean;
           selectedSectionIndex:number|null;
           removalSupported:boolean;
+          reason:string;
+          removalMethod:string;
+          sectionWordsBefore:number|null;
+          sectionWordsAfter:number|null;
+          sectionMinimumWords:number|null;
           contentPassAfter:boolean|null;
           publicationPassAfter:boolean|null;
           postRemovalBlockers:readonly string[];
@@ -1279,8 +1284,8 @@ export async function recoverExistingArticleResearchV1({
           typeof sectionContract & {
             executionPlanAuthority?:{targetWords?:{min:number}}
           }|null)?.executionPlanAuthority?.targetWords?.min;
-        const proposed=singlePriceIssue&&authored
-          ?removeUnsupportedPriceSentenceV1({
+        const priceInspection=singlePriceIssue&&authored
+          ?inspectUnsupportedPriceSentenceRemovalV1({
             bodyMarkdown:authored.section.bodyMarkdown,
             sentence,requiredClaimTexts,sectionMinWords,
             plannedKeywords:[
@@ -1288,10 +1293,16 @@ export async function recoverExistingArticleResearchV1({
               ...original.brief.secondaryKeywords,
             ],
           }):null;
+        const proposed=priceInspection?.bodyMarkdown??null;
         let priceRemovalPreview={
           eligible:singlePriceIssue,
           selectedSectionIndex:index>=0?index:null,
           removalSupported:proposed!==null,
+          reason:priceInspection?.reason??"NOT_ELIGIBLE",
+          removalMethod:priceInspection?.method??"NONE",
+          sectionWordsBefore:priceInspection?.previousWords??null,
+          sectionWordsAfter:priceInspection?.resultingWords??null,
+          sectionMinimumWords:priceInspection?.minWords??null,
           contentPassAfter:null as boolean|null,
           publicationPassAfter:null as boolean|null,
           postRemovalBlockers:[] as string[],

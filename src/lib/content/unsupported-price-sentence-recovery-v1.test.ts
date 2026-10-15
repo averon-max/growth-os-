@@ -1,6 +1,8 @@
 import {describe,expect,it} from "vitest";
-import {removeUnsupportedPriceSentenceV1}
-  from "./unsupported-price-sentence-recovery-v1";
+import {removeUnsupportedPriceSentenceV1,
+  inspectUnsupportedPriceSentenceRemovalV1,
+  PRICE_NEUTRAL_COMPARISON_QUESTION_V1,
+} from "./unsupported-price-sentence-recovery-v1";
 
 const price="Credit monitoring can cost anywhere from $0 to $50 per month, depending on the service and level of coverage.";
 const intro="When comparing credit monitoring services, check which reports receive alerts and what each plan actually covers. ";
@@ -23,6 +25,34 @@ describe("source-safe external price sentence pruning",()=>{
     expect(result).toContain("Free credit monitoring and 3 bureau credit monitoring");
     expect(result).toContain("A monitoring alert can identify changes");
     expect(markdown.length-(result??"").length).toBeGreaterThan(50);
+  });
+  it("preserves section minimum depth with fact-free question instead of unsupported pricing",()=>{
+    const direct=inspectUnsupportedPriceSentenceRemovalV1(base);
+    expect(direct.supported).toBe(true);
+    expect(direct.method).toBe("DELETE");
+    const floor=direct.previousWords-2;
+    expect((direct.resultingWords??0)).toBeLessThan(floor);
+    const rescued=inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,sectionMinWords:floor,
+    });
+    expect(rescued.supported).toBe(true);
+    expect(rescued.method).toBe("NEUTRAL_QUESTION");
+    expect(rescued.bodyMarkdown).toContain(
+      PRICE_NEUTRAL_COMPARISON_QUESTION_V1);
+    expect(rescued.bodyMarkdown).not.toContain("$0 to $50");
+    expect(rescued.resultingWords).toBeGreaterThanOrEqual(floor);
+    expect(rescued.bodyMarkdown).toContain("3 bureau credit monitoring");
+  });
+  it("returns exact fail-closed reasons without weakening price evidence gates",()=>{
+    expect(inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,sectionMinWords:500,
+    }).reason).toMatch(/^PRICE_NEUTRAL_REPLACEMENT_UNSAFE:/);
+    expect(inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,requiredClaimTexts:[price],
+    }).reason).toBe("PRICE_IS_REQUIRED_SOURCE_BACKED_CLAIM");
+    expect(inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,plannedKeywords:["$0 to $50 per month"],
+    }).reason).toBe("PRICE_EDIT_LOST_PLANNED_KEYWORD");
   });
   it("rejects missing, duplicate and non-numeric promotional claims",()=>{
     expect(removeUnsupportedPriceSentenceV1({
