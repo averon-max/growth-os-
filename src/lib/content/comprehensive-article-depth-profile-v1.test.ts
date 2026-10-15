@@ -69,8 +69,8 @@ describe("Comprehensive informational editorial depth",()=>{
     expect(prompt).toContain("credit monitoring limitations");
     expect(prompt).toContain("meaningfully distinct, evidence-supported reader subquestions");
     expect(prompt).toContain("descriptive H3 headings (###)");
-    expect(prompt).toContain("NEVER");
+    expect(prompt).toContain("Never add a decorative H3");
     expect(prompt).toContain("never force exact-match wording");
-    expect(prompt).toContain("never producing generic filler");
+    expect(prompt).toContain("stop rather than producing generic filler");
   });
 });
