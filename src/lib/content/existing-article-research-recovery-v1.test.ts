@@ -150,7 +150,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(semantic).toBeGreaterThan(reverify);
     expect(engine).toContain("if(sectionsWithoutAnyQuote.size){");
     expect(engine).toContain("SOURCE_FIRST_NO_AUTHORITATIVE_QUOTE_FOR_SECTIONS");
-    expect(engine).toContain("resumedSourceReplan:cached!==null");
+    expect(engine).toContain("resumedSourceReplan:reusedResponse!==null");
   });
   it("checkpoints the paid source-grounded model response, not source quotations as verified facts",()=>{
     const packHash=engine.indexOf("const packetHash=hash({");
@@ -165,6 +165,19 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("SOURCE_GROUNDING_BEFORE_PAID_SEMANTIC_REVIEW_V1");
   });
 
+  it("prefers a strictly verified historical source checkpoint over another paid call",()=>{
+    const exact=engine.indexOf("readExistingResearchPlanningCheckpointV1(sourceScope)");
+    const historical=engine.indexOf("findCompatibleSourceReplanCheckpointV1({");
+    const guard=engine.indexOf("PREVIEW_REQUIRES_COMPATIBLE_CACHED_SOURCE_REPLAN");
+    const sourcePaid=engine.indexOf("await callContentAiJson(sourcePrompt");
+    expect(exact).toBeGreaterThan(0);
+    expect(historical).toBeGreaterThan(exact);
+    expect(guard).toBeGreaterThan(historical);
+    expect(sourcePaid).toBeGreaterThan(guard);
+    expect(engine).toContain("cached??driftCompatible?.response??null");
+    expect(engine).toContain("reboundStrictQuoteIds:");
+    expect(engine).toContain("sameArticleAndVersion:true");
+  });
   it("reuses previously paid DataForSEO result URLs before research and writer",()=>{
     const read=engine.indexOf("readExistingResearchPlanningCheckpointV1(\n        discoveryScope)");
     const search=engine.indexOf("discoverClaimEvidenceFallbackSourcesV1({");
@@ -230,7 +243,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     const planningSpend=engine.indexOf('await callContentAiJson(planPrompt');
     const discoveryGuard=engine.indexOf('"PREVIEW_REQUIRES_DISCOVERY_OR_EXTRA_RESEARCH"');
     const discoverySpend=engine.indexOf('await discoverClaimEvidenceFallbackSourcesV1({');
-    const sourceGuard=engine.indexOf('"PREVIEW_REQUIRES_CACHED_SOURCE_REPLAN"');
+    const sourceGuard=engine.indexOf('"PREVIEW_REQUIRES_COMPATIBLE_CACHED_SOURCE_REPLAN"');
     const sourceSpend=engine.indexOf('await callContentAiJson(sourcePrompt');
     const semanticGuard=engine.indexOf('"PREVIEW_REQUIRES_CACHED_SEMANTIC_BATCH"');
     const semanticSpend=engine.indexOf('await reviewSemanticEvidenceWithContentAiV1(pairs)');
