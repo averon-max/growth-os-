@@ -20,6 +20,7 @@
  * logical application dispatches, not provider-internal retries.
  */
 import {createHash} from "node:crypto";
+import {resolve} from "node:path";
 import {selectPostSemanticSourceNarrowingV1}
   from "./post-semantic-source-narrowing-v1";
 import {buildResearchRecoveryGovernmentSeedsV1}
@@ -80,6 +81,11 @@ import {
   createContentRunBudgetV1,withContentRunBudgetV1,
 } from "./content-run-budget-v1";
 import {executeMasterWriterV1} from "./master-writer-orchestrator";
+import {
+  fingerprintMasterWriterContractV1,
+  readMasterWriterSectionProgressV1,
+  writeMasterWriterSectionProgressV1,
+} from "./master-writer-section-progress-v1";
 import {buildMasterArticleSemanticCriticContextV1}
   from "./master-article-semantic-critic-context";
 import {buildCrawlCannibalizationCandidatesV1}
@@ -102,6 +108,8 @@ import {buildSerpReplayArticleFingerprintV1}
   from "./serp-replay-fingerprint";
 import {detectPersistedArticleEditorialRepetitionV1}
   from "./editorial-repetition-guard-v1";
+import {evaluateResearchRecoveryKeywordPolicyV1}
+  from "./research-recovery-keyword-policy-v1";
 import {normalizeMasterArticleProseSpacesV1}
   from "./article-prose-whitespace-v1";
 
@@ -1108,7 +1116,37 @@ export async function recoverExistingArticleResearchV1({
     const generator=withContentRunBudgetV1({
       generator:geminiGenerator,budget,
     });
-    const writer=await executeMasterWriterV1({contract,generator});
+    // Do not spend the same 6-section Writer budget a second time
+    // because a later SEO/Critic/SERP gate fails. Resume ONLY the exact
+    // hash-matched, integrity-checked article contract and model.
+    const writerModelName=generator.modelName;
+    const writerContractHash=fingerprintMasterWriterContractV1(
+      contract,writerModelName);
+    const writerCheckpointDir=resolve(
+      ".growth-os-tmp/article-checkpoints/research-recovery",
+      writerContractHash.slice(0,20));
+    const priorWriterProgress=await readMasterWriterSectionProgressV1({
+      directory:writerCheckpointDir,
+      articleId,briefId:original.briefId,
+      contractHash:writerContractHash,modelName:writerModelName,
+    });
+    console.info("[content research recovery writer checkpoint]",{
+      reusedVerifiedSections:priorWriterProgress?.accepted.length??0,
+      contractMatched:priorWriterProgress!==null,
+      secureLocalCheckpoint:true,
+    });
+    const writer=await executeMasterWriterV1({
+      contract,generator,
+      resumeProgress:priorWriterProgress,
+      onProgress:async ({shell,accepted})=>{
+        await writeMasterWriterSectionProgressV1({
+          directory:writerCheckpointDir,
+          articleId,briefId:original.briefId,
+          contractHash:writerContractHash,modelName:writerModelName,
+          shell,accepted,
+        });
+      },
+    });
     const storedContext=buildMasterArticleSemanticCriticContextV1(
       checked.runtime);
     const crawl=storedContext.cannibalizationCandidates.length
@@ -1153,13 +1191,29 @@ export async function recoverExistingArticleResearchV1({
       primaryKeyword:original.brief.primaryKeyword,
       secondaryKeywords:original.brief.secondaryKeywords,
     });
-    check(
-      intelligence.article.keywordCoverage.used>=
-        priorIntelligence.article.keywordCoverage.used &&
-      intelligence.article.keywordCoverage.missing<=
-        priorIntelligence.article.keywordCoverage.missing,
-      "KEYWORD_COVERAGE_REGRESSED"
-    );
+    const keywordPolicy=evaluateResearchRecoveryKeywordPolicyV1({
+      previous:priorIntelligence.article,current:intelligence.article,
+    });
+    console.info("[content research recovery keyword comparison]",{
+      previousUsed:keywordPolicy.previousUsed,
+      generatedUsed:keywordPolicy.used,
+      planned:keywordPolicy.planned,
+      minimumRequired:keywordPolicy.requiredUsed,
+      lostKeywords:keywordPolicy.lostPreviouslyUsed,
+      newlyUsed:keywordPolicy.newlyUsed,
+      primaryInH1:keywordPolicy.primaryInH1,
+      primaryInBody:keywordPolicy.primaryInBody,
+      priorExactMatchParityLost:keywordPolicy.regressedAgainstPrevious,
+      finalCriticStatus:repaired.finalCritics.suite.status,
+      acceptedWithoutKeywordStuffing:keywordPolicy.pass,
+      bodyChangedWithoutDBWrite:true,
+    });
+    // A shallow, repetitive old draft is not an SEO optimization target.
+    // Require robust (> = 80%) planned exact phrase coverage, primary in
+    // the reader's H1 and prose, and ALL existing safety/quality gates.
+    // Missing optional secondary variants remain critic WARN diagnostics.
+    check(keywordPolicy.pass,
+      "KEYWORD_COVERAGE_BELOW_REQUIRED_LEVEL");
     const previousAudit=auditArticle({
       article:priorArticle,
       primaryKeyword:original.brief.primaryKeyword,
