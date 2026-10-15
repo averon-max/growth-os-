@@ -52,6 +52,8 @@ import {
 
 import {detectHighConfidenceEditorialRepetitionV1}
   from "./editorial-repetition-guard-v1";
+import {createMasterArticleCriticFindingV1}
+  from "./master-article-critic";
 
 
 export interface MasterArticleCriticSectionRepairAuditV1 {
@@ -294,6 +296,163 @@ function rebuildWriterRun({
           0 as const,
       }),
   });
+}
+
+
+/**
+ * PRE-CRITIC VERIFIED EDITORIAL RECOVERY.
+ *
+ * An expensive 9-critic review must NOT be dispatched against a Writer
+ * run that already has high-confidence multi-section recycled prose.
+ * Repair a bounded number of distinct offender sections from the SAME
+ * contract, verifying claim reconciliation and evidence after EACH
+ * change, then replay the complete existing Editorial guard.
+ *
+ * Any unresolved duplication fails closed BEFORE the first paid
+ * whole-article semantic critic. Only changed verified sections are
+ * persisted via the caller's isolated, contract-hash-bound checkpoint.
+ */
+export async function repairPreCriticEditorialRepetitionV1({
+  contract,run,generator,onProgress,
+}:{
+  contract:Readonly<ArticleGenerationContractV1>;
+  run:Readonly<MasterWriterRunV1>;
+  generator:unknown;
+  onProgress?:(run:Readonly<MasterWriterRunV1>)=>Promise<void>;
+}):Promise<Readonly<MasterWriterRunV1>>{
+  const detect=(sections:MasterWriterRunV1["sections"])=>
+    detectHighConfidenceEditorialRepetitionV1(sections.map(s=>({
+      heading:s.heading,bodyMarkdown:s.bodyMarkdown,
+    })));
+  let findings=detect(run.sections);
+  if(!findings.length){
+    console.info("[content precritic editorial]",{
+      status:"CLEAN",repairs:0,paidWholeArticleCriticsAvoided:0,
+    });
+    return run;
+  }
+  if(!supportsMasterSectionRepairGenerator(generator)||
+    !supportsMasterSectionSemanticVerifier(generator))
+    throw new ContentGenerationError(
+      "PRECRITIC_EDITORIAL_REPAIR_GENERATOR_UNAVAILABLE");
+  const attempted=new Set<number>();
+  const sections=[...run.sections];
+  const reconciliations=[...run.reconciliations];
+  const semantics=[...run.semanticVerifications];
+  const maxEdits=Math.min(4,sections.length);
+  for(let step=0;step<maxEdits&&findings.length>0;step++){
+    const issue=findings[0];
+    // Prefer an actual reported owner. Once edited, don't pay to
+    // paraphrase the same section again. The final alert-response
+    // section owns step-by-step advice, so edit non-action sections first.
+    const options=[
+      issue.sectionIndex,
+      ...issue.affectedSections.filter(i=>i!==sections.length-1),
+      ...issue.affectedSections,
+    ];
+    const index=options.find(i=>
+      i>=0&&i<sections.length&&!attempted.has(i));
+    if(index===undefined)break;
+    attempted.add(index);
+    const sectionContract=contract.sectionContracts[index];
+    const original=sections[index];
+    const currentReconciliation=reconciliations[index];
+    const currentSemantic=semantics[index];
+    if(!sectionContract||!original||
+      !currentReconciliation||!currentSemantic)
+      throw new ContentGenerationError(
+        "PRECRITIC_EDITORIAL_INCOMPLETE_VERIFIED_SECTION");
+    const reason=createMasterArticleCriticFindingV1({
+      criticId:"EDITORIAL",code:issue.code,severity:"BLOCK",
+      location:{
+        scope:"SECTION",sectionIndex:index,
+        sectionNumber:sectionContract.sectionNumber,
+        heading:sectionContract.blueprint.heading,
+      },
+      repairScope:"SECTION",
+      message:"Cross-section recycled prose already exists before "+
+        "Master Critic. Repeated phrases: "+
+        issue.repeatedPhrases.join(" / ")+
+        ". Affected sections: "+issue.affectedSections.join(", "),
+      recommendation:"Rewrite ONLY this section to answer its distinct "+
+        "H2 reader question without repeating advice already owned "+
+        "by other sections. Keep all verified required claims and "+
+        "their material qualifications. Do not add unsupported facts.",
+      evidence:{claimIds:[],evidenceIds:[],
+        queryNodeIds:[],sourceIds:[]},
+    });
+    const words=countSectionWordsV1(original.bodyMarkdown);
+    const depth=(sectionContract as typeof sectionContract & {
+      executionPlanAuthority?:{targetWords?:{
+        min:number;preferred:number;max:number;
+      }};
+    }).executionPlanAuthority?.targetWords;
+    const depthRepair=depth?{
+      currentWords:words,
+      minWords:Math.max(depth.min,Math.min(words,depth.preferred)),
+      preferredWords:depth.preferred,maxWords:depth.max,
+    }:undefined;
+    const revised=await generator.repairSection({
+      contract:sectionContract,section:original,
+      reconciliation:currentReconciliation,
+      semanticVerification:currentSemantic,
+      attempt:1,depthRepair,
+      criticFindings:[reason],
+      crossSectionEditorialContext:sections.flatMap((neighbor,j)=>{
+        if(j===index)return [];
+        const t=neighbor.bodyMarkdown;
+        return [{
+          sectionIndex:j,heading:neighbor.heading,
+          prosePreview:t.length<=2200?t:
+            t.slice(0,1100)+"\n[...omitted...]\n"+t.slice(-1050),
+        }];
+      }),
+    });
+    const verified=await verifyGeneratedSectionOnlyV1({
+      contract:sectionContract,section:revised,generator,
+    });
+    if(verified.section.bodyMarkdown===original.bodyMarkdown)
+      throw new ContentGenerationError(
+        "PRECRITIC_EDITORIAL_REPAIR_NO_CHANGE:"+index);
+    sections[index]=verified.section;
+    reconciliations[index]=verified.reconciliation;
+    semantics[index]=verified.semanticVerification;
+    const rebuilt=rebuildWriterRun({
+      contract,run,
+      sections,reconciliations,semanticVerifications:semantics,
+    });
+    findings=detect(rebuilt.sections);
+    console.info("[content precritic editorial repair]",{
+      changedSectionIndex:index,
+      verifiedStatus:verified.semanticVerification.status,
+      outstandingCodes:findings.map(x=>x.code),
+      outstandingPhrases:findings.flatMap(x=>x.repeatedPhrases).slice(0,6),
+      repairsAttempted:attempted.size,
+    });
+    // Checkpoint after each verified change. A crash or later
+    // keyword/critic/Replay failure must never re-bill for this edit.
+    if(onProgress)await onProgress(rebuilt);
+  }
+  if(findings.length){
+    console.warn("[content precritic editorial unresolved]",{
+      findings:findings.map(x=>({
+        code:x.code,
+        affectedSections:x.affectedSections,
+        repeatedPhrases:x.repeatedPhrases,
+      })),
+      repairedSections:[...attempted],
+    });
+    throw new ContentGenerationError(
+      "PRECRITIC_EDITORIAL_REPETITION_REMAINS_AFTER_BOUNDED_REPAIR");
+  }
+  const rebuilt=rebuildWriterRun({
+    contract,run,sections,reconciliations,semanticVerifications:semantics,
+  });
+  console.info("[content precritic editorial]",{
+    status:"CLEAN",repairs:attempted.size,
+    preservedUnchangedSections:sections.length-attempted.size,
+  });
+  return rebuilt;
 }
 
 
