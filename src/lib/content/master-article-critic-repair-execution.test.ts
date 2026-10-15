@@ -26,6 +26,22 @@ function source(
 describe(
   "Master Article Critic Repair Execution V1",
   () => {
+    it("pre-critic editorial recovery keeps all 6 verified sections and hard-stops without an information-gain fix",()=>{
+      const engine=source("./master-article-critic-repair-execution.ts");
+      const point=engine.indexOf("export async function repairPreCriticEditorialRepetitionV1({");
+      const critic=engine.indexOf("export async function executeMasterArticleCriticRepairReplayV1({");
+      expect(point).toBeGreaterThan(0);
+      expect(critic).toBeGreaterThan(point);
+      expect(engine).toContain("const maxEdits=Math.min(4,sections.length)");
+      expect(engine).toContain("const verified=await verifyGeneratedSectionOnlyV1({");
+      expect(engine).toContain("PRECRITIC_EDITORIAL_REPAIR_NO_CHANGE:");
+      expect(engine).toContain("PRECRITIC_EDITORIAL_REPETITION_REMAINS_AFTER_BOUNDED_REPAIR");
+      expect(engine).toContain("await onProgress(rebuilt)");
+      expect(engine).toContain("detectHighConfidenceEditorialRepetitionV1(sections.map");
+      expect(engine).toContain("crossSectionEditorialContext:sections.flatMap(");
+      expect(engine).toContain("createMasterArticleCriticFindingV1({");
+      expect(engine).toContain("return rebuilt");
+    });
     it("supplies cross-section editorial context without changing evidence scope",()=>{
       const engine=source("./master-article-critic-repair-execution.ts");
       const prompt=source("./master-section-repair-prompt.ts");
@@ -113,10 +129,16 @@ describe(
     it(
       "classifies upstream blockers before any repair capability or model call",
       () => {
-        const execution =
+        // The pre-critic editorial recovery has its own strictly
+        // bounded repair call. This assertion belongs exclusively to
+        // the ORIGINAL Master Critic transaction, so isolate its body.
+        const fullExecution =
           source(
             "./master-article-critic-repair-execution.ts"
           );
+        const execution=fullExecution.slice(fullExecution.indexOf(
+          "export async function executeMasterArticleCriticRepairReplayV1({"
+        ));
 
 
         const plan =

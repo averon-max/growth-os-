@@ -20,6 +20,9 @@ async function main(){
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
   const previewPostSemantic=args.includes("--preview-post-semantic");
+  const resumeExistingWriterOnly=args.includes("--resume-existing-writer");
+  if(resumeExistingWriterOnly&&!execute)
+    throw new Error("RESUME_EXISTING_WRITER_REQUIRES_EXECUTE");
   if(execute&&previewPostSemantic)
     throw new Error("EXECUTE_AND_PREVIEW_ARE_MUTUALLY_EXCLUSIVE");
   const governmentSourceUrls=args
@@ -27,9 +30,10 @@ async function main(){
     .map(a=>a.slice("--government-source=".length));
   if(!articleId||!/^[A-Za-z0-9_-]{5,100}$/.test(articleId)||
     args.some(a=>a!=="--execute"&&a!=="--preview-post-semantic"&&
+      a!=="--resume-existing-writer"&&
       !a.startsWith("--article=")&&
       !a.startsWith("--government-source="))){
-    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute | --preview-post-semantic]");
+    throw new Error("USAGE: --article=EXISTING_ARTICLE_ID [--government-source=HTTPS_GOV_URL ...] [--execute [--resume-existing-writer] | --preview-post-semantic]");
   }
   // Validate before any paid or potentially networked execution.
   const {buildResearchRecoveryGovernmentSeedsV1}=await import(
@@ -78,7 +82,8 @@ async function main(){
       updatedAt:existing.updatedAt.toISOString(),evidenceSha256,
     });
     console.log(JSON.stringify({
-      mode:execute?"PAID_RECOVERY_EXPLICITLY_REQUESTED":
+      mode:resumeExistingWriterOnly?"PAID_CRITIC_ONLY_WRITER_RESUME":
+        execute?"PAID_RECOVERY_EXPLICITLY_REQUESTED":
         previewPostSemantic?"CACHED_ONLY_POST_SEMANTIC_PREVIEW":"READ_ONLY_PREFLIGHT",
       articleId:existing.id,briefId:existing.briefId,
       status:existing.status,updatedAt:existing.updatedAt.toISOString(),
@@ -104,7 +109,7 @@ async function main(){
       "../src/lib/content/existing-article-research-recovery-v1");
     const result=await recoverExistingArticleResearchV1({
       articleId,expectedUpdatedAt:existing.updatedAt.toISOString(),
-      governmentSourceUrls,previewPostSemantic,
+      governmentSourceUrls,previewPostSemantic,resumeExistingWriterOnly,
     });
     console.log(JSON.stringify(result,null,2));
     console.log(previewPostSemantic
