@@ -96,6 +96,7 @@ import {executeMasterArticleCriticsV1,assertMasterArticleCriticExecutionPassed}
 import {executeMasterArticleCriticRepairReplayV1,
   repairPreCriticEditorialRepetitionV1,
   recoverPreCriticPlannedKeywordV1,
+  recoverUnsupportedPriceSentenceV1,
 } from "./master-article-critic-repair-execution";
 import {executeSerpReplayV1} from "./serp-replay";
 import {buildProductionFinalArticleReadinessV1}
@@ -1443,6 +1444,77 @@ export async function recoverExistingArticleResearchV1({
     });
     check(preCriticPolicy.pass,
       "PRECRITIC_PLANNED_KEYWORD_NOT_RESTORED");
+    // A legacy Writer may carry unsupported numeric price figures
+    // despite correct source-grounded credit-monitoring claims.
+    // Run the real publication evidence gate BEFORE full paid critics.
+    // Only one unverified price sentence can be pruned, and ONLY
+    // with current-contract semantic re-verification. No source
+    // authority is inferred from deleted prose.
+    const beforePriceArticle=shape(rankReadyWriter.article);
+    const pricePreflight=evaluateArticlePublicationPolicy({
+      article:beforePriceArticle,
+      intelligence:preCriticIntelligence,
+    });
+    const priceFindings=pricePreflight.evidenceFindings.filter(f=>
+      f.code==="EXTERNAL_PRICE_REQUIRES_EVIDENCE");
+    const safePriceCandidate=!pricePreflight.pass &&
+      pricePreflight.blockingIssues.length===1 &&
+      pricePreflight.blockingIssues[0]==="EXTERNAL_PRICE_REQUIRES_EVIDENCE" &&
+      priceFindings.length===1;
+    console.info("[content precritic publication preflight]",{
+      pass:pricePreflight.pass,
+      blockers:pricePreflight.blockingIssues,
+      eligibleSinglePricePrune:safePriceCandidate,
+    });
+    const publicationReadyWriter=safePriceCandidate
+      ?await recoverUnsupportedPriceSentenceV1({
+        contract,run:rankReadyWriter,generator,
+        sentence:priceFindings[0].sentence,
+        plannedKeywords:[
+          original.brief.primaryKeyword,...original.brief.secondaryKeywords,
+        ],
+        onProgress:async updated=>{
+          await writeMasterWriterSectionProgressV1({
+            directory:editorialCheckpointDir,
+            articleId,briefId:original.briefId,
+            contractHash:writerContractHash,modelName:writerModelName,
+            shell:updated.shell,
+            accepted:updated.sections.map((section,index)=>({
+              section,
+              reconciliation:updated.reconciliations[index]!,
+              semanticVerification:updated.semanticVerifications[index]!,
+              repair:updated.repairs[index]!,
+            })),
+          });
+        },
+      }):rankReadyWriter;
+    const afterPriceCandidate=shape(publicationReadyWriter.article);
+    const afterPriceIntel=analyzeArticleAgainstPlan({
+      ...afterPriceCandidate,plan:revisedSnapshot,
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+    });
+    const postPricePolicy=evaluateArticlePublicationPolicy({
+      article:afterPriceCandidate,intelligence:afterPriceIntel,
+    });
+    const postPriceKeywords=evaluateResearchRecoveryKeywordPolicyV1({
+      previous:analyzeArticleAgainstPlan({
+        ...priorArticle,plan:oldSnapshot,
+        primaryKeyword:original.brief.primaryKeyword,
+        secondaryKeywords:original.brief.secondaryKeywords,
+      }).article,
+      current:afterPriceIntel.article,
+    });
+    console.info("[content precritic post-price safety]",{
+      policyPass:postPricePolicy.pass,
+      blockers:postPricePolicy.blockingIssues,
+      keywordPass:postPriceKeywords.pass,
+      exactUsed:postPriceKeywords.used,
+    });
+    check(postPricePolicy.pass,
+      "PRECRITIC_PUBLICATION_POLICY_UNRESOLVED");
+    check(postPriceKeywords.pass,
+      "PRECRITIC_PRICE_REMOVAL_LOST_KEYWORD_COVERAGE");
     const storedContext=buildMasterArticleSemanticCriticContextV1(
       checked.runtime);
     const crawl=storedContext.cannibalizationCandidates.length
@@ -1458,10 +1530,10 @@ export async function recoverExistingArticleResearchV1({
         ?storedContext.cannibalizationCandidates:crawl,
     };
     const firstCritics=await executeMasterArticleCriticsV1({
-      contract,run:rankReadyWriter,generator,context,
+      contract,run:publicationReadyWriter,generator,context,
     });
     const repaired=await executeMasterArticleCriticRepairReplayV1({
-      contract,run:rankReadyWriter,initialCritics:firstCritics,
+      contract,run:publicationReadyWriter,initialCritics:firstCritics,
       generator,context,
     });
     assertMasterArticleCriticExecutionPassed(repaired.finalCritics);
