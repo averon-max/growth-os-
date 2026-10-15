@@ -102,8 +102,8 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(replay).toBeGreaterThan(critic);
     expect(engine).toContain("onProgress:async updated=>");
     expect(engine).toContain("research-recovery-editorial");
-    expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
-    expect(engine).toContain("contract,run:rankReadyWriter,initialCritics:firstCritics");
+    expect(engine).toContain("contract,run:publicationReadyWriter,generator,context");
+    expect(engine).toContain("contract,run:publicationReadyWriter,initialCritics:firstCritics");
   });
   it("prefers an already verified editorial-clean archived checkpoint over repeating paid Writer and precritic edits",()=>{
     expect(engine).toContain("archivedEditorialInspection=await inspectArchivedWriterProgressV1({");
@@ -127,7 +127,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(fullCritic).toBeGreaterThan(preflight);
     expect(finalGate).toBeGreaterThan(fullCritic);
     expect(engine).toContain("missingKeywords:keywordsToRestore");
-    expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
+    expect(engine).toContain("contract,run:publicationReadyWriter,generator,context");
     expect(engine).toContain("directory:editorialCheckpointDir");
     expect(engine).toContain("check(keywordPolicy.pass");
   });
