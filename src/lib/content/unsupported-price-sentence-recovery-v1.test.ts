@@ -65,6 +65,33 @@ describe("source-safe external price sentence pruning",()=>{
       ...base,sentence:"Credit monitoring is absolutely amazing and better for everybody.",
     })).toBeNull();
   });
+  it("does not mistake one overlapping dollar amount and topical words for the rejected full range",()=>{
+    const alternative="Credit monitoring can cost $0 with some free service options.";
+    const result=inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,requiredClaimTexts:[alternative],
+      sectionMinWords:190,
+    });
+    expect(result.supported).toBe(true);
+    expect(result.reason).toBe("OK");
+    expect(result.bodyMarkdown).not.toContain(price);
+  });
+  it("still protects required price range expressed with different prose",()=>{
+    const result=inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,
+      requiredClaimTexts:[
+        "The monthly price of credit monitoring ranges from $0 up to $50 depending on coverage.",
+      ],
+    });
+    expect(result.supported).toBe(false);
+    expect(result.reason).toBe("PRICE_IS_REQUIRED_SOURCE_BACKED_CLAIM");
+  });
+  it("protects a required literal subclaim if deletion would erase it",()=>{
+    const statement="Credit monitoring can cost anywhere from $0 to $50 per month";
+    const result=inspectUnsupportedPriceSentenceRemovalV1({
+      ...base,requiredClaimTexts:[statement],
+    });
+    expect(result.reason).toBe("PRICE_IS_REQUIRED_SOURCE_BACKED_CLAIM");
+  });
   it("protects required evidence-backed price claims and necessary keywords",()=>{
     expect(removeUnsupportedPriceSentenceV1({
       ...base,requiredClaimTexts:[

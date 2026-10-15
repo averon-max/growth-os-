@@ -63,15 +63,28 @@ export function inspectUnsupportedPriceSentenceRemovalV1({
     /\x60|\[[^\]]*]\([^)]*\)/.test(target))
     return fail("PRICE_SENTENCE_PROTECTED_MARKDOWN");
   const normalTarget=normalize(target);
+  // Do not infer that a required claim is this precise price range merely
+  // because one number and three topical words overlap. That heuristic
+  // blocked real recovery even where the required fact is different.
+  // Protect literal required assertions that disappear with the edit, and
+  // protect independently worded required claims about the SAME complete
+  // money range. No evidence or required claim is demoted here.
+  const normalOutside=normalize(bodyMarkdown.slice(0,start)+
+    bodyMarkdown.slice(start+target.length));
+  const amounts=(value:string)=>
+    (value.match(/[$€£]\s*\d+(?:\.\d{1,2})?/g)??[])
+      .map(x=>x.toLocaleLowerCase("en-US").replace(/\s+/g,""));
+  const targetAmounts=amounts(target);
   if(requiredClaimTexts.some(claim=>{
     const c=normalize(claim);
-    const numbers=c.match(/\b\d+(?: \d+)*\b/g)??[];
-    return c.length>=30&&(
-      normalTarget.includes(c)||
-      (numbers.length>0&&
-        numbers.every(n=>normalTarget.includes(n))&&
-        c.split(" ").filter(w=>w.length>4&&normalTarget.includes(w)).length>=3)
-    );
+    if(c.length<30)return false;
+    const literalClaimLost=normalTarget.includes(c)&&
+      !normalOutside.includes(c);
+    const claimAmounts=amounts(claim);
+    const sameCompleteMoneyRange=targetAmounts.length>=2&&
+      targetAmounts.every(a=>claimAmounts.includes(a))&&
+      /\b(?:cost|price|monthly|per month|fee|subscription)\b/i.test(claim);
+    return literalClaimLost||sameCompleteMoneyRange;
   }))return fail("PRICE_IS_REQUIRED_SOURCE_BACKED_CLAIM");
   const build=(replacement:string)=>
     (bodyMarkdown.slice(0,start)+replacement+

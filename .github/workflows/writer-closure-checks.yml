@@ -17,6 +17,8 @@ on:
       - "src/lib/content/live-evidence-verification.ts"
       - "src/lib/content/existing-article-research-recovery-v1.ts"
       - "src/lib/content/existing-article-research-recovery-v1.test.ts"
+      - "src/lib/content/unsupported-price-sentence-recovery-v1.ts"
+      - "src/lib/content/unsupported-price-sentence-recovery-v1.test.ts"
       - "src/lib/content/research-recovery-authoritative-sources-v1.ts"
       - "src/lib/content/research-recovery-authoritative-sources-v1.test.ts"
       - "scripts/content-existing-article-research-recovery-live.ts"
