@@ -24,7 +24,7 @@ import {
 import type {ResearchExpansionClaimV1}
   from "./existing-article-research-plan-v1";
 
-const root=".growth-os-tmp/research-recovery/source-grounded";
+const defaultRoot=".growth-os-tmp/research-recovery/source-grounded";
 const pathSegment=/^[a-f0-9]{20}$/;
 const fullDigest=/^[a-f0-9]{64}$/;
 const marker="EXISTING_ARTICLE_RESEARCH_PAID_PLAN_CHECKPOINT_V1";
@@ -95,25 +95,26 @@ export function rebindCachedSourceReplanToCurrentQuotesV1({
   };
 }
 export async function findCompatibleSourceReplanCheckpointV1({
-  scope,packet,originalClaims,
+  scope,packet,originalClaims,sourceRootDirectory=defaultRoot,
 }:{
   scope:CachedScopeV1;
   packet:readonly SourceGroundedReplanSectionV1[];
   originalClaims:readonly ResearchExpansionClaimV1[];
+  sourceRootDirectory?:string;
 }):Promise<CompatibleSourceReplanCheckpointV1|null>{
   if(!/^[A-Za-z0-9_-]{5,100}$/.test(scope.articleId)||
     !/^[A-Za-z0-9_-]{5,100}$/.test(scope.briefId)||
     !Number.isFinite(Date.parse(scope.updatedAt)))return null;
   let folders:string[];
   try{
-    folders=(await readdir(root)).filter(name=>pathSegment.test(name))
+    folders=(await readdir(sourceRootDirectory)).filter(name=>pathSegment.test(name))
       .sort().reverse().slice(0,128);
   }catch(error){
     if((error as NodeJS.ErrnoException).code==="ENOENT")return null;
     throw error;
   }
   for(const folder of folders){
-    const directory=join(root,folder);
+    const directory=join(sourceRootDirectory,folder);
     let metadata:unknown;
     try{
       metadata=JSON.parse(await readFile(
