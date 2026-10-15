@@ -108,6 +108,8 @@ import {buildSerpReplayArticleFingerprintV1}
   from "./serp-replay-fingerprint";
 import {detectPersistedArticleEditorialRepetitionV1}
   from "./editorial-repetition-guard-v1";
+import {evaluateResearchRecoveryKeywordPolicyV1}
+  from "./research-recovery-keyword-policy-v1";
 import {normalizeMasterArticleProseSpacesV1}
   from "./article-prose-whitespace-v1";
 
@@ -1189,30 +1191,29 @@ export async function recoverExistingArticleResearchV1({
       primaryKeyword:original.brief.primaryKeyword,
       secondaryKeywords:original.brief.secondaryKeywords,
     });
-    const newCoverage=intelligence.article.keywordCoverage;
-    const oldCoverage=priorIntelligence.article.keywordCoverage;
-    const oldUsed=new Set(oldCoverage.items.filter(item=>item.used)
-      .map(item=>item.keyword.trim().toLowerCase()));
-    const lostKeywords=newCoverage.items.filter(item=>
-      oldUsed.has(item.keyword.trim().toLowerCase())&&!item.used)
-      .map(item=>item.keyword);
-    const newlyUsed=newCoverage.items.filter(item=>
-      !oldUsed.has(item.keyword.trim().toLowerCase())&&item.used)
-      .map(item=>item.keyword);
+    const keywordPolicy=evaluateResearchRecoveryKeywordPolicyV1({
+      previous:priorIntelligence.article,current:intelligence.article,
+    });
     console.info("[content research recovery keyword comparison]",{
-      previousUsed:oldCoverage.used,
-      previousMissing:oldCoverage.missing,
-      generatedUsed:newCoverage.used,
-      generatedMissing:newCoverage.missing,
-      lostKeywords,newlyUsed,
+      previousUsed:keywordPolicy.previousUsed,
+      generatedUsed:keywordPolicy.used,
+      planned:keywordPolicy.planned,
+      minimumRequired:keywordPolicy.requiredUsed,
+      lostKeywords:keywordPolicy.lostPreviouslyUsed,
+      newlyUsed:keywordPolicy.newlyUsed,
+      primaryInH1:keywordPolicy.primaryInH1,
+      primaryInBody:keywordPolicy.primaryInBody,
+      priorExactMatchParityLost:keywordPolicy.regressedAgainstPrevious,
       finalCriticStatus:repaired.finalCritics.suite.status,
+      acceptedWithoutKeywordStuffing:keywordPolicy.pass,
       bodyChangedWithoutDBWrite:true,
     });
-    check(
-      newCoverage.used>=oldCoverage.used &&
-      newCoverage.missing<=oldCoverage.missing,
-      "KEYWORD_COVERAGE_REGRESSED"
-    );
+    // A shallow, repetitive old draft is not an SEO optimization target.
+    // Require robust (> = 80%) planned exact phrase coverage, primary in
+    // the reader's H1 and prose, and ALL existing safety/quality gates.
+    // Missing optional secondary variants remain critic WARN diagnostics.
+    check(keywordPolicy.pass,
+      "KEYWORD_COVERAGE_BELOW_REQUIRED_LEVEL");
     const previousAudit=auditArticle({
       article:priorArticle,
       primaryKeyword:original.brief.primaryKeyword,
