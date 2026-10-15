@@ -21,6 +21,7 @@ on:
       - "src/lib/content/article-length-contract-v1.ts"
       - "src/lib/content/master-section-prompt.ts"
       - "src/lib/content/comprehensive-article-depth-profile-v1.test.ts"
+      - "scripts/content-existing-article-seo-depth-audit.ts"
       - "src/lib/content/existing-article-research-recovery-v1.test.ts"
       - "src/lib/content/unsupported-price-sentence-recovery-v1.ts"
       - "src/lib/content/unsupported-price-sentence-recovery-v1.test.ts"
