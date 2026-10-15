@@ -52,10 +52,36 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(save).toBeGreaterThan(writer);
     expect(critic).toBeGreaterThan(save);
     expect(keyword).toBeGreaterThan(critic);
-    expect(engine).toContain("resumeProgress:priorWriterProgress");
+    expect(engine).toContain("resumeProgress:savedEditorialProgress??priorWriterProgress");
     expect(engine).toContain("writerContractHash.slice(0,20)");
     expect(engine).toContain("secureLocalCheckpoint:true");
     expect(engine).not.toContain("writeMasterWriterSectionProgressV1({\n      directory:process.env");
+  });
+  it("resume-only blocks every new research/model step and requires exact six-section Writer checkpoint",()=>{
+    const cli=read("../../../scripts/content-existing-article-research-recovery-live.ts");
+    expect(cli).toContain("--resume-existing-writer");
+    expect(cli).toContain("RESUME_EXISTING_WRITER_REQUIRES_EXECUTE");
+    expect(cli).toContain("governmentSourceUrls,previewPostSemantic,resumeExistingWriterOnly");
+    expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_PLANNING");
+    expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_SOURCE_REPLAN");
+    expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_SEMANTIC_BATCH");
+    expect(engine).toContain("RESUME_ONLY_WRITER_CONTRACT_CHECKPOINT_MISSING");
+    expect(engine).toContain("RESUME_ONLY_REQUIRES_CACHED_SOURCE_DISCOVERY");
+    expect(engine).toContain("savedEditorialProgress??priorWriterProgress");
+    expect(engine).toContain("contractHash:writerContractHash,modelName:writerModelName");
+    expect(engine).not.toContain("prisma.contentArticle.create");
+  });
+  it("repairs any Writer cross-section repetition BEFORE first paid whole-article Critic",()=>{
+    const edit=engine.indexOf("const editorialReadyWriter=await repairPreCriticEditorialRepetitionV1({");
+    const critic=engine.indexOf("const firstCritics=await executeMasterArticleCriticsV1({");
+    const replay=engine.indexOf("executeMasterArticleCriticRepairReplayV1({");
+    expect(edit).toBeGreaterThan(0);
+    expect(critic).toBeGreaterThan(edit);
+    expect(replay).toBeGreaterThan(critic);
+    expect(engine).toContain("onProgress:async updated=>");
+    expect(engine).toContain("research-recovery-editorial");
+    expect(engine).toContain("contract,run:editorialReadyWriter,generator,context");
+    expect(engine).toContain("contract,run:editorialReadyWriter,initialCritics:firstCritics");
   });
   it("reports exactly which previously used keywords disappeared, without bypassing keyword or critic gates",()=>{
     const audit=engine.indexOf("const keywordPolicy=evaluateResearchRecoveryKeywordPolicyV1({");
