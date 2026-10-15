@@ -82,6 +82,8 @@ import {
 } from "./content-run-budget-v1";
 import {executeMasterWriterV1} from "./master-writer-orchestrator";
 import {composeMasterArticleV1} from "./master-article-composer";
+import {removeUnsupportedPriceSentenceV1}
+  from "./unsupported-price-sentence-recovery-v1";
 import {
   fingerprintMasterWriterContractV1,
   readMasterWriterSectionProgressV1,
@@ -96,6 +98,7 @@ import {executeMasterArticleCriticsV1,assertMasterArticleCriticExecutionPassed}
 import {executeMasterArticleCriticRepairReplayV1,
   repairPreCriticEditorialRepetitionV1,
   recoverPreCriticPlannedKeywordV1,
+  recoverUnsupportedPriceSentenceV1,
 } from "./master-article-critic-repair-execution";
 import {executeSerpReplayV1} from "./serp-replay";
 import {buildProductionFinalArticleReadinessV1}
@@ -1215,6 +1218,16 @@ export async function recoverExistingArticleResearchV1({
         }[];
         readonly planAvailable:boolean;
         readonly missingExactKeywords:readonly string[];
+        readonly priceRemovalPreview:null|{
+          eligible:boolean;
+          selectedSectionIndex:number|null;
+          removalSupported:boolean;
+          contentPassAfter:boolean|null;
+          publicationPassAfter:boolean|null;
+          postRemovalBlockers:readonly string[];
+          keywordCoverageAfter:number|null;
+          note:string;
+        };
       }=null;
       if(savedCandidate &&
         savedCandidate.accepted.length===contract.sectionContracts.length){
@@ -1244,6 +1257,81 @@ export async function recoverExistingArticleResearchV1({
         const diagnosticPolicy=evaluateArticlePublicationPolicy({
           article:oldCandidate,intelligence:cachedIntelligence,
         });
+        const priceEvidence=diagnosticPolicy.evidenceFindings.filter(f=>
+          f.code==="EXTERNAL_PRICE_REQUIRES_EVIDENCE");
+        const singlePriceIssue=!diagnosticPolicy.pass &&
+          diagnosticPolicy.blockingIssues.length===1 &&
+          diagnosticPolicy.blockingIssues[0]==="EXTERNAL_PRICE_REQUIRES_EVIDENCE" &&
+          priceEvidence.length===1;
+        const sentence=priceEvidence[0]?.sentence??"";
+        const sectionIndices=savedCandidate.accepted
+          .map((item,index)=>({
+            index,found:sentence.length>0 &&
+              item.section.bodyMarkdown.includes(sentence),
+          })).filter(item=>item.found);
+        const index=sectionIndices.length===1?sectionIndices[0].index:-1;
+        const sectionContract=index>=0?contract.sectionContracts[index]:null;
+        const authored=index>=0?savedCandidate.accepted[index]:null;
+        const requiredIds=new Set(sectionContract?.blueprint.requiredClaims??[]);
+        const requiredClaimTexts=(sectionContract?.claimLedger.claims??[])
+          .filter(c=>requiredIds.has(c.id)).map(c=>c.text);
+        const sectionMinWords=(sectionContract as
+          typeof sectionContract & {
+            executionPlanAuthority?:{targetWords?:{min:number}}
+          }|null)?.executionPlanAuthority?.targetWords?.min;
+        const proposed=singlePriceIssue&&authored
+          ?removeUnsupportedPriceSentenceV1({
+            bodyMarkdown:authored.section.bodyMarkdown,
+            sentence,requiredClaimTexts,sectionMinWords,
+            plannedKeywords:[
+              original.brief.primaryKeyword,
+              ...original.brief.secondaryKeywords,
+            ],
+          }):null;
+        let priceRemovalPreview={
+          eligible:singlePriceIssue,
+          selectedSectionIndex:index>=0?index:null,
+          removalSupported:proposed!==null,
+          contentPassAfter:null as boolean|null,
+          publicationPassAfter:null as boolean|null,
+          postRemovalBlockers:[] as string[],
+          keywordCoverageAfter:null as number|null,
+          note:"READ_ONLY_PROSE_CANDIDATE;CURRENT_SOURCE_SEMANTIC_VERIFICATION_STILL_REQUIRED",
+        };
+        if(proposed!==null&&authored){
+          const changedSections=savedCandidate.accepted.map((a,i)=>
+            i===index?{...a.section,bodyMarkdown:proposed}:a.section);
+          const composedAfter=composeMasterArticleV1({
+            contract,shell:savedCandidate.shell,
+            sections:changedSections,
+          });
+          const articleAfter=shape(composedAfter);
+          const auditAfter=auditArticle({
+            article:articleAfter,
+            primaryKeyword:original.brief.primaryKeyword,
+          });
+          const intelligenceAfter=analyzeArticleAgainstPlan({
+            ...articleAfter,plan:revisedSnapshot,
+            primaryKeyword:original.brief.primaryKeyword,
+            secondaryKeywords:original.brief.secondaryKeywords,
+          });
+          const gateAfter=evaluateContentGate({
+            article:articleAfter,primaryKeyword:original.brief.primaryKeyword,
+            audit:auditAfter,registry:readonlyRegistry,
+          });
+          const policyAfter=evaluateArticlePublicationPolicy({
+            article:articleAfter,intelligence:intelligenceAfter,
+          });
+          priceRemovalPreview={
+            ...priceRemovalPreview,
+            contentPassAfter:gateAfter.pass,
+            publicationPassAfter:policyAfter.pass,
+            postRemovalBlockers:[
+              ...gateAfter.blockingIssues,...policyAfter.blockingIssues,
+            ],
+            keywordCoverageAfter:intelligenceAfter.article.keywordCoverage.used,
+          };
+        }
         finalGatePreview={
           candidateSource:"SHA256_VERIFIED_ARCHIVED_EDITORIAL_CHECKPOINT",
           exactPostCriticArticleNotGuaranteed:true,
@@ -1266,6 +1354,7 @@ export async function recoverExistingArticleResearchV1({
           missingExactKeywords:cachedIntelligence.article
             .keywordCoverage.items.filter(i=>!i.used)
             .map(i=>i.keyword),
+          priceRemovalPreview,
         };
         console.info("[content recovered final gate read-only diagnostic]",
           finalGatePreview);
@@ -1443,6 +1532,77 @@ export async function recoverExistingArticleResearchV1({
     });
     check(preCriticPolicy.pass,
       "PRECRITIC_PLANNED_KEYWORD_NOT_RESTORED");
+    // A legacy Writer may carry unsupported numeric price figures
+    // despite correct source-grounded credit-monitoring claims.
+    // Run the real publication evidence gate BEFORE full paid critics.
+    // Only one unverified price sentence can be pruned, and ONLY
+    // with current-contract semantic re-verification. No source
+    // authority is inferred from deleted prose.
+    const beforePriceArticle=shape(rankReadyWriter.article);
+    const pricePreflight=evaluateArticlePublicationPolicy({
+      article:beforePriceArticle,
+      intelligence:preCriticIntelligence,
+    });
+    const priceFindings=pricePreflight.evidenceFindings.filter(f=>
+      f.code==="EXTERNAL_PRICE_REQUIRES_EVIDENCE");
+    const safePriceCandidate=!pricePreflight.pass &&
+      pricePreflight.blockingIssues.length===1 &&
+      pricePreflight.blockingIssues[0]==="EXTERNAL_PRICE_REQUIRES_EVIDENCE" &&
+      priceFindings.length===1;
+    console.info("[content precritic publication preflight]",{
+      pass:pricePreflight.pass,
+      blockers:pricePreflight.blockingIssues,
+      eligibleSinglePricePrune:safePriceCandidate,
+    });
+    const publicationReadyWriter=safePriceCandidate
+      ?await recoverUnsupportedPriceSentenceV1({
+        contract,run:rankReadyWriter,generator,
+        sentence:priceFindings[0].sentence,
+        plannedKeywords:[
+          original.brief.primaryKeyword,...original.brief.secondaryKeywords,
+        ],
+        onProgress:async updated=>{
+          await writeMasterWriterSectionProgressV1({
+            directory:editorialCheckpointDir,
+            articleId,briefId:original.briefId,
+            contractHash:writerContractHash,modelName:writerModelName,
+            shell:updated.shell,
+            accepted:updated.sections.map((section,index)=>({
+              section,
+              reconciliation:updated.reconciliations[index]!,
+              semanticVerification:updated.semanticVerifications[index]!,
+              repair:updated.repairs[index]!,
+            })),
+          });
+        },
+      }):rankReadyWriter;
+    const afterPriceCandidate=shape(publicationReadyWriter.article);
+    const afterPriceIntel=analyzeArticleAgainstPlan({
+      ...afterPriceCandidate,plan:revisedSnapshot,
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+    });
+    const postPricePolicy=evaluateArticlePublicationPolicy({
+      article:afterPriceCandidate,intelligence:afterPriceIntel,
+    });
+    const postPriceKeywords=evaluateResearchRecoveryKeywordPolicyV1({
+      previous:analyzeArticleAgainstPlan({
+        ...priorArticle,plan:oldSnapshot,
+        primaryKeyword:original.brief.primaryKeyword,
+        secondaryKeywords:original.brief.secondaryKeywords,
+      }).article,
+      current:afterPriceIntel.article,
+    });
+    console.info("[content precritic post-price safety]",{
+      policyPass:postPricePolicy.pass,
+      blockers:postPricePolicy.blockingIssues,
+      keywordPass:postPriceKeywords.pass,
+      exactUsed:postPriceKeywords.used,
+    });
+    check(postPricePolicy.pass,
+      "PRECRITIC_PUBLICATION_POLICY_UNRESOLVED");
+    check(postPriceKeywords.pass,
+      "PRECRITIC_PRICE_REMOVAL_LOST_KEYWORD_COVERAGE");
     const storedContext=buildMasterArticleSemanticCriticContextV1(
       checked.runtime);
     const crawl=storedContext.cannibalizationCandidates.length
@@ -1458,10 +1618,10 @@ export async function recoverExistingArticleResearchV1({
         ?storedContext.cannibalizationCandidates:crawl,
     };
     const firstCritics=await executeMasterArticleCriticsV1({
-      contract,run:rankReadyWriter,generator,context,
+      contract,run:publicationReadyWriter,generator,context,
     });
     const repaired=await executeMasterArticleCriticRepairReplayV1({
-      contract,run:rankReadyWriter,initialCritics:firstCritics,
+      contract,run:publicationReadyWriter,initialCritics:firstCritics,
       generator,context,
     });
     assertMasterArticleCriticExecutionPassed(repaired.finalCritics);

@@ -54,6 +54,8 @@ import {detectHighConfidenceEditorialRepetitionV1}
   from "./editorial-repetition-guard-v1";
 import {createMasterArticleCriticFindingV1}
   from "./master-article-critic";
+import {removeUnsupportedPriceSentenceV1}
+  from "./unsupported-price-sentence-recovery-v1";
 
 
 export interface MasterArticleCriticSectionRepairAuditV1 {
@@ -452,6 +454,90 @@ export async function repairPreCriticEditorialRepetitionV1({
     status:"CLEAN",repairs:attempted.size,
     preservedUnchangedSections:sections.length-attempted.size,
   });
+  return rebuilt;
+}
+
+
+/**
+ * PRE-CRITIC UNSUPPORTED PRICE CLAIM PRUNE V1
+ *
+ * The independent final Publication Policy has ALREADY rejected
+ * a single concrete numeric price sentence, and no other issues.
+ * Delete precisely that sentence only when it is not a required
+ * source-backed fact and all existing exact keywords/H2/section
+ * depth remain valid. One canonical current-source semantic verify,
+ * then replay the real final policy. Never bypass it.
+ */
+export async function recoverUnsupportedPriceSentenceV1({
+  contract,run,generator,sentence,plannedKeywords,onProgress,
+}:{
+  contract:Readonly<ArticleGenerationContractV1>;
+  run:Readonly<MasterWriterRunV1>;
+  generator:unknown;
+  sentence:string;
+  plannedKeywords:readonly string[];
+  onProgress?:(updated:Readonly<MasterWriterRunV1>)=>Promise<void>;
+}):Promise<Readonly<MasterWriterRunV1>>{
+  if(!supportsMasterSectionRepairGenerator(generator) ||
+     !supportsMasterSectionSemanticVerifier(generator))
+    throw new ContentGenerationError(
+      "PRECRITIC_PRICE_REPAIR_VERIFIER_UNAVAILABLE");
+  const matches=run.sections.map((section,index)=>({
+    index,found:section.bodyMarkdown.includes(sentence),
+  })).filter(item=>item.found);
+  if(matches.length!==1)
+    throw new ContentGenerationError(
+      "PRECRITIC_PRICE_SENTENCE_OWNER_AMBIGUOUS");
+  const index=matches[0].index;
+  const sectionContract=contract.sectionContracts[index];
+  const original=run.sections[index];
+  if(!sectionContract||!original)
+    throw new ContentGenerationError(
+      "PRECRITIC_PRICE_SECTION_NOT_FOUND");
+  const requiredIds=new Set(sectionContract.blueprint.requiredClaims);
+  const requiredClaimTexts=sectionContract.claimLedger.claims
+    .filter(claim=>requiredIds.has(claim.id))
+    .map(claim=>claim.text);
+  const bounds=(sectionContract as typeof sectionContract & {
+    executionPlanAuthority?:{targetWords?:{min:number;max:number}};
+  }).executionPlanAuthority?.targetWords;
+  const revisedBody=removeUnsupportedPriceSentenceV1({
+    bodyMarkdown:original.bodyMarkdown,sentence,
+    requiredClaimTexts,plannedKeywords,
+    sectionMinWords:bounds?.min,
+  });
+  if(revisedBody===null)
+    throw new ContentGenerationError(
+      "PRECRITIC_PRICE_SENTENCE_REMOVAL_UNSAFE");
+  const verified=await verifyGeneratedSectionOnlyV1({
+    contract:sectionContract,
+    section:{...original,bodyMarkdown:revisedBody},
+    generator,
+  });
+  const sections=[...run.sections];
+  sections[index]=verified.section;
+  const repeated=detectHighConfidenceEditorialRepetitionV1(
+    sections.map(section=>({
+      heading:section.heading,bodyMarkdown:section.bodyMarkdown,
+    })));
+  if(repeated.length)
+    throw new ContentGenerationError(
+      "PRECRITIC_PRICE_EDIT_REINTRODUCED_REPETITION");
+  const reconciliations=[...run.reconciliations];
+  reconciliations[index]=verified.reconciliation;
+  const semantics=[...run.semanticVerifications];
+  semantics[index]=verified.semanticVerification;
+  const rebuilt=rebuildWriterRun({
+    contract,run,
+    sections,reconciliations,
+    semanticVerifications:semantics,
+  });
+  console.info("[content precritic source-safe price removal]",{
+    sectionIndex:index,removedExactUnsupportedSentence:true,
+    verifiedStatus:verified.semanticVerification.status,
+    editorialRepetitionCount:0,
+  });
+  if(onProgress)await onProgress(rebuilt);
   return rebuilt;
 }
 

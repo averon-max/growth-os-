@@ -102,8 +102,8 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(replay).toBeGreaterThan(critic);
     expect(engine).toContain("onProgress:async updated=>");
     expect(engine).toContain("research-recovery-editorial");
-    expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
-    expect(engine).toContain("contract,run:rankReadyWriter,initialCritics:firstCritics");
+    expect(engine).toContain("contract,run:publicationReadyWriter,generator,context");
+    expect(engine).toContain("contract,run:publicationReadyWriter,initialCritics:firstCritics");
   });
   it("prefers an already verified editorial-clean archived checkpoint over repeating paid Writer and precritic edits",()=>{
     expect(engine).toContain("archivedEditorialInspection=await inspectArchivedWriterProgressV1({");
@@ -127,7 +127,7 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(fullCritic).toBeGreaterThan(preflight);
     expect(finalGate).toBeGreaterThan(fullCritic);
     expect(engine).toContain("missingKeywords:keywordsToRestore");
-    expect(engine).toContain("contract,run:rankReadyWriter,generator,context");
+    expect(engine).toContain("contract,run:publicationReadyWriter,generator,context");
     expect(engine).toContain("directory:editorialCheckpointDir");
     expect(engine).toContain("check(keywordPolicy.pass");
   });
@@ -167,6 +167,42 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("contentBlockingIssues:content.blockingIssues");
     expect(engine).toContain("publicationBlockingIssues:policy.blockingIssues");
     expect(engine).toContain("databaseUnchanged:true");
+  });
+  it("previews removing exactly one rejected price sentence for FREE using unmodified policy",()=>{
+    const start=engine.indexOf("if(previewWriterContract){");
+    const price=engine.indexOf("const priceEvidence=diagnosticPolicy.evidenceFindings.filter",start);
+    const removal=engine.indexOf("removeUnsupportedPriceSentenceV1({",price);
+    const policy=engine.indexOf("const policyAfter=evaluateArticlePublicationPolicy({",removal);
+    const status=engine.indexOf("priceRemovalPreview,",policy);
+    const writer=engine.indexOf("const writer=await executeMasterWriterV1({",status);
+    expect(price).toBeGreaterThan(start);
+    expect(removal).toBeGreaterThan(price);
+    expect(policy).toBeGreaterThan(removal);
+    expect(status).toBeGreaterThan(policy);
+    expect(writer).toBeGreaterThan(status);
+    expect(engine).toContain("CURRENT_SOURCE_SEMANTIC_VERIFICATION_STILL_REQUIRED");
+    expect(engine).toContain("contentPassAfter:gateAfter.pass");
+    expect(engine).toContain("publicationPassAfter:policyAfter.pass");
+    expect(engine).toContain("keywordCoverageAfter:intelligenceAfter.article.keywordCoverage.used");
+  });
+  it("fixes unsupported prices BEFORE full Master Critic without waiving final publication check",()=>{
+    const price=engine.indexOf("const pricePreflight=evaluateArticlePublicationPolicy({");
+    const removal=engine.indexOf("const publicationReadyWriter=safePriceCandidate",price);
+    const semantic=engine.indexOf("recoverUnsupportedPriceSentenceV1({",removal);
+    const safety=engine.indexOf('"PRECRITIC_PUBLICATION_POLICY_UNRESOLVED"',semantic);
+    const critic=engine.indexOf("const firstCritics=await executeMasterArticleCriticsV1({",safety);
+    const fullGate=engine.indexOf('"FINAL_CONTENT_OR_PUBLICATION_POLICY_BLOCKED"',critic);
+    expect(price).toBeGreaterThan(0);
+    expect(removal).toBeGreaterThan(price);
+    expect(semantic).toBeGreaterThan(removal);
+    expect(safety).toBeGreaterThan(semantic);
+    expect(critic).toBeGreaterThan(safety);
+    expect(fullGate).toBeGreaterThan(critic);
+    expect(engine).toContain('priceFindings.length===1');
+    expect(engine).toContain('pricePreflight.blockingIssues.length===1');
+    expect(engine).toContain('contract,run:publicationReadyWriter,generator,context');
+    expect(engine).toContain('directory:editorialCheckpointDir');
+    expect(engine).toContain('postPricePolicy.pass');
   });
   it("reports exactly which previously used keywords disappeared, without bypassing keyword or critic gates",()=>{
     const audit=engine.indexOf("const keywordPolicy=evaluateResearchRecoveryKeywordPolicyV1({");
