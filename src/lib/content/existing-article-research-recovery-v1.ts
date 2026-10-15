@@ -92,8 +92,9 @@ import {buildCrawlCannibalizationCandidatesV1}
   from "./crawl-cannibalization-context";
 import {executeMasterArticleCriticsV1,assertMasterArticleCriticExecutionPassed}
   from "./master-article-critic-fusion";
-import {executeMasterArticleCriticRepairReplayV1}
-  from "./master-article-critic-repair-execution";
+import {executeMasterArticleCriticRepairReplayV1,
+  repairPreCriticEditorialRepetitionV1,
+} from "./master-article-critic-repair-execution";
 import {executeSerpReplayV1} from "./serp-replay";
 import {buildProductionFinalArticleReadinessV1}
   from "./production-final-article-readiness-adapter-v1";
@@ -142,10 +143,12 @@ function siteDomain(url:string):string|null{
 
 export async function recoverExistingArticleResearchV1({
   articleId,expectedUpdatedAt,governmentSourceUrls=[],previewPostSemantic=false,
+  resumeExistingWriterOnly=false,
 }:{
   articleId:string;expectedUpdatedAt:string;
   governmentSourceUrls?:readonly string[];
   previewPostSemantic?:boolean;
+  resumeExistingWriterOnly?:boolean;
 }){
   check(/^[a-zA-Z0-9_-]{5,100}$/.test(articleId),"ARTICLE_ID_INVALID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -260,6 +263,8 @@ export async function recoverExistingArticleResearchV1({
     const storedPlanningResponse=
       await readExistingResearchPlanningCheckpointV1(planningScope);
     if(storedPlanningResponse===null){
+      check(!resumeExistingWriterOnly,
+        "RESUME_ONLY_REQUIRES_CACHED_PLANNING");
       check(!previewPostSemantic,"PREVIEW_REQUIRES_CACHED_PLANNING");
       await assertResearchPlanningCheckpointWritableV1(planningScope);
     }
@@ -376,6 +381,8 @@ export async function recoverExistingArticleResearchV1({
     let discoveredSourceCount=0;
     let reusedSourceDiscoveryCheckpoint=false;
     if(sectionsWithoutAnyQuote.size){
+      check(!resumeExistingWriterOnly,
+        "RESUME_ONLY_REQUIRES_CACHED_SOURCE_DISCOVERY");
       check(!previewPostSemantic,
         "PREVIEW_REQUIRES_DISCOVERY_OR_EXTRA_RESEARCH");
       // One wave: at most one outstanding factual question from each
@@ -647,6 +654,8 @@ export async function recoverExistingArticleResearchV1({
         previewPaidCallsAllowed:false,
       });
       if(reusedResponse===null){
+        check(!resumeExistingWriterOnly,
+          "RESUME_ONLY_REQUIRES_CACHED_SOURCE_REPLAN");
         check(!previewPostSemantic,
           "PREVIEW_REQUIRES_COMPATIBLE_CACHED_SOURCE_REPLAN");
         await assertResearchPlanningCheckpointWritableV1(sourceScope);
@@ -786,6 +795,8 @@ export async function recoverExistingArticleResearchV1({
         semanticCachedBatchCalls++;
         return JSON.parse(cached) as SemanticEvidenceJudgmentV1[];
       }
+      check(!resumeExistingWriterOnly,
+        "RESUME_ONLY_REQUIRES_CACHED_SEMANTIC_BATCH");
       check(!previewPostSemantic,
         "PREVIEW_REQUIRES_CACHED_SEMANTIC_BATCH");
       await assertResearchPlanningCheckpointWritableV1(scope);
@@ -1130,20 +1141,53 @@ export async function recoverExistingArticleResearchV1({
       articleId,briefId:original.briefId,
       contractHash:writerContractHash,modelName:writerModelName,
     });
+    const editorialCheckpointDir=resolve(
+      ".growth-os-tmp/article-checkpoints/research-recovery-editorial",
+      writerContractHash.slice(0,20));
+    const savedEditorialProgress=await readMasterWriterSectionProgressV1({
+      directory:editorialCheckpointDir,
+      articleId,briefId:original.briefId,
+      contractHash:writerContractHash,modelName:writerModelName,
+    });
     console.info("[content research recovery writer checkpoint]",{
       reusedVerifiedSections:priorWriterProgress?.accepted.length??0,
-      contractMatched:priorWriterProgress!==null,
+      reusedVerifiedEditorialSections:savedEditorialProgress?.accepted.length??0,
+      contractMatched:priorWriterProgress!==null||
+        savedEditorialProgress!==null,
       secureLocalCheckpoint:true,
     });
+    if(resumeExistingWriterOnly)
+      check((priorWriterProgress?.accepted.length??0)===
+        contract.sectionContracts.length ||
+        (savedEditorialProgress?.accepted.length??0)===
+        contract.sectionContracts.length,
+        "RESUME_ONLY_WRITER_CONTRACT_CHECKPOINT_MISSING");
     const writer=await executeMasterWriterV1({
       contract,generator,
-      resumeProgress:priorWriterProgress,
+      resumeProgress:savedEditorialProgress??priorWriterProgress,
       onProgress:async ({shell,accepted})=>{
         await writeMasterWriterSectionProgressV1({
           directory:writerCheckpointDir,
           articleId,briefId:original.briefId,
           contractHash:writerContractHash,modelName:writerModelName,
           shell,accepted,
+        });
+      },
+    });
+    const editorialReadyWriter=await repairPreCriticEditorialRepetitionV1({
+      contract,run:writer,generator,
+      onProgress:async updated=>{
+        await writeMasterWriterSectionProgressV1({
+          directory:editorialCheckpointDir,
+          articleId,briefId:original.briefId,
+          contractHash:writerContractHash,modelName:writerModelName,
+          shell:updated.shell,
+          accepted:updated.sections.map((section,index)=>({
+            section,
+            reconciliation:updated.reconciliations[index]!,
+            semanticVerification:updated.semanticVerifications[index]!,
+            repair:updated.repairs[index]!,
+          })),
         });
       },
     });
@@ -1162,10 +1206,11 @@ export async function recoverExistingArticleResearchV1({
         ?storedContext.cannibalizationCandidates:crawl,
     };
     const firstCritics=await executeMasterArticleCriticsV1({
-      contract,run:writer,generator,context,
+      contract,run:editorialReadyWriter,generator,context,
     });
     const repaired=await executeMasterArticleCriticRepairReplayV1({
-      contract,run:writer,initialCritics:firstCritics,generator,context,
+      contract,run:editorialReadyWriter,initialCritics:firstCritics,
+      generator,context,
     });
     assertMasterArticleCriticExecutionPassed(repaired.finalCritics);
     check(repaired.finalCritics.suite.status!=="BLOCK",
