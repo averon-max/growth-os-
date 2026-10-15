@@ -39,6 +39,37 @@ describe("real research recovery is one CAS-safe existing article lifecycle",()=
     expect(engine).toContain("assertStoredPublicationEvidenceV1(revisedSnapshot)");
     expect(engine).toContain("inspectSectionEvidenceCapacityV1(newPlan.sections)");
   });
+  it("persists paid verified Writer sections before critic or keyword gates fail",()=>{
+    const scope=engine.indexOf("const writerCheckpointDir=resolve(");
+    const read=engine.indexOf("await readMasterWriterSectionProgressV1({",scope);
+    const writer=engine.indexOf("const writer=await executeMasterWriterV1({",scope);
+    const save=engine.indexOf("await writeMasterWriterSectionProgressV1({",writer);
+    const critic=engine.indexOf("executeMasterArticleCriticsV1({",writer);
+    const keyword=engine.indexOf('"KEYWORD_COVERAGE_REGRESSED"',critic);
+    expect(scope).toBeGreaterThan(0);
+    expect(read).toBeGreaterThan(scope);
+    expect(writer).toBeGreaterThan(read);
+    expect(save).toBeGreaterThan(writer);
+    expect(critic).toBeGreaterThan(save);
+    expect(keyword).toBeGreaterThan(critic);
+    expect(engine).toContain("resumeProgress:priorWriterProgress");
+    expect(engine).toContain("writerContractHash.slice(0,20)");
+    expect(engine).toContain("secureLocalCheckpoint:true");
+    expect(engine).not.toContain("writeMasterWriterSectionProgressV1({\n      directory:process.env");
+  });
+  it("reports exactly which previously used keywords disappeared, without bypassing keyword or critic gates",()=>{
+    const audit=engine.indexOf("const oldUsed=new Set(oldCoverage.items.filter");
+    const log=engine.indexOf("[content research recovery keyword comparison]",audit);
+    const gate=engine.indexOf('"KEYWORD_COVERAGE_REGRESSED"',log);
+    const replay=engine.indexOf("executeSerpReplayV1({",gate);
+    expect(audit).toBeGreaterThan(0);
+    expect(log).toBeGreaterThan(audit);
+    expect(gate).toBeGreaterThan(log);
+    expect(replay).toBeGreaterThan(gate);
+    expect(engine).toContain("lostKeywords,newlyUsed");
+    expect(engine).toContain("previousMissing:oldCoverage.missing");
+    expect(engine).toContain("generatedMissing:newCoverage.missing");
+  });
   it("uses full Writer, all Master Critics, one section repair and actual SERP Replay",()=>{
     const writer=engine.indexOf("executeMasterWriterV1({");
     const critics=engine.indexOf("executeMasterArticleCriticsV1({");
