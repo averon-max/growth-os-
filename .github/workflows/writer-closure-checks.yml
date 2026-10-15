@@ -16,6 +16,8 @@ on:
       - "scripts/content-existing-article-official-response-facts-audit.ts"
       - "src/lib/content/live-evidence-verification.ts"
       - "src/lib/content/existing-article-research-recovery-v1.ts"
+      - "src/lib/content/research-recovery-publication-bridge-v1.ts"
+      - "src/lib/content/research-recovery-publication-bridge-v1.test.ts"
       - "src/lib/content/existing-article-research-recovery-v1.test.ts"
       - "src/lib/content/unsupported-price-sentence-recovery-v1.ts"
       - "src/lib/content/unsupported-price-sentence-recovery-v1.test.ts"
