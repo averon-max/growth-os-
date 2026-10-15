@@ -478,7 +478,8 @@ export async function recoverUnsupportedPriceSentenceV1({
   plannedKeywords:readonly string[];
   onProgress?:(updated:Readonly<MasterWriterRunV1>)=>Promise<void>;
 }):Promise<Readonly<MasterWriterRunV1>>{
-  if(!supportsMasterSectionSemanticVerifier(generator))
+  if(!supportsMasterSectionRepairGenerator(generator) ||
+     !supportsMasterSectionSemanticVerifier(generator))
     throw new ContentGenerationError(
       "PRECRITIC_PRICE_REPAIR_VERIFIER_UNAVAILABLE");
   const matches=run.sections.map((section,index)=>({
