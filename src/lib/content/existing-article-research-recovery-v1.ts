@@ -58,6 +58,8 @@ import {reviewAndConstrainVerifiedEvidenceV1,
   type SemanticEvidencePairV1,
   type SemanticEvidenceJudgmentV1,
 } from "./semantic-evidence-review-v1";
+import {findCompatibleSourceReplanCheckpointV1}
+  from "./source-replan-drift-checkpoint-v1";
 import {
   buildSourceGroundedReplanPacketV1,
   findSourceGroundedDiscoveryGapsV1,
@@ -620,9 +622,25 @@ export async function recoverExistingArticleResearchV1({
           packetHash.slice(0,20),
       };
       const cached=await readExistingResearchPlanningCheckpointV1(sourceScope);
-      if(cached===null){
+      const driftCompatible=cached===null
+        ?await findCompatibleSourceReplanCheckpointV1({
+          scope:{
+            articleId,briefId:original.briefId,
+            updatedAt:original.updatedAt.toISOString(),
+          },
+          packet,originalClaims:proposed,
+        }):null;
+      const reusedResponse=cached??driftCompatible?.response??null;
+      console.info("[content research recovery source-replan checkpoint]",{
+        exactPacketCached:cached!==null,
+        compatibleHistoricalCached:driftCompatible!==null,
+        reboundStrictQuoteIds:driftCompatible?.reboundStrictQuoteIds??0,
+        sameArticleAndVersion:true,
+        previewPaidCallsAllowed:false,
+      });
+      if(reusedResponse===null){
         check(!previewPostSemantic,
-          "PREVIEW_REQUIRES_CACHED_SOURCE_REPLAN");
+          "PREVIEW_REQUIRES_COMPATIBLE_CACHED_SOURCE_REPLAN");
         await assertResearchPlanningCheckpointWritableV1(sourceScope);
       }
       const sourcePrompt=[
@@ -656,9 +674,9 @@ export async function recoverExistingArticleResearchV1({
           })),
         }))),
       ].join("\n");
-      const sourceRaw=cached??
+      const sourceRaw=reusedResponse??
         await callContentAiJson(sourcePrompt,{reasoningEffort:"low"});
-      if(cached===null)
+      if(reusedResponse===null)
         await saveExistingResearchPlanningCheckpointV1(sourceScope,sourceRaw);
       const parsed=record(JSON.parse(sourceRaw));
       check(Array.isArray(parsed.replacements),
@@ -674,7 +692,7 @@ export async function recoverExistingArticleResearchV1({
       });
       const grounded=recovered.claims;
       console.info("[content research recovery cached model rescue]",{
-        cachedModelResponse:cached!==null,
+        cachedModelResponse:reusedResponse!==null,
         acceptedModelRestatements:recovered.acceptedModelRestatements,
         literalSourceFallbacks:recovered.literalSourceFallbacks,
         repairedClaimIds:recovered.fallbackDetails.map(x=>x.claimId),
@@ -691,7 +709,7 @@ export async function recoverExistingArticleResearchV1({
         graph:newGraph,claims:changed,maxSources:72,
       });
       console.info("[content research recovery source-first verified]",{
-        resumedSourceReplan:cached!==null,
+        resumedSourceReplan:reusedResponse!==null,
         restatedClaims:changed.length,
         strictlyVerifiedRestatements:changed.filter(c=>newSupport(c.id)).length,
       });
