@@ -457,6 +457,46 @@ export async function repairPreCriticEditorialRepetitionV1({
 
 
 /**
+ * Select the information-owning H2, never section 0 merely because
+ * the exact-match keyword begins with the article primary keyword.
+ * Source-backed required claims and consumer decision scope outrank
+ * broad topical overlap. This remains candidate-only; semantic checks
+ * authorize any subsequent edit.
+ */
+export function choosePreCriticKeywordSectionV1({
+  keyword,contract,sections,
+}:{
+  keyword:string;
+  contract:Readonly<ArticleGenerationContractV1>;
+  sections:MasterWriterRunV1["sections"];
+}):Readonly<{index:number;score:number}>|null{
+  const lower=keyword.toLocaleLowerCase("en-US");
+  const tokens=[...new Set(lower.match(/[a-z0-9]+/g)??[])]
+    .filter(t=>!["a","the","of","and","what","how","for","in"].includes(t));
+  const scores=contract.sectionContracts.map((sc,index)=>{
+    const heading=sc.blueprint.heading.toLocaleLowerCase("en-US");
+    const body=sections[index]?.bodyMarkdown.toLocaleLowerCase("en-US")??"";
+    const ownClaims=new Set(sc.blueprint.requiredClaims);
+    const facts=sc.claimLedger.claims.filter(c=>
+      ownClaims.has(c.id)&&c.status==="VERIFIED")
+      .map(c=>c.text.toLocaleLowerCase("en-US")).join(" ");
+    const overlap=(text:string)=>tokens.reduce((n,t)=>
+      n+(new RegExp("(?<![a-z0-9])"+t+"(?![a-z0-9])","i")
+        .test(text)?1:0),0);
+    const bureauOption=lower.includes("bureau")&&
+      /\b(?:service|services|choos|compar|look for|plan|plans)\b/.test(heading);
+    return {
+      index,score:overlap(heading)*4+
+        overlap(facts)*5+
+        Math.min(overlap(body),3)+
+        (bureauOption?18:0),
+    };
+  }).sort((a,b)=>b.score-a.score||a.index-b.index);
+  const choice=scores[0];
+  return choice&&choice.score>=4?choice:null;
+}
+
+/**
  * PRE-CRITIC PLANNED KEYWORD RECOVERY V1
  *
  * A keyword missing from an otherwise verified Writer must be restored
@@ -494,29 +534,9 @@ export async function recoverPreCriticPlannedKeywordV1({
   let working:Readonly<MasterWriterRunV1>=run;
   const keywords=new Set<string>();
   for(const keyword of wanted){
-    const lower=keyword.toLocaleLowerCase("en-US");
-    const tokens=[...new Set(lower.match(/[a-z0-9]+/g)??[])]
-      .filter(t=>!["a","the","of","and","what","how","for","in"].includes(t));
-    const scores=contract.sectionContracts.map((sc,index)=>{
-      const heading=sc.blueprint.heading.toLocaleLowerCase("en-US");
-      const body=sections[index]?.bodyMarkdown.toLocaleLowerCase("en-US")??"";
-      const ownClaims=new Set(sc.blueprint.requiredClaims);
-      const facts=sc.claimLedger.claims.filter(c=>
-        ownClaims.has(c.id)&&c.status==="VERIFIED")
-        .map(c=>c.text.toLocaleLowerCase("en-US")).join(" ");
-      const overlap=(text:string)=>tokens.reduce((n,t)=>
-        n+(new RegExp("(?<![a-z0-9])"+t+"(?![a-z0-9])","i")
-          .test(text)?1:0),0);
-      const bureauOption=lower.includes("bureau")&&
-        /\b(?:service|services|choos|compar|look for|plan|plans)\b/.test(heading);
-      return {
-        index,score:overlap(heading)*4+
-          overlap(facts)*5+
-          Math.min(overlap(body),3)+
-          (bureauOption?18:0),
-      };
-    }).sort((a,b)=>b.score-a.score||a.index-b.index);
-    const choice=scores[0];
+    const choice=choosePreCriticKeywordSectionV1({
+      keyword,contract,sections,
+    });
     if(!choice||choice.score<4)
       throw new ContentGenerationError(
         "PRECRITIC_KEYWORD_MISSION_UNSUPPORTED:"+keyword);
