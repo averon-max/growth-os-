@@ -29,6 +29,21 @@ function source(
 describe(
   "Master Article Critic Repair Execution V1",
   () => {
+    it("precritic price safety removes only policy-rejected prose with new current-contract semantic verification",()=>{
+      const engine=source("./master-article-critic-repair-execution.ts");
+      const start=engine.indexOf("export async function recoverUnsupportedPriceSentenceV1({");
+      const end=engine.indexOf("export function choosePreCriticKeywordSectionV1({",start);
+      const scope=engine.slice(start,end);
+      expect(scope).toContain("removeUnsupportedPriceSentenceV1({");
+      expect(scope).toContain("sectionMinWords:bounds?.min");
+      expect(scope).toContain("requiredIds.has(claim.id)");
+      expect(scope).toContain("verifyGeneratedSectionOnlyV1({");
+      expect(scope).toContain("detectHighConfidenceEditorialRepetitionV1(");
+      expect(scope).toContain("PRECRITIC_PRICE_SENTENCE_REMOVAL_UNSAFE");
+      expect(scope).toContain("await onProgress(rebuilt)");
+      expect(scope).not.toContain(".repairSection(");
+      expect(scope).not.toContain("prisma");
+    });
     it("routes missing 3 bureau credit monitoring to actual service-choice section, not generic section zero",()=>{
       const sections=fixture.sections.map(s=>({
         heading:s.heading,bodyMarkdown:s.bodyMarkdown,
