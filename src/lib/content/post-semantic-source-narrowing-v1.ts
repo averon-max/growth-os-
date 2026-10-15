@@ -14,8 +14,9 @@ import type {
   OfficialPostSemanticProcedureAlternativeV1,
   PostSemanticComparisonAlternativeV1,
 } from "./live-evidence-verification";
-import {isServiceChoiceSectionV1,isServiceChoiceSourceFactV1}
-  from "./live-evidence-verification";
+import {isServiceChoiceSectionV1,isServiceChoiceSourceFactV1,
+  scoreServiceChoiceDecisionFactV1,
+} from "./live-evidence-verification";
 
 type Section={id:string;heading:string;mission:string};
 export interface PostSemanticNarrowingV1{
@@ -120,7 +121,9 @@ export function selectPostSemanticSourceNarrowingV1({
         }).map(sentence=>({
           claim,source:src,evidence:e,sentence,
           score:tokens(sentence).filter(t=>focus.has(t)).length+
-            4*tokens(sentence).filter(t=>missionSpecific.has(t)).length,
+            4*tokens(sentence).filter(t=>missionSpecific.has(t)).length+
+            (comparisonQuestion(section.heading)
+              ?scoreServiceChoiceDecisionFactV1(sentence):0),
         }));
       }));
     // Rejecting a too-broad old assertion does NOT mean every OTHER
@@ -196,7 +199,8 @@ export function selectPostSemanticSourceNarrowingV1({
             kind:"REFERENCE_ONLY",relation:"PARTIALLY_SUPPORTS",
           } as ClaimEvidence,
           sentence,score:shared+4*tokens(sentence)
-            .filter(t=>missionSpecific.has(t)).length,
+            .filter(t=>missionSpecific.has(t)).length+
+            scoreServiceChoiceDecisionFactV1(sentence),
         });
       }
     }
