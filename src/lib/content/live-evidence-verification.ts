@@ -2966,12 +2966,40 @@ export function isServiceChoiceSectionV1(heading:string):boolean{
 export function isServiceChoiceSourceFactV1(sentence:string):boolean{
   if(!/\b(?:credit|monitoring|service|services|report|reports)\b/i.test(sentence))
     return false;
-  const costOrFeatures=/\b(?:costs?|prices?|fees?|free|paid|premium|features?|subscriptions?|plans?)\b/i;
-  const alertTypes=/\b(?:alerts?|notifications?|notifies|notify)\b/i.test(sentence)&&
-    /\b(?:changes?|accounts?|inquir(?:y|ies)|activities?|events?|reports?|fraud|identity|suspicious)\b/i.test(sentence);
-  const scopeDifference=/\b(?:includes?|covers?|tracks?|monitors?|detects?|checks?|does not cover|does not include)\b/i.test(sentence)&&
-    /\b(?:inquir(?:y|ies)|new accounts?|identity|fraud|changes? to|types? of|account activity)\b/i.test(sentence);
-  return costOrFeatures.test(sentence)||alertTypes||scopeDifference;
+  // Do not confuse choosing a MONITORING SERVICE with advice to combine
+  // monitoring with other protection methods (freezes, fraud alerts).
+  // Neither broad protection advice nor site navigation is a service
+  // coverage, cost or feature difference.
+  if(/\b(?:combine|alongside|in addition to|other protective measures)\b/i
+    .test(sentence)&&
+    /\b(?:freezes?|fraud alerts?|other protective measures)\b/i.test(sentence))
+    return false;
+  if(/\b(?:reading time|highlights|in this article)\b/i.test(sentence)||
+    /\b(?:things to consider|questions to ask)\b[^.]{0,90}:\s*(?:cost|coverage|price|features?)\s*[.!]$/i.test(sentence))
+    return false;
+  const service=/\b(?:credit monitoring|monitoring service|monitoring services|service|services|plan|plans)\b/i;
+  const price=/\b(?:costs?|prices?|fees?|free|paid|pay|paying|trial|trials|premium|subscriptions?)\b/i;
+  const features=/\b(?:functionalit(?:y|ies)|features?|plans?|services?|coverage|covered|includes?|tracks?|checks?|monitors?|alerts?|notifications?)\b/i;
+  const scopeVerb=/\b(?:check|checks|monitor|monitors|track|tracks|notify|notifies|alerts?|cover|covers|includes?)\b/i;
+  const scopeObject=/\b(?:inquir(?:y|ies)|new accounts?|score changes?|credit limits?|utilization|balances?|credit reports?|account activity|types? of alerts?)\b/i;
+  return service.test(sentence)&&(
+    price.test(sentence)&&features.test(sentence)||
+    scopeVerb.test(sentence)&&scopeObject.test(sentence)
+  );
+}
+/** Prioritize the distinct selection VALUE a paragraph supplies, rather
+ * than raw overlap with H2 terms, which favored broad protective advice.
+ * Ranking never changes verification status.
+ */
+export function scoreServiceChoiceDecisionFactV1(sentence:string):number{
+  if(!isServiceChoiceSourceFactV1(sentence))return -1;
+  if(/\b(?:free|pay|paid|paying|fee|fees|cost|price|premium)\b/i.test(sentence)&&
+    /\b(?:functionalit(?:y|ies)|features?|plans?|coverage|more|different)\b/i.test(sentence))
+    return 100;
+  if(/\b(?:trials?|subscriptions?|fees?|prices?)\b/i.test(sentence))return 75;
+  if(/\b(?:utilization|balances|inquir(?:y|ies)|new accounts?)\b/i.test(sentence))
+    return 60;
+  return 35;
 }
 export function rankCreditMonitoringComparisonSentencesV1({
   heading,mission,bodyText,
@@ -2990,10 +3018,12 @@ export function rankCreditMonitoringComparisonSentencesV1({
       isServiceChoiceSourceFactV1(s))
     .map(text=>({
       text,shared:semanticTokens(text).filter(t=>topic.has(t)).length,
+      valueScore:scoreServiceChoiceDecisionFactV1(text),
       specific:/\b(?:costs?|prices?|fees?|free|paid|premium|subscriptions?|features?|alerts?|notifications?|accounts?|inquir(?:y|ies)|changes?|identity|fraud)\b/i.test(text),
     }))
     .filter(x=>x.shared>=1&&x.specific)
-    .sort((a,b)=>b.shared-a.shared||a.text.length-b.text.length);
+    .sort((a,b)=>b.valueScore-a.valueScore||
+      b.shared-a.shared||a.text.length-b.text.length);
   const seen=new Set<string>(),out:string[]=[];
   for(const x of ranked){
     const key=normalize(x.text);
