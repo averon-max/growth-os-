@@ -1,4 +1,5 @@
 import { EditorialRepetitionGateErrorV1 } from "@/lib/content/editorial-repetition-guard-v1";
+import { ArticleInformationGainGateErrorV1 } from "@/lib/content/article-editorial-information-gain-v1";
 import {ArticleProseHygieneErrorV2}
   from "@/lib/content/article-search-readiness-v2";
 import {ComprehensiveEditorialReleaseErrorV1}
@@ -290,6 +291,13 @@ export async function POST(
         retryable:false,
         guidance:"Edit and review only affected sentences, then rerun factual and SERP Replay gates for the new fingerprint.",
       },{status:409});
+    }
+    if(err instanceof ArticleInformationGainGateErrorV1){
+      return NextResponse.json({
+        code:err.code,
+        error:"The article has low-information filler or intrusive Source labels. Rewrite the affected meaning using only verified claims, keep research references outside prose, and rerun exact article verification.",
+        findings:err.findings,
+      },{status:422});
     }
     if (err instanceof EditorialRepetitionGateErrorV1) {
       return NextResponse.json({ error:err.message, code:err.code, sections:err.findings.map(f=>({sectionIndex:f.sectionIndex,issue:f.code})) }, {status:409});
