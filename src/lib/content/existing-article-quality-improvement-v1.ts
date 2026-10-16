@@ -76,6 +76,8 @@ import {
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
 import {assertArticleProseHygieneV2}
   from "./article-search-readiness-v2";
+import {assertArticleInformationGainV1}
+  from "./article-editorial-information-gain-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeSerpReplayV1 } from "./serp-replay";
 import { buildSerpReplayArticleFingerprintV1 } from "./serp-replay-fingerprint";
@@ -1146,6 +1148,10 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // for critics and SERP Replay or committing broken article bytes.
     // Never silently edit prose inside a semantic verification stage.
     assertArticleProseHygieneV2(improvedRun.article.bodyMarkdown);
+    // Reader value and source-placement are mandatory release gates,
+    // not a word-count or 9-critic WARN that can be silently committed.
+    // Use only conservative, evidenced, deterministic defects.
+    assertArticleInformationGainV1(improvedRun.article.bodyMarkdown);
     const finalCritics=await executeMasterArticleCriticsV1({
       contract,run:improvedRun,generator,context,
     });
