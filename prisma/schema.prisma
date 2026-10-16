@@ -589,11 +589,8 @@ model SerpReplayArtifact {
 }
 
 
-/**
- * Append-only human review of ONE existing observed QueryGraph node's
- * owning H2. Does NOT rewrite ContentEvidenceSnapshot.plan, the signed
- * research graph, any article prose, or a fingerprinted SERP replay.
- */
+// Append-only human-reviewed owner of an existing observed query.
+// Does not change research, article Markdown or any SERP replay.
 model ContentQueryOwnerReview {
   id                            String @id @default(cuid())
   contentArticleId              String
