@@ -47,6 +47,9 @@ describe("actual paid DataForSEO question observations: reader-job scope",()=>{
     ["what is a good credit monitoring service","PROVIDER_CHOICE_REQUIRES_COMPARISON_PAGE"],
     ["how to start a credit monitoring business","BUSINESS_CREATION_NOT_CONSUMER_EXPLAINER"],
     ["are credit monitoring services tax deductible","TAX_TREATMENT_NOT_CONSUMER_EXPLAINER"],
+    ["what is credit monitoring arrangement","BANKING_CREDIT_MONITORING_ARRANGEMENT_NOT_CONSUMER_REPORT_SERVICE"],
+    ["what is a credit monitoring arrangement","BANKING_CREDIT_MONITORING_ARRANGEMENT_NOT_CONSUMER_REPORT_SERVICE"],
+    ["should i enroll in idx credit monitoring","NAMED_PROVIDER_ENROLLMENT_INTENT"],
     ["is credit monitoring worth it reddit","THIRD_PARTY_COMMUNITY_PLATFORM_INTENT"],
   ] as const)("rejects same-keyword but wrong reader-job: %s",(
     query,reason)=>{
@@ -97,12 +100,49 @@ describe("actual paid DataForSEO question observations: reader-job scope",()=>{
     expect(r.observed).toBe(6);
     expect(r.topicalQuestions).toBe(5);
     expect(r.separatePageQueries).toHaveLength(1);
-    const price=r.semanticClusters.find(x=>x.family==="PRICE_AND_VALUE");
-    expect(price?.distinctObservedQueries).toBe(3);
-    expect(price?.highestObservedSearchVolume).toBe(70);
-    expect(price?.questions).toHaveLength(3);
+    const value=r.semanticClusters.find(x=>
+      x.family==="VALUE_AND_NECESSITY");
+    expect(value?.distinctObservedQueries).toBe(2);
+    expect(value?.highestObservedSearchVolume).toBe(70);
+    const cost=r.semanticClusters.find(x=>x.family==="COST");
+    expect(cost?.questions).toHaveLength(1);
+    expect(cost?.highestObservedSearchVolume).toBe(50);
     expect(r.semanticClusters.find(x=>
       x.family==="OPERATION_AND_ALERTS")?.highestObservedSearchVolume)
       .toBeNull();
+  });
+});
+
+describe("semantic collision verified from real Oct 16 highest-volume keyword",()=>{
+  it("does not let banking CMA 2900 searches outrank consumer monitoring definition",()=>{
+    const make=(keyword:string,searchVolume:number)=>({
+      keyword,searchVolume,keywordDifficulty:null,
+      providerMainIntent:"informational",
+    });
+    const r=groupObservedArticleQuestionsV2(seed,[
+      make("what is credit monitoring arrangement",2900),
+      make("what is credit monitoring",480),
+      make("what is a credit monitoring service",110),
+    ]);
+    expect(r.topicalQuestions).toBe(2);
+    expect(r.separatePageQueries).toEqual([
+      {query:"what is credit monitoring arrangement",
+        searchVolume:2900,
+        reason:"BANKING_CREDIT_MONITORING_ARRANGEMENT_NOT_CONSUMER_REPORT_SERVICE"},
+    ]);
+    expect(r.semanticClusters.find(x=>x.family==="DEFINITION")
+      ?.highestObservedSearchVolume).toBe(480);
+  });
+  it("distinguishes activation/access from how monitoring technology works",()=>{
+    const r=check("how do i know if i have credit monitoring");
+    expect(r.family).toBe("ACTIVATION_AND_ACCESS");
+    expect(check("what does credit monitoring do").family)
+      .toBe("OPERATION_AND_ALERTS");
+  });
+  it("does not discard unknown commercial transactional intent from generic article",()=>{
+    expect(check("should i sign up for credit monitoring","transactional")
+      .status).toBe("HUMAN_INTENT_REVIEW");
+    expect(check("should i enroll in idx credit monitoring","transactional")
+      .status).toBe("SEPARATE_PAGE_INTENT");
   });
 });
