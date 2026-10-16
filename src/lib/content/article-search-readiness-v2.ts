@@ -113,6 +113,60 @@ export function evaluateArticleSearchReadinessV2({
     add("QUERY_TO_SECTION_BRIDGE_MISSING","BLOCK",
       "Real related queries exist but none is assigned to article sections.",
       "Review which queries belong on this page and map each to a source-backed H2.");
+  // Map actual publication-grade excerpt sources to their owner H2s.
+  // A URL is evidence to REVIEW, not permission to automatically insert
+  // a citation in prose that has subsequently changed.
+  const sourceById=new Map(runtime?.evidenceGraph.sources.map(source=>
+    [source.id,source] as const)??[]);
+  const sectionSourceCandidates=runtime?.sectionBlueprints.sections.map(
+    (section,index)=>{
+      const required=new Set(section.requiredClaims);
+      const explicit=new Set(section.evidenceIds);
+      const approved=runtime.evidenceGraph.claimEvidence.filter(item=>
+        item.kind==="VERIFIED_EXCERPT"&&
+        item.relation==="SUPPORTS"&&
+        typeof item.excerpt==="string"&&item.excerpt.trim()&&
+        (explicit.has(item.id)||required.has(item.claimId)));
+      const collected=new Map<string,{
+        url:string;publisher:string;sourceType:string;
+        supportedClaimIds:string[];
+      }>();
+      for(const ev of approved){
+        const source=sourceById.get(ev.sourceId);
+        if(!source)continue;
+        const prev=collected.get(source.id);
+        if(prev){
+          if(!prev.supportedClaimIds.includes(ev.claimId))
+            prev.supportedClaimIds.push(ev.claimId);
+        }else{
+          collected.set(source.id,{
+            url:source.url,publisher:source.publisher,
+            sourceType:source.sourceType,
+            supportedClaimIds:[ev.claimId],
+          });
+        }
+      }
+      return {
+        sectionIndex:index,heading:section.heading,
+        evidenceBackedLinks:[...collected.values()]
+          .sort((a,b)=>
+            (a.sourceType==="PRIMARY_GOVERNMENT"?-1:0)-
+            (b.sourceType==="PRIMARY_GOVERNMENT"?-1:0))
+          .slice(0,8),
+      };
+    })??[];
+  const canonicalCountry=(s:string)=>({
+    us:"united states",usa:"united states",
+    "united states of america":"united states",ca:"canada",
+    gb:"united kingdom",uk:"united kingdom",
+  } as Record<string,string>)[normalize(s)]??normalize(s);
+  if(runtime?.serpResearch&&
+    canonicalCountry(runtime.mission.location)!==
+      canonicalCountry(runtime.serpResearch.country))
+    add("SERP_MISSION_MARKET_MISMATCH","BLOCK",
+      "SERP evidence was captured for a different country from the mission.",
+      "Re-run real competitor research in the correct jurisdiction before changing claims.",
+      runtime.mission.location+" / "+runtime.serpResearch.country);
   const unassigned=observed.filter(q=>q.ownerSectionIndex===null);
   if(unassigned.length)add("OBSERVED_QUERIES_NOT_OWNED","REVIEW",
     "Real same-page queries remain unmapped; intent may be incomplete.",
@@ -175,6 +229,7 @@ export function evaluateArticleSearchReadinessV2({
     observedSupportingQueries:observed.length,
     assignedSupportingQueries:observed.filter(q=>q.ownerSectionIndex!==null).length,
     observedQueryClusters:clusters,
+    sectionSourceCandidates,
     requiredQuestionGaps:requiredUnassigned.map(q=>q.label),
     competitors:runtime?.serpResearch?.results.length??0,
     replay:{status:replay?.replayStatus??null,articleFingerprintMatches:replayMatches,
