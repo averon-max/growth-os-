@@ -455,7 +455,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
         structureAttempts++;
         const originalH3=countH3(current.bodyMarkdown);
         const finding=createMasterArticleCriticFindingV1({
-          criticId:"STRUCTURE",
+          criticId:"EDITORIAL",
           code:"SOURCE_BACKED_H3_STRUCTURE_REPAIR",
           severity:"BLOCK",
           location:{scope:"SECTION",sectionIndex:index,
