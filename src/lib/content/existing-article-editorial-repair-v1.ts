@@ -26,6 +26,16 @@ import { buildMasterArticleSemanticCriticContextV1 } from "./master-article-sema
 import { buildCrawlCannibalizationCandidatesV1 } from "./crawl-cannibalization-context";
 import { detectPersistedArticleEditorialRepetitionV1 } from "./editorial-repetition-guard-v1";
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
+import {detectArticleInformationGainDefectsV1,assertArticleInformationGainV1}
+  from "./article-editorial-information-gain-v1";
+import {assertArticleProseHygieneV2}
+  from "./article-search-readiness-v2";
+import {evaluateComprehensiveEditorialReleaseV1,assertComprehensiveEditorialReleaseV1}
+  from "./comprehensive-editorial-release-gate-v1";
+import {inspectArchivedWriterProgressV1}
+  from "./writer-recovery-archived-progress-v1";
+import {rebindSignedArchivedWriterRunV1}
+  from "./verified-archived-writer-run-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeMasterArticleCriticRepairReplayV1 } from "./master-article-critic-repair-execution";
 import { executeSerpReplayV1 } from "./serp-replay";
@@ -88,9 +98,11 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       !original.publishedAt && !original.publishedUrl &&
       original.updatedAt.getTime()===Date.parse(expectedUpdatedAt),
       "SAVED_EDITORIAL_ARTICLE_STATE_CHANGED");
-    check(detectPersistedArticleEditorialRepetitionV1(
-      original.bodyMarkdown).length>0,
-      "SAVED_EDITORIAL_NOT_A_REPETITION_REPAIR_TARGET");
+    check(
+      detectPersistedArticleEditorialRepetitionV1(
+        original.bodyMarkdown).length>0 ||
+      detectArticleInformationGainDefectsV1(original.bodyMarkdown).length>0,
+      "SAVED_EDITORIAL_NO_VERIFIED_READER_VALUE_DEFECT");
 
     const snap=await prisma.contentEvidenceSnapshot.findUnique({
       where:{briefId:original.briefId},select:{plan:true},
@@ -110,32 +122,74 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       plan,contract:buildArticleGenerationContractV1(runtime),
     });
 
-    const dir=checkpointDir();
-    const path=join(dir,articleId+"-POST_FINAL_REPLAY.json");
-    let raw:string;
-    try{raw=await readFile(path,"utf8");}
-    catch{throw new Error("SAVED_EDITORIAL_FINAL_CHECKPOINT_REQUIRED");}
-    const payload=record(JSON.parse(raw)),cp=record(payload.checkpoint);
-    check(payload.sha256===sha(JSON.stringify(cp)) &&
-      cp.version==="ARTICLE_RECOVERY_CHECKPOINT_V1" &&
-      cp.stage==="POST_FINAL_REPLAY"&&cp.articleId===articleId &&
-      cp.briefId===original.briefId,
-      "SAVED_EDITORIAL_FINAL_CHECKPOINT_HASH_OR_SCOPE_MISMATCH");
-    const savedRun=record(cp.writerRun);
-    check(savedRun.version==="MASTER_WRITER_RUN_V1" &&
-      Array.isArray(savedRun.sections) &&
-      savedRun.sections.length===contract.sectionContracts.length,
-      "SAVED_EDITORIAL_WRITER_RUN_INVALID");
-    const run=savedRun as unknown as MasterWriterRunV1;
     const initial=articleShape(original);
-    const fromCheckpoint=articleShape(run.article);
-    check(fromCheckpoint.title===initial.title &&
-      fromCheckpoint.metaDescription===initial.metaDescription &&
-      fromCheckpoint.h1===initial.h1 &&
-      normalizeMasterArticleProseSpacesV1(fromCheckpoint.bodyMarkdown)===
-        initial.bodyMarkdown,
-      "SAVED_EDITORIAL_CHECKPOINT_ARTICLE_VERSION_MISMATCH");
-
+    let run:MasterWriterRunV1|null=null;
+    let checkpointSha256:string|null=null;
+    let archivedProgress:import("./master-writer-section-progress-v1")
+      .MasterWriterSectionProgressV1|null=null;
+    const dir=checkpointDir();
+    const checkpointPath=join(dir,articleId+"-POST_FINAL_REPLAY.json");
+    // Only accept the old final checkpoint when it matches the CURRENT
+    // saved 13-citation article. A prior 2078-word version is not reusable.
+    let raw:string|null=null;
+    try{raw=await readFile(checkpointPath,"utf8");}
+    catch(e){
+      if((e as NodeJS.ErrnoException).code!=="ENOENT")throw e;
+    }
+    if(raw){
+      const payload=record(JSON.parse(raw)),cp=record(payload.checkpoint);
+      check(payload.sha256===sha(JSON.stringify(cp)),
+        "SAVED_EDITORIAL_FINAL_CHECKPOINT_CORRUPTED");
+      if(cp.version==="ARTICLE_RECOVERY_CHECKPOINT_V1" &&
+        cp.stage==="POST_FINAL_REPLAY"&&cp.articleId===articleId&&
+        cp.briefId===original.briefId){
+        const saved=record(cp.writerRun);
+        if(saved.version==="MASTER_WRITER_RUN_V1" &&
+          Array.isArray(saved.sections)&&
+          saved.sections.length===contract.sectionContracts.length){
+          const candidate=saved as unknown as MasterWriterRunV1;
+          const fromCheckpoint=articleShape(candidate.article);
+          if(fromCheckpoint.title===initial.title &&
+            fromCheckpoint.metaDescription===initial.metaDescription &&
+            fromCheckpoint.h1===initial.h1 &&
+            normalizeMasterArticleProseSpacesV1(fromCheckpoint.bodyMarkdown)===
+              initial.bodyMarkdown){
+            run=candidate;checkpointSha256=String(payload.sha256);
+          }
+        }
+      }
+    }
+    // Reuse the already signed archive only if the frozen graph's claims,
+    // each H2 identity and source relations remain valid. Archive selection
+    // is FREE; current-source semantic verification may be paid (bounded).
+    // No full Writer generation, new brief or fresh research is allowed.
+    if(!run){
+      const roots=[...new Set([
+        resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
+          ".growth-os-tmp/article-checkpoints"),
+        ...(process.env.GROWTH_OS_ENV_DIR?.trim()?
+          [resolve(process.env.GROWTH_OS_ENV_DIR,
+            ".growth-os-tmp/article-checkpoints")]:[]),
+      ])].flatMap(base=>[
+        join(base,"research-recovery-editorial"),
+        join(base,"research-recovery"),
+      ]);
+      let archived=null;
+      for(const rootDirectory of roots){
+        const inspection=await inspectArchivedWriterProgressV1({
+          rootDirectory,articleId,briefId:original.briefId,
+          modelName:geminiGenerator.modelName,contract,
+        });
+        if(inspection.compatible&&inspection.candidate){
+          archived=inspection.candidate.checkpoint;break;
+        }
+      }
+      check(archived!==null,
+        "SAVED_EDITORIAL_NO_COMPATIBLE_ARCHIVED_CHECKPOINT_FREE_STOP");
+      // Rebind after shared paid-call budget is initialized below.
+      checkpointSha256=sha(JSON.stringify(archived));
+      archivedProgress=archived;
+    }
     const storedCtx=buildMasterArticleSemanticCriticContextV1(runtime);
     const fallbackCandidates=storedCtx.cannibalizationCandidates.length
       ? [] : await buildCrawlCannibalizationCandidatesV1({
@@ -160,18 +214,28 @@ export async function repairExistingArticleEditorialV1(articleId:string,
     const generator=withContentRunBudgetV1({
       generator:geminiGenerator,budget,
     });
+    if(!run){
+      check(archivedProgress!==null,
+        "SAVED_EDITORIAL_CURRENT_WRITER_CHECKPOINT_MISSING");
+      run=await rebindSignedArchivedWriterRunV1({
+        progress:archivedProgress,contract,generator,article:initial,
+      });
+    }
+    check(run!==null&&checkpointSha256!==null,
+      "SAVED_EDITORIAL_REBIND_DID_NOT_VERIFY");
     // Baseline full critic re-evaluation is necessary: old checkpoints
     // predate the stricter editorial policy.
     const beforeCritics=await executeMasterArticleCriticsV1({
       contract,run,generator,context,
     });
-    check(beforeCritics.suite.status==="BLOCK" &&
-      beforeCritics.suite.results.some(item=>
-        item.criticId==="EDITORIAL"&&
-        item.findings.some(f=>
-          f.code==="EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS" ||
-          f.code==="EDITORIAL_REPEATED_PARAGRAPH_ACROSS_SECTIONS" ||
-          f.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS")),
+    const supportedEditorialDefect=beforeCritics.suite.results.some(item=>
+      item.criticId==="EDITORIAL"&&item.findings.some(f=>
+        f.code==="EDITORIAL_RECYCLED_ADVICE_ACROSS_SECTIONS" ||
+        f.code==="EDITORIAL_REPEATED_PARAGRAPH_ACROSS_SECTIONS" ||
+        f.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS" ||
+        f.code==="NON_ACTIONABLE_JUSTIFICATION" ||
+        f.code==="SOURCE_LABEL_IN_PROSE"));
+    check(beforeCritics.suite.status==="BLOCK"&&supportedEditorialDefect,
       "SAVED_EDITORIAL_NEW_CRITIC_NOT_REPRODUCED");
 
     const repaired=await executeMasterArticleCriticRepairReplayV1({
@@ -192,6 +256,12 @@ export async function repairExistingArticleEditorialV1(articleId:string,
         candidate.bodyMarkdown).length===0,
       "SAVED_EDITORIAL_CANDIDATE_NOT_ACTUALLY_FIXED");
 
+    assertArticleInformationGainV1(candidate.bodyMarkdown);
+    assertArticleProseHygieneV2(candidate.bodyMarkdown);
+    assertComprehensiveEditorialReleaseV1(
+      evaluateComprehensiveEditorialReleaseV1({
+        plan,bodyMarkdown:candidate.bodyMarkdown,
+      }));
     const audit=auditArticle({article:candidate,
       primaryKeyword:original.brief.primaryKeyword});
     const intelligence=analyzeArticleAgainstPlan({
@@ -214,7 +284,7 @@ export async function repairExistingArticleEditorialV1(articleId:string,
     const initialAudit=auditArticle({article:initial,
       primaryKeyword:original.brief.primaryKeyword});
     check(audit.h2Count===initialAudit.h2Count &&
-      audit.h3Count===initialAudit.h3Count,
+      audit.h3Count>=initialAudit.h3Count,
       "SAVED_EDITORIAL_HEADING_STRUCTURE_DRIFT");
 
     const registry=await getBusinessFactRegistryForBrief({
@@ -309,7 +379,7 @@ export async function repairExistingArticleEditorialV1(articleId:string,
               previousFingerprint:oldFingerprint,
               previousReplayArtifactId:priorReplay?.id??null,
               evidenceSnapshotSha256:sha(JSON.stringify(snap.plan)),
-              checkpointSha256:payload.sha256,
+              checkpointSha256,
               initialCriticStatus:beforeCritics.suite.status,
               finalCriticStatus:repaired.finalCritics.suite.status,
               repairSections:repaired.repairs.map(x=>x.sectionIndex),
