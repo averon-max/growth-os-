@@ -10,6 +10,7 @@ import {normalizeKeywordV2} from "./keyword-intelligence-v2";
 
 export type KeywordTopicDecisionV1=
   "SAME_TOPIC_SUBQUESTION"|"SEPARATE_BRAND_PRODUCT_PAGE"|
+  "SEPARATE_COMMERCIAL_PAGE"|
   "SEPARATE_NAVIGATION_OR_SUPPORT"|"ADJACENT_ENTITY_NOT_SAME_TOPIC"|
   "AMBIGUOUS_TOPIC_REVIEW";
 export type KeywordTopicAssessmentV1={
@@ -82,7 +83,7 @@ export function assessKeywordTopicIntentV1({
         .test(normalized));
   if(commercialIntent)return {
     seed,query,coreTopic:core,
-    decision:"SEPARATE_BRAND_PRODUCT_PAGE",eligibleForArticleSerp:false,
+    decision:"SEPARATE_COMMERCIAL_PAGE",eligibleForArticleSerp:false,
     reason:"BUYER_COMPARISON_INTENT_SEPARATE_FROM_INFORMATIONAL_DEFINITION",
   };
   if(isBrandQuery(normalized,core))return {
