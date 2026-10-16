@@ -46,7 +46,7 @@ export function proposeOriginalSectionKeywordSentenceV1({
     const block=blocks[i].trim();
     if(/^\s{0,3}#{1,6}\s/u.test(block)||
       /^\s*[-*]\s/u.test(block)||
-      block.split(/\s+/u).length<12)continue;
+      block.split(/\s+/u).length<8)continue;
     const normalized=block.toLowerCase();
     const score=[...topical].filter(t=>normalized.includes(t)).length+
       (/\bfree\b|\bno-cost\b|\bpricing\b|\bcost\b/iu.test(block)?2:0);
