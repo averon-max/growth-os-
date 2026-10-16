@@ -9,8 +9,6 @@ describe("concept and intent scope before paid SERP",()=>{
     "how does credit monitoring work",
     "does credit monitoring affect credit score",
     "credit monitoring vs credit freeze",
-    "free credit monitoring",
-    "3 bureau credit monitoring",
     "can credit monitoring prevent identity theft",
     "credit monitoring alert",
   ])("preserves genuine same-topic question: %s",(q)=>{
@@ -30,6 +28,9 @@ describe("concept and intent scope before paid SERP",()=>{
     ["aura credit monitoring reviews","SEPARATE_BRAND_PRODUCT_PAGE"],
     ["equifax core credit","SEPARATE_BRAND_PRODUCT_PAGE"],
     ["what are the 7 credit bureaus","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
+    ["credit monitoring companies","SEPARATE_COMMERCIAL_PAGE"],
+    ["free credit monitoring services","SEPARATE_COMMERCIAL_PAGE"],
+    ["free credit monitoring app","SEPARATE_COMMERCIAL_PAGE"],
     ["best credit monitoring services","SEPARATE_COMMERCIAL_PAGE"],
     ["credit monitoring reviews","SEPARATE_COMMERCIAL_PAGE"],
     ["credit monitoring jobs near me","SEPARATE_NAVIGATION_OR_SUPPORT"],
@@ -52,5 +53,48 @@ describe("concept and intent scope before paid SERP",()=>{
       query:"canonical camera prices"}).eligibleForArticleSerp).toBe(false);
     expect(classify({seed:"what is canonical tags",
       query:"canonical tags benefits"}).eligibleForArticleSerp).toBe(true);
+  });
+});
+
+describe("real paid cached keyword research page-intent correctness",()=>{
+  const cases=[
+    {query:"credit monitoring companies",
+      decision:"SEPARATE_COMMERCIAL_PAGE",intent:"COMMERCIAL"},
+    {query:"free credit monitoring services",
+      decision:"SEPARATE_COMMERCIAL_PAGE",intent:"COMMERCIAL"},
+    {query:"3 bureau credit monitoring",
+      decision:"AMBIGUOUS_TOPIC_REVIEW",intent:"MIXED"},
+    {query:"free credit monitoring",
+      decision:"AMBIGUOUS_TOPIC_REVIEW",intent:"MIXED"},
+    {query:"free credit monitoring app",
+      decision:"SEPARATE_COMMERCIAL_PAGE",intent:"COMMERCIAL"},
+    {query:"what is credit monitoring service",
+      decision:"SAME_TOPIC_SUBQUESTION",intent:"INFORMATIONAL"},
+    {query:"what is credit monitoring services",
+      decision:"SAME_TOPIC_SUBQUESTION",intent:"INFORMATIONAL"},
+    {query:"what is credit monitoring",
+      decision:"SAME_TOPIC_SUBQUESTION",intent:"INFORMATIONAL"},
+  ] as const;
+  it.each(cases)("$query => $decision / $intent",({query,decision,intent})=>{
+    const result=classify({seed:"what is credit monitoring",query});
+    expect(result).toMatchObject({
+      decision,pageIntent:intent,
+      eligibleForArticleSerp:decision==="SAME_TOPIC_SUBQUESTION",
+    });
+  });
+  it("notices real relational question but not bare adjacent entity",()=>{
+    expect(classify({seed:"what is credit monitoring",
+      query:"does credit monitoring affect credit score"}))
+      .toMatchObject({decision:"SAME_TOPIC_SUBQUESTION",
+        pageIntent:"INFORMATIONAL"});
+    expect(classify({seed:"what is credit monitoring",
+      query:"credit score"}))
+      .toMatchObject({decision:"ADJACENT_ENTITY_NOT_SAME_TOPIC"});
+  });
+  it("returns explicit review instead of inventing SERP intent from bare label",()=>{
+    const r=classify({seed:"what is credit monitoring",
+      query:"3 bureau credit monitoring"});
+    expect(r.reason).toBe("UNRESOLVED_GENERIC_PRODUCT_OR_INFORMATIONAL_INTENT");
+    expect(r.eligibleForArticleSerp).toBe(false);
   });
 });
