@@ -272,6 +272,55 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(result.selectedKeyword).toBe("credit monitoring benefits");
   });
 
+  it("preserves deep SERP competitor structure and observed questions without an extra provider request",async()=>{
+    mocks.serp.mockResolvedValue({
+      organic:[
+        {rank:1,domain:"example.org",url:"https://example.org/a"},
+        {rank:2,domain:"reference.org",url:"https://reference.org/b"},
+        {rank:3,domain:"other.org",url:"https://other.org/c"},
+      ],
+      benchmark:{
+        dominantPageType:"blog",analyzedPages:2,
+        medianWordCount:1870,medianH2:6,medianH3:8,
+      },
+      serpFeatures:["organic","people_also_ask"],
+      questions:["Does credit monitoring lower my score?"],
+      aiOverview:{present:true,asynchronous:false,references:[]},
+      competitors:[
+        {rank:1,domain:"example.org",url:"https://example.org/a",
+          fetched:true,pageType:"blog",title:"What is monitoring",
+          h1:"What is credit monitoring",h2:["How it works","Costs"],
+          h3:["What alerts mean"],wordCount:2300,
+          schemaTypes:["Article"],tableCount:1,
+          authorSignal:true,dateSignal:true,error:null},
+        {rank:2,domain:"reference.org",url:"https://reference.org/b",
+          fetched:false,pageType:"OTHER",title:null,h1:null,
+          h2:[],h3:[],wordCount:null,error:"FETCH_DENIED"},
+      ],
+      commonSections:[{topic:"costs",pages:2,coveragePct:50,examples:[]}],
+      commonTerms:[{term:"credit monitoring",pages:2,coveragePct:50}],
+    });
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    const research=result.serpResults[0]?.competitiveResearch;
+    expect(research).toMatchObject({
+      fetchedCompetitorPages:1,
+      fetchFailures:1,
+      aiOverviewPresent:true,
+      observedQuestions:["Does credit monitoring lower my score?"],
+      benchmark:{medianWordCount:1870,medianH2:6,medianH3:8},
+      competitorPages:[{
+        rank:1,fetched:true,
+        h2:["How it works","Costs"],
+        h3:["What alerts mean"],
+        wordCount:2300,authorSignal:true,dateSignal:true,
+        schemaTypes:["Article"],
+      },{rank:2,fetched:false,error:"FETCH_DENIED"}],
+    });
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps REVIEW when demand and KD are both missing",async()=>{
     mocks.related.mockResolvedValue([
       {keyword:"credit monitoring benefits",searchVolume:null,
