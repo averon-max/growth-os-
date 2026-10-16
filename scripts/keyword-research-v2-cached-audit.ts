@@ -126,6 +126,7 @@ async function main():Promise<void>{
         fetchedAt:item.fetchedAt.toISOString(),
         collectedAt:snapshot.collectedAt,market:snapshot.market,seed:snapshot.seed,
         observedFromProviderGscTrendsAndSeed:snapshot.observed,
+        discoveryBreakdown:snapshot.discoveryBreakdown??null,
         archivedCandidateCount:observations.length,
         samePageApprovedCandidates:samePage.length,
         archivedNotAuthorizedForWriter:observations.length-samePage.length,
