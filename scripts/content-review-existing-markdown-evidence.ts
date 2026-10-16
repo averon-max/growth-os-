@@ -145,6 +145,44 @@ async function main():Promise<void>{
       };
     });
     const unmatched=sections.flatMap(s=>s.unmatchedSourceUrls);
+    // Many candidate citations repeat the SAME source across H2s.
+    // Report distinct external source acquisition work, separately from
+    // per-section claim-to-source assignments. A source verified for a
+    // DIFFERENT section is a review candidate, not permission to rebind.
+    const unmatchedByUrl=new Map<string,{
+      url:string;sectionIndexes:number[];
+    }>();
+    for(const section of sections){
+      for(const url of section.unmatchedSourceUrls){
+        const key=normalizeUrl(url);
+        const row=unmatchedByUrl.get(key);
+        if(row){
+          if(!row.sectionIndexes.includes(section.index))
+            row.sectionIndexes.push(section.index);
+        }else unmatchedByUrl.set(key,{url,sectionIndexes:[section.index]});
+      }
+    }
+    const recoveryWorklist=[...unmatchedByUrl.values()].map(row=>{
+      const key=normalizeUrl(row.url);
+      const saved=runtime.evidenceGraph.sources.filter(source=>
+        normalizeUrl(source.url)===key);
+      const globallyVerified=runtime.evidenceGraph.claimEvidence
+        .filter(ev=>saved.some(source=>source.id===ev.sourceId)&&
+          ev.kind==="VERIFIED_EXCERPT"&&ev.relation==="SUPPORTS"&&
+          !!ev.excerpt?.trim()&&
+          claimsById.get(ev.claimId)?.status==="VERIFIED");
+      return {
+        url:row.url,
+        sectionIndexes:row.sectionIndexes,
+        existingSourceInLedger:saved.length>0,
+        verifiedClaimIdsElsewhere:[...new Set(
+          globallyVerified.map(ev=>ev.claimId))],
+        nextAction:globallyVerified.length>0
+          ?"REVIEW_EXISTING_EXCERPT_FOR_TARGET_SECTION_CLAIM"
+          :"SOURCE_FETCH_EXACT_EXCERPT_AND_SEMANTIC_REVIEW_REQUIRED",
+        note:"Never promote URL existence into proof of a new section claim.",
+      };
+    });
     const keywordTerms=[
       article.brief.primaryKeyword,...article.brief.secondaryKeywords
     ].filter(Boolean);
@@ -179,6 +217,10 @@ async function main():Promise<void>{
       duplicateHeadings,
       keywordOccurrences,sections,
       externalLinksNotMappedToSectionVerifiedEvidence:unmatched.length,
+      distinctUnmappedSourceUrls:recoveryWorklist.length,
+      sourcesAlreadyVerifiedForAnotherClaim:recoveryWorklist
+        .filter(row=>row.verifiedClaimIdsElsewhere.length>0).length,
+      citationRecoveryWorklist:recoveryWorklist,
       status:!originalMatches||!safeStructure
         ?"STOP_ORIGINAL_OR_STRUCTURE_MISMATCH":
         unmatched.length>0
