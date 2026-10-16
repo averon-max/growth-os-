@@ -27,7 +27,7 @@ export function previewObservedArticleJoinCopyeditV1(bodyMarkdown:string){
     if(fence||/^\s{0,3}#{1,6}\s/.test(line)||
       /^\s{4,}\S/.test(line))return line;
     const chunks=line.split(
-      /(\x60+[^\\x60\n]*\x60+|\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s)]+)/gu
+      /(`+[^`\n]*`+|\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s)]+)/gu
     );
     return chunks.map((chunk,i)=>{
       if(i%2===1)return chunk;
