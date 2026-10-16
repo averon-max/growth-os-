@@ -73,6 +73,61 @@ describe("reviewed signed same-article recovery cannot trust loose markdown",()=
         "SIGNED_CITATION_REVIEW_CHECKPOINT_MISSING_OR_UNREADABLE_H2");
     }finally{await rm(directory,{recursive:true,force:true});}
   });
+  it("does not require or repurchase optional additional reviews for already-cited H2s",async()=>{
+    const directory=await mkdtemp(join(tmpdir(),"reviewed-citation-covered-"));
+    try{
+      const coveredText="## What happens after a credit alert?\\n\\n"+
+        "Consumers may dispute inaccurate entries on their credit reports.\\n\\n"+
+        "If your credit report has an incorrect entry, you can dispute that item with the reporting agency.";
+      const coveredPlan={sections:[{
+        state:"WRITABLE",heading:"What happens after a credit alert?",
+        evidenceIds:["ev1","ev2"],requiredClaimIds:["claim1","claim2"],
+      }]} as unknown as ArticleExecutionPlanV1;
+      const coveredRuntime={
+        claimLedger:{claims:[
+          {id:"claim1",status:"VERIFIED",
+            text:"Consumers may dispute inaccurate entries on their credit reports."},
+          {id:"claim2",status:"VERIFIED",
+            text:"The credit bureau may investigate disputed report information."},
+        ]},
+        evidenceGraph:{
+          sources:[
+            {id:"source1",url:"https://consumer.ftc.gov/report-errors",
+              publisher:"FTC"},
+            {id:"source2",url:"https://consumerfinance.gov/check-dispute",
+              publisher:"CFPB"},
+          ],
+          claimEvidence:[
+            {id:"ev1",sourceId:"source1",claimId:"claim1",
+              kind:"VERIFIED_EXCERPT",relation:"SUPPORTS",
+              excerpt:"You may dispute inaccurate information on your credit report."},
+            {id:"ev2",sourceId:"source2",claimId:"claim2",
+              kind:"VERIFIED_EXCERPT",relation:"SUPPORTS",
+              excerpt:"We investigate disputed credit reporting information."},
+          ],
+        },
+      } as unknown as MasterRuntimeSnapshotV1;
+      const exact=draftExistingArticleSignedCitationsV1({
+        bodyMarkdown:coveredText,plan:coveredPlan,runtime:coveredRuntime,
+      });
+      expect(exact.totalAddedCitations).toBe(1);
+      const remaining=buildSignedSemanticCitationWorklistV1({
+        bodyMarkdown:exact.proposedBodyMarkdown,plan:coveredPlan,
+        runtime:coveredRuntime,
+      });
+      expect(remaining[0]!.availableSources.map(s=>s.evidenceId))
+        .toEqual(["ev2"]);
+      const report=await loadReviewedSignedCitationDraftV1({
+        articleId,bodyMarkdown:coveredText,plan:coveredPlan,
+        runtime:coveredRuntime,checkpointDirectory:directory,
+      });
+      expect(report.evidenceSourceScope.completeSectionCitationCoverage)
+        .toBe(true);
+      expect(report.totalAddedCitations).toBe(1);
+      expect(report.reviewCheckpointKeys).toEqual([]);
+      expect(report.proposedBodyMarkdown).not.toContain("check-dispute");
+    }finally{await rm(directory,{recursive:true,force:true});}
+  });
   it("fails with missing review checkpoint rather than making a paid request",async()=>{
     const directory=await mkdtemp(join(tmpdir(),"reviewed-citation-empty-"));
     try{
