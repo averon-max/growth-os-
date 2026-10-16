@@ -94,3 +94,23 @@ export function planSameArticleQualityImprovementV1({
     minimumWords,neededWords:needed,steps,headingOpportunityCount,
   };
 }
+
+/**
+ * The ONLY word count release criterion for a comprehensive ARTICLE.
+ * Section-local word budgets are editorial allocations; they are NOT
+ * independent acceptance gates for already source-verified H2 prose.
+ */
+export function evaluateWholeArticleQualityWordRangeV1({
+  actualWords,minWords,maxWords,
+}:{
+  actualWords:number;minWords:number;maxWords:number;
+}):{pass:boolean;reason:"OK"|"BELOW_ARTICLE_MIN"|"ABOVE_ARTICLE_MAX"}{
+  if(![actualWords,minWords,maxWords].every(Number.isFinite)||
+    minWords<0||maxWords<minWords||actualWords<0)
+    throw new Error("QUALITY_GLOBAL_WORD_RANGE_INVALID");
+  return actualWords<minWords
+    ?{pass:false,reason:"BELOW_ARTICLE_MIN"}:
+    actualWords>maxWords
+    ?{pass:false,reason:"ABOVE_ARTICLE_MAX"}:
+    {pass:true,reason:"OK"};
+}
