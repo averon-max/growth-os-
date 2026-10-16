@@ -73,9 +73,9 @@ async function main(){
           article:{id:article.id,websiteId:article.brief.websiteId,
             title:article.title,bodyMarkdown:article.bodyMarkdown,
             status:article.status,primaryKeyword:article.brief.primaryKeyword},
-          candidateSnapshots:candidates as Parameters<
+          candidateSnapshots:candidates as unknown as Parameters<
             typeof auditPaidSerpReuseForExistingPageV1>[0]["candidateSnapshots"],
-          serpResults:serp as Parameters<
+          serpResults:serp as unknown as Parameters<
             typeof auditPaidSerpReuseForExistingPageV1>[0]["serpResults"],
         });
         const originalDecision=record(v.decision);
