@@ -63,10 +63,7 @@ function templateEditorialContextV1(
     EXPLAINER: "EXPLAINER_GUIDE",
     HOW_TO_GUIDE: "HOW_TO",
     LOCAL_SERVICE: "LOCAL_SERVICE_GUIDE",
-    PRODUCT: "PRODUCT_DETAIL_EDUCATION",
     IDEAS: "IDEAS_USE_CASES",
-    SERVICE: "SERVICE_LANDING",
-    CATEGORY: "COMMERCIAL_CATEGORY",
     BRAND_SHOP: "BRAND_SHOP_HUB",
   };
   const candidate = aliases[normalized] ?? normalized;
