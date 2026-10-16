@@ -10,6 +10,7 @@ import {keywordCoreTopicV1,assessKeywordTopicIntentV1}
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
+import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
 import { prepareKeywordOpportunitiesV2, validateKeywordOpportunityChoiceV2,
   selectVerifiedKeywordOpportunityV2,
   type KeywordObservationV2, type KeywordOpportunityChoiceV2, type SerpOpportunityV2,
@@ -26,6 +27,8 @@ export interface KeywordResearchRequestV2 {
   useGptDecision?: boolean;
   /** One ADDITIONAL paid DataForSEO request, only with explicit opt-in. */
   authorizeExpandedDiscovery?: boolean;
+  /** Requires >=5 fetched competitor pages including #1 before SELECTED. */
+  requireDeepCompetitorEvidence?: boolean;
 }
 
 const MARKET: Record<string, string> = {
@@ -118,7 +121,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), Boolean(input.authorizeExpandedDiscovery), "topic-and-page-intent-v4-suggestions"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), Boolean(input.authorizeExpandedDiscovery), Boolean(input.requireDeepCompetitorEvidence), "topic-and-page-intent-v5-depth-gated"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -278,7 +281,8 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     try {
       const serpSummary = await withKeywordResearchCheckpointV2({
         stage: "SERP",
-        key: [website.id, market, cluster.id, cluster.primary.keyword].join(":"),
+        key: [website.id, market, cluster.id, cluster.primary.keyword,
+          input.requireDeepCompetitorEvidence?"deep-v1":"standard"].join(":"),
         isValid: (value): value is SerpOpportunityV2 => {
           if (!value || typeof value !== "object" || Array.isArray(value)) return false;
           const row = value as Record<string, unknown>;
@@ -303,7 +307,9 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   }
 
   const verifiedSerp = serpResults.filter(result =>
-    !result.error && result.organicResults >= 3 && result.uniqueDomains >= 2
+    !result.error && result.organicResults >= 3 && result.uniqueDomains >= 2 &&
+    (!input.requireDeepCompetitorEvidence ||
+      auditDeepSerpReadinessV1(result).status==="DEEP_COMPETITOR_OBSERVED")
   );
   const verifiedClusterIds = new Set(verifiedSerp.map(result => result.clusterId));
   const eligibleForGpt = shortlist.filter(cluster => verifiedClusterIds.has(cluster.id));
@@ -373,6 +379,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       : null,
     cacheHit: false,
     aiUsed: Boolean(input.useGptDecision),
+    requireDeepCompetitorEvidence:input.requireDeepCompetitorEvidence===true,
   };
   await prisma.keywordSuggestionCache.upsert({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
