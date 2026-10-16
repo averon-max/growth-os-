@@ -31,7 +31,6 @@ export function buildArticleDemandOutlineAuditV1(input:{
       exactMentions:countExactPhrase(corpus,label),
     }];
   });
-  const rawSections=[...body.matchAll(/^##\s+([^\n]+)\n([\s\S]*?)(?=^##\s+|\s*$)/gm)];
   // Use an H2-line iterator instead of arbitrary H3 quotas.
   const starts=[...body.matchAll(/^##\s+([^\n]+)/gm)];
   const sections=starts.map((m,index)=>{
