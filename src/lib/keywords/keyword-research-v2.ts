@@ -69,7 +69,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-scope-v1"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v2"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -161,11 +161,14 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const rawTopicExclusions=scopedObservations.filter(x=>
     !x.assessment.eligibleForArticleSerp).map(x=>({
       keyword:x.item.keyword,
-      reason:(x.assessment.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
+      reason:(x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW"?
+        "INTENT_REVIEW_REQUIRED":
+        x.assessment.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
         x.assessment.decision==="SEPARATE_COMMERCIAL_PAGE"||
         x.assessment.decision==="SEPARATE_NAVIGATION_OR_SUPPORT"?
         "SEPARATE_PAGE_INTENT":"TOPIC_SCOPE_MISMATCH") as
-          "SEPARATE_PAGE_INTENT"|"TOPIC_SCOPE_MISMATCH",
+          "SEPARATE_PAGE_INTENT"|"TOPIC_SCOPE_MISMATCH"|
+          "INTENT_REVIEW_REQUIRED",
     }));
   const cleanup = prepareKeywordOpportunitiesV2({
     seed,industry:website.business.industry,
