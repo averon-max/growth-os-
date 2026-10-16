@@ -17,7 +17,7 @@ loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim() || process.cwd());
 async function main():Promise<void>{
   const args=process.argv.slice(2);
   const known=["--website=","--seed=","--market=","--limit=","--serp=",
-    "--execute","--expanded","--gpt"];
+    "--execute","--expanded","--gpt","--deep"];
   if(args.some(a=>!known.some(k=>k.endsWith("=")?a.startsWith(k):a===k)))
     throw Error("UNRECOGNIZED_OPTION");
   const arg=(key:string)=>args.find(a=>a.startsWith(key+"="))?.slice(key.length+1);
@@ -28,6 +28,7 @@ async function main():Promise<void>{
   const deepSerpLimit=Number(arg("--serp")??"3");
   const execute=args.includes("--execute");
   const expanded=args.includes("--expanded");
+  const deep=args.includes("--deep");
   const gpt=args.includes("--gpt");
   if(!/^[a-zA-Z0-9_-]{5,100}$/.test(websiteId)||
     seed.length<3||seed.length>180||
@@ -35,7 +36,7 @@ async function main():Promise<void>{
     !Number.isInteger(limit)||limit<1||limit>500||
     !Number.isInteger(deepSerpLimit)||deepSerpLimit<0||deepSerpLimit>10)
     throw Error("USAGE: --website=ID --seed=TOPIC [--market=US] "+
-      "[--limit=300] [--serp=3] [--expanded] [--gpt] [--execute]");
+      "[--limit=300] [--serp=3] [--expanded] [--deep] [--gpt] [--execute]");
   if(execute&&deepSerpLimit===0)
     throw Error("EXECUTE_REQUIRES_SERP_PROOF_FOR_SELECTION");
   const {prisma}=await import("../src/lib/prisma");
@@ -48,7 +49,10 @@ async function main():Promise<void>{
       mode:execute?"PAID_KEYWORD_RESEARCH_EXPLICITLY_AUTHORIZED":
         "READ_ONLY_KEYWORD_RESEARCH_PREFLIGHT",
       websiteId:website.id,url:website.url,market,seed,
-      limit,deepSerpLimit,expanded,
+      limit,deepSerpLimit,expanded,deep,
+      deepQualityRequirements:deep?
+        "At least five fetched competing organic pages, including #1; recurring section evidence":
+        "Standard SERP discovery, not full top-one competitor proof",
       purchasePlan:{
         existingRelatedKeywordsDiscovery:1,
         ...(expanded?{additionalKeywordSuggestionsDiscovery:1}:{}),
@@ -73,6 +77,7 @@ async function main():Promise<void>{
       websiteId,seed,market:market as "US"|"CA"|"GB"|"AU",
       limit,deepSerpLimit,authorizePaidResearch:true,
       authorizeExpandedDiscovery:expanded,useGptDecision:gpt,
+      requireDeepCompetitorEvidence:deep,
     });
     console.log(JSON.stringify({
       mode:"KEYWORD_RESEARCH_V2_RESULT",
