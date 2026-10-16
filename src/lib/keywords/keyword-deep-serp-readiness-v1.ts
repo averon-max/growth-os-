@@ -9,13 +9,22 @@ import {
  * Historical "fetched=true" alone is not authority: Cloudflare pages,
  * empty responses and support templates cannot satisfy this gate.
  */
-export function auditDeepSerpReadinessV1(row:SerpOpportunityV2){
+export function auditDeepSerpReadinessV1(
+  row:SerpOpportunityV2, coreTopic?:string,
+){
   const evidence=row.competitiveResearch;
   const pages=evidence?.competitorPages??[];
   const valid=pages.filter(page=>
     assessSerpCompetitorPageQualityV1(page).usable);
   const fetched=valid.length;
   const topOne=valid.find(p=>p.rank===1)??null;
+  const normalize=(x:string)=>x.toLocaleLowerCase("en-US")
+    .replace(/[^\p{L}\p{N}]+/gu," ").trim();
+  const topical=coreTopic?.trim()?normalize(coreTopic):"";
+  const topicalPages=topical?valid.filter(page=>
+    normalize([page.title,page.h1].filter(Boolean).join(" ")).includes(topical)):[];
+  const topOneTopical=!topical||(
+    topOne!==null&&topicalPages.includes(topOne));
   const cleanSections=(evidence?.commonSections??[])
     .filter(section=>isSubstantiveSerpHeadingV1(section.topic));
   const blockers:string[]=[];
@@ -26,6 +35,9 @@ export function auditDeepSerpReadinessV1(row:SerpOpportunityV2){
   else {
     if(fetched<5)blockers.push("FEWER_THAN_FIVE_USABLE_COMPETITORS");
     if(!topOne)blockers.push("TOP_ONE_PAGE_NOT_USABLE");
+    if(topical&&!topOneTopical)blockers.push("TOP_ONE_PAGE_DIFFERENT_TASK");
+    if(topical&&topicalPages.length<Math.ceil(valid.length*0.5))
+      blockers.push("SERP_DOMINATED_BY_DIFFERENT_TOPIC");
     if(cleanSections.length===0)
       blockers.push("SUBSTANTIVE_RECURRING_COMPETITOR_SECTIONS_UNOBSERVED");
   }
@@ -43,6 +55,9 @@ export function auditDeepSerpReadinessV1(row:SerpOpportunityV2){
         assessSerpCompetitorPageQualityV1(page).reasons})),
     inaccessibleCompetitorPages:evidence?.fetchFailures??null,
     topOneFetched:topOne!==null,
+    coreTopicChecked:topical||null,
+    topOneMatchesCoreTopic:topical?topOneTopical:null,
+    matchingMainTopicCompetitors:topical?topicalPages.length:null,
     observedUserQuestions:evidence?.observedQuestions??[],
     recurringSectionTopics:cleanSections,
     competitorMedianWords:evidence?.benchmark.medianWordCount??null,
