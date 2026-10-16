@@ -45,6 +45,28 @@ export function buildMasterSectionRepairPrompt(
     | { claimEvidence?: unknown; sources?: unknown }
     | undefined;
 
+  /*
+   * ARTICLE_EXECUTION_PLAN_REPAIR_CONTINUITY_V1
+   *
+   * The initial Section Writer sees the validated execution-plan
+   * obligations and section-owned query nodes. The repair pass must
+   * receive that same scoped authority, or it can remove direct
+   * answers and useful depth while trying to fix a local finding.
+   *
+   * Reuse the canonical section projector; NEVER read the whole
+   * article's topic/query/claim universe here.
+   */
+  const scopedQueryGraph = scopedAuthority.queryGraph as
+    | { nodes?: unknown }
+    | undefined;
+
+  const assignedQueryNodes = Array.isArray(scopedQueryGraph?.nodes)
+    ? scopedQueryGraph.nodes
+    : [];
+
+  const executionPlanAuthority =
+    scopedAuthority.executionPlanAuthority ?? null;
+
   const claims = Array.isArray(scopedClaims?.claims) ? scopedClaims.claims : [];
 
   const evidence = Array.isArray(scopedEvidence?.claimEvidence)
@@ -86,6 +108,11 @@ export function buildMasterSectionRepairPrompt(
       totalSections: contract.totalSections,
 
       blueprint: contract.blueprint,
+
+      // Both values were already scoped by the initial Section Writer.
+      // They are not new search, topic, claim or citation authority.
+      executionPlanAuthority,
+      assignedQueryNodes,
 
       claims,
 
@@ -307,6 +334,12 @@ export function buildMasterSectionRepairPrompt(
     "",
     "REPAIR GOAL:",
     "Resolve the supplied reconciliation/semantic findings and, when depthRepair is present, fully complete this section's already-assigned information jobs while preserving all already-correct useful prose.",
+    "SECTION JOB CONTINUITY:",
+    "- executionPlanAuthority contains ONLY this section's locked obligations and soft word budget; assignedQueryNodes contains ONLY section-owned search queries.",
+    "- Preserve direct answers to assigned questions and useful distinct paragraphs while correcting identified defects.",
+    "- When the section owns multiple distinct supported subquestions, preserve descriptive H3s and substantive answers for each; do not add decorative headings.",
+    "- Repair must not silently replace a supported mechanism, limitation, comparison or practical decision with repeated definitions or generic advice.",
+    "- Do not introduce an unassigned query, topic, evidence claim, external link, or section, even to reach the word target.",
     "",
     "SEMANTIC SECTION SELF-HEAL:",
     "- A semantic BLOCK means the current prose is disposable; it does NOT mean the article should fail.",
