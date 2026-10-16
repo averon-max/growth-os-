@@ -37,6 +37,8 @@ import {planPostEditorialDepthRecoveryV1}
 import {inspectQualityKeywordRegressionV1,
   selectQualityKeywordRepairSectionV1}
   from "./quality-improvement-keyword-recovery-v1";
+import {proposeOriginalSectionKeywordSentenceV1}
+  from "./quality-improvement-keyword-original-sentence-v1";
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
 import { planSameArticleQualityImprovementV1, evaluateWholeArticleQualityWordRangeV1 } from "./same-article-quality-improvement-v1";
@@ -854,16 +856,39 @@ export async function improveExistingArticleQualityV1(articleId:string,
             evidenceIds:scope.blueprint.evidenceIds,
             queryNodeIds:scope.blueprint.queryNodeIds,sourceIds:[]},
         });
-        const revised=await generator.repairSection({
-          contract:scope,section,
-          reconciliation:reconciliations[index],
-          semanticVerification:semanticVerifications[index],
-          attempt:1,criticFindings:[finding],
-          crossSectionEditorialContext:sections.flatMap((neighbor,i)=>
-            i===index?[]:[{
-              sectionIndex:i,heading:neighbor.heading,
-              prosePreview:neighbor.bodyMarkdown.slice(0,1600),
-            }]),
+        // First recover the ORIGINAL complete sentence from the SAME
+        // source-reviewed H2. Do not ask an LLM to invent an exact
+        // keyword insertion or paraphrase already correct prose.
+        // This is only a proposal: the identical factual/keyword/
+        // editorial gates and PAID current-source semantic verifier
+        // below still apply before any new checkpoint is signed.
+        const historical=targetKeywords.length===1?
+          proposeOriginalSectionKeywordSentenceV1({
+            originalBody:originalBodies[index],
+            currentBody:section.bodyMarkdown,
+            missingKeyword:targetKeywords[0],
+          }):null;
+        const revised=historical?
+          {...section,bodyMarkdown:historical.bodyMarkdown}:
+          await generator.repairSection({
+            contract:scope,section,
+            reconciliation:reconciliations[index],
+            semanticVerification:semanticVerifications[index],
+            attempt:1,criticFindings:[finding],
+            crossSectionEditorialContext:sections.flatMap((neighbor,i)=>
+              i===index?[]:[{
+                sectionIndex:i,heading:neighbor.heading,
+                prosePreview:neighbor.bodyMarkdown.slice(0,1600),
+              }]),
+          });
+        console.info("[content quality keyword proposal]",{
+          sectionIndex:index,
+          method:historical?"ORIGINAL_SOURCE_REVIEWED_SENTENCE":
+            "BOUNDED_SECTION_REPAIR",
+          expectedPhrase:targetKeywords,
+          exactPhraseInProposedText:targetKeywords.every(phrase=>
+            revised.bodyMarkdown.toLocaleLowerCase("en-US").includes(
+              phrase.toLocaleLowerCase("en-US"))),
         });
         const draftSectionBodies=sections.map((x,i)=>i===index?
           revised.bodyMarkdown:x.bodyMarkdown);
@@ -925,7 +950,22 @@ export async function improveExistingArticleQualityV1(articleId:string,
           afterWords<fullRange.min||afterWords>fullRange.max ||
           countQualityArticleH3V1(verifiedTrial.bodyMarkdown)<h3Existing ||
           detectPersistedArticleEditorialRepetitionV1(
-            verifiedTrial.bodyMarkdown).length>0)continue;
+            verifiedTrial.bodyMarkdown).length>0){
+          console.warn("[content quality keyword verified candidate declined]",{
+            sectionIndex:index,
+            source:historical?"ORIGINAL_SENTENCE":"MODEL_SECTION_REPAIR",
+            keywordPresentBeforeVerifier:
+              proposalKeywords.losses.length<keywords.losses.length,
+            keywordPresentAfterVerifier:
+              after.losses.length<keywords.losses.length,
+            beforeWordCount:draftWords,afterWordCount:afterWords,
+            h3Before:h3Existing,
+            h3After:countQualityArticleH3V1(verifiedTrial.bodyMarkdown),
+            editorialFindings:detectPersistedArticleEditorialRepetitionV1(
+              verifiedTrial.bodyMarkdown).map(f=>f.code),
+          });
+          continue;
+        }
         sections[index]=verified.section;
         reconciliations[index]=verified.reconciliation;
         semanticVerifications[index]=verified.semanticVerification;
