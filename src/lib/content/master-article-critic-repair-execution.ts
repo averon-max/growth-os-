@@ -419,7 +419,7 @@ export async function repairPreCriticEditorialRepetitionV1({
     sections[index]=verified.section;
     reconciliations[index]=verified.reconciliation;
     semantics[index]=verified.semanticVerification;
-    const rebuilt=rebuildWriterRun({
+    const rebuilt=rebuildWriterRunV1({
       contract,run,
       sections,reconciliations,semanticVerifications:semantics,
     });
@@ -447,7 +447,7 @@ export async function repairPreCriticEditorialRepetitionV1({
     throw new ContentGenerationError(
       "PRECRITIC_EDITORIAL_REPETITION_REMAINS_AFTER_BOUNDED_REPAIR");
   }
-  const rebuilt=rebuildWriterRun({
+  const rebuilt=rebuildWriterRunV1({
     contract,run,sections,reconciliations,semanticVerifications:semantics,
   });
   console.info("[content precritic editorial]",{
@@ -527,7 +527,7 @@ export async function recoverUnsupportedPriceSentenceV1({
   reconciliations[index]=verified.reconciliation;
   const semantics=[...run.semanticVerifications];
   semantics[index]=verified.semanticVerification;
-  const rebuilt=rebuildWriterRun({
+  const rebuilt=rebuildWriterRunV1({
     contract,run,
     sections,reconciliations,
     semanticVerifications:semantics,
@@ -715,7 +715,7 @@ export async function recoverPreCriticPlannedKeywordV1({
       throw new ContentGenerationError(
         "PRECRITIC_KEYWORD_REINTRODUCED_EDITORIAL_REPETITION:"+
         repeats[0].code);
-    working=rebuildWriterRun({
+    working=rebuildWriterRunV1({
       contract,run:working,
       sections,reconciliations,semanticVerifications:semantics,
     });
@@ -1255,7 +1255,7 @@ export async function executeMasterArticleCriticRepairReplayV1({
 
 
   const repairedRun =
-    rebuildWriterRun({
+    rebuildWriterRunV1({
       contract,
 
       run,
