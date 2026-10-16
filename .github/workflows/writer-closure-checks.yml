@@ -79,6 +79,8 @@ on:
       - "src/lib/keywords/keyword-question-suggestions-provider-v1.ts"
       - "src/lib/keywords/keyword-question-suggestions-provider-v1.test.ts"
       - "scripts/content-research-article-questions.ts"
+      - "src/lib/keywords/article-question-scope-v2.ts"
+      - "src/lib/keywords/article-question-scope-v2.test.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
@@ -110,3 +112,5 @@ jobs:
         run: npx vitest run src/lib/keywords/keyword-topic-intent-gate-v1.test.ts src/lib/keywords/keyword-topic-scoped-shortlist-v1.test.ts src/lib/keywords/keyword-research-v2.test.ts src/lib/keywords/keyword-intelligence-v2.test.ts
       - name: DataForSEO question provider regression
         run: npx vitest run src/lib/keywords/keyword-question-suggestions-provider-v1.test.ts
+      - name: Question query semantic scope and reader job regression
+        run: npx vitest run src/lib/keywords/article-question-scope-v2.test.ts
