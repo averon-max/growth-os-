@@ -31,6 +31,45 @@ describe("no 1-2 H2 comprehensive article can reach paid Writer",()=>{
     expect(result.insufficient).toBe(true);
     expect(result.uniqueJobs).toBe(1);
   });
+  it("rejects six decorative headings with no assigned reader work",()=>{
+    const result=audit({
+      intent:"INFORMATIONAL",pageType:"explainer",
+      sections:sections(6).map(section=>({
+        ...section,topics:[],questions:[],requiredClaimIds:[],
+      })),
+    });
+    expect(result.insufficient).toBe(true);
+    expect(result.unanchoredSections).toBe(6);
+    expect(result.anchoredSections).toBe(0);
+    expect(result.issueCode).toBe("sections[].comprehensiveReaderJobs");
+  });
+  it("accepts real multi-job coverage with one or two transitional sections",()=>{
+    const result=audit({
+      intent:"INFORMATIONAL",pageType:"explainer",
+      sections:sections(6).map((section,i)=>({
+        ...section,
+        topics:i<4?["Distinct reader topic "+i]:[],
+        questions:[],
+        requiredClaimIds:[],
+      })),
+    });
+    expect(result.insufficient).toBe(false);
+    expect(result.anchoredSections).toBe(4);
+  });
+  it("requires a mostly anchored comprehensive outline, without fact invention",()=>{
+    const result=audit({
+      intent:"INFORMATIONAL",pageType:"EXPLAINER_GUIDE",
+      sections:sections(6).map((section,i)=>({
+        ...section,
+        topics:i<2?["Reader topic "+i]:[],
+        questions:i===2?["Observed same-intent question"]:[],
+        requiredClaimIds:[],
+      })),
+    });
+    expect(result.insufficient).toBe(true);
+    expect(result.anchoredSections).toBe(3);
+    expect(result.unanchoredSections).toBe(3);
+  });
   it("does not impose comprehensive structure onto a true short FAQ",()=>{
     const result=audit({
       intent:"INFORMATIONAL",pageType:"FAQ",
