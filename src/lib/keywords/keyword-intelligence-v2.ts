@@ -226,6 +226,10 @@ export interface SerpOpportunityV2 {
   dominantPageType: string | null;
   pagesAnalyzed: number;
   features: string[];
+  /** Actual organic positions observed in this saved SERP, never inferred. */
+  topOrganic?: Array<{rank:number;domain:string;url:string}>;
+  /** null means NOT OBSERVED within fetched SERP depth, not rank=0. */
+  ownOrganicRank?: number | null;
   error?: string;
 }
 
