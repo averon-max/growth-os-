@@ -99,7 +99,7 @@ async function main():Promise<void>{
           let deepReview:unknown=null;
           try {
             if(typeof row?.organicResults==="number" &&
-              typeof row.uniqueDomains==="number" &&
+              typeof row?.uniqueDomains==="number" &&
               (!row.competitiveResearch ||
                 (Array.isArray(record(row.competitiveResearch)?.competitorPages)&&
                  Array.isArray(record(row.competitiveResearch)?.commonSections)))) {
