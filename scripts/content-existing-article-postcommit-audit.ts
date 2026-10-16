@@ -134,6 +134,11 @@ async function main(){
         primaryKeyword:article.brief.primaryKeyword,
         secondaryKeywords:article.brief.secondaryKeywords,
       }):null;
+    // Treat approved, source-hash-matched read-time ownership as the
+    // EFFECTIVE article-readiness view. Never imply that the original
+    // immutable signed graph changed. Do not show the original query
+    // ownership warning as if approval had not happened.
+    const effectiveReadiness=afterApproval??readiness;
     const provenance=object(replay?.provenance);
     const editorialRecovery=object(provenance?.editorialRecovery);
     const result={
@@ -179,13 +184,18 @@ async function main(){
       independentCopyeditProbe:
         probeSavedArticleJoinIntegrityV1(article.bodyMarkdown),
       searchEditorial:{
-        status:readiness.status,canClaimSeoReady:readiness.canClaimSeoReady,
-        publishRecommendation:readiness.publishRecommendation,
-        findings:readiness.findings.map(x=>({
+        status:effectiveReadiness.status,
+        canClaimSeoReady:effectiveReadiness.canClaimSeoReady,
+        publishRecommendation:effectiveReadiness.publishRecommendation,
+        approvedOwnerOverlayApplied:approvedOwner?.valid??false,
+        originalResearchSnapshotUnchanged:true,
+        findings:effectiveReadiness.findings.map(x=>({
           code:x.code,severity:x.severity,detail:x.detail??null,
           action:x.action,
         })),
-        suggestedQueryRebindings:readiness.suggestedQueryRebindings,
+        signedOriginalFindingCodes:readiness.findings.map(x=>x.code),
+        suggestedQueryRebindings:
+          effectiveReadiness.suggestedQueryRebindings,
       },
       knownCopyedit:{
         changes:proposal.changes,
