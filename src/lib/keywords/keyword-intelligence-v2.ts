@@ -245,6 +245,7 @@ export interface SerpOpportunityV2 {
     };
     competitorPages: Array<{
       rank:number;domain:string;url:string;fetched:boolean;
+      statusCode?:number|null;
       pageType:string;title:string|null;h1:string|null;
       h2:string[];h3:string[];wordCount:number|null;
       schemaTypes:string[];tableCount:number;authorSignal:boolean;
