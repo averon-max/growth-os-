@@ -199,3 +199,27 @@ describe("real 2026-10-16 Mac query-to-H2 evidence mismatch",()=>{
       "QUERY_TO_SECTION_BRIDGE_MISSING");
   });
 });
+
+describe("real persisted article copyedit failures from free H2 gap audit",()=>{
+  it("blocks actual glued words helpyou and thealert in the saved 2078-word article",()=>{
+    const bad={
+      ...article,
+      bodyMarkdown:article.bodyMarkdown+
+        "\n\nThese details helpyou decide whether the service is useful."+
+        "\n\nStart with the specific entry named in thealert.",
+    };
+    const found=inspectProseJoinAnomaliesV2(bad.bodyMarkdown);
+    expect(found).toContain("helpyou");
+    expect(found).toContain("thealert");
+    const readiness=audit({article:bad});
+    expect(readiness.status).toBe("EDITORIAL_REPAIR_REQUIRED");
+    expect(readiness.findings.some(x=>
+      x.code==="PROSE_SPACING_DEFECT")).toBe(true);
+    expect(readiness.canClaimSeoReady).toBe(false);
+  });
+  it("does not create false positive from ordinary readable prose",()=>{
+    const text="These details help you decide whether the service works. "+
+      "Begin with the alert and check the credit report.";
+    expect(inspectProseJoinAnomaliesV2(text)).toEqual([]);
+  });
+});
