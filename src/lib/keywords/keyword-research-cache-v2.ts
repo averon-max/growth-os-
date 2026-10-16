@@ -48,7 +48,9 @@ function keywordCluster(value: unknown): value is KeywordClusterV2 {
     typeof v.id === "string" && v.id.length > 0 &&
     typeof v.opportunityScore === "number" && Number.isFinite(v.opportunityScore) &&
     typeof v.intent === "string" &&
-    Array.isArray(v.keywords) &&
+    Array.isArray(v.keywords) && v.keywords.length > 0 &&
+    v.keywords.every(row =>
+      candidate(row) && row.clusterId === v.id) &&
     primary && typeof primary.id === "string" &&
     typeof primary.keyword === "string" && primary.keyword.length > 0 &&
     typeof primary.normalized === "string" &&
