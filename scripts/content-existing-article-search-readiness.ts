@@ -55,7 +55,7 @@ async function main(){
     });
     console.log(JSON.stringify({
       mode:"FREE_READ_ONLY_SEARCH_READINESS_V2",
-      articleId,status:article.status,
+      articleId,articleStatus:article.status,
       articleUpdatedAt:article.updatedAt.toISOString(),
       latestReplayArtifactId:replay?.id??null,
       ...readiness,
