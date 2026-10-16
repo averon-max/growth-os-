@@ -164,6 +164,22 @@ async function main(){
       }):null;
     const actualCachedArticleWords=signedPartialArticle?
       countWords(signedPartialArticle.bodyMarkdown):null;
+    const {inspectQualityKeywordRegressionV1}=
+      await import("../src/lib/content/quality-improvement-keyword-recovery-v1");
+    const {splitPersistedArticleByCanonicalH2V1}=
+      await import("../src/lib/content/existing-article-section-rebind-v1");
+    const keywordCheck=signedPartialArticle?
+      inspectQualityKeywordRegressionV1({
+        original:{title:article.title,metaDescription:article.metaDescription,
+          h1:article.h1,bodyMarkdown:article.bodyMarkdown},
+        current:signedPartialArticle,
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,
+        originalSectionBodies:splitPersistedArticleByCanonicalH2V1(
+          article.bodyMarkdown,
+          contract.sectionContracts.map(s=>s.blueprint.heading)),
+        editableSectionIndices:improvement.steps.map(s=>s.index),
+      }):null;
     const {detectHighConfidenceEditorialRepetitionV1}=
       await import("../src/lib/content/editorial-repetition-guard-v1");
     const verifiedEditorialFindings=verifiedProgress?
@@ -183,6 +199,12 @@ async function main(){
       completeArticleMinimumWords:minimumWords,
       needsPostEditorialDepthRecovery:actualCachedArticleWords!==null&&
         actualCachedArticleWords<minimumWords,
+      plannedKeywordCoverage:{
+        originalUsed:keywordCheck?.originalUsed??null,
+        cachedUsed:keywordCheck?.currentUsed??null,
+        restored:keywordCheck?.restored??null,
+        lostExactPhrases:keywordCheck?.losses??[],
+      },
       editorialRepetitionFindings:verifiedEditorialFindings.map(f=>({
         code:f.code,sectionIndex:f.sectionIndex,
         affectedSections:f.affectedSections,
