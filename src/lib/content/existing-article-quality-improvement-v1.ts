@@ -28,6 +28,10 @@ import { detectPersistedArticleEditorialRepetitionV1 } from "./editorial-repetit
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
 import { planSameArticleQualityImprovementV1 } from "./same-article-quality-improvement-v1";
+import {
+  assessVerifiedDepthRevisionV1,
+  selectRemainingQualityCompensationV1,
+} from "./same-article-improvement-convergence-v1";
 import { countSectionWordsV1,verifyGeneratedSectionOnlyV1,
   supportsMasterSectionRepairGenerator } from "./master-section-repair";
 import { supportsMasterSectionSemanticVerifier }
@@ -128,7 +132,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     });
 
     const budget=createContentRunBudgetV1({
-      maxModelCalls:30,maxEstimatedInputTokens:160000,maxRepairCalls:5,
+      maxModelCalls:38,maxEstimatedInputTokens:180000,maxRepairCalls:7,
     });
     const generator=withContentRunBudgetV1({generator:geminiGenerator,budget});
     check(supportsMasterSectionRepairGenerator(generator)&&
@@ -252,6 +256,13 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const sections=[...run.sections],reconciliations=[...run.reconciliations],
       semanticVerifications=[...run.semanticVerifications];
     const repairedSectionIds:number[]=[];
+    const repairedIndices=new Set<number>();
+    const usedCompensationIndices:number[]=[];
+    const verifiedSectionMetrics: {
+      sectionIndex:number;wordsBefore:number;wordsAfter:number;
+      localTarget:number;localShortfall:number;h3Before:number;h3After:number;
+      compensation:boolean;
+    }[]=[];
     for(const step of improvePlan.steps){
       const current=sections[step.index];
       const scope=contract.sectionContracts[step.index];
@@ -295,13 +306,153 @@ export async function improveExistingArticleQualityV1(articleId:string,
       const verified=await verifyGeneratedSectionOnlyV1({
         contract:scope,section:revised,generator,
       });
-      check(countSectionWordsV1(verified.section.bodyMarkdown)>=step.minWords,
-        "SAVED_QUALITY_REPAIR_DEPTH_NOT_MET:"+step.index);
+      const beforeH3=(current.bodyMarkdown.match(/^###\\s+/gm)??[]).length;
+      const afterH3=(verified.section.bodyMarkdown.match(/^###\\s+/gm)??[]).length;
+      const sectionWords=countSectionWordsV1(verified.section.bodyMarkdown);
+      const progress=assessVerifiedDepthRevisionV1({
+        originalWords:step.currentWords,
+        verifiedWords:sectionWords,
+        plannedMinWords:step.minWords,
+        maxWords:step.maxWords,
+        h3Before:beforeH3,h3After:afterH3,
+      });
+      check(progress.accepted,
+        "SAVED_QUALITY_REPAIR_NO_SUBSTANTIVE_VERIFIED_GAIN:"+
+        step.index+":"+progress.reason);
+      if(progress.plannedLocalShortfall>0)
+        console.info("[content quality verified soft local word goal]",{
+          sectionIndex:step.index,
+          target:step.minWords,actual:sectionWords,
+          shortfall:progress.plannedLocalShortfall,
+          verdict:"ACCEPT_VERIFIED_AND_CHECK_GLOBAL_ARTICLE",
+        });
       sections[step.index]=verified.section;
       reconciliations[step.index]=verified.reconciliation;
       semanticVerifications[step.index]=verified.semanticVerification;
       repairedSectionIds.push(step.index);
+      repairedIndices.add(step.index);
+      verifiedSectionMetrics.push({
+        sectionIndex:step.index,wordsBefore:step.currentWords,
+        wordsAfter:sectionWords,localTarget:step.minWords,
+        localShortfall:progress.plannedLocalShortfall,
+        h3Before:beforeH3,h3After:afterH3,compensation:false,
+      });
     }
+    // A verified section can be slightly under its SOFT local word goal.
+    // Do not throw away a safe +51-word expansion merely because its
+    // target was +60. The hard depth floor belongs to the whole guide.
+    // Allow up to TWO additional, source-scoped, reverified revisions
+    // only when the global word/H3 gap genuinely remains. No new
+    // research, title, H1, brief, article or original Writer run.
+    for(let extra=0;extra<2;extra++){
+      const currentArticle=rebuildWriterRunV1({
+        contract,run,sections,reconciliations,semanticVerifications,
+      }).article;
+      const wordsNow=countWords(currentArticle.bodyMarkdown);
+      const h3Now=(currentArticle.bodyMarkdown.match(/^###\\s+/gm)??[]).length;
+      const supplement=selectRemainingQualityCompensationV1({
+        sections:sections.map((section,index)=>({
+          index,currentWords:countSectionWordsV1(section.bodyMarkdown),
+          maxWords:sectionPlan[index]?.targetWords?.max??0,
+          claimCount:sectionPlan[index]?.requiredClaimIds.length??0,
+          evidenceCount:sectionPlan[index]?.evidenceIds.length??0,
+          h3Count:(section.bodyMarkdown.match(/^###\\s+/gm)??[]).length,
+        })),
+        usedIndices:usedCompensationIndices,
+        minimumWords,currentWords:wordsNow,currentH3:h3Now,
+        requiredH3:improvePlan.headingOpportunityCount>=2?2:0,
+      });
+      if(!supplement)break;
+      const index=supplement.index;
+      const before=sections[index];
+      const beforeWords=countSectionWordsV1(before.bodyMarkdown);
+      const beforeH3=(before.bodyMarkdown.match(/^###\\s+/gm)??[]).length;
+      const scope=contract.sectionContracts[index];
+      check(before&&scope,
+        "SAVED_QUALITY_COMPENSATION_SECTION_MISSING:"+index);
+      const goal=createMasterArticleCriticFindingV1({
+        criticId:"COVERAGE",
+        code:"SOURCE_BACKED_GLOBAL_ARTICLE_DEPTH_COMPENSATION",
+        severity:"BLOCK",
+        location:{scope:"SECTION",sectionIndex:index,
+          sectionNumber:scope.sectionNumber,
+          heading:scope.blueprint.heading},
+        repairScope:"SECTION",
+        message:"The complete guide still needs "+
+          supplement.remainingWords+
+          " source-backed useful words and "+
+          supplement.remainingH3+" genuine H3 subsections.",
+        recommendation:"Improve this exact section only using its "+
+          "existing verified claims, source excerpts and information "+
+          "jobs. Make concrete distinctions and direct answers; "+
+          "do not repeat other sections, invent facts or pad keywords. "+
+          (supplement.remainingH3>0?
+           "Where the section has two distinct verified questions, "+
+           "give each a descriptive Markdown H3 and substantive prose. ":"")+
+          "Stay within the section maximum.",
+        evidence:{claimIds:scope.blueprint.requiredClaims,
+          evidenceIds:scope.blueprint.evidenceIds,
+          queryNodeIds:scope.blueprint.queryNodeIds,sourceIds:[]},
+      });
+      const proposal=await generator.repairSection({
+        contract:scope,section:before,
+        reconciliation:reconciliations[index],
+        semanticVerification:semanticVerifications[index],attempt:1,
+        depthRepair:{
+          currentWords:beforeWords,minWords:supplement.minWords,
+          preferredWords:supplement.preferredWords,maxWords:supplement.maxWords,
+        },
+        criticFindings:[goal],
+        crossSectionEditorialContext:sections.flatMap((neighbor,other)=>
+          other===index?[]:[{
+            sectionIndex:other,heading:neighbor.heading,
+            prosePreview:neighbor.bodyMarkdown.slice(0,1700),
+          }]),
+      });
+      const verified=await verifyGeneratedSectionOnlyV1({
+        contract:scope,section:proposal,generator,
+      });
+      const afterWords=countSectionWordsV1(verified.section.bodyMarkdown);
+      const afterH3=(verified.section.bodyMarkdown.match(/^###\\s+/gm)??[]).length;
+      const progress=assessVerifiedDepthRevisionV1({
+        originalWords:beforeWords,verifiedWords:afterWords,
+        plannedMinWords:supplement.minWords,
+        maxWords:supplement.maxWords,
+        h3Before:beforeH3,h3After:afterH3,
+        isCompensation:true,
+      });
+      // The source-safe verifier has already run. If no measurable
+      // improvement occurred, do not replace working prose or retry
+      // the same section; the final global gate will still fail closed.
+      usedCompensationIndices.push(index);
+      if(!progress.accepted){
+        console.warn("[content quality compensation ineffective]",{
+          sectionIndex:index,gain:progress.gain,
+          headingGain:progress.headingGain,reason:progress.reason,
+        });
+        continue;
+      }
+      sections[index]=verified.section;
+      reconciliations[index]=verified.reconciliation;
+      semanticVerifications[index]=verified.semanticVerification;
+      repairedIndices.add(index);
+      verifiedSectionMetrics.push({
+        sectionIndex:index,wordsBefore:beforeWords,wordsAfter:afterWords,
+        localTarget:supplement.minWords,
+        localShortfall:progress.plannedLocalShortfall,
+        h3Before:beforeH3,h3After:afterH3,compensation:true,
+      });
+      console.info("[content quality safe compensation]",{
+        sectionIndex:index,wordsBefore:beforeWords,wordsAfter:afterWords,
+        headingGain:progress.headingGain,
+      });
+    }
+    const postRevisionWords=countWords(rebuildWriterRunV1({
+      contract,run,sections,reconciliations,semanticVerifications,
+    }).article.bodyMarkdown);
+    check(postRevisionWords>=minimumWords,
+      "SAVED_QUALITY_GLOBAL_DEPTH_STILL_INSUFFICIENT:"+
+      postRevisionWords+":"+minimumWords);
     const improvedRun=rebuildWriterRunV1({
       contract,run,sections,reconciliations,semanticVerifications,
     });
@@ -313,10 +464,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
       "SAVED_QUALITY_FINAL_CRITICS_BLOCKED");
     const repaired={
       run:improvedRun,finalCritics,
-      repairs:repairedSectionIds.map(sectionIndex=>({sectionIndex})),
+      repairs:[...repairedIndices].map(sectionIndex=>({sectionIndex})),
       provenance:{wholeArticleRewriteCount:0,
-        repairedSectionCount:repairedSectionIds.length,
-        repairAttemptCount:repairedSectionIds.length},
+        repairedSectionCount:repairedIndices.size,
+        repairAttemptCount:verifiedSectionMetrics.length,
+      },
     };
     const candidate=articleShape(repaired.run.article);
     check(!sameArticle(initial,candidate)&&candidate.title===initial.title &&
