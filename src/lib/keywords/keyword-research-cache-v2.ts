@@ -1,5 +1,5 @@
 import type { RelatedKeywordResult } from "./dataforseo-provider";
-import {assessKeywordTopicIntentV1} from "./keyword-topic-intent-gate-v1";
+import {assessKeywordTopicIntentV1,keywordCoreTopicV1} from "./keyword-topic-intent-gate-v1";
 import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
 import {
   validateKeywordOpportunityChoiceV2,
@@ -145,7 +145,7 @@ export function parseCachedKeywordResearchV2(
   if (winner && v.requireDeepCompetitorEvidence === true &&
     !v.serpResults.some(row =>
       row.query===winner && row.clusterId===decision.selectedClusterId &&
-      auditDeepSerpReadinessV1(row).status==="DEEP_COMPETITOR_OBSERVED"))
+      auditDeepSerpReadinessV1(row,keywordCoreTopicV1(v.seed as string)).status==="DEEP_COMPETITOR_OBSERVED"))
     return null;
   if (winner && !v.aiUsed) {
     // A stored deterministic decision must reproduce EXACTLY from the
@@ -154,7 +154,7 @@ export function parseCachedKeywordResearchV2(
       v.clusters as KeywordClusterV2[],
       v.requireDeepCompetitorEvidence === true
         ?(v.serpResults as SerpOpportunityV2[]).filter(row =>
-          auditDeepSerpReadinessV1(row).status==="DEEP_COMPETITOR_OBSERVED")
+          auditDeepSerpReadinessV1(row,keywordCoreTopicV1(v.seed as string)).status==="DEEP_COMPETITOR_OBSERVED")
         :v.serpResults as SerpOpportunityV2[],
     );
     if (expected.status !== "SELECTED" ||
