@@ -388,6 +388,58 @@ export async function improveExistingArticleQualityV1(articleId:string,
       await saveQualityProgress();
     }
     for(const step of improvePlan.steps){
+      if(repairMode==="EXACT_SIGNED_CITATIONS"){
+        const originalBody=originalBodies[step.index];
+        const intendedBody=citationBodies[step.index];
+        const current=sections[step.index],scope=contract.sectionContracts[step.index];
+        check(current&&scope&&originalBody!==undefined&&
+          intendedBody!==undefined,
+          "SAVED_SIGNED_CITATION_REPAIR_SECTION_NOT_BOUND");
+        // No "nearby" or newly researched citation can be inserted by
+        // inference. Only exactly matching signed claim text in the
+        // persisted H2 is eligible; note that existing progress can differ.
+        if(alreadyChangedSet.has(step.index)){
+          check(current.bodyMarkdown.trim()===intendedBody.trim(),
+            "SAVED_SIGNED_CITATION_RESUMED_BODY_MISMATCH");
+          if(!repairedSectionIds.includes(step.index))
+            repairedSectionIds.push(step.index);
+          continue;
+        }
+        check(current.bodyMarkdown.trim()===originalBody.trim(),
+          "SAVED_SIGNED_CITATION_BASELINE_ARTICLE_DRIFT");
+        check(intendedBody.trim()!==originalBody.trim(),
+          "SAVED_SIGNED_CITATION_NO_ACTUAL_SECTION_CHANGE");
+        const proposal={...current,bodyMarkdown:intendedBody};
+        // The persisted SectionContract remains the sole source of facts;
+        // reuse the paid current-source semantic verifier. Reject any
+        // rewritten text or stripped source links after verification.
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:scope,section:proposal,generator,
+        });
+        check(verified.section.bodyMarkdown.trim()===intendedBody.trim(),
+          "SAVED_SIGNED_CITATION_SEMANTIC_VERIFIER_CHANGED_TEXT");
+        const candidateBodies=sections.map((x,index)=>
+          index===step.index?verified.section.bodyMarkdown:x.bodyMarkdown);
+        const fullBody=candidateBodies.map((text,index)=>
+          "## "+contract.sectionContracts[index]!.blueprint.heading+
+          "\n\n"+text).join("\n\n");
+        const scoped=verifyExistingArticleCitationScopeV1({
+          candidateBodyMarkdown:fullBody,plan,runtime,
+        });
+        check(scoped.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
+          "SAVED_SIGNED_CITATION_URL_SCOPE_NOT_VERIFIED");
+        sections[step.index]=verified.section;
+        reconciliations[step.index]=verified.reconciliation;
+        semanticVerifications[step.index]=verified.semanticVerification;
+        repairedSectionIds.push(step.index);
+        await saveQualityProgress();
+        console.info("[same article citation section verified]",{
+          articleId,sectionIndex:step.index,
+          citationCount:signedCitationDraft!.sections[step.index]!
+            .proposedCitationCount,
+        });
+        continue;
+      }
       if(alreadyChangedSet.has(step.index)){
         console.info("[content quality section resume]",{
           sectionIndex:step.index,reason:"ALREADY_VERIFIED_SAME_SOURCE",
