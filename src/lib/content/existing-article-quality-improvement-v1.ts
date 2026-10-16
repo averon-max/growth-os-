@@ -65,6 +65,8 @@ import {splitPersistedArticleByCanonicalH2V1}
   from "./existing-article-section-rebind-v1";
 import {draftExistingArticleSignedCitationsV1}
   from "./existing-article-source-citation-repair-v1";
+import {loadReviewedSignedCitationDraftV1}
+  from "./existing-article-reviewed-citation-recovery-v1";
 import {verifyExistingArticleCitationScopeV1}
   from "./existing-article-citation-authority-v1";
 import {
@@ -112,7 +114,8 @@ const active=new Set<string>();
 
 export async function improveExistingArticleQualityV1(articleId:string,
   expectedUpdatedAt:string,
-  repairMode:"DEPTH"|"EXACT_SIGNED_CITATIONS"="DEPTH"){
+  repairMode:"DEPTH"|"EXACT_SIGNED_CITATIONS"|
+    "REVIEWED_SIGNED_CITATIONS"="DEPTH"){
   check(/^[a-z0-9_-]{5,100}$/i.test(articleId),
     "SAVED_EDITORIAL_INVALID_ARTICLE_ID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -161,11 +164,15 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // Citation-only repair is not a word-count expansion and cannot
     // claim new evidence authority. Preflight exact claim anchors BEFORE
     // spending on any verifier or reading/writing section progress.
+    const citationMode=repairMode!=="DEPTH";
     const signedCitationDraft=repairMode==="EXACT_SIGNED_CITATIONS"
       ?draftExistingArticleSignedCitationsV1({
         bodyMarkdown:original.bodyMarkdown,plan,runtime})
-      :null;
-    if(repairMode==="EXACT_SIGNED_CITATIONS"){
+      :repairMode==="REVIEWED_SIGNED_CITATIONS"
+        ?await loadReviewedSignedCitationDraftV1({
+          articleId,bodyMarkdown:original.bodyMarkdown,plan,runtime})
+        :null;
+    if(citationMode){
       check(signedCitationDraft &&
         signedCitationDraft.totalAddedCitations>0,
         "SAVED_SIGNED_CITATION_REPAIR_NO_EXACT_CLAIM_ANCHORS");
@@ -200,8 +207,10 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const qualityProgressDirectory=qualityImprovementProgressDirectoryV1({
       // Separate the word-expansion and citation-repair checkpoints:
       // each requires different editor intent and allowable mutations.
-      root:repairMode==="EXACT_SIGNED_CITATIONS"
-        ?join(checkpointDir(),"signed-citation-repair"):checkpointDir(),
+      root:citationMode
+        ?join(checkpointDir(),repairMode==="REVIEWED_SIGNED_CITATIONS"
+          ?"reviewed-signed-citation-repair":"signed-citation-repair")
+        :checkpointDir(),
       articleId,briefId:original.briefId,
       updatedAt:original.updatedAt.toISOString(),
       article:initial,snapshot:snap.plan,contract,
@@ -362,7 +371,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
           maxWords:sectionPlan[x.sectionIndex]?.targetWords?.max??0,
           suggestUsefulH3:false,
         })):[];
-    const improvePlan=repairMode==="EXACT_SIGNED_CITATIONS"
+    const improvePlan=citationMode
       ?{...ordinaryPlan,eligible:citationSteps.length>0,
         reason:"ENOUGH_VERIFIED_CAPACITY" as const,
         neededWords:0,steps:citationSteps}
@@ -397,7 +406,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
       await saveQualityProgress();
     }
     for(const step of improvePlan.steps){
-      if(repairMode==="EXACT_SIGNED_CITATIONS"){
+      if(citationMode){
         const originalBody=originalBodies[step.index];
         const intendedBody=citationBodies[step.index];
         const current=sections[step.index],scope=contract.sectionContracts[step.index];
@@ -1113,7 +1122,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     check(detectPersistedArticleEditorialRepetitionV1(
       improvedRun.article.bodyMarkdown).length===0,
       "SAVED_QUALITY_PRECRITIC_EDITORIAL_REPETITION");
-    if(repairMode==="EXACT_SIGNED_CITATIONS"){
+    if(citationMode){
       const citationScope=verifyExistingArticleCitationScopeV1({
         candidateBodyMarkdown:improvedRun.article.bodyMarkdown,plan,runtime,
       });
@@ -1263,9 +1272,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
           provenance:json({
             ...replay.provenance,
             editorialRecovery:{
-              version:repairMode==="EXACT_SIGNED_CITATIONS"
-                ?"SAVED_ARTICLE_SIGNED_CITATION_REPAIR_V1":
-                "SAVED_ARTICLE_QUALITY_IMPROVEMENT_V1",
+              version:repairMode==="REVIEWED_SIGNED_CITATIONS"
+                ?"SAVED_ARTICLE_REVIEWED_SIGNED_CITATION_REPAIR_V1":
+                repairMode==="EXACT_SIGNED_CITATIONS"
+                  ?"SAVED_ARTICLE_SIGNED_CITATION_REPAIR_V1":
+                  "SAVED_ARTICLE_QUALITY_IMPROVEMENT_V1",
               previousArticle:initial,
               previousStatus:original.status,
               previousArticleUpdatedAt:original.updatedAt.toISOString(),
@@ -1290,9 +1301,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
     });
     return {
       articleId,status:"IN_REVIEW" as const,
-      result:repairMode==="EXACT_SIGNED_CITATIONS"
-        ?"SAME_ARTICLE_SIGNED_CITATION_REPAIR_COMMITTED" as const:
-        "SAME_ARTICLE_QUALITY_IMPROVEMENT_COMMITTED" as const,
+      result:repairMode==="REVIEWED_SIGNED_CITATIONS"
+        ?"SAME_ARTICLE_REVIEWED_SIGNED_CITATIONS_COMMITTED" as const:
+        repairMode==="EXACT_SIGNED_CITATIONS"
+          ?"SAME_ARTICLE_SIGNED_CITATION_REPAIR_COMMITTED" as const:
+          "SAME_ARTICLE_QUALITY_IMPROVEMENT_COMMITTED" as const,
       newFingerprint:fingerprint,
       oldFingerprint,
       replayArtifactId:committed,
