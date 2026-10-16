@@ -33,6 +33,17 @@ Article ID: `cmv606xg60006siqlir66uq23`, still `IN_REVIEW` on last user DB check
 
 **Important nuance:** Some observed source URLs are from publishers of different authority; signed evidence allocation does not imply that every paragraph is source-supported. Paid semantic review must reject any complete sentence that is not directly entailed by its exact signed excerpt, not simply topical overlap.
 
+## New SHA-bound semantic review resume and existing-article commit bridge — pending Mac validation
+
+Following the user's **14/14** successful local tests and FREE worklist (5 eligible sections, 15 unmatched signed evidence pairs):
+
+1. `existing-article-semantic-citation-checkpoint-v1.ts` binds model-selected exact sentence IDs to original article SHA256, full source excerpts, source IDs, section, and review policy. Validates all model responses are complete and signed. Paid review script atomically saves each successful H2, then resumes completed H2s on future runs without repurchasing. Invalid/missing checkpoint fails closed. A model error after the request is charged may still incur a fee.
+2. `existing-article-reviewed-citation-recovery-v1.ts` ignores loose exported Markdown. It rereads all signed sources and exact original article sentences, verifies every persisted checkpoint, and reconstructs only approved source-scoped candidate citations. Requires all H2s with verified evidence have at least one authorized visible citation before later editorial expense.
+3. Existing `improveExistingArticleQualityV1` now accepts explicit `REVIEWED_SIGNED_CITATIONS` mode, isolated checkpoint path keyed to SHA256 of proposed body. Reuses current source semantic validator, nine critics, bounded saved SERP Replay, original-article CAS transaction, and replay provenance. Same article ID and status `IN_REVIEW`; no automatic CMS push. CLI `--repair-reviewed-citations` previews for FREE only once semantic review checkpoints exist; actual `--execute --authorize-paid-improvement` is independent separately authorized model activity.
+4. New unit tests cover per-H2 resume keys, article/text/source changes, full pair validation, stale checkpoints, and safe same-ID draft reconstruction. **These latest changes are untested until the user reruns `npx tsc --noEmit` and Vitest.**
+
+Next sequence: FREE TypeScript/tests; only if green, explicit small (at most 5) paid semantic source-to-existing-sentence reviews; then FREE `--repair-reviewed-citations` preview. Proceed to paid existing-article nine-critic/CAS only when all six H2s have sufficient signed citations. Versioned Query Graph H2 ownership still requires explicit review before publication.
+
 ## Safe local acceptance sequence
 
 1. Fetch PR and test all changed TypeScript and the specific pure verifier tests.
