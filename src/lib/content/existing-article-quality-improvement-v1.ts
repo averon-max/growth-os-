@@ -294,7 +294,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
         maxWords:sectionPlan[index]?.targetWords?.max??0,
         claimCount:sectionPlan[index]?.requiredClaimIds?.length??0,
         evidenceCount:sectionPlan[index]?.evidenceIds?.length??0,
-        h3Count:(section.bodyMarkdown.match(/^###\s+/gm)??[]).length,
+        h3Count:(body.match(/^###\s+/gm)??[]).length,
       })),
     });
     check(improvePlan.eligible,"SAVED_QUALITY_"+improvePlan.reason);
