@@ -38,6 +38,15 @@ export async function loadReviewedSignedCitationDraftV1({
   const worklist=buildSignedSemanticCitationWorklistV1({
     bodyMarkdown:exact.proposedBodyMarkdown,plan,runtime,
   });
+  const baselineScope=verifyExistingArticleCitationScopeV1({
+    candidateBodyMarkdown:exact.proposedBodyMarkdown,plan,runtime,
+  });
+  if(baselineScope.unapprovedLinks>0)
+    throw new Error("SIGNED_CITATION_BASELINE_SOURCE_SCOPE_INVALID");
+  const requiresReview=(index:number)=>(
+    (baselineScope.sections[index]?.assignedEvidence??0)>0 &&
+    (baselineScope.sections[index]?.approvedLinks??0)===0
+  );
   const root=checkpointDirectory??resolve(
     ".growth-os-tmp/citation-review/checkpoints",articleId);
   const verdicts=[];
@@ -53,9 +62,18 @@ export async function loadReviewedSignedCitationDraftV1({
     const path=join(root,section.sectionIndex+"-"+key+".json");
     let content:string;
     try{content=await readFile(path,"utf8");}
-    catch{throw new Error(
-      "SIGNED_CITATION_REVIEW_CHECKPOINT_MISSING_OR_UNREADABLE_H2:"+
-      section.sectionIndex);
+    catch(error){
+      // No model review is needed for H2s that already have an
+      // authorized, verified excerpt citation. An OPTIONAL old
+      // checkpoint is consumed above if it exists, but never required.
+      if(error&&typeof error==="object"&&"code" in error&&
+        error.code==="ENOENT"&&!requiresReview(section.sectionIndex)){
+        verdicts.push({sectionIndex:section.sectionIndex,choices:[]});
+        continue;
+      }
+      throw new Error(
+        "SIGNED_CITATION_REVIEW_CHECKPOINT_MISSING_OR_UNREADABLE_H2:"+
+        section.sectionIndex);
     }
     let parsed:unknown;
     try{parsed=JSON.parse(content);}
