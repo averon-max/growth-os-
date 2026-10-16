@@ -76,8 +76,8 @@ describe("reviewed signed same-article recovery cannot trust loose markdown",()=
   it("does not require or repurchase optional additional reviews for already-cited H2s",async()=>{
     const directory=await mkdtemp(join(tmpdir(),"reviewed-citation-covered-"));
     try{
-      const coveredText="## What happens after a credit alert?\\n\\n"+
-        "Consumers may dispute inaccurate entries on their credit reports.\\n\\n"+
+      const coveredText="## What happens after a credit alert?\n\n"+
+        "Consumers may dispute inaccurate entries on their credit reports.\n\n"+
         "If your credit report has an incorrect entry, you can dispute that item with the reporting agency.";
       const coveredPlan={sections:[{
         state:"WRITABLE",heading:"What happens after a credit alert?",
