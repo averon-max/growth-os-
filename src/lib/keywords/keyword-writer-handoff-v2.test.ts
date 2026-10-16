@@ -4,10 +4,10 @@ import { projectApprovedKeywordEvidenceV2, type KeywordResearchResultV2 } from "
 
 function sample(): KeywordResearchResultV2 {
   const cleanup = prepareKeywordOpportunitiesV2({
-    seed: "credit monitoring",
+    seed: "what is credit monitoring",
     industry: "credit monitoring",
     observations: Array.from({ length: 120 }, (_, index) => ({
-      keyword: "credit monitoring option " + index,
+      keyword: "how does credit monitoring option " + index + " work",
       source: "DATAFORSEO" as const,
       searchVolume: 120 - index,
       keywordDifficulty: 20,
@@ -21,7 +21,7 @@ function sample(): KeywordResearchResultV2 {
     approvedResearchKey: "research-key",
     websiteId: "site-1",
     market: "US",
-    seed: "credit monitoring",
+    seed: "what is credit monitoring",
     collectedAt: new Date().toISOString(),
     observed: 120,
     excludedCount: 0,
@@ -47,6 +47,47 @@ describe("V2 to Content Writer keyword handoff", () => {
     expect(rows[0]?.keyword).toBe(research.selectedKeyword);
     expect(rows[0]?.searchVolume).toBe(1);
     expect(new Set(rows.map(row => row.keyword)).size).toBe(80);
+  });
+
+  it("does not trust an old cached wrong-intent approved cluster",()=>{
+    const research=sample();
+    const bad={
+      ...research.candidateSnapshots[0]!,
+      keyword:"credit karma phone number hours",
+      normalized:"credit karma phone number hours",
+      clusterId:"old_bad_cluster",
+    };
+    const fraudulentCluster={
+      id:"old_bad_cluster",intent:bad.intent,
+      primary:bad,keywords:[bad],opportunityScore:999,
+    };
+    const output=projectApprovedKeywordEvidenceV2({
+      ...research,
+      clusters:[fraudulentCluster,...research.clusters],
+      candidateSnapshots:[bad,...research.candidateSnapshots],
+    });
+    expect(output.map(row=>row.keyword)).not.toContain(
+      "credit karma phone number hours");
+  });
+
+  it("blocks a legacy selected keyword with support/navigation intent",()=>{
+    const research=sample();
+    const bad={
+      ...research.candidateSnapshots[0]!,
+      keyword:"credit karma phone number hours",
+      normalized:"credit karma phone number hours",
+      clusterId:"bad_old_cluster",
+    };
+    expect(()=>projectApprovedKeywordEvidenceV2({
+      ...research,
+      clusters:[...research.clusters,{
+        id:"bad_old_cluster",intent:bad.intent,
+        primary:bad,keywords:[bad],opportunityScore:999,
+      }],
+      candidateSnapshots:[bad,...research.candidateSnapshots],
+      decision:{...research.decision,selectedClusterId:"bad_old_cluster"},
+      selectedKeyword:bad.keyword,
+    })).toThrow("KEYWORD_V2_WINNER_TOPIC_INTENT_NOT_APPROVED");
   });
 
   it("never leaks excluded competitor, login or off-topic keywords into Writer",()=>{
