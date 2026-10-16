@@ -594,7 +594,7 @@ model SerpReplayArtifact {
 model ContentQueryOwnerReview {
   id                            String @id @default(cuid())
   contentArticleId              String
-  contentArticle                ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
+  contentArticle                ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade, map: "cqor_article_fk")
   evidenceSnapshotId            String
   evidenceSnapshot              ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade, map: "cqor_evidence_fk")
   queryNodeId                   String
