@@ -334,6 +334,55 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.openai).not.toHaveBeenCalled();
   });
 
+  it("requires true deep top-one competitor coverage before automatic selection",async()=>{
+    const limited=await researchKeywordOpportunitiesV2({
+      ...input,requireDeepCompetitorEvidence:true,useGptDecision:false,
+    });
+    expect(limited.decision.status).toBe("REVIEW");
+    expect(limited.selectedKeyword).toBeNull();
+    const organic=Array.from({length:8},(_,i)=>({
+      rank:i+1,domain:"domain"+i+".example",
+      url:"https://domain"+i+".example/article",
+    }));
+    mocks.serp.mockResolvedValue({
+      organic,serpFeatures:["organic"],
+      benchmark:{
+        dominantPageType:"blog",analyzedPages:6,
+        medianWordCount:2100,medianH2:7,medianH3:9,
+      },
+      questions:["What does credit monitoring do?"],
+      aiOverview:{present:false,asynchronous:false,references:[]},
+      commonSections:[{topic:"Alerts",pages:5,coveragePct:80,examples:[]}],
+      commonTerms:[],
+      competitors:organic.map((row,i)=>({
+        ...row,fetched:i<6,pageType:"blog",
+        title:"Credit monitoring",h1:"What is credit monitoring",
+        h2:["Alerts"],h3:["Fraud"],wordCount:2050,
+        schemaTypes:["Article"],tableCount:0,
+        authorSignal:true,dateSignal:true,error:i<6?null:"BLOCKED",
+      })),
+    });
+    // Change the website ID so each pass uses an independent checkpoint.
+    // The first limited result must never be promoted retroactively.
+    mocks.website.mockResolvedValue({
+      id:"another-website",url:"https://scanmycreds.com",
+      business:{industry:"credit monitoring",workspaceId:"workspace"},
+    });
+    const deep=await researchKeywordOpportunitiesV2({
+      ...input,websiteId:"another-website",
+      requireDeepCompetitorEvidence:true,useGptDecision:false,
+    });
+    expect(deep.decision.status).toBe("SELECTED");
+    expect(deep.serpResults[0]?.competitiveResearch?.fetchedCompetitorPages).toBe(6);
+    expect(deep.serpResults[0]?.competitiveResearch?.competitorPages[0]?.rank).toBe(1);
+    const rerun=await researchKeywordOpportunitiesV2({
+      ...input,websiteId:"another-website",
+      requireDeepCompetitorEvidence:true,useGptDecision:false,
+    });
+    expect(rerun.cacheHit).toBe(true);
+    expect(rerun.selectedKeyword).toBe(deep.selectedKeyword);
+  });
+
   it("after a GPT failure, does not pay for discovery or completed SERPs again", async () => {
     mocks.openai.mockRejectedValueOnce(new Error("GPT_TEMPORARY_FAILURE"));
     await expect(researchKeywordOpportunitiesV2(input))
