@@ -41,6 +41,8 @@ async function main(){
       throw new Error("QUESTION_RESEARCH_SIGNED_MISSION_LANGUAGE_MISMATCH");
     const {assessKeywordTopicIntentV1}=
       await import("../src/lib/keywords/keyword-topic-intent-gate-v1");
+    const {assessArticleQuestionScopeV2,groupObservedArticleQuestionsV2}=
+      await import("../src/lib/keywords/article-question-scope-v2");
     const seed=article.brief.primaryKeyword;
     const topic=assessKeywordTopicIntentV1({seed,query:seed}).coreTopic;
     if(topic.length<4)throw new Error("QUESTION_RESEARCH_CORE_TOPIC_MISSING");
@@ -104,22 +106,23 @@ async function main(){
             articleSeed:seed,data})),fetchedAt:new Date()},
       });
     }
+    const semantic=groupObservedArticleQuestionsV2(
+      seed,data.suggestions);
     const classified=data.suggestions.map(suggestion=>{
-      const local=assessKeywordTopicIntentV1({
+      const assessed=assessArticleQuestionScopeV2({
         seed,query:suggestion.keyword,
+        providerMainIntent:suggestion.providerMainIntent,
       });
-      const providerIntent=suggestion.providerMainIntent?.toLowerCase()??null;
-      const eligibleForEditorialReview=
-        local.eligibleForArticleSerp&&
-        (providerIntent===null||providerIntent==="informational");
       return {
-        ...suggestion,decision:local.decision,
-        pageIntent:local.pageIntent,providerIntent,
-        eligibleForEditorialReview,
-        reviewReason:!local.eligibleForArticleSerp?local.reason:
-          providerIntent&&providerIntent!=="informational"?
-          "PROVIDER_INTENT_NOT_INFORMATIONAL":
-          "NEEDS_SECTION_EVIDENCE_AND_SAME_PAGE_OWNERSHIP",
+        ...suggestion,
+        decision:assessed.baseDecision,
+        semanticScope:assessed.status,
+        semanticFamily:assessed.family,
+        providerIntent:assessed.providerIntent,
+        eligibleForEditorialReview:
+          assessed.status==="CORE_INFORMATIONAL_CANDIDATE",
+        reviewReason:assessed.reason,
+        requiresEvidenceAndSamePageApproval:true,
       };
     });
     console.log(JSON.stringify({
@@ -130,10 +133,17 @@ async function main(){
       chargedUsdThisRun:providerCalls?data.providerChargedUsd:0,
       providerReportedCostUsdHistorical:data.providerChargedUsd,
       observedSuggestions:classified.length,
+      semanticScopeSummary:{
+        topicalCandidates:semantic.topicalQuestions,
+        separatePage:semantic.separatePageQueries.length,
+        humanIntentReview:semantic.intentReviewQueries.length,
+      },
+      nonAdditiveQuestionClusters:semantic.semanticClusters,
       editorialReviewCandidates:classified.filter(s=>
         s.eligibleForEditorialReview),
-      otherIntents:classified.filter(s=>!s.eligibleForEditorialReview)
-        .slice(0,40),
+      separatePageQueries:semantic.separatePageQueries.slice(0,35),
+      humanIntentReviewQueries:semantic.intentReviewQueries.slice(0,35),
+      noteOnGrouping:"Similar queries in a family do NOT have additive search volume. Their individual volume/KD is shown, not a fabricated total.",
       note:"These are real provider candidates, not article claims, validated H2 coverage, or publication approval. Review query intent and evidence before re-planning.",
       deepSerpCalls:0,aiCalls:0,
       articleUnchanged:true,briefUnchanged:true,
