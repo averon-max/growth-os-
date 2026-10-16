@@ -161,6 +161,26 @@ async function main(){
       article.bodyMarkdown);
     const readerPreview=previewArticleWithoutInlineSourceLabelsV1(
       article.bodyMarkdown);
+    const {draftSavedArticleSectionReferenceLayoutV1}=await import(
+      "../src/lib/content/article-reader-cleanup-v1");
+    const sourceLayout=draftSavedArticleSectionReferenceLayoutV1(
+      article.bodyMarkdown);
+    const layoutScope=runtime&&plan?
+      verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:sourceLayout.proposedBodyMarkdown,
+        plan,runtime,
+      }):null;
+    const layoutFindings=detectArticleInformationGainDefectsV1(
+      sourceLayout.proposedBodyMarkdown);
+    const layoutOriginalLinks=sourceScope?.sections.map(
+      x=>x.approvedLinks)??[];
+    const layoutApprovedLinks=layoutScope?.sections.map(
+      x=>x.approvedLinks)??[];
+    const layoutSafeForResearchSemantics=
+      !!layoutScope&&sourceLayout.everyH2RetainsItsOwnUrls&&
+      layoutScope.unapprovedLinks===0&&
+      layoutOriginalLinks.length===layoutApprovedLinks.length&&
+      layoutOriginalLinks.every((n,i)=>n===layoutApprovedLinks[i]);
     // Cost-free go/no-go before anyone authorizes a bounded model repair.
     // Old generation checkpoints can be outdated after the 13 citations
     // were saved. The exact article and CURRENT evidence must be validated.
@@ -282,6 +302,22 @@ async function main(){
         noModelCalls:true,
       },
       repairPreflight,
+      sourceLayoutCandidate:{
+        mode:"FREE_ONLY_DOES_NOT_UPDATE_ARTICLE",
+        totalMovedSourceLabels:sourceLayout.movedSourceLabels,
+        sourceLabelsStillInline:sourceLayout.sourceLabelsStillInline,
+        sameH2UrlScopePreserved:layoutSafeForResearchSemantics,
+        sectionStats:sourceLayout.sections,
+        layoutOnlyFindingsRemaining:layoutFindings.map(x=>({
+          code:x.code,sectionIndex:x.sectionIndex,
+        })),
+        proposalFingerprint:buildSerpReplayArticleFingerprintV1({
+          ...original,bodyMarkdown:sourceLayout.proposedBodyMarkdown,
+        }),
+        articleReplayWillBeStaleIfCommitted:sourceLayout.changed,
+        noAutoCommit:true,
+        noProviderCalls:true,
+      },
       readerSourcePresentation:{
         inlineSourceLabelLinksMovedToOptionalFooter:
           readerPreview.researchLinks.length,
