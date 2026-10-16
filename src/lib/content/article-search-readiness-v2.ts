@@ -51,7 +51,7 @@ export function inspectProseJoinAnomaliesV2(body:string):string[]{
   }
   // "toa" alone is also a real name/brand. Only flag the exact observed
   // English spacing defect rather than blocking unrelated brands.
-  if(/\brelevant toa particular\b/iu.test(text))out.add("toa");
+  if(/\b(?:relevant|applies) toa particular\b/iu.test(text))out.add("toa");
   return [...out].sort().slice(0,20);
 }
 export function evaluateArticleSearchReadinessV2({
