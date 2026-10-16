@@ -105,6 +105,27 @@ Do not say freeze stops all identity theft or prevents every possible
 credit transaction; keep clear that this is primarily a barrier to
 new-credit access.
 
+### 5. VALUE_AND_NECESSITY / WHO_NEEDS_IT — conditional direct answer
+
+> **Do you need credit monitoring, and is it worth paying for?**
+> You do not have to buy a monitoring subscription to check your credit
+> reports. In the US, you can review reports for free, and a free
+> security freeze can make it harder to open new accounts using your
+> identity. A monitoring service may be useful when you want
+> notifications about covered changes without checking manually,
+> particularly after personal data exposure or when a free service is
+> provided through an existing benefit. Before deciding to pay,
+> compare the number of monitored bureaus, alert coverage, total fees
+> and any included identity-recovery support. Monitoring helps you
+> discover certain changes; it does not prevent identity theft.
+>
+> Source: [FTC — What to know about identity theft](https://consumer.ftc.gov/articles/what-know-about-identity-theft).
+> Source: [FTC — Understanding your credit](https://consumer.ftc.gov/articles/understanding-your-credit).
+> Source: [CFPB — What is a credit monitoring service?](https://www.consumerfinance.gov/ask-cfpb/what-is-a-credit-monitoring-service-en-1365/).
+
+This should be a short practical answer inside an existing service-choice
+H2, not a generic sales pitch or an unsupported universal yes/no.
+
 ## Also inspect 5 tentative matching groups
 
 1. DEFINITION: Keep the direct answer in the first paragraph of the
