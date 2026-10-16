@@ -64,6 +64,35 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
     features: [...serp.serpFeatures],
     topOrganic,
     ownOrganicRank,
+    competitiveResearch:{
+      fetchedCompetitorPages:serp.competitors.filter(p=>p.fetched).length,
+      fetchFailures:serp.competitors.filter(p=>!p.fetched).length,
+      observedQuestions:serp.questions.slice(0,25),
+      aiOverviewPresent:serp.aiOverview.present,
+      commonSections:serp.commonSections.slice(0,25).map(item=>({
+        topic:item.topic,pages:item.pages,coveragePct:item.coveragePct,
+      })),
+      commonTerms:serp.commonTerms.slice(0,35).map(item=>({
+        term:item.term,pages:item.pages,coveragePct:item.coveragePct,
+      })),
+      benchmark:{
+        medianWordCount:serp.benchmark.medianWordCount,
+        medianH2:serp.benchmark.medianH2,
+        medianH3:serp.benchmark.medianH3,
+      },
+      competitorPages:serp.competitors.slice(0,10).map(item=>({
+        rank:item.rank,domain:item.domain,url:item.url,
+        fetched:item.fetched,pageType:item.pageType,
+        title:item.title,h1:item.h1,
+        h2:item.h2.slice(0,30),h3:item.h3.slice(0,35),
+        wordCount:item.wordCount,
+        schemaTypes:(item.schemaTypes??[]).slice(0,15),
+        tableCount:item.tableCount??0,
+        authorSignal:item.authorSignal===true,
+        dateSignal:item.dateSignal===true,
+        error:item.error?.slice(0,160)??null,
+      })),
+    },
   };
 }
 
