@@ -70,6 +70,12 @@ on:
       - "scripts/content-research-article-keyword-clusters.ts"
       - "src/lib/content/observed-query-heading-candidate-v1.ts"
       - "src/lib/content/observed-query-heading-candidate-v1.test.ts"
+      - "src/lib/keywords/keyword-topic-intent-gate-v1.ts"
+      - "src/lib/keywords/keyword-topic-intent-gate-v1.test.ts"
+      - "src/lib/keywords/keyword-topic-scoped-shortlist-v1.ts"
+      - "src/lib/keywords/keyword-topic-scoped-shortlist-v1.test.ts"
+      - "src/lib/keywords/keyword-research-v2.ts"
+      - "scripts/content-audit-cached-keyword-topic-fit.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
@@ -97,3 +103,5 @@ jobs:
         run: npx vitest run src/lib/content/master-article-critic-repair-execution.test.ts src/lib/content/production-final-article-readiness-adapter-v1.test.ts
       - name: Content module regression
         run: npx vitest run src/lib/content
+      - name: Keyword entity and topic scope regression
+        run: npx vitest run src/lib/keywords/keyword-topic-intent-gate-v1.test.ts src/lib/keywords/keyword-topic-scoped-shortlist-v1.test.ts src/lib/keywords/keyword-research-v2.test.ts src/lib/keywords/keyword-intelligence-v2.test.ts
