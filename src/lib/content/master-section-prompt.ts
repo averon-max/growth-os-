@@ -133,7 +133,7 @@ export function buildMasterSectionPrompt(
       "- Reader guidance may explain what a reader should consider without asserting unsupported external facts.",
       "- A direct answer may be concise. Never add unsupported specifics merely to increase length.",
     ].join(
-      "\\n"
+      "\n"
     );
 
 
