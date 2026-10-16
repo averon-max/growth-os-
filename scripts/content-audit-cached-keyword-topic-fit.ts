@@ -75,6 +75,14 @@ async function main(){
       },
       afterTopicGate:{
         eligibleCandidates:scoped.acceptedCandidateCount,
+        sourceObservedInformationalCandidates:scoped.clusters.filter(
+          x=>x.keywords.some(k=>k.sources.includes("DATAFORSEO")||
+            k.sources.includes("GSC"))).length,
+        ambiguousIntentReview:scoped.assessments.filter(x=>
+          x.decision==="AMBIGUOUS_TOPIC_REVIEW"),
+        paidSerpEligibleNow:scoped.clusters.filter(x=>
+          x.keywords.some(k=>k.sources.includes("DATAFORSEO")||
+            k.sources.includes("GSC"))).map(x=>x.primary.keyword),
         eligibleClusters:scoped.clusters.length,
         shortlist:scoped.clusters.slice(0,20).map(cluster=>({
           query:cluster.primary.keyword,
@@ -86,6 +94,9 @@ async function main(){
           classification:assessKeywordTopicIntentV1({
             seed,query:cluster.primary.keyword,
           }).decision,
+          pageIntent:assessKeywordTopicIntentV1({
+            seed,query:cluster.primary.keyword,
+          }).pageIntent,
         })),
         rejected:scoped.assessments.filter(x=>!x.eligibleForArticleSerp)
           .slice(0,45),

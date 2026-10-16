@@ -69,7 +69,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-scope-v1"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v2"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -161,11 +161,14 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const rawTopicExclusions=scopedObservations.filter(x=>
     !x.assessment.eligibleForArticleSerp).map(x=>({
       keyword:x.item.keyword,
-      reason:(x.assessment.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
+      reason:(x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW"?
+        "INTENT_REVIEW_REQUIRED":
+        x.assessment.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
         x.assessment.decision==="SEPARATE_COMMERCIAL_PAGE"||
         x.assessment.decision==="SEPARATE_NAVIGATION_OR_SUPPORT"?
         "SEPARATE_PAGE_INTENT":"TOPIC_SCOPE_MISMATCH") as
-          "SEPARATE_PAGE_INTENT"|"TOPIC_SCOPE_MISMATCH",
+          "SEPARATE_PAGE_INTENT"|"TOPIC_SCOPE_MISMATCH"|
+          "INTENT_REVIEW_REQUIRED",
     }));
   const cleanup = prepareKeywordOpportunitiesV2({
     seed,industry:website.business.industry,
@@ -189,7 +192,14 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const cheapSerpByKeyword = new Map(related.map(row => [
     row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
   ] as const));
+  // A SEED-only phrase is not evidence of observed query demand.
+  // Pay for deep SERP only when DataForSEO or GSC actually surfaced
+  // this *same-intent* cluster. Leave mixed-intent observations for
+  // review instead of purchasing synthetic/seed variants.
   const shortlist = scoped.clusters
+    .filter(cluster=>cluster.keywords.some(keyword=>
+      keyword.sources.includes("DATAFORSEO")||
+      keyword.sources.includes("GSC")))
     .sort((a, b) => {
       const aInfo = cheapSerpByKeyword.get(a.primary.keyword.trim().toLowerCase());
       const bInfo = cheapSerpByKeyword.get(b.primary.keyword.trim().toLowerCase());
@@ -234,8 +244,10 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     ? reviewNeeded(eligibleForGpt.length
       ? "SERP-verified opportunities found. GPT decision not requested."
       : "No SERP-verified opportunity: review source reliability before choosing a primary.")
-    : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
-      reasons: ["No eligible candidates"], risks: [] };
+    : scopedObservations.some(x=>x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW")
+      ? reviewNeeded("Observed terms have mixed informational/product intent or only SEED terms remain. Human SERP-intent review required; no paid deep-SERP calls were made.")
+      : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
+        reasons: ["No source-observed same-topic informational candidates"], risks: [] };
   if (input.useGptDecision && eligibleForGpt.length) {
     const { default: OpenAI } = await import("openai");
     if (!process.env.OPENAI_API_KEY) throw new Error("KEYWORD_V2_OPENAI_KEY_REQUIRED");
