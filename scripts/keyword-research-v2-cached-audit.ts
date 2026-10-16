@@ -35,6 +35,8 @@ async function main():Promise<void>{
     const {parseCachedKeywordResearchV2,
       projectApprovedKeywordEvidenceV2}=
       await import("../src/lib/keywords/keyword-research-cache-v2");
+    const {assessKeywordTopicIntentV1}=await import(
+      "../src/lib/keywords/keyword-topic-intent-gate-v1");
     const summaries=items.map(item=>{
       const v=record(item.payload);
       if(!v||typeof v.seed!=="string"||
@@ -45,8 +47,51 @@ async function main():Promise<void>{
         websiteId,cacheKey:item.normalized,seed:v.seed,
         market:v.market as "US"|"CA"|"GB"|"AU",
       });
-      if(!snapshot)return {cacheKey:item.normalized,invalidSnapshot:true,
-        reason:"SNAPSHOT_CONTRACT_INVALID"};
+      if(!snapshot){
+        // Forensic analysis of pre-fix caches only. It NEVER reuses or
+        // authorizes their untrusted clusters or SERP payments.
+        const archivedClusters=Array.isArray(v.clusters)?v.clusters:[];
+        const unsafe=archivedClusters.flatMap(cluster=>{
+          const row=record(cluster);
+          const p=record(row?.primary);
+          const keyword=typeof p?.keyword==="string"?p.keyword:null;
+          if(!keyword)return [];
+          const assessment=assessKeywordTopicIntentV1({
+            seed:v.seed as string,query:keyword});
+          return assessment.eligibleForArticleSerp?[]:[{
+            keyword,clusterId:row?.id??null,
+            decision:assessment.decision,reason:assessment.reason,
+          }];
+        });
+        const serpRuns=Array.isArray(v.serpResults)?v.serpResults:[];
+        const unsafeSerps=serpRuns.flatMap(item=>{
+          const row=record(item);
+          const keyword=typeof row?.query==="string"?row.query:null;
+          if(!keyword)return [];
+          const assessment=assessKeywordTopicIntentV1({
+            seed:v.seed as string,query:keyword});
+          return assessment.eligibleForArticleSerp?[]:[{
+            keyword,decision:assessment.decision,
+          }];
+        });
+        return {
+          cacheKey:item.normalized,
+          fetchedAt:item.fetchedAt.toISOString(),
+          invalidSnapshot:true,
+          reason:unsafe.length>0
+            ?"HISTORICAL_CACHE_WRONG_TOPIC_OR_INTENT"
+            :"SNAPSHOT_CONTRACT_INVALID",
+          historicalClusterCount:archivedClusters.length,
+          historicalUnsafeClusterCount:unsafe.length,
+          rejectedClusterExamples:unsafe.slice(0,20),
+          historicalSerpCount:serpRuns.length,
+          historicalSerpsOutsideSamePageIntent:unsafeSerps,
+          selectedKeywordTrusted:false,
+          allowedToWriter:false,
+          providerCalls:0,
+          note:"Forensic-only. This snapshot must not be used for a new brief or Writer.",
+        };
+      }
       const observations=snapshot.candidateSnapshots;
       const allowedKeys=new Set(snapshot.clusters.flatMap(c=>
         c.keywords.map(row=>row.normalized)));
