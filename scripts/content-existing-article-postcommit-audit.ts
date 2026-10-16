@@ -1,0 +1,130 @@
+/**
+ * FREE post-CAS validation: latest stored article, latest actual replay,
+ * source-link scope, QueryGraph ownership, and literal copyedit proposal.
+ * NEVER edits article, research, replay, source ledger, or source URLs.
+ *
+ * GROWTH_OS_ENV_DIR=... NODE_OPTIONS=--conditions=react-server \
+ * npx tsx scripts/content-existing-article-postcommit-audit.ts --article=ID
+ */
+import {loadEnvConfig} from "@next/env";
+loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim()||process.cwd());
+const object=(v:unknown):Record<string,unknown>|null=>
+  v!==null&&typeof v==="object"&&!Array.isArray(v)?
+    v as Record<string,unknown>:null;
+const arrayOfText=(v:unknown):string[]=>
+  Array.isArray(v)?v.filter((x):x is string=>typeof x==="string"):[];
+async function main(){
+  const args=process.argv.slice(2);
+  const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
+  if(args.length!==1||!articleId||!/^[a-z0-9_-]{5,100}$/i.test(articleId))
+    throw new Error("USAGE: --article=EXISTING_ID");
+  const {prisma}=await import("../src/lib/prisma");
+  try {
+    const article=await prisma.contentArticle.findUnique({
+      where:{id:articleId},
+      include:{brief:{select:{
+        websiteId:true,primaryKeyword:true,secondaryKeywords:true,
+      }}},
+    });
+    if(!article)throw new Error("ARTICLE_NOT_FOUND");
+    const [saved,replay]=await Promise.all([
+      prisma.contentEvidenceSnapshot.findUnique({
+        where:{briefId:article.briefId},select:{plan:true},
+      }),
+      prisma.serpReplayArtifact.findFirst({
+        where:{contentArticleId:articleId},
+        orderBy:[{createdAt:"desc"},{id:"desc"}],
+      }),
+    ]);
+    const {buildSerpReplayArticleFingerprintV1}=await import(
+      "../src/lib/content/serp-replay-fingerprint");
+    const {previewObservedArticleJoinCopyeditV1}=await import(
+      "../src/lib/content/article-copyedit-join-repair-v1");
+    const {evaluateArticleSearchReadinessV2}=await import(
+      "../src/lib/content/article-search-readiness-v2");
+    const {inspectMasterRuntimeSnapshot}=await import(
+      "../src/lib/content/master-runtime-adapter");
+    const {parsePersistedArticleExecutionPlanV1}=await import(
+      "../src/lib/content/article-execution-plan-binding-v1");
+    const {verifyExistingArticleCitationScopeV1}=await import(
+      "../src/lib/content/existing-article-citation-authority-v1");
+    const original={
+      title:article.title,metaDescription:article.metaDescription,
+      h1:article.h1,bodyMarkdown:article.bodyMarkdown,
+    };
+    const proposal=previewObservedArticleJoinCopyeditV1(article.bodyMarkdown);
+    const oldFingerprint=buildSerpReplayArticleFingerprintV1(original);
+    const proposedFingerprint=buildSerpReplayArticleFingerprintV1({
+      ...original,bodyMarkdown:proposal.proposedBodyMarkdown,
+    });
+    const planData=object(saved?.plan);
+    const runtime=saved?
+      inspectMasterRuntimeSnapshot(saved.plan).runtime:null;
+    const plan=planData?
+      parsePersistedArticleExecutionPlanV1(planData.articleExecutionPlan):null;
+    const readiness=evaluateArticleSearchReadinessV2({
+      article:original,runtime,plan,replay,
+      primaryKeyword:article.brief.primaryKeyword,
+      secondaryKeywords:article.brief.secondaryKeywords,
+    });
+    const sourceScope=runtime&&plan?
+      verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:article.bodyMarkdown,runtime,plan,
+      }):null;
+    const provenance=object(replay?.provenance);
+    const editorialRecovery=object(provenance?.editorialRecovery);
+    const result={
+      mode:"FREE_EXISTING_ARTICLE_POSTCOMMIT_AUDIT",
+      articleId,websiteId:article.brief.websiteId,
+      articleStatus:article.status,
+      articleUpdatedAt:article.updatedAt.toISOString(),
+      oldFingerprint,
+      currentSavedReplay:{
+        id:replay?.id??null,status:replay?.replayStatus??null,
+        executionStatus:replay?.executionStatus??null,
+        articleFingerprintMatches:replay?.articleFingerprint===oldFingerprint,
+        capturedAt:replay?.serpCapturedAt?.toISOString()??null,
+        warnings:arrayOfText(replay?.warnings),
+        blockers:arrayOfText(replay?.blockers),
+        comparisonsRecorded:Array.isArray(replay?.comparisons)?
+          replay.comparisons.length:0,
+        recordedCriticStatus:editorialRecovery?.finalCriticStatus??null,
+        recordedReadinessStatus:editorialRecovery?.readinessStatus??null,
+      },
+      actualSavedCitationScope:sourceScope?{
+        status:sourceScope.status,totalVisibleLinks:sourceScope.totalLinks,
+        unauthorizedLinks:sourceScope.unapprovedLinks,
+        uncoveredEvidenceSections:sourceScope.uncitedEvidenceSections,
+        perH2:sourceScope.sections.map(x=>({
+          index:x.sectionIndex,heading:x.heading,links:x.links,
+          signedLinks:x.approvedLinks,
+        })),
+      }:null,
+      searchEditorial:{
+        status:readiness.status,canClaimSeoReady:readiness.canClaimSeoReady,
+        publishRecommendation:readiness.publishRecommendation,
+        findings:readiness.findings.map(x=>({
+          code:x.code,severity:x.severity,detail:x.detail??null,
+          action:x.action,
+        })),
+        suggestedQueryRebindings:readiness.suggestedQueryRebindings,
+      },
+      knownCopyedit:{
+        changes:proposal.changes,
+        remainingKnownDefectsAfterProposal:proposal.remainingKnownProseDefects,
+        exactProposedFingerprint:proposedFingerprint,
+        currentReplayWillBeStaleIfApplied:
+          proposedFingerprint!==oldFingerprint,
+        safeForAutomaticPersist:false,
+      },
+      paidCalls:0,databaseUnchanged:true,
+      nextAction:"REVIEW_COPYEDIT_AND_REAL_REPLAY_WARNINGS_BEFORE_NEW_FINGERPRINT_COMMIT",
+    };
+    console.log(JSON.stringify(result,null,2));
+  }finally{await prisma.$disconnect();}
+}
+main().catch(e=>{
+  console.error("POSTCOMMIT_AUDIT_FAILED="+(
+    e instanceof Error?e.message:String(e)));
+  process.exitCode=1;
+});
