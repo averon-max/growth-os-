@@ -275,7 +275,7 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       candidateBodyMarkdown:candidate.bodyMarkdown,plan,runtime,
     });
     check(sourceAfter.status==="REVIEW_SEMANTIC_PROOF_REQUIRED" &&
-      sourceAfter.unapprovedLinks.length===0 &&
+      sourceAfter.unapprovedLinks===0 &&
       sourceAfter.totalLinks>=sourceBefore.totalLinks &&
       sourceAfter.sections.every((section,index)=>
         section.approvedLinks>=
