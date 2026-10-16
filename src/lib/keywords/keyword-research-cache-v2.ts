@@ -1,6 +1,7 @@
 import type { RelatedKeywordResult } from "./dataforseo-provider";
 import {
   validateKeywordOpportunityChoiceV2,
+  selectVerifiedKeywordOpportunityV2,
   type KeywordCandidateV2,
   type KeywordCleanupReasonV2,
   type KeywordClusterV2,
@@ -116,10 +117,22 @@ export function parseCachedKeywordResearchV2(
     ? v.clusters.find(cluster => cluster.id === decision.selectedClusterId)?.primary.keyword ?? null
     : null;
   if (v.selectedKeyword !== winner) return null;
-  if (winner && (!v.aiUsed || !v.serpResults.some(result =>
+  if (winner && !v.serpResults.some(result =>
     result.clusterId === decision.selectedClusterId &&
     result.query === winner && !result.error &&
-    result.organicResults >= 3 && result.uniqueDomains >= 2))) return null;
+    result.organicResults >= 3 && result.uniqueDomains >= 2)) return null;
+  if (winner && !v.aiUsed) {
+    // A stored deterministic decision must reproduce EXACTLY from the
+    // recorded clusters/SERP. Otherwise it is not approved authority.
+    const expected = selectVerifiedKeywordOpportunityV2(
+      v.clusters as KeywordClusterV2[],
+      v.serpResults as SerpOpportunityV2[],
+    );
+    if (expected.status !== "SELECTED" ||
+      expected.selectedClusterId !== decision.selectedClusterId ||
+      !decision.reasons.includes("DETERMINISTIC_SERP_VERIFIED_SELECTION_V1"))
+      return null;
+  }
 
   return {
     version: "KEYWORD_INTELLIGENCE_RESEARCH_V2",
