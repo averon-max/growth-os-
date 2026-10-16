@@ -20,11 +20,13 @@ async function main(){
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
   const authorized=args.includes("--authorize-paid-improvement");
+  const citationMode=args.includes("--repair-signed-citations");
   if(!articleId||!/^[a-z0-9_-]{5,100}$/i.test(articleId)||
     args.some(a=>a!=="--execute"&&a!=="--authorize-paid-improvement"&&
+      a!=="--repair-signed-citations"&&
       !a.startsWith("--article="))||
     execute!==authorized)throw new Error(
-      "USAGE: --article=EXISTING_ID [--execute --authorize-paid-improvement]");
+      "USAGE: --article=EXISTING_ID [--repair-signed-citations] [--execute --authorize-paid-improvement]");
   const {prisma}=await import("../src/lib/prisma");
   try{
     const article=await prisma.contentArticle.findUnique({
@@ -81,6 +83,32 @@ async function main(){
     const {resolve,join}=await import("node:path");
     const inspected=inspectMasterRuntimeSnapshot(snapshot.plan);
     if(!inspected.runtime)throw new Error("SAVED_CURRENT_RUNTIME_NOT_VALID");
+    const signedCitationPreview=citationMode?await (async()=>{
+      const {draftExistingArticleSignedCitationsV1}=await import(
+        "../src/lib/content/existing-article-source-citation-repair-v1");
+      const {verifyExistingArticleCitationScopeV1}=await import(
+        "../src/lib/content/existing-article-citation-authority-v1");
+      const draft=draftExistingArticleSignedCitationsV1({
+        bodyMarkdown:article.bodyMarkdown,plan,runtime:inspected.runtime!,
+      });
+      const scope=verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:draft.proposedBodyMarkdown,
+        plan,runtime:inspected.runtime!,
+      });
+      return {
+        proposedCitationCount:draft.totalAddedCitations,
+        candidateSections:draft.sections.map(x=>({
+          index:x.sectionIndex,heading:x.heading,
+          proposedCitations:x.proposedCitationCount,
+          sourceClaimAnchorsNotExact:x.exactClaimAnchorMissing.length,
+        })),
+        scopeStatus:scope.status,
+        canBeginSameArticleSignedCitationRepair:
+          draft.totalAddedCitations>0&&
+          scope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
+        note:"Lexically anchored verified citations, not final factual publication approval. Any paid run still requires section semantic verification, 9 critics, fresh replay, unchanged-source CAS.",
+      };
+    })():null;
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(inspected.runtime),
     });
@@ -330,6 +358,7 @@ async function main(){
       currentWords:countWords(article.bodyMarkdown),requiredWords:minimumWords,
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
       improvement,
+      signedCitationPreview,
       editorialReadiness,
       verifiedCheckpointReady:checkpointReady,
       incrementalQualityProgress,
@@ -345,14 +374,17 @@ async function main(){
       return;
     }
     if(article.status!=="IN_REVIEW"||article.publishedAt!==null||
-      article.publishedUrl!==null||!improvement.eligible)
+      article.publishedUrl!==null||
+      (citationMode?!signedCitationPreview?.canBeginSameArticleSignedCitationRepair:
+        !improvement.eligible))
       throw new Error("PAID_IMPROVEMENT_NOT_ELIGIBLE");
     if(!checkpointReady)throw new Error(
       "PAID_IMPROVEMENT_SAFE_STOP_NO_COMPATIBLE_SIGNED_CHECKPOINT");
     const {improveExistingArticleQualityV1}=
       await import("../src/lib/content/existing-article-quality-improvement-v1");
     const result=await improveExistingArticleQualityV1(
-      articleId,article.updatedAt.toISOString());
+      articleId,article.updatedAt.toISOString(),
+      citationMode?"EXACT_SIGNED_CITATIONS":"DEPTH");
     console.log(JSON.stringify(result,null,2));
     console.log("SAME_ID_QUALITY_IMPROVEMENT_FINISHED");
   }finally{await prisma.$disconnect();}
