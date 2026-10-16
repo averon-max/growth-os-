@@ -68,13 +68,13 @@ export function buildSignedSemanticCitationWorklistV1(input:{
     });
     let index=0;
     const sentences=body.split(/\n{2,}/u).flatMap((paragraph,paragraphIndex)=>
-      completeProse(paragraph.trim())?splitSentences(paragraph)
+      !/^#{1,6}\s|^[-*]\s|^\d+\.|^> |^\|/mu.test(paragraph.trim()) &&\n      !paragraph.includes("](") && !paragraph.includes("~~~")\n        ?splitSentences(paragraph)
         .map(text=>({id:index++,paragraphIndex,text:text.trim()}))
         .filter(row=>completeProse(row.text)):[]
-    ).slice(0,50);
+    ).slice(0,35);
     return {
       sectionIndex:i,heading:scopes[i]!.heading,
-      sentences,availableSources:availableSources.slice(0,24),
+      sentences,availableSources:availableSources.slice(0,12),
     };
   });
 }
