@@ -604,7 +604,7 @@ export async function executeMasterArticleCriticsV1({
   // DIFFERENT, evidence-rich H2 with existing distinct paragraphs; allow
   // a heading-only structure repair, not new facts or synthetic queries.
   const nestedBySection=run.sections.map(section=>
-    (section.bodyMarkdown.match(/^###\\s+\\S/gm)??[]).length);
+    (section.bodyMarkdown.match(/^###\s+\S/gm)??[]).length);
   const h3Total=nestedBySection.reduce((n,x)=>n+x,0);
   const h3Owners=nestedBySection.filter(x=>x>0).length;
   const richSections=contract.sectionContracts.filter(section=>
@@ -615,8 +615,8 @@ export async function executeMasterArticleCriticsV1({
     (h3Total<3 || h3Owners<2)
       ?run.sections.findIndex((section,index)=>{
         const scoped=contract.sectionContracts[index];
-        const parts=section.bodyMarkdown.split(/\\n\\s*\\n+/)
-          .filter(p=>p.trim().length>=85&&!/^#{1,6}\\s/.test(p));
+        const parts=section.bodyMarkdown.split(/\n\s*\n+/)
+          .filter(p=>p.trim().length>=85&&!/^#{1,6}\s/.test(p));
         return !!scoped && nestedBySection[index]===0 &&
           scoped.blueprint.requiredClaims.length>=2 &&
           scoped.blueprint.evidenceIds.length>=2 && parts.length>=2;
@@ -652,7 +652,7 @@ export async function executeMasterArticleCriticsV1({
               evidence:{claimIds:[],evidenceIds:[],queryNodeIds:[],
                 sourceIds:[]},
             })];
-          })():[]) ,
+          })():[]),
           ...lowInformation.map(issue=>{
             const owning=contract.sectionContracts[issue.sectionIndex];
             if(!owning)throw new ContentGenerationError(
