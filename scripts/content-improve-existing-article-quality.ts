@@ -103,9 +103,15 @@ async function main(){
           sourceClaimAnchorsNotExact:x.exactClaimAnchorMissing.length,
         })),
         scopeStatus:scope.status,
+        sectionsStillWithoutVisibleSources:
+          scope.sections.filter(section=>
+            section.assignedEvidence>0&&section.approvedLinks===0)
+            .map(section=>({index:section.sectionIndex,heading:section.heading})),
         canBeginSameArticleSignedCitationRepair:
           draft.totalAddedCitations>0&&
-          scope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
+          scope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED"&&
+          scope.sections.every(section=>
+            section.assignedEvidence===0||section.approvedLinks>0),
         note:"Lexically anchored verified citations, not final factual publication approval. Any paid run still requires section semantic verification, 9 critics, fresh replay, unchanged-source CAS.",
       };
     })():null;
