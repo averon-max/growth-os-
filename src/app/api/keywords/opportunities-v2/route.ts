@@ -26,6 +26,11 @@ export async function POST(req: NextRequest) {
     if (input.useGptDecision !== undefined && typeof input.useGptDecision !== "boolean") {
       return NextResponse.json({ error: "useGptDecision must be boolean" }, { status: 400 });
     }
+    if(input.authorizeExpandedDiscovery !== undefined &&
+      typeof input.authorizeExpandedDiscovery !== "boolean"){
+      return NextResponse.json(
+        {error:"authorizeExpandedDiscovery must be boolean"}, {status:400});
+    }
     const market = input.market === undefined ? "US" : input.market;
     if (market !== "US" && market !== "CA" && market !== "GB" && market !== "AU") {
       return NextResponse.json({ error: "Invalid market" }, { status: 400 });
@@ -37,6 +42,7 @@ export async function POST(req: NextRequest) {
       limit,
       deepSerpLimit,
       authorizePaidResearch: true,
+      authorizeExpandedDiscovery: input.authorizeExpandedDiscovery === true,
       useGptDecision: input.useGptDecision === true,
     });
     return NextResponse.json(report);
