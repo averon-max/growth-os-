@@ -28,6 +28,7 @@ export function createTopicScopedKeywordShortlistV1({
     !x.eligibleForArticleSerp).map(x=>({
       keyword:x.query,
       reason:x.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
+        x.decision==="SEPARATE_COMMERCIAL_PAGE"||
         x.decision==="SEPARATE_NAVIGATION_OR_SUPPORT"?
         "SEPARATE_PAGE_INTENT" as const:
         "TOPIC_SCOPE_MISMATCH" as const,
