@@ -29,7 +29,7 @@ async function main(){
       await import("../src/lib/content/master-runtime-adapter");
     const runtime=inspectMasterRuntimeSnapshot(
       article.brief.evidenceSnapshot?.plan).runtime;
-    if(!runtime||runtime.mission.jurisdiction.toUpperCase()!==market)
+    if(!runtime||runtime.mission.jurisdiction?.toUpperCase()!==market)
       throw new Error("TOPIC_CACHE_MARKET_NOT_ARTICLE_MISSION");
     const seed=article.brief.primaryKeyword;
     const cacheKey=[
