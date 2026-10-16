@@ -24,7 +24,7 @@ export function probeSavedArticleJoinIntegrityV1(markdown:string){
   const preview=previewObservedArticleJoinCopyeditV1(markdown);
   // Intentionally independent of Markdown splitting/protection so false
   // negatives in the copyeditor become visible instead of hidden.
-  const exactLiteralHits=words.flatMap(word=>{
+  const exactLiteralHits:Array<{token:string;occurrences:number}>=words.flatMap(word=>{
     const matches=[...markdown.matchAll(new RegExp(
       "\\b"+word+"\\b","giu"))];
     return matches.length?[{token:word,occurrences:matches.length}]:[];
