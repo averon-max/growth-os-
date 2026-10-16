@@ -60,6 +60,10 @@ import {
 import {
   executeMasterWriterV1,
 } from "./master-writer-orchestrator";
+import {
+  evaluateComprehensiveEditorialReleaseV1,
+  assertComprehensiveEditorialReleaseV1,
+} from "./comprehensive-editorial-release-gate-v1";
 
 import {
   writeArticleRecoveryCheckpointV1,
@@ -4002,6 +4006,24 @@ export async function approveArticle(
     publicationPolicy
   );
 
+  // Final approval AND publication must honor the same product-level
+  // editorial quality floor as the Writer. A technical score of 100
+  // cannot release a source-rich but shallow comprehensive guide.
+  const editorialPlanRecord=article.brief.evidenceSnapshot?.plan;
+  const editablePlan=editorialPlanRecord&&
+    typeof editorialPlanRecord==="object"&&
+    !Array.isArray(editorialPlanRecord)
+      ? editorialPlanRecord as Record<string,unknown> : null;
+  if(editablePlan?.articleExecutionPlan){
+    const editorialPlan=parsePersistedArticleExecutionPlanV1(
+      editablePlan.articleExecutionPlan);
+    assertComprehensiveEditorialReleaseV1(
+      evaluateComprehensiveEditorialReleaseV1({
+        plan:editorialPlan,
+        bodyMarkdown:article.bodyMarkdown,
+      }));
+  }
+
 
   const approvalReplayArtifact =
     await prisma.serpReplayArtifact.findFirst({
@@ -4263,6 +4285,24 @@ export async function publishArticle(
   assertArticlePublicationPolicyPassed(
     publicationPolicy
   );
+
+  // Final approval AND publication must honor the same product-level
+  // editorial quality floor as the Writer. A technical score of 100
+  // cannot release a source-rich but shallow comprehensive guide.
+  const editorialPlanRecord=article.brief.evidenceSnapshot?.plan;
+  const editablePlan=editorialPlanRecord&&
+    typeof editorialPlanRecord==="object"&&
+    !Array.isArray(editorialPlanRecord)
+      ? editorialPlanRecord as Record<string,unknown> : null;
+  if(editablePlan?.articleExecutionPlan){
+    const editorialPlan=parsePersistedArticleExecutionPlanV1(
+      editablePlan.articleExecutionPlan);
+    assertComprehensiveEditorialReleaseV1(
+      evaluateComprehensiveEditorialReleaseV1({
+        plan:editorialPlan,
+        bodyMarkdown:article.bodyMarkdown,
+      }));
+  }
 
 
   const publishReplayArtifact =
