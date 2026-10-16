@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     briefs: vi.fn(),
     keywordContext: vi.fn(),
     related: vi.fn(),
+    suggestions:vi.fn(),
     trends: vi.fn(),
     serp: vi.fn(),
     openai: vi.fn(),
@@ -38,6 +39,9 @@ vi.mock("@/lib/prisma", () => ({ prisma: {
 }}));
 
 vi.mock("./dataforseo-provider", () => ({ fetchRelatedKeywords: mocks.related }));
+vi.mock("./keyword-suggestions-provider-v1",()=>({
+  fetchGoogleKeywordSuggestionsV1:mocks.suggestions,
+}));
 vi.mock("./trends-provider", () => ({ fetchTrendingQueries: mocks.trends }));
 vi.mock("@/lib/content/keyword-context", () => ({
   getWebsiteKeywordContext: mocks.keywordContext,
@@ -70,6 +74,7 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     mocks.briefs.mockResolvedValue([]);
     mocks.keywordContext.mockResolvedValue({ topKeywords: [] });
     mocks.trends.mockResolvedValue(null);
+    mocks.suggestions.mockResolvedValue([]);
     mocks.related.mockResolvedValue([
       { keyword: "credit monitoring benefits", searchVolume: 260, keywordDifficulty: 18,
         cpc: 1.2, serpInfo: { resultCount: 1000, features: [], updatedAt: null } },
@@ -162,11 +167,50 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.serp).toHaveBeenCalledTimes(1);
   });
 
+  it("never buys extra suggestion discovery without its separate authorization",async()=>{
+    await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(mocks.suggestions).not.toHaveBeenCalled();
+  });
+
+  it("augments old noisy SERP relatives using explicitly purchased topic-contained suggestions",async()=>{
+    mocks.related.mockResolvedValue([
+      {keyword:"credit karma phone number hours",searchVolume:4400,
+        keywordDifficulty:24,cpc:0.8},
+      {keyword:"equifax credit monitoring",searchVolume:3600,
+        keywordDifficulty:28,cpc:1.1},
+    ]);
+    mocks.suggestions.mockResolvedValue([
+      {keyword:"does credit monitoring affect your score",searchVolume:240,
+        keywordDifficulty:18,cpc:0.3,
+        monthlySearches:[{year:2026,month:9,searchVolume:240}],
+        trend:{monthly:10,quarterly:20,yearly:40}},
+      {keyword:"credit karma phone number hours",searchVolume:4400,
+        keywordDifficulty:24,cpc:0.8},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,seed:"what is credit monitoring",
+      authorizeExpandedDiscovery:true,useGptDecision:false,
+    });
+    expect(mocks.suggestions).toHaveBeenCalledWith(expect.objectContaining({
+      topic:"credit monitoring",locationName:"United States",
+    }));
+    expect(result.discoveryBreakdown?.suggestionRows).toBe(2);
+    expect(result.serpResults.map(s=>s.query)).toEqual([
+      "does credit monitoring affect your score",
+    ]);
+    expect(result.selectedKeyword).toBe("does credit monitoring affect your score");
+    expect(result.clusters.every(c=>
+      !/credit karma|equifax/i.test(c.primary.keyword))).toBe(true);
+  });
+
   it("does not invoke paid providers when authorization is absent", async () => {
     await expect(researchKeywordOpportunitiesV2({
       ...input, authorizePaidResearch: false,
     })).rejects.toThrow("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
     expect(mocks.related).not.toHaveBeenCalled();
+    expect(mocks.suggestions).not.toHaveBeenCalled();
     expect(mocks.serp).not.toHaveBeenCalled();
     expect(mocks.openai).not.toHaveBeenCalled();
   });
