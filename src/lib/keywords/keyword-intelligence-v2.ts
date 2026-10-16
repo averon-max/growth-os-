@@ -237,6 +237,56 @@ export interface KeywordOpportunityChoiceV2 {
   risks: string[];
 }
 
+/**
+ * Autonomous, ZERO-model-call choice from actual ranked keyword clusters
+ * AND a completed organic SERP. Missing metrics never imply easy rankings.
+ * Ambiguous close-scoring opportunities remain REVIEW instead of fabricating
+ * a confident winner.
+ */
+export function selectVerifiedKeywordOpportunityV2(
+  clusters: readonly KeywordClusterV2[],
+  serpResults: readonly SerpOpportunityV2[],
+): KeywordOpportunityChoiceV2 {
+  const eligible = clusters.flatMap(cluster => {
+    const serp = serpResults.find(row =>
+      row.clusterId === cluster.id &&
+      row.query === cluster.primary.keyword &&
+      !row.error && row.organicResults >= 3 &&
+      row.uniqueDomains >= 2 && row.pagesAnalyzed >= 1);
+    if (!serp) return [];
+    const volume = validNumber(cluster.primary.searchVolume);
+    const kd = validNumber(cluster.primary.keywordDifficulty);
+    const observedRank = validNumber(cluster.primary.position);
+    const impressions = validNumber(cluster.primary.impressions) ?? 0;
+    const grounded = (volume !== null && kd !== null) ||
+      (impressions > 0 && observedRank !== null);
+    if (!grounded || !cluster.primary.sources.some(source =>
+      source === "DATAFORSEO" || source === "GSC")) return [];
+    return [cluster];
+  }).sort((a,b) =>
+    b.opportunityScore-a.opportunityScore ||
+    a.primary.normalized.localeCompare(b.primary.normalized));
+  const first = eligible[0], second = eligible[1];
+  if (!first) return {
+    status: "REVIEW", selectedClusterId: null, confidence: "LOW",
+    reasons: ["NO_GROUNDED_SERP_AND_DEMAND_OR_GSC_OPPORTUNITY"],
+    risks: ["Insufficient measured difficulty/demand or verified SERP"],
+  };
+  if (second && first.opportunityScore-second.opportunityScore < 5) return {
+    status: "REVIEW", selectedClusterId: null, confidence: "LOW",
+    reasons: ["MULTIPLE_CLOSE_SCORING_SERP_VERIFIED_CLUSTERS"],
+    risks: ["Different reader/page intents may require separate pages"],
+  };
+  return {
+    status: "SELECTED", selectedClusterId: first.id,
+    confidence: "MEDIUM",
+    reasons: ["DETERMINISTIC_SERP_VERIFIED_SELECTION_V1",
+      "Observed demand/KD or real GSC positions",
+      "Ranking is a prioritization estimate, not a guaranteed Google result"],
+    risks: ["Human review still required before publishing"],
+  };
+}
+
 /** JSON from GPT never creates its own keyword, metric, or candidate ID. */
 export function validateKeywordOpportunityChoiceV2(
   value: unknown,
