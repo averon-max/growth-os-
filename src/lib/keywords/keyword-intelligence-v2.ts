@@ -230,6 +230,27 @@ export interface SerpOpportunityV2 {
   topOrganic?: Array<{rank:number;domain:string;url:string}>;
   /** null means NOT OBSERVED within fetched SERP depth, not rank=0. */
   ownOrganicRank?: number | null;
+  /** Research observations, NOT verified claims or ranking guarantees. */
+  competitiveResearch?: {
+    fetchedCompetitorPages: number;
+    fetchFailures: number;
+    observedQuestions: string[];
+    aiOverviewPresent: boolean;
+    commonSections: Array<{topic:string;pages:number;coveragePct:number}>;
+    commonTerms: Array<{term:string;pages:number;coveragePct:number}>;
+    benchmark: {
+      medianWordCount: number|null;
+      medianH2: number|null;
+      medianH3: number|null;
+    };
+    competitorPages: Array<{
+      rank:number;domain:string;url:string;fetched:boolean;
+      pageType:string;title:string|null;h1:string|null;
+      h2:string[];h3:string[];wordCount:number|null;
+      schemaTypes:string[];tableCount:number;authorSignal:boolean;
+      dateSignal:boolean;error:string|null;
+    }>;
+  };
   error?: string;
 }
 
