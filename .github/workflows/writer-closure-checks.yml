@@ -81,6 +81,9 @@ on:
       - "scripts/content-research-article-questions.ts"
       - "src/lib/keywords/article-question-scope-v2.ts"
       - "src/lib/keywords/article-question-scope-v2.test.ts"
+      - "src/lib/content/article-question-gap-audit-v1.ts"
+      - "src/lib/content/article-question-gap-audit-v1.test.ts"
+      - "scripts/content-existing-article-question-gap-audit.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
