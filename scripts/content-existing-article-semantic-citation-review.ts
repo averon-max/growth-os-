@@ -133,6 +133,32 @@ async function main(){
       }
       checkpointInventory.push({sectionIndex:section.sectionIndex,state});
     }
+    // A prior SUCCESS report can exist if a developer moved, cleaned or
+    // rotated checkpoint files. In that case NEVER silently repurchase
+    // the H2 reviews: stop and investigate the local source files.
+    // Reports themselves are NEVER accepted as source evidence.
+    const {assessCompletedCitationReportReuseV1}=await import(
+      "../src/lib/content/existing-article-paid-review-reuse-guard-v1");
+    const completedReportPath=resolve(
+      ".growth-os-tmp/citation-review",
+      articleId+"-semantic-citation-proposal.json");
+    let completedReport:unknown=null;
+    try{
+      completedReport=JSON.parse(await readFile(completedReportPath,"utf8"));
+    }catch(e){
+      if(e&&typeof e==="object"&&"code" in e&&e.code==="ENOENT"){
+        completedReport=null;
+      }else throw new Error(
+        "SEMANTIC_CITATION_PREVIOUS_REPORT_INVALID_REVIEW_MANUALLY");
+    }
+    const paymentGuard=assessCompletedCitationReportReuseV1({
+      articleId,originalSha256:expectedSha,report:completedReport,
+      outstandingRequiredSectionIndices:checkpointInventory
+        .filter(x=>requiresReview(x.sectionIndex)&&
+          x.state!=="VALIDATED_REUSABLE"&&
+          x.state!=="RAW_RESPONSE_REUSABLE")
+        .map(x=>x.sectionIndex),
+    });
     const preview={
       mode:execute?"PAID_ONLY_SIGNED_SENTENCE_REVIEW_NO_DATABASE_WRITE":
         "READ_ONLY_SIGNED_SEMANTIC_CITATION_WORKLIST",
@@ -148,6 +174,10 @@ async function main(){
         s.availableSources.length&&s.sentences.length &&
         requiresReview(s.sectionIndex)).length,
       checkpointInventory,
+      previousCompletedReportDetected:paymentGuard.previouslyCompleted,
+      repeatPaymentGuard:paymentGuard.blockNewModelCalls
+        ?"BLOCK_REPURCHASE_RECOVER_MISSING_CHECKPOINTS"
+        :"NO_CONFLICT",
       reusableReviewSections:checkpointInventory.filter(s=>
         s.state==="VALIDATED_REUSABLE"||
         s.state==="RAW_RESPONSE_REUSABLE").length,
@@ -164,6 +194,10 @@ async function main(){
       },null,2));
       return;
     }
+    if(paymentGuard.blockNewModelCalls)
+      throw new Error(
+        "SEMANTIC_CITATION_PREVIOUSLY_COMPLETED_BUT_CHECKPOINTS_MISSING:"+
+        paymentGuard.unresolvedCheckpointIndices.join(","));
     const {callContentAiJson}=await import(
       "../src/lib/content/gemini-generator");
     await mkdir(reviewCheckpointDir,{recursive:true});
