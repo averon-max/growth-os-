@@ -27,6 +27,19 @@ export function auditDeepSerpReadinessV1(
     topOne!==null&&topicalPages.includes(topOne));
   const cleanSections=(evidence?.commonSections??[])
     .filter(section=>isSubstantiveSerpHeadingV1(section.topic));
+  const median=(values:number[]):number|null=>{
+    if(values.length===0)return null;
+    const sorted=[...values].sort((a,b)=>a-b);
+    const middle=Math.floor(sorted.length/2);
+    return sorted.length%2?sorted[middle]!:
+      (sorted[middle-1]!+sorted[middle]!)/2;
+  };
+  const cleanWordMedian=median(valid.flatMap(page=>
+    page.wordCount!==null&&page.wordCount>0?[page.wordCount]:[]));
+  const cleanH2Median=median(valid.map(page=>
+    page.h2.filter(isSubstantiveSerpHeadingV1).length));
+  const cleanH3Median=median(valid.map(page=>
+    page.h3.filter(isSubstantiveSerpHeadingV1).length));
   const blockers:string[]=[];
   if(row.error)blockers.push("SERP_PROVIDER_ERROR");
   if(row.organicResults<7)blockers.push("ORGANIC_SERP_COVERAGE_LOW");
@@ -60,9 +73,10 @@ export function auditDeepSerpReadinessV1(
     matchingMainTopicCompetitors:topical?topicalPages.length:null,
     observedUserQuestions:evidence?.observedQuestions??[],
     recurringSectionTopics:cleanSections,
-    competitorMedianWords:evidence?.benchmark.medianWordCount??null,
-    competitorMedianH2:evidence?.benchmark.medianH2??null,
-    competitorMedianH3:evidence?.benchmark.medianH3??null,
+    competitorMedianWords:cleanWordMedian,
+    competitorMedianH2:cleanH2Median,
+    competitorMedianH3:cleanH3Median,
+    originalUnfilteredBenchmark:evidence?.benchmark??null,
     blockers,
     verifiedFactualClaims:false,
     canGuaranteeRankOne:false,
