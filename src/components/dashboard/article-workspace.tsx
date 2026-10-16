@@ -1034,7 +1034,7 @@ export function ArticleWorkspace({
     if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
     const accepted=window.confirm(
       "Repair low-information text, intrusive Source labels or repeated "+
-      "sections using EXISTING signed evidence? This can use up to 10 "+
+      "sections using EXISTING signed evidence? This can use up to 16 "+
       "paid AI model calls total (not 10 guaranteed). No fresh research "+
       "or new article. It saves the SAME article only after source "+
       "verification, critics and exact-article SERP Replay pass."
