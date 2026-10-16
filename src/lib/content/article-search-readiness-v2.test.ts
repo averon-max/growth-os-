@@ -68,7 +68,7 @@ describe("real-evidence SEO readiness never confused with 3/3 brief tokens",()=>
     expect(result.assignedSupportingQueries).toBe(1);
     expect(result.observedQueryClusters[0].queries[0]).toMatchObject({
       query:"how often do credit monitoring alerts update",
-      sectionHeading:"How does credit monitoring work?",
+      ownerHeading:"How does credit monitoring work?",
       sources:["DATAFORSEO"],searchVolume:null,gscImpressions:null,
     });
     expect(result.findings.map(x=>x.code)).not.toContain(
