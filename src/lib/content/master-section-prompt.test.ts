@@ -155,10 +155,10 @@ describe(
       () => {
         const prompt = buildMasterSectionPrompt(makeContract());
         expect(prompt).toContain(
-          "NO-EVIDENCE SECTION MODE V1:\\n- Apply these rules"
+          "NO-EVIDENCE SECTION MODE V1:\n- Apply these rules"
         );
         expect(prompt).not.toContain(
-          "NO-EVIDENCE SECTION MODE V1:\\\\n- Apply these rules"
+          "NO-EVIDENCE SECTION MODE V1:\\n- Apply these rules"
         );
       }
     );
