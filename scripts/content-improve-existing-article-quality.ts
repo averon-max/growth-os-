@@ -182,6 +182,63 @@ async function main(){
       }):null;
     const {detectHighConfidenceEditorialRepetitionV1}=
       await import("../src/lib/content/editorial-repetition-guard-v1");
+    const {proposeOriginalSectionKeywordSentenceV1}=
+      await import("../src/lib/content/quality-improvement-keyword-original-sentence-v1");
+    const originalBodies=splitPersistedArticleByCanonicalH2V1(
+      article.bodyMarkdown,contract.sectionContracts.map(x=>x.blueprint.heading));
+    const sentenceRecoveryCandidates=verifiedProgress&&keywordCheck?
+      keywordCheck.losses.map(loss=>{
+        const index=loss.repairableOwningSections[0];
+        if(index===undefined)return {
+          keyword:loss.keyword,originalSectionIndex:null,
+          candidateAvailable:false,preflightReason:"NO_EDITABLE_ORIGINAL_OWNER",
+        };
+        const sentence=proposeOriginalSectionKeywordSentenceV1({
+          originalBody:originalBodies[index],
+          currentBody:verifiedProgress.accepted[index].section.bodyMarkdown,
+          missingKeyword:loss.keyword,
+        });
+        if(!sentence)return {
+          keyword:loss.keyword,originalSectionIndex:index,
+          candidateAvailable:false,
+          preflightReason:"NO_SAFE_ORIGINAL_SENTENCE_PLACEMENT",
+        };
+        const proposedSections=verifiedProgress.accepted.map((entry,i)=>({
+          heading:entry.section.heading,
+          bodyMarkdown:i===index?sentence.bodyMarkdown:
+            entry.section.bodyMarkdown,
+        }));
+        const keywordComposed=composeMasterArticleV1({
+          contract,shell:verifiedProgress.shell,
+          sections:verifiedProgress.accepted.map((entry,i)=>
+            i===index?{...entry.section,bodyMarkdown:sentence.bodyMarkdown}:
+              entry.section),
+        });
+        const proposedWordCount=countWords(keywordComposed.bodyMarkdown);
+        const restoredCoverage=inspectQualityKeywordRegressionV1({
+          original:{title:article.title,metaDescription:article.metaDescription,
+            h1:article.h1,bodyMarkdown:article.bodyMarkdown},
+          current:keywordComposed,
+          primaryKeyword:article.brief.primaryKeyword,
+          secondaryKeywords:article.brief.secondaryKeywords,
+          originalSectionBodies:originalBodies,
+          editableSectionIndices:improvement.steps.map(x=>x.index),
+        });
+        const detectedRepetition=detectHighConfidenceEditorialRepetitionV1(
+          proposedSections);
+        return {
+          keyword:loss.keyword,originalSectionIndex:index,
+          candidateAvailable:true,proposedWordCount,
+          wouldRestoreCoverage:restoredCoverage.restored,
+          editorialFindings:detectedRepetition.map(f=>f.code),
+          freeValidationPass:
+            restoredCoverage.losses.length<keywordCheck.losses.length &&
+            detectedRepetition.length===0 &&
+            proposedWordCount>=minimumWords &&
+            proposedWordCount<=3200,
+          note:"Proposed original sentence still requires paid current-source semantic verification.",
+        };
+      }):[];
     const verifiedEditorialFindings=verifiedProgress?
       detectHighConfidenceEditorialRepetitionV1(
         verifiedProgress.accepted.map(e=>({
@@ -199,6 +256,7 @@ async function main(){
       completeArticleMinimumWords:minimumWords,
       needsPostEditorialDepthRecovery:actualCachedArticleWords!==null&&
         actualCachedArticleWords<minimumWords,
+      originalSentenceRecovery:sentenceRecoveryCandidates,
       plannedKeywordCoverage:{
         originalUsed:keywordCheck?.originalUsed??null,
         cachedUsed:keywordCheck?.currentUsed??null,
