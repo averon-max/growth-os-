@@ -40,11 +40,8 @@ export function inspectProseJoinAnomaliesV2(body:string):string[]{
   for(const match of text.matchAll(/\b[\p{L}]+,[\p{L}]+/gu))
     out.add(match[0].slice(0,90));
   for(const candidate of joins){
-    // Exact token matching avoids treating a suspicious substring inside
-    // an unrelated longer word as a definite publication blocker.
-    const escaped=candidate.replace(/[.*+?^${}()|[\]\\]/g,"\\  for(const candidate of joins)
-    if(text.toLowerCase().includes(candidate))out.add(candidate);");
-    const re=new RegExp(String.raw`\b${escaped}\b`,"iu");
+    // Candidate values are literals containing only letters or commas.
+    const re=new RegExp("\\b"+candidate+"\\b","iu");
     if(re.test(text))out.add(candidate);
   }
   return [...out].sort().slice(0,20);
