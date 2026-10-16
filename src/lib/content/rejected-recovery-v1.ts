@@ -72,7 +72,7 @@ export function classifyRejectedRecoveryV1(
    */
   const rawMessage = messageFrom(error);
   const persisted = rawMessage.match(
-    /^REJECTED_RECOVERY_V1\|class=[A-Z_]+\|owner=[A-Z_]+\|action=[A-Z_]+\|autoRetry=[01]\|message=(.+)$/s
+    /^REJECTED_RECOVERY_V1\|class=[A-Z_]+\|owner=[A-Z_]+\|action=[A-Z_]+\|autoRetry=[01]\|message=(.+)$/
   );
   const message = persisted?.[1] ?? rawMessage;
 
