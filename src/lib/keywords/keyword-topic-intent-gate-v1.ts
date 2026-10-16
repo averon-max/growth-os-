@@ -24,7 +24,7 @@ export type KeywordTopicAssessmentV1={
   reason:string;
 };
 const normalize=normalizeKeywordV2;
-const topicFromSeed=(seed:string)=>normalize(seed)
+export const keywordCoreTopicV1=(seed:string)=>normalize(seed)
   .replace(/^(what is|what are|how does|how do|how can|why does|why is|guide to|introduction to|understanding)\s+/u,"")
   .replace(/\s+(explained|guide|definition|meaning|overview)$/u,"").trim();
 const phrase=(text:string,value:string)=>
@@ -71,7 +71,7 @@ function make(
 export function assessKeywordTopicIntentV1({
   seed,query,
 }:{seed:string;query:string;}):KeywordTopicAssessmentV1{
-  const core=topicFromSeed(seed);
+  const core=keywordCoreTopicV1(seed);
   const value=normalize(query);
   if(!core||!value)
     return make(seed,query,core,"AMBIGUOUS_TOPIC_REVIEW",
