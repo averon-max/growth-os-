@@ -239,3 +239,20 @@ export function evaluateArticleSearchReadinessV2({
     explanation:"No numeric keyword or word quota guarantees Google rankings. Unobserved keywords and missing metrics must not be invented.",
   };
 }
+
+/**
+ * Very narrow publication invariant: don't knowingly publish obvious
+ * malformed joined words or missing comma-space. This is not a Google
+ * SEO ranking metric. No unknown-query quota blocks publication here.
+ */
+export class ArticleProseHygieneErrorV2 extends Error{
+  readonly code="ARTICLE_PROSE_COPYEDIT_REQUIRED" as const;
+  constructor(readonly defects:readonly string[]){
+    super("ARTICLE_PROSE_COPYEDIT_REQUIRED:"+defects.join(","));
+    this.name="ArticleProseHygieneErrorV2";
+  }
+}
+export function assertArticleProseHygieneV2(body:string):void{
+  const defects=inspectProseJoinAnomaliesV2(body);
+  if(defects.length)throw new ArticleProseHygieneErrorV2(defects);
+}
