@@ -37,6 +37,6 @@ export function assessSerpCompetitorPageQualityV1(page:ObservedCompetitorPageV1)
 export function isSubstantiveSerpHeadingV1(heading:string):boolean {
   const value=heading.trim().toLocaleLowerCase("en-US")
     .replace(/[^\p{L}\p{N}]+/gu," ").trim();
-  if(value.length<8)return false;
-  return !/^(?:about(?: us)?|contact(?: us)?|products?|services?|resources?|company|learn|legal disclaimer|disclosures?(?: and information)?|share(?: article| this content)?|page footer|recent posts|faqs?|get our app|our experts|our picks|categories|featured|related articles?|more credit resources|notable links|search for your question|browse related questions|subscribe|sign in|log in|privacy policy|terms(?: of service)?|follow us|tools?(?: and resources)?|credit education|important links)$/iu.test(value);
+  if(value.length<4)return false;
+  return !/^(?:about(?: us)?|bank|borrow|menu|contact(?: us)?|products?|services?|resources?|company|learn|legal disclaimer|disclosures?(?: and information)?|share(?: article| this content)?|page footer|recent posts|faqs?|get our app|our experts|our picks|categories|featured|related articles?|more credit resources|notable links|search for your question|browse related questions|subscribe|sign in|log in|privacy policy|terms(?: of service)?|follow us|tools?(?: and resources)?|credit education|important links)$/iu.test(value);
 }
