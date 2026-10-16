@@ -11,6 +11,8 @@ import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
 import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
+import {assessSerpCompetitorPageQualityV1,
+  isSubstantiveSerpHeadingV1} from "@/lib/content/serp-competitor-page-quality-v1";
 import { prepareKeywordOpportunitiesV2, validateKeywordOpportunityChoiceV2,
   selectVerifiedKeywordOpportunityV2,
   type KeywordObservationV2, type KeywordOpportunityChoiceV2, type SerpOpportunityV2,
@@ -68,11 +70,15 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
     topOrganic,
     ownOrganicRank,
     competitiveResearch:{
-      fetchedCompetitorPages:(serp.competitors??[]).filter(p=>p.fetched).length,
-      fetchFailures:(serp.competitors??[]).filter(p=>!p.fetched).length,
+      fetchedCompetitorPages:(serp.competitors??[]).filter(p=>
+        assessSerpCompetitorPageQualityV1(p).usable).length,
+      fetchFailures:(serp.competitors??[]).filter(p=>
+        !assessSerpCompetitorPageQualityV1(p).usable).length,
       observedQuestions:(serp.questions??[]).slice(0,25),
       aiOverviewPresent:serp.aiOverview?.present===true,
-      commonSections:(serp.commonSections??[]).slice(0,25).map(item=>({
+      commonSections:(serp.commonSections??[])
+        .filter(item=>isSubstantiveSerpHeadingV1(item.topic))
+        .slice(0,25).map(item=>({
         topic:item.topic,pages:item.pages,coveragePct:item.coveragePct,
       })),
       commonTerms:(serp.commonTerms??[]).slice(0,35).map(item=>({
@@ -85,7 +91,8 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
       },
       competitorPages:(serp.competitors??[]).slice(0,10).map(item=>({
         rank:item.rank,domain:item.domain,url:item.url,
-        fetched:item.fetched,pageType:item.pageType,
+        fetched:assessSerpCompetitorPageQualityV1(item).usable,
+        statusCode:item.statusCode??null,pageType:item.pageType,
         title:item.title,h1:item.h1,
         h2:item.h2.slice(0,30),h3:item.h3.slice(0,35),
         wordCount:item.wordCount,
@@ -93,7 +100,9 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
         tableCount:item.tableCount??0,
         authorSignal:item.authorSignal===true,
         dateSignal:item.dateSignal===true,
-        error:item.error?.slice(0,160)??null,
+        error:item.error?.slice(0,160)??(
+          assessSerpCompetitorPageQualityV1(item).usable?null:
+            "UNUSABLE_COMPETITOR_CONTENT"),
       })),
     },
   };
