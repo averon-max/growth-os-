@@ -34,6 +34,17 @@ on:
       - "src/lib/content/content-topic-typo-guard-v1.test.ts"
       - "src/app/api/content/briefs/route.ts"
       - "src/components/dashboard/content-create-button.tsx"
+      - "src/lib/content/existing-article-quality-improvement-v1.ts"
+      - "src/lib/content/same-article-quality-improvement-v1.ts"
+      - "src/lib/content/same-article-quality-improvement-v1.test.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.test.ts"
+      - "scripts/content-improve-existing-article-quality.ts"
+      - "src/lib/content/service.ts"
+      - "src/components/dashboard/article-workspace.tsx"
+      - "src/app/dashboard/content/articles/[id]/page.tsx"
+      - "src/app/api/content/articles/[id]/approve/route.ts"
+      - "src/app/api/content/articles/[id]/publish/route.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 

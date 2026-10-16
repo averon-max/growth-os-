@@ -26,6 +26,10 @@ import {
 } from "@/components/dashboard/article-workspace";
 
 import styles from "@/components/dashboard/article-workspace.module.css";
+import { parsePersistedArticleExecutionPlanV1 }
+  from "@/lib/content/article-execution-plan-binding-v1";
+import { resolveArticleLengthContractV1 }
+  from "@/lib/content/article-length-contract-v1";
 
 export default async function ArticlePage({
   params,
@@ -81,6 +85,21 @@ export default async function ArticlePage({
       .websiteId
   );
 
+  const evidence=await prisma.contentEvidenceSnapshot.findUnique({
+    where:{briefId:article.brief.id},select:{plan:true},
+  });
+  let qualityMinimumWords=0;
+  try{
+    const plan=evidence?.plan as Record<string,unknown> | null;
+    if(plan?.articleExecutionPlan){
+      const execution=parsePersistedArticleExecutionPlanV1(
+        plan.articleExecutionPlan);
+      qualityMinimumWords=resolveArticleLengthContractV1(execution)
+        .targetWords?.min??0;
+    }
+  }catch{
+    // Missing historical plan cannot be fabricated into a quality target.
+  }
   return (
     <>
       <Topbar
@@ -113,6 +132,7 @@ export default async function ArticlePage({
         </Link>
 
         <ArticleWorkspace
+          qualityMinimumWords={qualityMinimumWords}
           initialArticle={{
             id:
               article.id,
