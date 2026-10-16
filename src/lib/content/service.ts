@@ -64,6 +64,8 @@ import {
   evaluateComprehensiveEditorialReleaseV1,
   assertComprehensiveEditorialReleaseV1,
 } from "./comprehensive-editorial-release-gate-v1";
+import {assertArticleProseHygieneV2}
+  from "./article-search-readiness-v2";
 
 import {
   writeArticleRecoveryCheckpointV1,
@@ -3893,6 +3895,10 @@ export async function approveArticle(
     throw new EditorialRepetitionGateErrorV1(approvalEditorialFindings);
   }
 
+  // A saved article may have passed model/SEO gates while still
+  // containing visible text corruption. Never approve or publish that.
+  assertArticleProseHygieneV2(article.bodyMarkdown);
+
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
   );
@@ -4172,6 +4178,10 @@ export async function publishArticle(
   if (publishEditorialFindings.length > 0) {
     throw new EditorialRepetitionGateErrorV1(publishEditorialFindings);
   }
+
+  // A saved article may have passed model/SEO gates while still
+  // containing visible text corruption. Never approve or publish that.
+  assertArticleProseHygieneV2(article.bodyMarkdown);
 
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
