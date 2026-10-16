@@ -61,7 +61,20 @@ function messageFrom(error: unknown): string {
 export function classifyRejectedRecoveryV1(
   error: unknown,
 ): Readonly<RejectedRecoveryV1> {
-  const message = messageFrom(error);
+  /*
+   * PERSISTED_RECOVERY_METADATA_NOISE_V1
+   *
+   * A persisted publishError contains classification metadata, e.g.
+   * action=RETURN_TO_EVIDENCE_OR_RECONCILIATION. Re-classifying that
+   * whole string accidentally labels a SEMANTIC error as a
+   * RECONCILIATION error. Only the original message can be searched
+   * for stage ownership, never the transport metadata.
+   */
+  const rawMessage = messageFrom(error);
+  const persisted = rawMessage.match(
+    /^REJECTED_RECOVERY_V1\\|class=[A-Z_]+\\|owner=[A-Z_]+\\|action=[A-Z_]+\\|autoRetry=[01]\\|message=(.+)$/s
+  );
+  const message = persisted?.[1] ?? rawMessage;
 
   const upper = message.toUpperCase();
 
@@ -156,7 +169,12 @@ export function classifyRejectedRecoveryV1(
     });
   }
 
-  if (upper.includes("FINAL_READINESS") || upper.includes("FINAL READINESS")) {
+  if (
+    upper.includes("FINAL_READINESS") ||
+    upper.includes("FINAL READINESS") ||
+    upper.includes("ARTICLE_NEEDS_EDITORIAL_IMPROVEMENT") ||
+    upper.includes("COMPREHENSIVE_EDITORIAL_")
+  ) {
     return Object.freeze({
       version: "REJECTED_RECOVERY_V1",
 
@@ -193,7 +211,11 @@ export function classifyRejectedRecoveryV1(
     upper.includes("VERIFIED_EXCERPT") ||
     upper.includes("EVIDENCE_FAILURE") ||
     upper.includes("EVIDENCE_REQUIRED") ||
-    upper.includes("EVIDENCE_MISSING")
+    upper.includes("EVIDENCE_MISSING") ||
+    upper.includes("SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT") ||
+    upper.includes("ARTICLE_PREWRITER_REQUIRED_EVIDENCE_DEFERRED") ||
+    upper.includes("ARTICLE_PREWRITER_REQUIRED_COVERAGE_LOST") ||
+    upper.includes("LIVE_STAGE_PLAN_INFORMATION_GAIN_UNRESOLVED")
   ) {
     return Object.freeze({
       version: "REJECTED_RECOVERY_V1",
