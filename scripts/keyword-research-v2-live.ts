@@ -93,8 +93,8 @@ async function main():Promise<void>{
         volume:c.primary.searchVolume,kd:c.primary.keywordDifficulty,
         score:c.opportunityScore,
       })),
-      deepCompetitiveReadiness:result.serpResults.map(
-        auditDeepSerpReadinessV1),
+      deepCompetitiveReadiness:result.serpResults.map(row=>
+        auditDeepSerpReadinessV1(row,result.seed.replace(/^(what is|how does) +/i,""))),
       serp:result.serpResults.map(s=>({
         keyword:s.query,organicResults:s.organicResults,
         pagesAnalyzed:s.pagesAnalyzed,ownOrganicRank:s.ownOrganicRank??null,
