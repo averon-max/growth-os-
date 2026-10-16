@@ -316,6 +316,7 @@ export function classifyRejectedRecoveryV1(
   }
 
   if (
+    upper.includes("SECTION_TARGETED_REPAIR_EXHAUSTED:SEMANTIC") ||
     upper.includes(":SEMANTIC:") ||
     upper.includes("SECTION_SEMANTIC_") ||
     upper.includes("SEMANTIC_VERIFICATION")
