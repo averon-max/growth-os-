@@ -244,7 +244,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     ? reviewNeeded(eligibleForGpt.length
       ? "SERP-verified opportunities found. GPT decision not requested."
       : "No SERP-verified opportunity: review source reliability before choosing a primary.")
-    : scoped.assessments.some(a=>a.decision==="AMBIGUOUS_TOPIC_REVIEW")
+    : scopedObservations.some(x=>x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW")
       ? reviewNeeded("Observed terms have mixed informational/product intent or only SEED terms remain. Human SERP-intent review required; no paid deep-SERP calls were made.")
       : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
         reasons: ["No source-observed same-topic informational candidates"], risks: [] };
