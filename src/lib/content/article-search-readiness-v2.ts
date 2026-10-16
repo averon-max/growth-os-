@@ -31,6 +31,11 @@ const joins=[
   "yourenrollment","separateconfirmed","businessthat",
   "helpyou","thealert","thealertthen","phone,depending",
   "yourreport","thereport","theinformation","reportinformation",
+  // Observed in the already committed Credit Monitoring article
+  // (2026-10-16). These are precise, literal join defects; do not
+  // invent broad word-splitting rules that harm brands or technical text.
+  "creditcard","thereview","informationyou","assumptionto",
+  "ofcoverage","whosecoverage","toreview","toa",
 ];
 const normalize=(s:string)=>s.toLowerCase().normalize("NFKC")
   .replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
