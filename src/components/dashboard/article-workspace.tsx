@@ -39,6 +39,10 @@ import {
 } from "recharts";
 
 import styles from "./article-workspace.module.css";
+import {previewArticleWithoutInlineSourceLabelsV1}
+  from "@/lib/content/article-reader-cleanup-v1";
+import {detectArticleInformationGainDefectsV1}
+  from "@/lib/content/article-editorial-information-gain-v1";
 
 import {
   ArticleStructureStats,
@@ -994,6 +998,14 @@ export function ArticleWorkspace({
     );
   }
 
+  const readerPreview=useMemo(
+    ()=>previewArticleWithoutInlineSourceLabelsV1(draft.bodyMarkdown),
+    [draft.bodyMarkdown],
+  );
+  const substantiveWarnings=useMemo(
+    ()=>detectArticleInformationGainDefectsV1(article.bodyMarkdown),
+    [article.bodyMarkdown],
+  );
   const qualityCurrentWords=countWords(article.bodyMarkdown);
   const qualityNeedsImprovement=article.status==="IN_REVIEW" &&
     !editing&&qualityMinimumWords>0&&
@@ -1563,8 +1575,9 @@ ${article.bodyMarkdown}`
           ) : null}
 
           {article.status==="IN_REVIEW"&&!editing &&
-            detectPersistedArticleEditorialRepetitionV1(
-              article.bodyMarkdown).length>0 ? (
+            (detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ||
+              substantiveWarnings.length>0) ? (
             <button
               type="button"
               className={styles.secondaryButton}
@@ -1578,8 +1591,9 @@ ${article.bodyMarkdown}`
           ) : null}
 
           {article.status==="IN_REVIEW"&&!editing &&
-            detectPersistedArticleEditorialRepetitionV1(
-              article.bodyMarkdown).length>0 ? (
+            (detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ||
+              substantiveWarnings.length>0) ? (
             <button
               type="button"
               className={styles.secondaryButton}
@@ -1592,7 +1606,17 @@ ${article.bodyMarkdown}`
             </button>
           ) : null}
 
-          {qualityNeedsImprovement ? (
+          {substantiveWarnings.length>0 && article.status==="IN_REVIEW" ? (
+         <p role="alert" className={styles.error}>
+           {substantiveWarnings.length} reader-facing editorial issue(s):
+           empty explanatory filler or inline Source labels. Existing
+           signed citations and original article bytes are preserved.
+           First issue: {substantiveWarnings[0]?.code} in H2
+           {" "}{(substantiveWarnings[0]?.sectionIndex??0)+1}.
+           Review the original source-backed section before repair.
+         </p>
+       ):null}
+       {qualityNeedsImprovement ? (
             <button type="button" className={styles.secondaryButton}
               disabled={busy!==null}
               title="Improve the same article, preserve source claims, then run all gates and SERP Replay"
@@ -1623,7 +1647,9 @@ ${article.bodyMarkdown}`
                   article.bodyMarkdown
                 ).length > 0
                   ? "Resolve repeated low-information sections before approval"
-                  : qualityNeedsImprovement
+                  : substantiveWarnings.length>0
+                    ? "Remove low-information prose and intrusive source labels before approval"
+                    : qualityNeedsImprovement
                     ? "Expand and structure this comprehensive guide before approval"
                     : "Approve verified article"
               }
@@ -1882,8 +1908,22 @@ ${article.bodyMarkdown}`
                   ),
                 }}
               >
-                {draft.bodyMarkdown}
+                {readerPreview.readerMarkdown}
               </ReactMarkdown>
+              {readerPreview.researchLinks.length>0 ? (
+                <details style={{fontSize:12,color:"#9CA0A8",marginTop:24}}>
+                  <summary>Reference links (optional)</summary>
+                  <ul style={{paddingLeft:18,marginTop:6}}>
+                    {readerPreview.researchLinks.map(ref=>(
+                      <li key={ref.url}>
+                        <a href={ref.url} target="_blank" rel="noopener noreferrer">
+                          {ref.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ):null}
             </article>
           )}
         </main>
