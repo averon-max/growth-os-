@@ -36,6 +36,8 @@ import { supportsMasterSectionSemanticVerifier }
   from "./master-section-semantic-verifier";
 import { rebuildWriterRunV1 } from "./master-article-critic-repair-execution";
 import { createMasterArticleCriticFindingV1 } from "./master-article-critic";
+import {countQualityArticleH3V1,eligibleForEvidenceBackedH3V1}
+  from "./quality-improvement-h3-v1";
 import {inspectArchivedWriterProgressV1}
   from "./writer-recovery-archived-progress-v1";
 import {rebindSignedArchivedWriterRunV1}
@@ -143,7 +145,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     });
 
     const budget=createContentRunBudgetV1({
-      maxModelCalls:30,maxEstimatedInputTokens:160000,maxRepairCalls:5,
+      maxModelCalls:36,maxEstimatedInputTokens:200000,maxRepairCalls:8,
     });
     const generator=withContentRunBudgetV1({generator:geminiGenerator,budget});
     check(supportsMasterSectionRepairGenerator(generator)&&
@@ -339,7 +341,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
         contract,run,sections,reconciliations,semanticVerifications,
       }).article;
       if(countWords(partialArticle.bodyMarkdown)>=minimumWords &&
-        (partialArticle.bodyMarkdown.match(/^###\\s+/gm)??[]).length>=2){
+        countQualityArticleH3V1(partialArticle.bodyMarkdown)>=2){
         console.info("[content quality target reached]",{
           words:countWords(partialArticle.bodyMarkdown),
           repairedSections:repairedSectionIds.length,
@@ -425,6 +427,91 @@ export async function improveExistingArticleQualityV1(articleId:string,
       // reconciled to the same original article and source snapshot.
       await saveQualityProgress();
     }
+    // H3 is a quality release requirement for evidence-rich guides, but
+    // SectionRepair historically treated H3 as optional. The initial
+    // five section rewrites are already SHA256-saved; use an isolated,
+    // bounded structure rescue rather than discarding them or restarting
+    // the full Writer. Never invent a new H2, claim, or evidence source.
+    const countH3=countQualityArticleH3V1;
+    let verifiedH3Total=sections.reduce(
+      (n,s)=>n+countH3(s.bodyMarkdown),0);
+    if(improvePlan.headingOpportunityCount>=2 && verifiedH3Total<2){
+      const eligible=improvePlan.steps
+        .map(step=>step.index)
+        .filter(index=>{
+          const owned=sectionPlan[index];
+          const prose=sections[index]?.bodyMarkdown??"";
+          return eligibleForEvidenceBackedH3V1({
+            bodyMarkdown:prose,
+            approvedClaimCount:owned?.requiredClaimIds.length??0,
+            verifiedEvidenceCount:owned?.evidenceIds.length??0,
+          });
+        });
+      const maxStructureAttempts=Math.min(3,eligible.length);
+      let structureAttempts=0;
+      for(const index of eligible){
+        if(verifiedH3Total>=2 || structureAttempts>=maxStructureAttempts)
+          break;
+        const scope=contract.sectionContracts[index];
+        const current=sections[index];
+        if(!scope||!current)continue;
+        structureAttempts++;
+        const originalH3=countH3(current.bodyMarkdown);
+        const finding=createMasterArticleCriticFindingV1({
+          criticId:"EDITORIAL",
+          code:"SOURCE_BACKED_H3_STRUCTURE_REPAIR",
+          severity:"BLOCK",
+          location:{scope:"SECTION",sectionIndex:index,
+            sectionNumber:scope.sectionNumber,
+            heading:scope.blueprint.heading},
+          repairScope:"SECTION",
+          message:"The article is already substantive and source-verified, "+
+            "but needs descriptive H3 subtopics to help readers navigate "+
+            "distinct answers within this H2.",
+          recommendation:"Return the COMPLETE original section with at "+
+            "least "+Math.max(1,2-verifiedH3Total)+" new Markdown ### "+
+            "headings that accurately label distinct existing evidence-"+
+            "supported paragraphs. Preserve ALL factual prose, required "+
+            "claims, source qualifications and keyword language. "+
+            "No new facts or generic filler. Do NOT insert H1 or H2.",
+          evidence:{claimIds:scope.blueprint.requiredClaims,
+            evidenceIds:scope.blueprint.evidenceIds,
+            queryNodeIds:scope.blueprint.queryNodeIds,sourceIds:[]},
+        });
+        const revised=await generator.repairSection({
+          contract:scope,section:current,
+          reconciliation:reconciliations[index],
+          semanticVerification:semanticVerifications[index],
+          attempt:1,
+          criticFindings:[finding],
+        });
+        if(countH3(revised.bodyMarkdown)<=originalH3){
+          console.info("[content quality H3 structure attempt declined]",{
+            sectionIndex:index,reason:"NO_ADDITIONAL_H3",
+          });
+          continue;
+        }
+        // Existing normal current-source semantic and deterministic claim
+        // gates must accept every changed character, including headings.
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:scope,section:revised,generator,
+        });
+        const nextH3=countH3(verified.section.bodyMarkdown);
+        if(nextH3<=originalH3)
+          continue;
+        sections[index]=verified.section;
+        reconciliations[index]=verified.reconciliation;
+        semanticVerifications[index]=verified.semanticVerification;
+        if(!repairedSectionIds.includes(index))
+          repairedSectionIds.push(index);
+        verifiedH3Total+=nextH3-originalH3;
+        await saveQualityProgress();
+        console.info("[content quality H3 structure verified]",{
+          sectionIndex:index,h3Before:originalH3,h3After:nextH3,
+          totalVerifiedH3:verifiedH3Total,
+        });
+      }
+    }
     const improvedRun=rebuildWriterRunV1({
       contract,run,sections,reconciliations,semanticVerifications,
     });
@@ -441,7 +528,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // The meaningful H3 release rule is not a per-section quota.
     // Evaluate it before spending the nine-critic pass.
     check(improvePlan.headingOpportunityCount<2 ||
-      (improvedRun.article.bodyMarkdown.match(/^###\\s+/gm)??[]).length>=2,
+      countQualityArticleH3V1(improvedRun.article.bodyMarkdown)>=2,
       "SAVED_QUALITY_FINAL_H3_STRUCTURE_MISSING");
     check(detectPersistedArticleEditorialRepetitionV1(
       improvedRun.article.bodyMarkdown).length===0,
