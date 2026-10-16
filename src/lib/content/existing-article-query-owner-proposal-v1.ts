@@ -4,6 +4,9 @@
  * No writes, no new keywords, no semantic assumptions beyond an already
  * evidenced, exact-after-possessive heading match.
  */
+import {createHash} from "node:crypto";
+import {buildSerpReplayArticleFingerprintV1}
+  from "./serp-replay-fingerprint";
 import type {MasterRuntimeSnapshotV1} from "./master-runtime-adapter";
 import type {ArticleExecutionPlanV1} from "./article-execution-plan-v1";
 import {evaluateArticleSearchReadinessV2}
@@ -11,6 +14,8 @@ import {evaluateArticleSearchReadinessV2}
 import type {SearchReadinessArticleV2,SearchReadinessReplayV2}
   from "./article-search-readiness-v2";
 
+const sha=(x:unknown)=>createHash("sha256")
+  .update(JSON.stringify(x)).digest("hex");
 const normal=(v:string)=>v.normalize("NFKC").toLowerCase()
   .replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/gu," ");
 export function proposeExistingArticleQueryOwnerRebindV1(input:{
@@ -65,6 +70,11 @@ export function proposeExistingArticleQueryOwnerRebindV1(input:{
     currentQueryGraphVersion:input.runtime.queryGraph.version,
     currentGraphMissionId:input.runtime.queryGraph.missionId,
     currentSectionBlueprintCount:sections.length,
+    sourceArticleFingerprint:buildSerpReplayArticleFingerprintV1(
+      input.article),
+    sourceQueryGraphSha256:sha(input.runtime.queryGraph),
+    sourceSectionBlueprintSha256:sha(input.runtime.sectionBlueprints),
+    sourceExecutionPlanSha256:sha(input.plan),
     signedResearchUpdated:false,
     articleChanged:false,
     searchVolumeGenerated:false,
