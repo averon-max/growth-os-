@@ -37,6 +37,8 @@ describe("same-ID candidate citation section ownership",()=>{
     const r=verifyExistingArticleCitationScopeV1({
       candidateBodyMarkdown:base,plan,runtime});
     expect(r.status).toBe("BLOCK_NO_VISIBLE_CITATIONS");
+    expect(r.completeSectionCitationCoverage).toBe(false);
+    expect(r.uncitedEvidenceSections).toHaveLength(2);
   });
   it("blocks exact globally VERIFIED URL when cited in wrong H2",()=>{
     const r=verifyExistingArticleCitationScopeV1({
@@ -56,6 +58,10 @@ describe("same-ID candidate citation section ownership",()=>{
       plan,runtime,
     });
     expect(r.status).toBe("REVIEW_SEMANTIC_PROOF_REQUIRED");
+    expect(r.completeSectionCitationCoverage).toBe(false);
+    expect(r.uncitedEvidenceSections).toMatchObject([
+      {sectionIndex:1,heading:"What it does not prevent"},
+    ]);
     expect(r.commitAllowed).toBe(false);
     expect(r.fullySemanticallyVerified).toBe(false);
   });
