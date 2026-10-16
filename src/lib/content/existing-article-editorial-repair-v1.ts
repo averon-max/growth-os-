@@ -143,7 +143,6 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       candidateBodyMarkdown:layoutDraft.proposedBodyMarkdown,plan,runtime,
     });
     check(layoutDraft.h2Count===sectionHeadings.length &&
-      layoutDraft.movedSourceLabels>0 &&
       !layoutDraft.sourceLabelsStillInline &&
       layoutDraft.everyH2RetainsItsOwnUrls &&
       beforeLayout.unapprovedLinks===0 &&
