@@ -332,6 +332,20 @@ export function buildMasterSectionRepairPrompt(
     "12. A GROUNDED_EXPLANATION may explain, organize, connect, or cautiously synthesize the supplied section mission and authoritative context without an artificial claim ID, provided it adds no new material externally verifiable proposition.",
     "13. Section mission and contextual framing may ground ordinary explanation, but they NEVER authorize numbers, prices, dates, named third-party capabilities, comparisons, rankings, health, legal, financial, security, guarantee, study, dataset, or other material factual assertions.",
     "",
+    ...(input.criticFindings?.some(f=>
+      f.code==="SOURCE_BACKED_H3_STRUCTURE_REPAIR")
+      ? [
+          "SOURCE-VERIFIED H3 STRUCTURE-ONLY CORRECTION:",
+          "Insert AT LEAST ONE specific descriptive Markdown ### heading before "+
+            "an existing substantial paragraph that answers a distinct "+
+            "subquestion within this section.",
+          "Do NOT use generic headings such as 'Overview', 'Key points' "+
+            "or 'More information'. Each inserted H3 must accurately "+
+            "summarize its own existing evidence-backed paragraph(s).",
+          "Preserve existing evidence, mandatory factual qualifications, "+
+            "links and core wording. No new statistics, facts, topics or "+
+            "repetition. Never add H1/H2.",
+        ] : []),
     "HARD RULES:",
     "1. Return body content for this one section only.",
     "2. Do NOT output an H1.",
