@@ -7,6 +7,8 @@ import {countExactPhrase,countWords} from "./article-analyzer";
 import {buildSerpReplayArticleFingerprintV1} from "./serp-replay-fingerprint";
 import type {MasterRuntimeSnapshotV1} from "./master-runtime-adapter";
 import type {ArticleExecutionPlanV1} from "./article-execution-plan-v1";
+import {suggestObservedQueryHeadingCandidateV1}
+  from "./observed-query-heading-candidate-v1";
 export type SearchReadinessArticleV2={
   title:string;metaDescription:string;h1:string;bodyMarkdown:string;
 };
@@ -109,10 +111,7 @@ export function evaluateArticleSearchReadinessV2({
   else if(observed.length===0)add("NO_OBSERVED_SUPPORTING_QUERIES","BLOCK",
     "Only brief keywords are known; no extra same-page observed search queries.",
     "Research real queries in the correct market using existing DataForSEO/GSC pipeline, classify intent, bind validated questions to evidenced H2s. Never synthesize volume.");
-  else if(!observed.some(q=>q.ownerSectionIndex!==null))
-    add("QUERY_TO_SECTION_BRIDGE_MISSING","BLOCK",
-      "Real related queries exist but none is assigned to article sections.",
-      "Review which queries belong on this page and map each to a source-backed H2.");
+;
   // Map actual publication-grade excerpt sources to their owner H2s.
   // A URL is evidence to REVIEW, not permission to automatically insert
   // a citation in prose that has subsequently changed.
@@ -155,6 +154,39 @@ export function evaluateArticleSearchReadinessV2({
           .slice(0,8),
       };
     })??[];
+  // Observed SAME_PAGE query is not technically bound in the frozen
+  // QueryGraph, but may already have a unique source-backed heading.
+  // This remains a SUGGESTION, not a manufactured signed assignment.
+  const persistedH2=headings;
+  const headingCandidates=observed.flatMap(query=>{
+    if(query.ownerSectionIndex!==null)return [];
+    const suggestion=suggestObservedQueryHeadingCandidateV1({
+      query:query.query,
+      sections:(runtime?.sectionBlueprints.sections??[]).map((section,index)=>({
+        index,heading:section.heading,
+        persistedH2:persistedH2[index]??null,
+        verifiedEvidenceCount:
+          sectionSourceCandidates[index]?.evidenceBackedLinks.length??0,
+      })),
+    });
+    return suggestion?[{query:query.query,queryIntent:query.intent,
+      querySource:query.sources,
+      ...suggestion}]:[];
+  });
+  const suggestedQuerySet=new Set(headingCandidates.map(x=>normalize(x.query)));
+  const stillUnmatched=observed.filter(query=>
+    query.ownerSectionIndex===null &&
+    !suggestedQuerySet.has(normalize(query.query)));
+  if(observed.length>0 && !observed.some(q=>q.ownerSectionIndex!==null)){
+    if(headingCandidates.length>0&&stillUnmatched.length===0)
+      add("QUERY_BINDING_REVIEW_REQUIRED","REVIEW",
+        "Real query already matches an existing source-backed H2, but signed queryNodeId ownership is missing.",
+        "Confirm the existing H2 answer and re-bind its known queryNodeId in a new verified version of the planning artifact. Do not rewrite content just to repeat the exact phrase.",
+        headingCandidates.map(x=>x.query+" → "+x.ownerHeading).join(" | "));
+    else add("QUERY_TO_SECTION_BRIDGE_MISSING","BLOCK",
+      "Real related queries exist but no verified section assignment covers them.",
+      "Review actual H2 answers and bind same-page queries via a new verified blueprint; no fabricated assignments.");
+  }
   const canonicalCountry=(s:string)=>({
     us:"united states",usa:"united states",
     "united states of america":"united states",ca:"canada",
@@ -168,10 +200,10 @@ export function evaluateArticleSearchReadinessV2({
       "Re-run real competitor research in the correct jurisdiction before changing claims.",
       runtime.mission.location+" / "+runtime.serpResearch.country);
   const unassigned=observed.filter(q=>q.ownerSectionIndex===null);
-  if(unassigned.length)add("OBSERVED_QUERIES_NOT_OWNED","REVIEW",
-    "Real same-page queries remain unmapped; intent may be incomplete.",
-    "Allocate to an H2 with verified evidence or move to a separate page to avoid cannibalization.",
-    unassigned.slice(0,6).map(q=>q.query).join(" | "));
+  if(stillUnmatched.length)add("OBSERVED_QUERIES_NOT_OWNED","REVIEW",
+    "Some real same-page queries have neither signed H2 ownership nor a unique evidence-backed heading match.",
+    "Review query intent, supporting evidence and page ownership before editing article content.",
+    stillUnmatched.slice(0,6).map(q=>q.query).join(" | "));
   const requiredUnassigned=plan?.requiredQuestions.filter(q=>
     q.priority==="MUST"&&!plan.sections.some(section=>
       section.state==="WRITABLE"&&section.requiredQuestionIds.includes(q.id)))??[];
@@ -190,11 +222,24 @@ export function evaluateArticleSearchReadinessV2({
   if(!replayMatches)add("SERP_REPLAY_CURRENT_VERSION_MISSING","BLOCK",
     "No successful SERP Replay matches the exact saved article.",
     "Re-run SERP Replay after any substantive edits.");
-  else if(!["PASS","READY"].includes(replay.replayStatus??""))
-    add("SERP_REPLAY_WARN","REVIEW",
-      "Competitive SERP Replay is not a clean pass.",
-      "Inspect dimension-level competitor findings rather than treating WARN as ranking readiness.",
-      replay.replayStatus??"NULL");
+  else if(!["PASS","READY"].includes(replay.replayStatus??"")){
+    const warnings=Array.isArray(replay.warnings)?
+      replay.warnings.filter((x):x is string=>typeof x==="string"):[];
+    const missing=warnings.filter(x=>x.startsWith("SERP_REPLAY_MISSING_DATA:"));
+    const other=warnings.filter(x=>!x.startsWith("SERP_REPLAY_MISSING_DATA:"));
+    const replayBlockers=Array.isArray(replay.blockers)?replay.blockers:[];
+    if(missing.length>0&&other.length===0&&replayBlockers.length===0)
+      add("SERP_REPLAY_EVIDENCE_INCOMPLETE","REVIEW",
+        "Replay WARN is caused by a competitor's missing source data, not a demonstrated page-quality failure.",
+        "Review competitor URL, relevance and available evidence. Do not claim READY or pay for repeat research until the data gap is understood.",
+        missing.map(x=>x.slice("SERP_REPLAY_MISSING_DATA:".length)).join(" | "));
+    else
+      add("SERP_REPLAY_WARN","REVIEW",
+        "Competitive SERP Replay is not a clean pass.",
+        "Inspect dimension-level competitor findings, blockers and missing source data before judging article quality.",
+        [...warnings,...replayBlockers.map(x=>String(x))].slice(0,6).join(" | ")||
+          (replay.replayStatus??"NULL"));
+  }
   if(headings.length>=5&&nestedHeadings.length>0&&
     body.split(/^##\s+/m).slice(1).filter(x=>
       /^###\s+\S/m.test(x)).length===1)
@@ -228,6 +273,8 @@ export function evaluateArticleSearchReadinessV2({
     briefLexicalCoverage:usedBriefKeywords,
     observedSupportingQueries:observed.length,
     assignedSupportingQueries:observed.filter(q=>q.ownerSectionIndex!==null).length,
+    existingH2MatchSuggestions:headingCandidates.length,
+    suggestedQueryRebindings:headingCandidates,
     observedQueryClusters:clusters,
     sectionSourceCandidates,
     requiredQuestionGaps:requiredUnassigned.map(q=>q.label),
