@@ -115,6 +115,10 @@ async function main(): Promise<void> {
       (a) => a.status === "IN_REVIEW" || a.status === "APPROVED" || a.status === "PUBLISHED"
     );
     const hasActiveGeneration = existing.some((a) => a.status === "GENERATING");
+    // A PUBLISH_FAILED article has already been generated. An external
+    // CMS/integration failure must be repaired by the publication owner,
+    // never by paying for another Writer attempt for the same brief.
+    const hasFailedPublication = existing.some((a) => a.status === "PUBLISH_FAILED");
     const writable = plan?.sections.filter((s) => s.state === "WRITABLE") ?? [];
     const deferred = plan?.sections.filter((s) => s.state === "DEFERRED_NO_EVIDENCE") ?? [];
     const ready = runtime.readiness === "READY" && inspected.runtime !== null &&
@@ -132,7 +136,11 @@ async function main(): Promise<void> {
       verifiedEvidenceIds: plan?.verifiedEvidenceIds.length ?? 0,
       requiredClaims: [...new Set(writable.flatMap((s) => s.requiredClaimIds))].length,
       blockers,
-      readyToAttemptGeneration: ready && !hasReadyArticle && !hasActiveGeneration,
+      readyToAttemptGeneration: ready && !hasReadyArticle && !hasActiveGeneration &&
+        !hasFailedPublication,
+      ...(hasFailedPublication ? {
+        existingArticleAction: "REPAIR_PUBLISH_INTEGRATION_NOT_WRITER",
+      } : {}),
       existingArticles: existing.map((a) => ({
         id: a.id,
         status: a.status,
@@ -153,6 +161,7 @@ async function main(): Promise<void> {
     }
     if (!ready) throw new Error("PREWRITER_NOT_READY: see blockers above");
     if (hasReadyArticle) throw new Error("ALREADY_HAS_REVIEW_OR_PUBLISHED_ARTICLE");
+    if (hasFailedPublication) throw new Error("PUBLISH_FAILED_REPAIR_CMS_INTEGRATION_NOT_WRITER");
     if (hasActiveGeneration) throw new Error("EXISTING_GENERATING_ARTICLE: do not overlap");
 
     // Preserve each verified section across a failed local CLI attempt.
