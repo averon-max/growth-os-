@@ -62,6 +62,12 @@ on:
       - "src/lib/content/quality-improvement-keyword-recovery-v1.test.ts"
       - "src/lib/content/quality-improvement-keyword-original-sentence-v1.ts"
       - "src/lib/content/quality-improvement-keyword-original-sentence-v1.test.ts"
+      - "src/lib/content/article-search-readiness-v2.ts"
+      - "src/lib/content/article-search-readiness-v2.test.ts"
+      - "src/lib/content/observed-keyword-article-bridge-v1.ts"
+      - "src/lib/content/observed-keyword-article-bridge-v1.test.ts"
+      - "scripts/content-existing-article-search-readiness.ts"
+      - "scripts/content-research-article-keyword-clusters.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
