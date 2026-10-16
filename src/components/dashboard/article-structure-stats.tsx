@@ -176,7 +176,7 @@ export function ArticleStructureStats({
           </span>
 
           <h2>
-            Structure & keyword coverage
+            Headings & exact brief phrases
           </h2>
         </div>
 
