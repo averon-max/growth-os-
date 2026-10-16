@@ -28,7 +28,8 @@ export type KeywordCleanupReasonV2 =
   | "CANNIBALIZATION"
   | "INVALID_QUERY"
   | "SEPARATE_PAGE_INTENT"
-  | "TOPIC_SCOPE_MISMATCH";
+  | "TOPIC_SCOPE_MISMATCH"
+  | "INTENT_REVIEW_REQUIRED";
 
 export interface KeywordCandidateV2 extends KeywordObservationV2 {
   id: string;
