@@ -53,6 +53,8 @@ describe("saved article editorial recovery production closure",()=>{
     expect(service).toContain("assertArticleInformationGainV1(candidate.bodyMarkdown)");
     expect(service).toContain("assertComprehensiveEditorialReleaseV1");
     expect(service).toContain("SAVED_EDITORIAL_SIGNED_CITATION_REGRESSION");
+    expect(service).toContain("sourceAfter.unapprovedLinks===0");
+    expect(service).not.toContain("sourceAfter.unapprovedLinks.length");
   });
 
   it("does not silently edit, publish, or accept stale article versions",()=>{
