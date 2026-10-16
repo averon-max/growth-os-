@@ -276,6 +276,53 @@ async function main(){
     };
 
 
+    /*
+     * READ_ONLY_SEARCH_EDITORIAL_HANDOFF_V1
+     *
+     * Word-target completion != search/editorial readiness.
+     * Keep this separate from the paid depth-only improvement gate:
+     * source citations and signed query ownership require their own
+     * provenance review, not forced model expansion.
+     */
+    const editorialReadiness=!execute?await (async()=>{
+      const {evaluateArticleSearchReadinessV2}=
+        await import("../src/lib/content/article-search-readiness-v2");
+      const replay=await prisma.serpReplayArtifact.findFirst({
+        where:{contentArticleId:articleId},
+        orderBy:[{createdAt:"desc"},{id:"desc"}],
+      });
+      const readiness=evaluateArticleSearchReadinessV2({
+        article:{
+          title:article.title,metaDescription:article.metaDescription,
+          h1:article.h1,bodyMarkdown:article.bodyMarkdown,
+        },
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,
+        runtime:inspected.runtime,plan,replay,
+      });
+      return {
+        status:readiness.status,
+        canClaimSeoReady:readiness.canClaimSeoReady,
+        publishRecommendation:readiness.publishRecommendation,
+        findings:readiness.findings.map(f=>({
+          code:f.code,severity:f.severity,
+          action:f.action,...(f.detail?{detail:f.detail}:{}),
+        })),
+        sourceReviewCandidates:readiness.sectionSourceCandidates.map(s=>({
+          sectionIndex:s.sectionIndex,heading:s.heading,
+          availableVerifiedSourceLinks:s.evidenceBackedLinks.length,
+          governmentSourceUrls:s.evidenceBackedLinks
+            .filter(link=>link.sourceType==="PRIMARY_GOVERNMENT")
+            .map(link=>link.url),
+        })),
+        suggestedQueryRebindings:readiness.suggestedQueryRebindings,
+        nextAction:readiness.findings.length>0
+          ?"REVIEW_OWNING_EDITORIAL_STAGES_NO_AUTO_REWRITE"
+          :"NO_EDITORIAL_READINESS_FINDINGS",
+        note:"NO_DEFICIT only means word target met. This report neither alters signed evidence/query ownership nor approves publication.",
+      };
+    })():null;
+
     console.log(JSON.stringify({
       mode:execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
         "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW",
@@ -283,6 +330,7 @@ async function main(){
       currentWords:countWords(article.bodyMarkdown),requiredWords:minimumWords,
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
       improvement,
+      editorialReadiness,
       verifiedCheckpointReady:checkpointReady,
       incrementalQualityProgress,
       checkpointEvidence:{
