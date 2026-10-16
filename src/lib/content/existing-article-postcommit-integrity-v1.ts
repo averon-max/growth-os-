@@ -56,7 +56,7 @@ export function simulateQueryOwnerBindingWithoutPersistenceV1(input:{
 }){
   const proposal=proposeExistingArticleQueryOwnerRebindV1(input);
   if(proposal.candidateCount!==1){
-    return {previewOnly:true,eligible:false,reason:"NOT_EXACTLY_ONE_PROPOSAL",
+    return {previewOnly:true,eligible:false as const,reason:"NOT_EXACTLY_ONE_PROPOSAL",
       beforeFindingCodes:[],afterFindingCodes:[],researchUnchanged:true};
   }
   const candidate=proposal.proposals[0]!;
@@ -84,7 +84,7 @@ export function simulateQueryOwnerBindingWithoutPersistenceV1(input:{
     throw new Error("SIMULATION_MUTATED_SIGNED_RESEARCH");
   return {
     version:"QUERY_OWNER_REBIND_WHAT_IF_V1",
-    previewOnly:true,eligible:true,
+    previewOnly:true,eligible:true as const,
     queryNodeId:candidate.nodeId,
     ownerH2Index:candidate.proposedOwnerSectionIndex,
     beforeFindingCodes:before.findings.map(x=>x.code),
