@@ -32,6 +32,20 @@ describe("saved article editorial recovery production closure",()=>{
     expect(service).not.toContain("createContentBrief");
   });
 
+  it("moves every inline Source link before paid critic, while proving same-H2 source and unchanged factual prose",()=>{
+    expect(service).toContain("draftSavedArticleSectionReferenceLayoutV1");
+    expect(service).toContain("SAVED_EDITORIAL_SOURCE_LAYOUT_CHANGED_FACTUAL_PROSE");
+    expect(service).toContain("SAVED_EDITORIAL_SOURCE_LAYOUT_PREVIEW_NOT_SAFE");
+    expect(service).toContain("layoutDraft.everyH2RetainsItsOwnUrls");
+    expect(service).toContain("beforeLayout.totalLinks===afterLayout.totalLinks");
+    expect(service).toContain("rebuildWriterRunV1({");
+    expect(service).toContain("SAVED_EDITORIAL_FORMATTED_RUN_PROSE_CHANGED");
+    const formatted=service.indexOf("run=formattedRun;");
+    const critics=service.indexOf("const beforeCritics=await");
+    expect(formatted).toBeGreaterThan(-1);
+    expect(critics).toBeGreaterThan(formatted);
+  });
+
   it("caps paid provider requests and limits model repairs",()=>{
     expect(service).toContain("maxModelCalls:16");
     expect(service).toContain("maxRepairCalls:2");
