@@ -63,6 +63,21 @@ async function main():Promise<void>{
             decision:assessment.decision,reason:assessment.reason,
           }];
         });
+        const archivedCandidates=Array.isArray(v.candidateSnapshots)
+          ?v.candidateSnapshots:[];
+        const recoveredOnTopic=archivedCandidates.flatMap(entry=>{
+          const row=record(entry);
+          const keyword=typeof row?.keyword==="string"?row.keyword:null;
+          if(!keyword)return [];
+          const checked=assessKeywordTopicIntentV1({
+            seed:v.seed as string,query:keyword});
+          return checked.eligibleForArticleSerp?[{
+            keyword,volume:nonnegative(row?.searchVolume)?row.searchVolume:null,
+            kd:nonnegative(row?.keywordDifficulty)?row.keywordDifficulty:null,
+            score:nonnegative(row?.opportunityScore)?row.opportunityScore:null,
+            status:"UNVERIFIED_CANDIDATE_REQUIRES_NEW_SERP",
+          }]:[];
+        }).sort((a,b)=>(b.score??0)-(a.score??0));
         const serpRuns=Array.isArray(v.serpResults)?v.serpResults:[];
         const unsafeSerps=serpRuns.flatMap(item=>{
           const row=record(item);
@@ -81,6 +96,9 @@ async function main():Promise<void>{
           reason:unsafe.length>0
             ?"HISTORICAL_CACHE_WRONG_TOPIC_OR_INTENT"
             :"SNAPSHOT_CONTRACT_INVALID",
+          archivedCandidateCount:archivedCandidates.length,
+          onTopicRawCandidatesNeedingSerp:recoveredOnTopic.length,
+          topSafeCandidatesForNextResearch:recoveredOnTopic.slice(0,20),
           historicalClusterCount:archivedClusters.length,
           historicalUnsafeClusterCount:unsafe.length,
           rejectedClusterExamples:unsafe.slice(0,20),
