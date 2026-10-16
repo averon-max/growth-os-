@@ -31,6 +31,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {error:"authorizeExpandedDiscovery must be boolean"}, {status:400});
     }
+    if(input.requireDeepCompetitorEvidence !== undefined &&
+      typeof input.requireDeepCompetitorEvidence !== "boolean"){
+      return NextResponse.json(
+        {error:"requireDeepCompetitorEvidence must be boolean"}, {status:400});
+    }
     const market = input.market === undefined ? "US" : input.market;
     if (market !== "US" && market !== "CA" && market !== "GB" && market !== "AU") {
       return NextResponse.json({ error: "Invalid market" }, { status: 400 });
@@ -43,6 +48,7 @@ export async function POST(req: NextRequest) {
       deepSerpLimit,
       authorizePaidResearch: true,
       authorizeExpandedDiscovery: input.authorizeExpandedDiscovery === true,
+      requireDeepCompetitorEvidence: input.requireDeepCompetitorEvidence === true,
       useGptDecision: input.useGptDecision === true,
     });
     return NextResponse.json(report);
