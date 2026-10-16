@@ -80,6 +80,27 @@ describe("Keyword Intelligence V2 cached research contract", () => {
     }, expected)).toBeNull();
   });
 
+  it("rejects legacy research when approved clusters contain real navigational and vendor SERPs",()=>{
+    const snapshot=validSnapshot();
+    const original=snapshot.clusters[0]!;
+    const bad={...original.primary,
+      keyword:"credit karma phone number hours",
+      normalized:"credit karma phone number hours",
+      clusterId:"legacy_bad_support_cluster",
+    };
+    const badCluster={...original,id:"legacy_bad_support_cluster",
+      primary:bad,keywords:[bad],opportunityScore:999};
+    expect(parseCachedKeywordResearchV2({
+      ...snapshot,clusters:[badCluster,...snapshot.clusters],
+      candidateSnapshots:[bad,...snapshot.candidateSnapshots],
+      serpResults:[...snapshot.serpResults,{
+        clusterId:badCluster.id,query:bad.keyword,
+        organicResults:9,uniqueDomains:9,
+        dominantPageType:"OTHER",pagesAnalyzed:8,features:[],
+      }],
+    },expected)).toBeNull();
+  });
+
   it("rejects partial and malformed cached JSON", () => {
     expect(parseCachedKeywordResearchV2({ version: "KEYWORD_INTELLIGENCE_RESEARCH_V2" }, expected)).toBeNull();
     expect(parseCachedKeywordResearchV2(null, expected)).toBeNull();
