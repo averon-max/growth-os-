@@ -149,6 +149,38 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.openai).not.toHaveBeenCalled();
   });
 
+  it("never spends SERP requests on seven wrong-intent phrases from the real 2026-10-16 live research",async()=>{
+    const rejected=[
+      "credit monitoring arrangement meaning",
+      "what is credit monitoring arrangement",
+      "is idx credit monitoring legit",
+      "is idx credit monitoring legitimate",
+      "is kroll credit monitoring legit",
+      "is kroll credit monitoring legitimate",
+      "credit monitoring arrangements",
+    ];
+    mocks.related.mockResolvedValue([
+      ...rejected.map(keyword=>({
+        keyword,searchVolume:12000,keywordDifficulty:4,cpc:2.3,
+      })),
+      {keyword:"does credit monitoring affect credit score",
+        searchVolume:40,keywordDifficulty:22,cpc:0.4},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,seed:"what is credit monitoring",useGptDecision:false,
+      deepSerpLimit:10,limit:500,
+    });
+    expect(result.serpResults.map(row=>row.query)).toEqual([
+      "does credit monitoring affect credit score",
+    ]);
+    for(const keyword of rejected){
+      expect(result.clusters.map(c=>c.primary.keyword))
+        .not.toContain(keyword);
+    }
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+    expect(mocks.openai).not.toHaveBeenCalled();
+  });
+
   it("does deep SERP for genuinely observed informational what-is-service question, not mistaken service-purchase intent", async () => {
     mocks.related.mockResolvedValue([
       {keyword:"what is credit monitoring service",
