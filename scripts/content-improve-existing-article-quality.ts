@@ -155,11 +155,29 @@ async function main(){
       (n,e)=>n+(e.section.bodyMarkdown.match(/^###\s+\S/gm)??[]).length,0)??0;
     const partialWords=verifiedProgress?.accepted.reduce(
       (n,e)=>n+countWords(e.section.bodyMarkdown),0)??null;
+    const {detectHighConfidenceEditorialRepetitionV1}=
+      await import("../src/lib/content/editorial-repetition-guard-v1");
+    const verifiedEditorialFindings=verifiedProgress?
+      detectHighConfidenceEditorialRepetitionV1(
+        verifiedProgress.accepted.map(e=>({
+          heading:e.section.heading,
+          bodyMarkdown:e.section.bodyMarkdown,
+        }))
+      ):[];
+
     const incrementalQualityProgress={
       found:!!verifiedProgress,
       verifiedSections:verifiedProgress?.accepted.length??0,
       h3Count:partialH3,
       sectionWordTotal:partialWords,
+      editorialRepetitionFindings:verifiedEditorialFindings.map(f=>({
+        code:f.code,sectionIndex:f.sectionIndex,
+        affectedSections:f.affectedSections,
+        repeatedPhrases:f.repeatedPhrases,
+      })),
+      editorialClean:verifiedProgress!==null&&
+        verifiedProgress!==undefined&&
+        verifiedEditorialFindings.length===0,
       sourceBound:true,
       note:"Section-only word total excludes H2 heading words.",
     };
