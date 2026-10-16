@@ -116,13 +116,13 @@ export function evaluateArticleSearchReadinessV2({
   // Map actual publication-grade excerpt sources to their owner H2s.
   // A URL is evidence to REVIEW, not permission to automatically insert
   // a citation in prose that has subsequently changed.
-  const sourceById=new Map(runtime?.evidenceGraph.sources.map(source=>
+  const sourceById=new Map(runtime?.evidenceGraph?.sources.map(source=>
     [source.id,source] as const)??[]);
   const sectionSourceCandidates=runtime?.sectionBlueprints.sections.map(
     (section,index)=>{
       const required=new Set(section.requiredClaims);
       const explicit=new Set(section.evidenceIds);
-      const approved=runtime.evidenceGraph.claimEvidence.filter(item=>
+      const approved=(runtime.evidenceGraph?.claimEvidence??[]).filter(item=>
         item.kind==="VERIFIED_EXCERPT"&&
         item.relation==="SUPPORTS"&&
         typeof item.excerpt==="string"&&item.excerpt.trim()&&
