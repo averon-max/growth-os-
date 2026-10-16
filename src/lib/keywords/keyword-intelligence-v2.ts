@@ -26,7 +26,9 @@ export type KeywordCleanupReasonV2 =
   | "IRRELEVANT_BUSINESS"
   | "FOREIGN_BRAND"
   | "CANNIBALIZATION"
-  | "INVALID_QUERY";
+  | "INVALID_QUERY"
+  | "SEPARATE_PAGE_INTENT"
+  | "TOPIC_SCOPE_MISMATCH";
 
 export interface KeywordCandidateV2 extends KeywordObservationV2 {
   id: string;
