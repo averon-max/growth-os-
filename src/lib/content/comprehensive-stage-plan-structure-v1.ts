@@ -27,7 +27,7 @@ export function inspectComprehensiveStagePlanStructureV1({
   }).articleClass==="COMPREHENSIVE_INFORMATIONAL";
 
   const normalized=(value:string)=>value.toLowerCase()
-    .replace(/[^\\p{L}\\p{N}]+/gu," ").trim();
+    .replace(/[^\p{L}\p{N}]+/gu," ").trim();
 
   const uniqueJobs=new Set(sections.map(section=>
     normalized(section.mission)).filter(Boolean)).size;
