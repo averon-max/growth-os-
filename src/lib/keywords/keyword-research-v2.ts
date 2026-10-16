@@ -318,7 +318,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const verifiedSerp = serpResults.filter(result =>
     !result.error && result.organicResults >= 3 && result.uniqueDomains >= 2 &&
     (!input.requireDeepCompetitorEvidence ||
-      auditDeepSerpReadinessV1(result).status==="DEEP_COMPETITOR_OBSERVED")
+      auditDeepSerpReadinessV1(result,keywordCoreTopicV1(seed)).status==="DEEP_COMPETITOR_OBSERVED")
   );
   const verifiedClusterIds = new Set(verifiedSerp.map(result => result.clusterId));
   const eligibleForGpt = shortlist.filter(cluster => verifiedClusterIds.has(cluster.id));
