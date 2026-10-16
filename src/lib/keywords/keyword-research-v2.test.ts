@@ -180,6 +180,38 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.cacheUpsert).toHaveBeenCalled();
   });
 
+  it("selects a real SERP-and-KD-supported winner without optional GPT",async()=>{
+    const first=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(first.decision.status).toBe("SELECTED");
+    expect(first.decision.reasons).toContain(
+      "DETERMINISTIC_SERP_VERIFIED_SELECTION_V1");
+    expect(first.selectedKeyword).toBe("credit monitoring benefits");
+    expect(first.aiUsed).toBe(false);
+    expect(mocks.openai).not.toHaveBeenCalled();
+    const second=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(second.cacheHit).toBe(true);
+    expect(second.selectedKeyword).toBe(first.selectedKeyword);
+    expect(mocks.related).toHaveBeenCalledTimes(1);
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps REVIEW when demand and KD are both missing",async()=>{
+    mocks.related.mockResolvedValue([
+      {keyword:"credit monitoring benefits",searchVolume:null,
+        keywordDifficulty:null,cpc:null},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(result.decision.status).toBe("REVIEW");
+    expect(result.selectedKeyword).toBeNull();
+    expect(mocks.openai).not.toHaveBeenCalled();
+  });
+
   it("after a GPT failure, does not pay for discovery or completed SERPs again", async () => {
     mocks.openai.mockRejectedValueOnce(new Error("GPT_TEMPORARY_FAILURE"));
     await expect(researchKeywordOpportunitiesV2(input))
