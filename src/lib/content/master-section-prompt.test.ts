@@ -369,6 +369,17 @@ describe(
         );
         expect(prompt).not.toContain("Selected article template:");
         expect(prompt).toContain("Do not guess an article template");
+        for (const ambiguousPageType of ["product", "service", "category"]) {
+          const fallback = buildMasterSectionPrompt({
+            ...contract,
+            searchBlueprint: {
+              ...contract.searchBlueprint,
+              pageType: ambiguousPageType,
+            },
+          });
+          expect(fallback).not.toContain("Selected article template:");
+          expect(fallback).toContain("Do not guess an article template");
+        }
       }
     );
   }
