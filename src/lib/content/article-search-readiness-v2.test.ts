@@ -215,7 +215,7 @@ describe("post-CAS prose hygiene must catch the actual 2026-10-16 saved article 
       "thereview","toa","toreview","whosecoverage",
     ]);
     const readiness=audit({article:{...article,
-      bodyMarkdown:article.bodyMarkdown+"\\n\\n"+badText}});
+      bodyMarkdown:article.bodyMarkdown+"\n\n"+badText}});
     expect(readiness.findings.map(x=>x.code))
       .toContain("PROSE_SPACING_DEFECT");
     expect(readiness.canClaimSeoReady).toBe(false);
