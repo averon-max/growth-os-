@@ -326,7 +326,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const sectionPlan=plan.sections.filter(section=>section.state==="WRITABLE");
     const originalBodies=splitPersistedArticleByCanonicalH2V1(
       original.bodyMarkdown,contract.sectionContracts.map(s=>s.blueprint.heading));
-    const improvePlan=planSameArticleQualityImprovementV1({
+    const ordinaryPlan=planSameArticleQualityImprovementV1({
       wordCount:countWords(original.bodyMarkdown),
       minimumWords,
       sections:originalBodies.map((body,index)=>({
@@ -337,6 +337,27 @@ export async function improveExistingArticleQualityV1(articleId:string,
         h3Count:(body.match(/^###\s+/gm)??[]).length,
       })),
     });
+    // A 2078-word article may lack all visible verified citations.
+    // Never treat reaching an editorial word floor as citation clearance.
+    const citationBodies=signedCitationDraft?
+      splitPersistedArticleByCanonicalH2V1(
+        signedCitationDraft.proposedBodyMarkdown,
+        contract.sectionContracts.map(s=>s.blueprint.heading)):[];
+    const citationSteps=signedCitationDraft?
+      signedCitationDraft.sections.filter(x=>x.proposedCitationCount>0)
+        .map(x=>({
+          index:x.sectionIndex,
+          currentWords:countSectionWordsV1(originalBodies[x.sectionIndex]!),
+          minWords:countSectionWordsV1(originalBodies[x.sectionIndex]!),
+          preferredWords:countSectionWordsV1(originalBodies[x.sectionIndex]!),
+          maxWords:sectionPlan[x.sectionIndex]?.targetWords?.max??0,
+          suggestUsefulH3:false,
+        })):[];
+    const improvePlan=repairMode==="EXACT_SIGNED_CITATIONS"
+      ?{...ordinaryPlan,eligible:citationSteps.length>0,
+        reason:"ENOUGH_VERIFIED_CAPACITY" as const,
+        neededWords:0,steps:citationSteps}
+      :ordinaryPlan;
     check(improvePlan.eligible,"SAVED_QUALITY_"+improvePlan.reason);
     const alreadyChanged=classifyVerifiedQualitySectionsV1({
       originalBodies,
