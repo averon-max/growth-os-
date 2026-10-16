@@ -51,3 +51,36 @@ describe("topic-scope gate PRECEDES commercial keyword scores",()=>{
       .toThrow("TOPIC_SCOPED_CLUSTER_LIMIT_INVALID");
   });
 });
+
+describe("real paid cache cannot rank buyer targets for an explanatory article",()=>{
+  it("holds five DataForSEO candidates in separate-page/review, but fixes false transactional what-is intent",()=>{
+    const observed=[
+      candidate("credit monitoring companies",55.68,14800),
+      candidate("free credit monitoring services",52.21,2900),
+      candidate("3 bureau credit monitoring",48.68,480),
+      candidate("free credit monitoring",45.6,135000),
+      candidate("free credit monitoring app",38.99,1900),
+      {...candidate("what is credit monitoring service",26,0),
+        intent:"TRANSACTIONAL" as const},
+      {...candidate("what is credit monitoring services",26,0),
+        intent:"TRANSACTIONAL" as const},
+      candidate("what is credit monitoring",20,0),
+    ];
+    const result=shortlist({seed:"what is credit monitoring",
+      candidates:observed,maxClusters:30});
+    expect(result.acceptedCandidateCount).toBe(3);
+    expect(result.clusters.map(x=>x.primary.keyword)).toEqual([
+      "what is credit monitoring service",
+      "what is credit monitoring services",
+      "what is credit monitoring",
+    ]);
+    expect(result.clusters.every(x=>x.intent==="INFORMATIONAL")).toBe(true);
+    expect(result.excluded).toEqual(expect.arrayContaining([
+      {keyword:"credit monitoring companies",reason:"SEPARATE_PAGE_INTENT"},
+      {keyword:"free credit monitoring services",reason:"SEPARATE_PAGE_INTENT"},
+      {keyword:"free credit monitoring app",reason:"SEPARATE_PAGE_INTENT"},
+      {keyword:"3 bureau credit monitoring",reason:"INTENT_REVIEW_REQUIRED"},
+      {keyword:"free credit monitoring",reason:"INTENT_REVIEW_REQUIRED"},
+    ]));
+  });
+});
