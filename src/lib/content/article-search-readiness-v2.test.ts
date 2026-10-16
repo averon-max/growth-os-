@@ -221,6 +221,20 @@ describe("post-CAS prose hygiene must catch the actual 2026-10-16 saved article 
     expect(readiness.canClaimSeoReady).toBe(false);
   });
 });
+describe("context-aware short join does not match a valid brand name",()=>{
+  it("detects both observed toa particular contexts",()=>{
+    expect(inspectProseJoinAnomaliesV2(
+      "The score is relevant toa particular decision."))
+      .toContain("toa");
+    expect(inspectProseJoinAnomaliesV2(
+      "The score applies toa particular application."))
+      .toContain("toa");
+  });
+  it("does not misclassify ordinary Toa usage",()=>{
+    expect(inspectProseJoinAnomaliesV2(
+      "Toa is a proper noun in this sample.")).toEqual([]);
+  });
+});
 describe("real persisted article copyedit failures from free H2 gap audit",()=>{
   it("blocks actual glued words helpyou and thealert in the saved 2078-word article",()=>{
     const bad={
