@@ -71,6 +71,14 @@ async function main(){
       verifyExistingArticleCitationScopeV1({
         candidateBodyMarkdown:article.bodyMarkdown,runtime,plan,
       }):null;
+    const {proposeExistingArticleQueryOwnerRebindV1}=await import(
+      "../src/lib/content/existing-article-query-owner-proposal-v1");
+    const queryBindingProposal=runtime&&plan?
+      proposeExistingArticleQueryOwnerRebindV1({
+        article:original,runtime,plan,
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,replay,
+      }):null;
     const provenance=object(replay?.provenance);
     const editorialRecovery=object(provenance?.editorialRecovery);
     const result={
@@ -100,6 +108,7 @@ async function main(){
           signedLinks:x.approvedLinks,
         })),
       }:null,
+      queryBindingProposal,
       searchEditorial:{
         status:readiness.status,canClaimSeoReady:readiness.canClaimSeoReady,
         publishRecommendation:readiness.publishRecommendation,
