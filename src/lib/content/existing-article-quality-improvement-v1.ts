@@ -27,6 +27,11 @@ import { buildArticleGenerationContractV1 } from "./article-generation-contract"
 import { buildMasterArticleSemanticCriticContextV1 } from "./master-article-semantic-critic-context";
 import { buildCrawlCannibalizationCandidatesV1 } from "./crawl-cannibalization-context";
 import { detectPersistedArticleEditorialRepetitionV1 } from "./editorial-repetition-guard-v1";
+import {detectHighConfidenceEditorialRepetitionV1}
+  from "./editorial-repetition-guard-v1";
+import {selectQualityEditorialRepairSectionsV1,
+  isQualityEditorialFindingResolvedV1}
+  from "./quality-improvement-editorial-recovery-v1";
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
 import { planSameArticleQualityImprovementV1, evaluateWholeArticleQualityWordRangeV1 } from "./same-article-quality-improvement-v1";
@@ -512,6 +517,137 @@ export async function improveExistingArticleQualityV1(articleId:string,
         });
       }
     }
+    // Last quality gate before the expensive nine-critic pass:
+    // a section may be individually factual but repeat boilerplate from
+    // another section. Repair ONLY the duplicated passage, keeping all
+    // currently signed verified sections. No new research or article.
+    const detectVerifiedRepetition=()=>{
+      return detectHighConfidenceEditorialRepetitionV1(
+        sections.map(section=>({
+          heading:section.heading,
+          bodyMarkdown:section.bodyMarkdown,
+        }))
+      );
+    };
+    let repetitionFindings=detectVerifiedRepetition();
+    const initialRepetitionCount=repetitionFindings.length;
+    if(repetitionFindings.length){
+      console.info("[content quality repetition before critics]",{
+        count:repetitionFindings.length,
+        codes:repetitionFindings.map(f=>f.code),
+        affectedSections:repetitionFindings.map(f=>f.affectedSections),
+        repeatedPhrases:repetitionFindings.map(f=>f.repeatedPhrases),
+      });
+      const attempted:number[]=[];
+      const maxEditorialAttempts=3;
+      for(let attempt=0;attempt<maxEditorialAttempts&&
+        repetitionFindings.length;attempt++){
+        const finding=repetitionFindings[0];
+        const candidates=selectQualityEditorialRepairSectionsV1({
+          finding,plannedIndices:improvePlan.steps.map(s=>s.index),
+          alreadyAttempted:attempted,
+        });
+        const index=candidates[0];
+        if(index===undefined)break;
+        attempted.push(index);
+        const current=sections[index];
+        const scope=contract.sectionContracts[index];
+        check(current&&scope,"SAVED_QUALITY_EDITORIAL_SCOPE_MISSING");
+        const criticFinding=createMasterArticleCriticFindingV1({
+          criticId:"EDITORIAL",code:finding.code,severity:"BLOCK",
+          location:{scope:"SECTION",sectionIndex:index,
+            sectionNumber:scope.sectionNumber,
+            heading:scope.blueprint.heading},
+          repairScope:"SECTION",
+          message:"High-confidence cross-section repetition after "+
+            "source-verified quality improvement. Resolve duplicated "+
+            "paragraphs or recycled advice without losing this "+
+            "section's own direct answer, unique content, required facts "+
+            "or evidence-supported qualifications.",
+          recommendation:"Remove repetitive stock prose or replace it "+
+            "with a useful, evidence-supported explanation of THIS "+
+            "section's already assigned reader question. Preserve all "+
+            "mandatory verified claims, source limitations and H3 "+
+            "subheadings where their paragraphs remain. Do NOT change "+
+            "H1/H2, invent new facts, add new keywords or produce filler. "+
+            "Duplicated fragments: "+finding.repeatedPhrases.join(" | "),
+          evidence:{claimIds:scope.blueprint.requiredClaims,
+            evidenceIds:scope.blueprint.evidenceIds,
+            queryNodeIds:scope.blueprint.queryNodeIds,sourceIds:[]},
+        });
+        const revised=await generator.repairSection({
+          contract:scope,section:current,
+          reconciliation:reconciliations[index],
+          semanticVerification:semanticVerifications[index],
+          attempt:1,criticFindings:[criticFinding],
+          crossSectionEditorialContext:sections.flatMap((neighbor,i)=>
+            i===index?[]:[{sectionIndex:i,heading:neighbor.heading,
+              prosePreview:neighbor.bodyMarkdown.slice(0,1800)}]),
+        });
+        if(revised.bodyMarkdown===current.bodyMarkdown){
+          console.info("[content quality repetition repair no change]",{
+            sectionIndex:index,
+          });
+          continue;
+        }
+        const prospectiveSections=[...sections];
+        prospectiveSections[index]=revised;
+        const prospective=detectHighConfidenceEditorialRepetitionV1(
+          prospectiveSections.map(section=>({
+            heading:section.heading,bodyMarkdown:section.bodyMarkdown,
+          }))
+        );
+        if(!isQualityEditorialFindingResolvedV1({
+          before:repetitionFindings,after:prospective,
+        })){
+          console.info("[content quality repetition repair declined]",{
+            sectionIndex:index,
+            originalCodes:repetitionFindings.map(x=>x.code),
+            proposedCodes:prospective.map(x=>x.code),
+          });
+          continue;
+        }
+        // A deterministic editorial pass is NOT sufficient authority.
+        // Reconcile claims and run current-source semantic verification
+        // before accepting any changed section into the signed progress.
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:scope,section:revised,generator,
+        });
+        const after=detectHighConfidenceEditorialRepetitionV1(
+          sections.map((section,i)=>({
+            heading:section.heading,
+            bodyMarkdown:i===index?
+              verified.section.bodyMarkdown:section.bodyMarkdown,
+          }))
+        );
+        if(!isQualityEditorialFindingResolvedV1({
+          before:repetitionFindings,after,
+        }))continue;
+        sections[index]=verified.section;
+        reconciliations[index]=verified.reconciliation;
+        semanticVerifications[index]=verified.semanticVerification;
+        if(!repairedSectionIds.includes(index))
+          repairedSectionIds.push(index);
+        repetitionFindings=after;
+        await saveQualityProgress();
+        console.info("[content quality repetition verified fix]",{
+          sectionIndex:index,
+          remainingFindings:repetitionFindings.length,
+          retainedH3:sections.reduce((n,x)=>
+            n+countQualityArticleH3V1(x.bodyMarkdown),0),
+        });
+      }
+    }
+    check(repetitionFindings.length===0,
+      "SAVED_QUALITY_EDITORIAL_REPETITION_UNRESOLVED:"+
+      JSON.stringify({
+        initial:initialRepetitionCount,
+        remaining:repetitionFindings.map(x=>({
+          code:x.code,sectionIndex:x.sectionIndex,
+          affectedSections:x.affectedSections,
+          repeatedPhrases:x.repeatedPhrases,
+        })),
+      }));
     const improvedRun=rebuildWriterRunV1({
       contract,run,sections,reconciliations,semanticVerifications,
     });
