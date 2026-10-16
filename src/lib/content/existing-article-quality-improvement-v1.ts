@@ -193,7 +193,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const writerContractHash=fingerprintMasterWriterContractV1(
       contract,generator.modelName);
     const qualityProgressDirectory=qualityImprovementProgressDirectoryV1({
-      root:checkpointDir(),articleId,briefId:original.briefId,
+      // Separate the word-expansion and citation-repair checkpoints:
+      // each requires different editor intent and allowable mutations.
+      root:repairMode==="EXACT_SIGNED_CITATIONS"
+        ?join(checkpointDir(),"signed-citation-repair"):checkpointDir(),
+      articleId,briefId:original.briefId,
       updatedAt:original.updatedAt.toISOString(),
       article:initial,snapshot:snap.plan,contract,
       modelName:generator.modelName,
