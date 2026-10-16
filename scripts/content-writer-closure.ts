@@ -12,7 +12,7 @@
 import { loadEnvConfig } from "@next/env";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-loadEnvConfig(process.cwd());
+loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim() || process.cwd());
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
