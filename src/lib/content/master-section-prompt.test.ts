@@ -11,6 +11,10 @@ import type {
 import {
   buildMasterSectionPrompt,
 } from "./master-section-prompt";
+import {
+  ARTICLE_TEMPLATE_OPTIONS_V1,
+} from "./article-template-policy-v1";
+
 
 
 function makeContract():
@@ -305,6 +309,66 @@ describe(
         ).toContain(
           '"assetUsed"'
         );
+      }
+    );
+
+    it(
+      "explains the selected policy for all 15 article templates without adding sections",
+      () => {
+        for (const option of ARTICLE_TEMPLATE_OPTIONS_V1) {
+          const contract = makeContract();
+          const prompt = buildMasterSectionPrompt({
+            ...contract,
+            searchBlueprint: {
+              ...contract.searchBlueprint,
+              pageType: option.id,
+            },
+          });
+          expect(prompt).toContain("Selected article template: " + option.id);
+          expect(prompt).toContain("ARTICLE-LEVEL role vocabulary");
+          expect(prompt).toContain("NOT extra obligations for this section");
+          expect(prompt).toContain("Do NOT output an H2.");
+          expect(prompt).toContain("Do not create new sources");
+        }
+      }
+    );
+
+    it(
+      "accepts descriptive legacy planner page types without inventing an outline",
+      () => {
+        for (const [pageType, expected] of [
+          ["explainer", "EXPLAINER_GUIDE"],
+          ["comparison", "COMPARISON"],
+          ["how-to", "HOW_TO"],
+          ["local service", "LOCAL_SERVICE_GUIDE"],
+        ] as const) {
+          const contract = makeContract();
+          const prompt = buildMasterSectionPrompt({
+            ...contract,
+            searchBlueprint: {...contract.searchBlueprint, pageType},
+          });
+          expect(prompt).toContain("Selected article template: " + expected);
+          expect(prompt).toContain("approved blueprint mission");
+        }
+      }
+    );
+
+    it(
+      "fails closed on unknown legacy page types instead of guessing roles",
+      () => {
+        const contract = makeContract();
+        const prompt = buildMasterSectionPrompt({
+          ...contract,
+          searchBlueprint: {
+            ...contract.searchBlueprint,
+            pageType: "ARTICLE",
+          },
+        });
+        expect(prompt).toContain(
+          "No confirmed 15-template identifier is available"
+        );
+        expect(prompt).not.toContain("Selected article template:");
+        expect(prompt).toContain("Do not guess an article template");
       }
     );
   }
