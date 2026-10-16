@@ -149,7 +149,7 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.openai).not.toHaveBeenCalled();
   });
 
-  it("never spends SERP requests on seven wrong-intent phrases from the real 2026-10-16 live research",async()=>{
+  it("never spends SERP on six observed wrong-intent phrases or CMA plural variant",async()=>{
     const rejected=[
       "credit monitoring arrangement meaning",
       "what is credit monitoring arrangement",
