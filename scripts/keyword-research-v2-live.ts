@@ -73,6 +73,7 @@ async function main():Promise<void>{
       await import("../src/lib/keywords/keyword-research-v2");
     const {auditDeepSerpReadinessV1}=await import(
       "../src/lib/keywords/keyword-deep-serp-readiness-v1");
+    const {keywordCoreTopicV1}=await import("../src/lib/keywords/keyword-topic-intent-gate-v1");
     const result=await researchKeywordOpportunitiesV2({
       websiteId,seed,market:market as "US"|"CA"|"GB"|"AU",
       limit,deepSerpLimit,authorizePaidResearch:true,
@@ -94,7 +95,7 @@ async function main():Promise<void>{
         score:c.opportunityScore,
       })),
       deepCompetitiveReadiness:result.serpResults.map(row=>
-        auditDeepSerpReadinessV1(row,result.seed.replace(/^(what is|how does) +/i,""))),
+        auditDeepSerpReadinessV1(row,keywordCoreTopicV1(result.seed))),
       serp:result.serpResults.map(s=>({
         keyword:s.query,organicResults:s.organicResults,
         pagesAnalyzed:s.pagesAnalyzed,ownOrganicRank:s.ownOrganicRank??null,
