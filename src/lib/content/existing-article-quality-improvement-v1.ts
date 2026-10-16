@@ -339,7 +339,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
         contract,run,sections,reconciliations,semanticVerifications,
       }).article;
       if(countWords(partialArticle.bodyMarkdown)>=minimumWords &&
-        (partialArticle.bodyMarkdown.match(/^###\\s+/gm)??[]).length>=2){
+        (partialArticle.bodyMarkdown.match(/^###\s+/gm)??[]).length>=2){
         console.info("[content quality target reached]",{
           words:countWords(partialArticle.bodyMarkdown),
           repairedSections:repairedSectionIds.length,
@@ -441,7 +441,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // The meaningful H3 release rule is not a per-section quota.
     // Evaluate it before spending the nine-critic pass.
     check(improvePlan.headingOpportunityCount<2 ||
-      (improvedRun.article.bodyMarkdown.match(/^###\\s+/gm)??[]).length>=2,
+      (improvedRun.article.bodyMarkdown.match(/^###\s+/gm)??[]).length>=2,
       "SAVED_QUALITY_FINAL_H3_STRUCTURE_MISSING");
     check(detectPersistedArticleEditorialRepetitionV1(
       improvedRun.article.bodyMarkdown).length===0,
