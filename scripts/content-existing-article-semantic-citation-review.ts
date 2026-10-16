@@ -10,7 +10,7 @@
  */
 import {loadEnvConfig} from "@next/env";
 import {createHash} from "node:crypto";
-import {mkdir,writeFile} from "node:fs/promises";
+import {mkdir,readFile,rename,writeFile} from "node:fs/promises";
 import {resolve,join} from "node:path";
 loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim()||process.cwd());
 const sha=(x:string)=>createHash("sha256").update(x,"utf8").digest("hex");
@@ -96,16 +96,50 @@ async function main(){
     }
     const {callContentAiJson}=await import(
       "../src/lib/content/gemini-generator");
+    const {
+      semanticCitationCheckpointKeyV1,
+      validateSemanticCitationChoicesV1,
+    }=await import(
+      "../src/lib/content/existing-article-semantic-citation-checkpoint-v1");
+    const reviewCheckpointDir=resolve(
+      ".growth-os-tmp/citation-review/checkpoints",articleId);
+    await mkdir(reviewCheckpointDir,{recursive:true});
     type Result=Parameters<typeof applyReviewedSignedSemanticCitationsV1>[0]["verdicts"];
     const verdicts:{sectionIndex:number;choices:Array<{
       claimId:string;evidenceId:string;sentenceId:number|null;
       verdict:"SUPPORTED"|"PARTIAL"|"UNSUPPORTED"|"CONTRADICTORY";
       reason:string;
     }>}[]=[];
-    let calls=0;
+    let calls=0,resumed=0;
     for(const section of worklist){
       if(!section.availableSources.length||!section.sentences.length){
         verdicts.push({sectionIndex:section.sectionIndex,choices:[]});continue;
+      }
+      const checkpointKey=semanticCitationCheckpointKeyV1({
+        articleId,originalArticleSha256:expectedSha,section,
+      });
+      const checkpointFile=join(reviewCheckpointDir,
+        section.sectionIndex+"-"+checkpointKey+".json");
+      let cachedText:string|null=null;
+      try{cachedText=await readFile(checkpointFile,"utf8");}
+      catch(e){
+        if(!e||typeof e!=="object"||!("code" in e)||
+          e.code!=="ENOENT")throw e;
+      }
+      if(cachedText!==null){
+        let snapshot:unknown;
+        try{snapshot=JSON.parse(cachedText);}
+        catch{throw new Error("SEMANTIC_CITATION_CHECKPOINT_INVALID_JSON");}
+        const saved=rec(snapshot);
+        if(!saved||saved.reviewKey!==checkpointKey||
+          saved.sectionIndex!==section.sectionIndex)
+          throw new Error("SEMANTIC_CITATION_CHECKPOINT_WRONG_ARTICLE_OR_POLICY");
+        verdicts.push({
+          sectionIndex:section.sectionIndex,
+          choices:validateSemanticCitationChoicesV1(section,saved.choices),
+        });
+        resumed++;
+        continue;
       }
       const prompt=[
         "You review section-specific citations for an EXISTING financial article.",
@@ -133,26 +167,15 @@ async function main(){
         throw new Error("SEMANTIC_CITATION_REVIEW_INVALID_JSON");
       }
       const val=rec(parsed);
-      if(!val||!Array.isArray(val.choices)||
-        val.choices.length!==section.availableSources.length)
-        throw new Error("SEMANTIC_CITATION_REVIEW_COUNT_MISMATCH");
-      const choices=val.choices.map(item=>{
-        const r=rec(item);
-        if(!r||typeof r.claimId!=="string"||
-          typeof r.evidenceId!=="string"||
-          typeof r.reason!=="string"||
-          !["SUPPORTED","PARTIAL","UNSUPPORTED","CONTRADICTORY"]
-            .includes(String(r.verdict))||
-          !(r.sentenceId===null||Number.isInteger(r.sentenceId)))
-          throw new Error("SEMANTIC_CITATION_REVIEW_SCHEMA_INVALID");
-        return {
-          claimId:r.claimId,evidenceId:r.evidenceId,
-          sentenceId:r.sentenceId as number|null,
-          verdict:r.verdict as
-            "SUPPORTED"|"PARTIAL"|"UNSUPPORTED"|"CONTRADICTORY",
-          reason:r.reason,
-        };
-      });
+      if(!val)throw new Error("SEMANTIC_CITATION_REVIEW_SCHEMA_INVALID");
+      const choices=validateSemanticCitationChoicesV1(section,val.choices);
+      // Atomic local checkpoint: a crash or later model failure cannot
+      // force already validated section reviews to be bought again.
+      const temporary=checkpointFile+"."+process.pid+".tmp";
+      await writeFile(temporary,JSON.stringify({
+        reviewKey:checkpointKey,sectionIndex:section.sectionIndex,choices,
+      })+"\n","utf8");
+      await rename(temporary,checkpointFile);
       verdicts.push({sectionIndex:section.sectionIndex,choices});
     }
     const reviewed=applyReviewedSignedSemanticCitationsV1({
@@ -168,6 +191,8 @@ async function main(){
       .map(s=>({sectionIndex:s.sectionIndex,heading:s.heading}));
     const report={
       ...preview,modelCalls:calls,
+      resumedSectionReviews:resumed,
+      reviewCheckpointDirectory:reviewCheckpointDir,
       initialExactCitations:exact.totalAddedCitations,
       additionalModelReviewedCitations:reviewed.addedCitations,
       totalVisibleCitationLinks:scope.totalLinks,
