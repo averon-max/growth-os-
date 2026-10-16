@@ -34,12 +34,10 @@ import { supportsMasterSectionSemanticVerifier }
   from "./master-section-semantic-verifier";
 import { rebuildWriterRunV1 } from "./master-article-critic-repair-execution";
 import { createMasterArticleCriticFindingV1 } from "./master-article-critic";
-import {readMasterWriterSectionProgressV1,
-  fingerprintMasterWriterContractV1}
-  from "./master-writer-section-progress-v1";
-import {executeMasterWriterV1} from "./master-writer-orchestrator";
-import {splitPersistedArticleByCanonicalH2V1}
-  from "./existing-article-section-rebind-v1";
+import {inspectArchivedWriterProgressV1}
+  from "./writer-recovery-archived-progress-v1";
+import {rebindSignedArchivedWriterRunV1}
+  from "./verified-archived-writer-run-v1";
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeSerpReplayV1 } from "./serp-replay";
@@ -173,65 +171,48 @@ export async function improveExistingArticleQualityV1(articleId:string,
       }
     }
 
-    // RESEARCH_RECOVERY does not write POST_FINAL_REPLAY: its immutable
-    // source-verified SHA256 section progress is the real authority.
-    // Only the exact current contract and generator can be resumed.
-    // A later critic may have changed the persisted text: rebind each
-    // changed H2 body from the actual DB article, then re-verify it
-    // semantically using the current source graph before any edit.
+    // Research Recovery leaves SHA256-verified section progress under a
+    // historical full-contract hash. The final Evidence Snapshot may
+    // legitimately drift (URL metadata, research bridge) without losing
+    // section claims or source relationships. Do NOT demand current
+    // hash equality. Use the already-proven archive inspector, then
+    // freshly verify the EXACT persisted prose of every archived section.
     if(!run){
-      const contractHash=fingerprintMasterWriterContractV1(
-        contract,generator.modelName);
-      const suffix=contractHash.slice(0,20);
+      const base=resolve(
+        process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
+          ".growth-os-tmp/article-checkpoints"
+      );
       const roots=[
-        resolve(".growth-os-tmp/article-checkpoints/research-recovery-editorial",suffix),
-        resolve(".growth-os-tmp/article-checkpoints/research-recovery",suffix),
+        join(base,"research-recovery-editorial"),
+        join(base,"research-recovery"),
       ];
-      for(const directory of roots){
-        const progress=await readMasterWriterSectionProgressV1({
-          directory,articleId,briefId:original.briefId,
-          contractHash,modelName:generator.modelName,
+      const rejectionReasons:string[]=[];
+      for(const rootDirectory of roots){
+        const inspection=await inspectArchivedWriterProgressV1({
+          rootDirectory,articleId,briefId:original.briefId,
+          modelName:generator.modelName,contract,
         });
-        if(!progress || progress.accepted.length!==contract.sectionContracts.length)
+        if(!inspection.compatible||!inspection.candidate){
+          rejectionReasons.push(...inspection.rejectionReasons);
           continue;
-        const persistedBodies=splitPersistedArticleByCanonicalH2V1(
-          original.bodyMarkdown,
-          contract.sectionContracts.map(x=>x.blueprint.heading));
-        const verifiedRun=await executeMasterWriterV1({
-          contract,generator,resumeProgress:progress,
-        });
-        check(verifiedRun.shell.title===initial.title&&
-          verifiedRun.shell.metaDescription===initial.metaDescription&&
-          verifiedRun.shell.h1===initial.h1,
-          "SAVED_QUALITY_SIGNED_SHELL_MISMATCH");
-        const sections=[...verifiedRun.sections],
-          reconciliations=[...verifiedRun.reconciliations],
-          semanticVerifications=[...verifiedRun.semanticVerifications];
-        for(let i=0;i<sections.length;i++){
-          if(sections[i].bodyMarkdown.trim()===persistedBodies[i])continue;
-          const current=await verifyGeneratedSectionOnlyV1({
-            contract:contract.sectionContracts[i],
-            section:{...sections[i],bodyMarkdown:persistedBodies[i]},
-            generator,
-          });
-          sections[i]=current.section;
-          reconciliations[i]=current.reconciliation;
-          semanticVerifications[i]=current.semanticVerification;
         }
-        const rebound=rebuildWriterRunV1({
-          contract,run:verifiedRun,sections,reconciliations,
-          semanticVerifications,
+        const signed=inspection.candidate.checkpoint;
+        run=await rebindSignedArchivedWriterRunV1({
+          progress:signed,contract,generator,article:initial,
         });
-        const checked=articleShape(rebound.article);
-        check(checked.title===initial.title&&
-          checked.metaDescription===initial.metaDescription&&
-          checked.h1===initial.h1&&
-          normalizeMasterArticleProseSpacesV1(checked.bodyMarkdown)===
-            initial.bodyMarkdown,
-          "SAVED_QUALITY_REBOUND_ARTICLE_VERSION_MISMATCH");
-        run=rebound;checkpointSha256=sha(JSON.stringify(progress));
+        checkpointSha256=sha(JSON.stringify(signed));
+        console.info("[content quality archived Writer rebind]",{
+          articleId,archivedPrefix:inspection.archivedPrefix,
+          verifiedSections:inspection.verifiedSections,
+          currentSourceSemanticVerification:true,
+          regeneratedWriter:false,
+        });
         break;
       }
+      if(!run)console.warn("[content quality archive unavailable]",{
+        inspectedRoots:roots.length,
+        rejectionReasons:[...new Set(rejectionReasons)].slice(0,8),
+      });
     }
     check(run!==null&&checkpointSha256!==null,
       "SAVED_QUALITY_SIGNED_CURRENT_WRITER_CHECKPOINT_REQUIRED");
