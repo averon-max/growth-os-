@@ -10,6 +10,8 @@ import {
 } from "./stage-plan-information-gain-v1";
 import {buildStagePlanInformationGainRetryV1}
   from "./stage-plan-information-gain-retry-v1";
+import {inspectComprehensiveStagePlanStructureV1}
+  from "./comprehensive-stage-plan-structure-v1";
 
 import {
 
@@ -1848,6 +1850,14 @@ function inspectStagePlanCompleteness(
       if(informationGain.issueCode){
         missing.push(informationGain.issueCode);
       }
+      const comprehensiveStructure=inspectComprehensiveStagePlanStructureV1({
+        intent:mission.missionIntent,
+        pageType:candidate.pageType,
+        sections:candidate.sections,
+      });
+      if(comprehensiveStructure.issueCode){
+        missing.push(comprehensiveStructure.issueCode);
+      }
 
       /*
        * TEMPLATE_H2_PLANNING_GUIDANCE_ONLY_V2
@@ -2644,6 +2654,19 @@ function inspectStagePlanCompleteness(
             sections:plan.sections,
             claims:plan.claims,
           })??""] : []),
+        ...(missingStagePlanFields.includes("sections[].comprehensiveReaderJobs")?
+          [
+            "COMPREHENSIVE_READER_JOBS_RECOVERY_V1:",
+            "This is a 2000+ word informational EXPLAINER. Its outline has too few distinct MAJOR reader information jobs.",
+            "Six distinct supported H2 information jobs are this Growth OS editorial product floor; a 1-2 H2 article is not acceptable.",
+            "Do NOT invent filler H2 to reach six. Each must have a distinct reader question, different factual purpose, a nonduplicated answer, and a realistic authoritative evidence pathway.",
+            "If the topic genuinely cannot support six information jobs with factual evidence, DO NOT fabricate content. The pipeline must fail research rather than publish a shallow guide.",
+            "Use H3 for substantive child explanations of complex H2, spread across sections where source-supported; do not output one decorative H3 or duplicate headlines.",
+            "Existing proposed jobs: "+JSON.stringify(plan.sections.map(s=>({
+              heading:s.heading,mission:s.mission,
+              topics:s.topics,questions:s.questions,
+            }))),
+          ]:[]),
 
 
         "Regenerate the ENTIRE Stage Plan JSON object from scratch.",
@@ -2798,15 +2821,15 @@ function inspectStagePlanCompleteness(
      * verifiable information for many explanatory H2 reader jobs.
      * A retry of the same provider with the same prompt is not a fix.
      */
-    const breadthOnly=
-      missingStagePlanFields.length===1&&
-      missingStagePlanFields[0]==="sections[].informationGainClaimBreadth";
+    const depthOnly=missingStagePlanFields.every(issue=>
+      issue==="sections[].informationGainClaimBreadth"||
+      issue==="sections[].comprehensiveReaderJobs");
     throw new ProductionMasterLiveStagePlanError(
-      breadthOnly?
+      depthOnly?
         "LIVE_STAGE_PLAN_INFORMATION_GAIN_UNRESOLVED":
         "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
-      breadthOnly?
-        "Research planning still has many broad explanatory sections with only one generic factual proposition each. No brief/article was created. Review the distinct information jobs and obtain verifiable facts before retrying; keyword or H2 quotas cannot replace evidence.":
+      depthOnly?
+        "A comprehensive article still lacks enough DISTINCT H2 reader jobs or independently verifiable factual depth. No brief/article was created. Research distinct reader questions and sources first; decorative H2/H3 or invented keywords cannot replace evidence.":
         `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
     );
   }
