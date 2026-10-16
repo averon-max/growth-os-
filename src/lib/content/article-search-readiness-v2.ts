@@ -29,7 +29,8 @@ const joins=[
   "ormultiple","understandingthe","thevisibility","servicesoffer",
   "caninclude","monitoringprocess","reportinformation",
   "yourenrollment","separateconfirmed","businessthat",
-  "in theservice","in theinformation","reportinformation",
+  "helpyou","thealert","thealertthen","phone,depending",
+  "yourreport","thereport","theinformation","reportinformation",
 ];
 const normalize=(s:string)=>s.toLowerCase().normalize("NFKC")
   .replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
@@ -38,8 +39,11 @@ export function inspectProseJoinAnomaliesV2(body:string):string[]{
   const out=new Set<string>();
   for(const match of text.matchAll(/\b[\p{L}]+,[\p{L}]+/gu))
     out.add(match[0].slice(0,90));
-  for(const candidate of joins)
-    if(text.toLowerCase().includes(candidate))out.add(candidate);
+  for(const candidate of joins){
+    // Candidate values are literals containing only letters or commas.
+    const re=new RegExp("\\b"+candidate+"\\b","iu");
+    if(re.test(text))out.add(candidate);
+  }
   return [...out].sort().slice(0,20);
 }
 export function evaluateArticleSearchReadinessV2({
