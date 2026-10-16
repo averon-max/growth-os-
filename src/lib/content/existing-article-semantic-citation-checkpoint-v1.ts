@@ -50,22 +50,26 @@ export function validateSemanticCitationChoicesV1(
       row.reason.trim().length<8||row.reason.length>600 ||
       !["SUPPORTED","PARTIAL","UNSUPPORTED","CONTRADICTORY"]
         .includes(String(row.verdict))||
-      !(row.sentenceId===null||Number.isInteger(row.sentenceId)))
+      (row.verdict==="SUPPORTED" &&
+        !Number.isInteger(row.sentenceId)))
       throw new Error("SEMANTIC_CITATION_REVIEW_SCHEMA_INVALID");
     const expected=known.get(row.evidenceId);
     if(!expected||expected.claimId!==row.claimId||
       seen.has(row.evidenceId))
       throw new Error("SEMANTIC_CITATION_REVIEW_NOT_A_SIGNED_PAIR");
     seen.add(row.evidenceId);
-    if(row.verdict==="SUPPORTED"){
-      if(typeof row.sentenceId!=="number"||
-        !sentenceIds.has(row.sentenceId))
-        throw new Error("SEMANTIC_CITATION_REVIEW_SENTENCE_NOT_FOUND");
-    }else if(row.sentenceId!==null)
-      throw new Error("SEMANTIC_CITATION_REVIEW_NON_SUPPORTED_HAS_SENTENCE");
+    if(row.verdict==="SUPPORTED" &&
+      !sentenceIds.has(row.sentenceId as number))
+      throw new Error("SEMANTIC_CITATION_REVIEW_SENTENCE_NOT_FOUND");
+    // Model providers sometimes include a sentenceId for a PARTIAL,
+    // UNSUPPORTED or CONTRADICTORY judgment, despite being asked for null.
+    // An unsupported source cannot authorize ANY citation. Normalize to
+    // null instead of discarding the whole already-paid section response.
+    const sentenceId=row.verdict==="SUPPORTED"
+      ?row.sentenceId as number:null;
     return {
       claimId:row.claimId,evidenceId:row.evidenceId,
-      reason:row.reason,sentenceId:row.sentenceId,
+      reason:row.reason,sentenceId,
       verdict:row.verdict,
     } as SemanticCitationChoiceV1;
   });
