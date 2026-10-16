@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { parseCachedKeywordResearchV2, type KeywordResearchResultV2 } from "./keyword-research-cache-v2";
 import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
+import { fetchGoogleKeywordSuggestionsV1 } from "./keyword-suggestions-provider-v1";
 import {createTopicScopedKeywordShortlistV1}
   from "./keyword-topic-scoped-shortlist-v1";
-import {assessKeywordTopicIntentV1}
+import {keywordCoreTopicV1,assessKeywordTopicIntentV1}
   from "./keyword-topic-intent-gate-v1";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
@@ -23,6 +24,8 @@ export interface KeywordResearchRequestV2 {
   /** Must be explicit: true means paid DataForSEO and potentially OpenAI requests. */
   authorizePaidResearch: boolean;
   useGptDecision?: boolean;
+  /** One ADDITIONAL paid DataForSEO request, only with explicit opt-in. */
+  authorizeExpandedDiscovery?: boolean;
 }
 
 const MARKET: Record<string, string> = {
@@ -86,7 +89,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v3-market-scoped"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), Boolean(input.authorizeExpandedDiscovery), "topic-and-page-intent-v4-suggestions"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -108,6 +111,23 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
         row && typeof row === "object" && typeof row.keyword === "string"),
     produce: () => fetchRelatedKeywords(seed, locationName, "English", 3, limit, true),
   });
+  // A SECOND provider request is permitted only with dedicated consent.
+  // It retrieves long-tail queries containing the core topic, unlike
+  // SERP-derived related keywords that may expand to unrelated brands.
+  // Reuse durable discovery checkpoints to prevent repurchase after failure.
+  const suggestions=input.authorizeExpandedDiscovery
+    ?await withKeywordResearchCheckpointV2({
+      stage:"DISCOVERY",
+      key:[website.id,market,keywordCoreTopicV1(seed),"suggestions-v1",Math.min(200,limit)].join(":"),
+      isValid:(value):value is Awaited<ReturnType<typeof fetchGoogleKeywordSuggestionsV1>>=>
+        Array.isArray(value)&&value.every(row=>
+          row&&typeof row==="object"&&typeof row.keyword==="string"),
+      produce:()=>fetchGoogleKeywordSuggestionsV1({
+        topic:keywordCoreTopicV1(seed),
+        locationName,limit:Math.min(200,limit),includeSerpInfo:true,
+      }),
+    })
+    :[];
   const [context, trends] = await Promise.all([
     getWebsiteKeywordContext(website.id, 250, market).catch(() => null),
     fetchTrendingQueries(seed, market).catch(() => null),
@@ -130,7 +150,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       impressions: keyword.impressions,
       clicks: keyword.clicks,
     })),
-    ...related.map(keyword => ({
+    ...[...related,...suggestions].map(keyword => ({
       keyword: keyword.keyword,
       searchVolume: keyword.searchVolume,
       keywordDifficulty: keyword.keywordDifficulty,
@@ -206,7 +226,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const scoped=createTopicScopedKeywordShortlistV1({
     seed,candidates:cleanup.candidates,maxClusters:30,
   });
-  const cheapSerpByKeyword = new Map(related.map(row => [
+  const cheapSerpByKeyword = new Map([...related,...suggestions].map(row => [
     row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
   ] as const));
   // A SEED-only phrase is not evidence of observed query demand.
@@ -295,6 +315,13 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
     observed: observations.length,
+    discoveryBreakdown:{
+      relatedRows:related.length,suggestionRows:suggestions.length,
+      gscRows:context?.topKeywords?.length??0,
+      trendOnlyRows:Math.max(0,observations.length-
+        1-(context?.topKeywords?.length??0)-related.length-suggestions.length),
+      expandedDiscovery:input.authorizeExpandedDiscovery===true,
+    },
     excludedCount: cleanup.excluded.length+scoped.excluded.length+rawTopicExclusions.length,
     excluded: [...cleanup.excluded,...scoped.excluded,...rawTopicExclusions],
     clusters: shortlist,
@@ -303,7 +330,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     // Keep the raw observed candidates for reproducibility, including
     // rejected other-topic phrases. Only scoped clusters reach paid SERP.
     candidateSnapshots: rawCleanup.candidates,
-    serpMetadata: related.map(row => ({
+    serpMetadata: [...related,...suggestions].map(row => ({
       keyword: row.keyword,
       resultCount: row.serpInfo?.resultCount ?? null,
       features: row.serpInfo?.features ?? [],
