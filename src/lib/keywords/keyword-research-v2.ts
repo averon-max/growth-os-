@@ -10,6 +10,7 @@ import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
 import { prepareKeywordOpportunitiesV2, validateKeywordOpportunityChoiceV2,
+  selectVerifiedKeywordOpportunityV2,
   type KeywordObservationV2, type KeywordOpportunityChoiceV2, type SerpOpportunityV2,
 } from "./keyword-intelligence-v2";
 
@@ -241,9 +242,11 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const verifiedClusterIds = new Set(verifiedSerp.map(result => result.clusterId));
   const eligibleForGpt = shortlist.filter(cluster => verifiedClusterIds.has(cluster.id));
   let decision: KeywordOpportunityChoiceV2 = shortlist.length
-    ? reviewNeeded(eligibleForGpt.length
-      ? "SERP-verified opportunities found. GPT decision not requested."
-      : "No SERP-verified opportunity: review source reliability before choosing a primary.")
+    ? input.useGptDecision
+      ? reviewNeeded(eligibleForGpt.length
+        ? "SERP-verified opportunities found. GPT decision pending."
+        : "No SERP-verified opportunity: review source reliability before choosing a primary.")
+      : selectVerifiedKeywordOpportunityV2(shortlist, verifiedSerp)
     : scopedObservations.some(x=>x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW")
       ? reviewNeeded("Observed terms have mixed informational/product intent or only SEED terms remain. Human SERP-intent review required; no paid deep-SERP calls were made.")
       : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
