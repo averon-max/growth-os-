@@ -560,7 +560,7 @@ enum SerpReplayArtifactStatus {
 model SerpReplayArtifact {
   id               String         @id @default(cuid())
   contentArticleId String
-  contentArticle   ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
+  contentArticle   ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade, map: "cqor_article_fk")
 
   artifactVersion String                            @default("SERP_REPLAY_ARTIFACT_V1")
   replayVersion   String                            @default("SERP_REPLAY_V1")
@@ -596,7 +596,7 @@ model ContentQueryOwnerReview {
   contentArticleId              String
   contentArticle                ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
   evidenceSnapshotId            String
-  evidenceSnapshot              ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade)
+  evidenceSnapshot              ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade, map: "cqor_evidence_fk")
   queryNodeId                   String
   observedQuery                 String
   ownerSectionIndex             Int
