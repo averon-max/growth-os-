@@ -150,7 +150,7 @@ function failureMessage(
 }
 
 
-function rebuildWriterRun({
+export function rebuildWriterRunV1({
   contract,
   run,
   sections,
