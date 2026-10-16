@@ -1104,6 +1104,19 @@ export async function improveExistingArticleQualityV1(articleId:string,
     check(detectPersistedArticleEditorialRepetitionV1(
       improvedRun.article.bodyMarkdown).length===0,
       "SAVED_QUALITY_PRECRITIC_EDITORIAL_REPETITION");
+    if(repairMode==="EXACT_SIGNED_CITATIONS"){
+      const citationScope=verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:improvedRun.article.bodyMarkdown,plan,runtime,
+      });
+      check(citationScope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED" &&
+        citationScope.totalLinks>=signedCitationDraft!.totalAddedCitations &&
+        signedCitationDraft!.sections.every(section=>
+          section.proposed.every(link=>
+            !citationScope.sections[section.sectionIndex]!.rejectedLinks
+              .includes(link.url) &&
+            improvedRun.article.bodyMarkdown.includes("]("+link.url+")"))),
+        "SAVED_SIGNED_CITATION_FINAL_SOURCE_SCOPE_REGRESSION");
+    }
     const finalCritics=await executeMasterArticleCriticsV1({
       contract,run:improvedRun,generator,context,
     });
@@ -1239,7 +1252,9 @@ export async function improveExistingArticleQualityV1(articleId:string,
           provenance:json({
             ...replay.provenance,
             editorialRecovery:{
-              version:"SAVED_ARTICLE_QUALITY_IMPROVEMENT_V1",
+              version:repairMode==="EXACT_SIGNED_CITATIONS"
+                ?"SAVED_ARTICLE_SIGNED_CITATION_REPAIR_V1":
+                "SAVED_ARTICLE_QUALITY_IMPROVEMENT_V1",
               previousArticle:initial,
               previousStatus:original.status,
               previousArticleUpdatedAt:original.updatedAt.toISOString(),
@@ -1264,7 +1279,9 @@ export async function improveExistingArticleQualityV1(articleId:string,
     });
     return {
       articleId,status:"IN_REVIEW" as const,
-      result:"SAME_ARTICLE_QUALITY_IMPROVEMENT_COMMITTED" as const,
+      result:repairMode==="EXACT_SIGNED_CITATIONS"
+        ?"SAME_ARTICLE_SIGNED_CITATION_REPAIR_COMMITTED" as const:
+        "SAME_ARTICLE_QUALITY_IMPROVEMENT_COMMITTED" as const,
       newFingerprint:fingerprint,
       oldFingerprint,
       replayArtifactId:committed,
