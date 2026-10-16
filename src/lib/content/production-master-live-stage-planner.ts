@@ -2792,9 +2792,22 @@ function inspectStagePlanCompleteness(
       }
     );
 
+    /*
+     * Do not misreport model-proposed breadth as a JSON/schema field
+     * missing. The real failure is insufficient distinct source-
+     * verifiable information for many explanatory H2 reader jobs.
+     * A retry of the same provider with the same prompt is not a fix.
+     */
+    const breadthOnly=
+      missingStagePlanFields.length===1&&
+      missingStagePlanFields[0]==="sections[].informationGainClaimBreadth";
     throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
-      `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
+      breadthOnly?
+        "LIVE_STAGE_PLAN_INFORMATION_GAIN_UNRESOLVED":
+        "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
+      breadthOnly?
+        "Research planning still has many broad explanatory sections with only one generic factual proposition each. No brief/article was created. Review the distinct information jobs and obtain verifiable facts before retrying; keyword or H2 quotas cannot replace evidence.":
+        `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
     );
   }
 
