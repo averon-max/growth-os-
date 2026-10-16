@@ -146,7 +146,7 @@ async function main():Promise<void>{
         serpChecksAttempted:snapshot.serpResults.length,
         serpVerified:serpValid.length,
         serpFailures:snapshot.serpResults.filter(x=>!!x.error).length,
-        deepSerpQualityReplay:snapshot.serpResults.map(row=>auditDeepSerpReadinessV1(row, snapshot.seed.replace(/^(what is|how does) +/i,""))),
+        deepSerpQualityReplay:snapshot.serpResults.map(row=>auditDeepSerpReadinessV1(row, assessKeywordTopicIntentV1({seed:snapshot.seed,query:snapshot.seed}).coreTopic)),
         observedSerpSnapshots:snapshot.serpResults.map(row=>({
           keyword:row.query,
           organicResults:row.organicResults,
