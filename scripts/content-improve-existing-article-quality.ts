@@ -66,6 +66,67 @@ async function main(){
     const improvement=planSameArticleQualityImprovementV1({
       wordCount:countWords(article.bodyMarkdown),minimumWords,sections,
     });
+    // Signed section progress may reside under a historic contract hash,
+    // or under the original checkout while this script runs in a worktree.
+    // A FREE preview must inspect these archives before authorizing AI.
+    const {inspectMasterRuntimeSnapshot}=
+      await import("../src/lib/content/master-runtime-adapter");
+    const {buildArticleGenerationContractV1}=
+      await import("../src/lib/content/article-generation-contract");
+    const {bindArticleExecutionPlanToGenerationContractV1}=
+      await import("../src/lib/content/article-execution-plan-binding-v1");
+    const {inspectArchivedWriterProgressV1}=
+      await import("../src/lib/content/writer-recovery-archived-progress-v1");
+    const {geminiGenerator}=await import("../src/lib/content/gemini-generator");
+    const {resolve,join}=await import("node:path");
+    const inspected=inspectMasterRuntimeSnapshot(snapshot.plan);
+    if(!inspected.runtime)throw new Error("SAVED_CURRENT_RUNTIME_NOT_VALID");
+    const contract=bindArticleExecutionPlanToGenerationContractV1({
+      plan,contract:buildArticleGenerationContractV1(inspected.runtime),
+    });
+    const bases=[...new Set([
+      resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
+        ".growth-os-tmp/article-checkpoints"),
+      ...(process.env.GROWTH_OS_ENV_DIR?.trim()?
+        [resolve(process.env.GROWTH_OS_ENV_DIR,
+          ".growth-os-tmp/article-checkpoints")]:[]),
+    ])];
+    const searches=[];
+    let compatibleArchive=false;
+    for(const base of bases){
+      for(const relative of ["research-recovery-editorial","research-recovery"]){
+        const found=await inspectArchivedWriterProgressV1({
+          rootDirectory:join(base,relative),
+          articleId,briefId:article.briefId,
+          contract,modelName:geminiGenerator.modelName,
+        });
+        searches.push({
+          kind:relative,compatible:found.compatible,
+          inspected:found.candidatesInspected,
+          verifiedSections:found.verifiedSections,
+          rejectionReasons:found.rejectionReasons,
+        });
+        if(found.compatible){compatibleArchive=true;break;}
+      }
+      if(compatibleArchive)break;
+    }
+    const {readFile}=await import("node:fs/promises");
+    let exactFinalCheckpoint=false;
+    for(const base of bases){
+      try{
+        const raw=JSON.parse(await readFile(
+          join(base,articleId+"-POST_FINAL_REPLAY.json"),"utf8"));
+        const cp=raw?.checkpoint;
+        const {createHash}=await import("node:crypto");
+        exactFinalCheckpoint=cp?.articleId===articleId&&
+          cp?.briefId===article.briefId&&
+          raw.sha256===createHash("sha256").update(
+            JSON.stringify(cp)).digest("hex");
+        if(exactFinalCheckpoint)break;
+      }catch{/* absent or unusable, never a source of authority */}
+    }
+    const checkpointReady=compatibleArchive||exactFinalCheckpoint;
+
     console.log(JSON.stringify({
       mode:execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
         "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW",
@@ -73,6 +134,12 @@ async function main(){
       currentWords:countWords(article.bodyMarkdown),requiredWords:minimumWords,
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
       improvement,
+      verifiedCheckpointReady:checkpointReady,
+      checkpointEvidence:{
+        compatibleArchivedProgress:compatibleArchive,
+        exactFinalCheckpoint,
+        searches,
+      },
       ...(execute?{}:{modelCalls:0,databaseUnchanged:true}),
     },null,2));
     if(!execute){
@@ -82,6 +149,8 @@ async function main(){
     if(article.status!=="IN_REVIEW"||article.publishedAt!==null||
       article.publishedUrl!==null||!improvement.eligible)
       throw new Error("PAID_IMPROVEMENT_NOT_ELIGIBLE");
+    if(!checkpointReady)throw new Error(
+      "PAID_IMPROVEMENT_SAFE_STOP_NO_COMPATIBLE_SIGNED_CHECKPOINT");
     const {improveExistingArticleQualityV1}=
       await import("../src/lib/content/existing-article-quality-improvement-v1");
     const result=await improveExistingArticleQualityV1(
