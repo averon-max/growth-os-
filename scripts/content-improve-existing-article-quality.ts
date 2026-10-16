@@ -20,13 +20,17 @@ async function main(){
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
   const authorized=args.includes("--authorize-paid-improvement");
-  const citationMode=args.includes("--repair-signed-citations");
+  const reviewedCitationMode=args.includes("--repair-reviewed-citations");
+  const exactCitationMode=args.includes("--repair-signed-citations");
+  const citationMode=exactCitationMode||reviewedCitationMode;
   if(!articleId||!/^[a-z0-9_-]{5,100}$/i.test(articleId)||
     args.some(a=>a!=="--execute"&&a!=="--authorize-paid-improvement"&&
       a!=="--repair-signed-citations"&&
+      a!=="--repair-reviewed-citations"&&
       !a.startsWith("--article="))||
-    execute!==authorized)throw new Error(
-      "USAGE: --article=EXISTING_ID [--repair-signed-citations] [--execute --authorize-paid-improvement]");
+    execute!==authorized||(exactCitationMode&&reviewedCitationMode))
+    throw new Error(
+      "USAGE: --article=EXISTING_ID [--repair-signed-citations | --repair-reviewed-citations] [--execute --authorize-paid-improvement]");
   const {prisma}=await import("../src/lib/prisma");
   try{
     const article=await prisma.contentArticle.findUnique({
@@ -88,9 +92,18 @@ async function main(){
         "../src/lib/content/existing-article-source-citation-repair-v1");
       const {verifyExistingArticleCitationScopeV1}=await import(
         "../src/lib/content/existing-article-citation-authority-v1");
-      const draft=draftExistingArticleSignedCitationsV1({
-        bodyMarkdown:article.bodyMarkdown,plan,runtime:inspected.runtime!,
-      });
+      const draft=reviewedCitationMode
+        ?await (async()=>{
+          const {loadReviewedSignedCitationDraftV1}=await import(
+            "../src/lib/content/existing-article-reviewed-citation-recovery-v1");
+          return loadReviewedSignedCitationDraftV1({
+            articleId,bodyMarkdown:article.bodyMarkdown,plan,
+            runtime:inspected.runtime!,
+          });
+        })()
+        :draftExistingArticleSignedCitationsV1({
+          bodyMarkdown:article.bodyMarkdown,plan,runtime:inspected.runtime!,
+        });
       const scope=verifyExistingArticleCitationScopeV1({
         candidateBodyMarkdown:draft.proposedBodyMarkdown,
         plan,runtime:inspected.runtime!,
@@ -363,6 +376,8 @@ async function main(){
           "FREE_SAME_ID_SIGNED_CITATION_REPAIR_PREVIEW")
         :(execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
           "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW"),
+      reviewSource:reviewedCitationMode?"EXACT_SIGNED_H2_CHECKPOINTS":
+        exactCitationMode?"EXACT_SIGNED_CLAIM_MATCHES":"NONE",
       articleId,status:article.status,updatedAt:article.updatedAt.toISOString(),
       currentWords:countWords(article.bodyMarkdown),requiredWords:minimumWords,
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
@@ -393,7 +408,8 @@ async function main(){
       await import("../src/lib/content/existing-article-quality-improvement-v1");
     const result=await improveExistingArticleQualityV1(
       articleId,article.updatedAt.toISOString(),
-      citationMode?"EXACT_SIGNED_CITATIONS":"DEPTH");
+      reviewedCitationMode?"REVIEWED_SIGNED_CITATIONS":
+        exactCitationMode?"EXACT_SIGNED_CITATIONS":"DEPTH");
     console.log(JSON.stringify(result,null,2));
     console.log("SAME_ID_QUALITY_IMPROVEMENT_FINISHED");
   }finally{await prisma.$disconnect();}
