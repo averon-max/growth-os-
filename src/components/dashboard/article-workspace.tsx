@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
+import {countWords} from "@/lib/content/article-analyzer";
 
 import {
   Area,
@@ -456,10 +457,10 @@ function deltaText(
 }
 
 export function ArticleWorkspace({
-  initialArticle,
+  initialArticle,qualityMinimumWords=0,
 }: {
-  initialArticle:
-    ArticleState;
+  initialArticle:ArticleState;
+  qualityMinimumWords?:number;
 }) {
   const [
     article,
@@ -991,6 +992,30 @@ export function ArticleWorkspace({
       "copy the command below only after checking evidence readiness.",
       command
     );
+  }
+
+  const qualityCurrentWords=countWords(article.bodyMarkdown);
+  const qualityNeedsImprovement=article.status==="IN_REVIEW" &&
+    !editing&&qualityMinimumWords>0&&
+    (qualityCurrentWords<qualityMinimumWords||
+      ((article.bodyMarkdown.match(/^##\\s+/gm)??[]).length>=4 &&
+       (article.bodyMarkdown.match(/^###\\s+/gm)??[]).length<2));
+
+  function offerQualityImprovement(){
+    if(!qualityNeedsImprovement||busy!==null)return;
+    const base="cd /Users/user/growth-os-writer-verified && "+
+      "GROWTH_OS_ENV_DIR=/Users/user/growth-os "+
+      "NODE_OPTIONS=--conditions=react-server "+
+      "npx tsx scripts/content-improve-existing-article-quality.ts "+
+      "--article="+article.id;
+    const command=base+" && "+base+
+      " --execute --authorize-paid-improvement";
+    window.prompt(
+      "Quality improvement of this SAME article. First command is a FREE "+
+      "read-only preview; the second explicitly authorizes paid, bounded "+
+      "source-verified section rewrites. Original article remains unchanged "+
+      "unless all checks and the new SERP Replay pass. Copy the command:",
+      command);
   }
 
   async function repairEditorial(){
@@ -1567,6 +1592,15 @@ ${article.bodyMarkdown}`
             </button>
           ) : null}
 
+          {qualityNeedsImprovement ? (
+            <button type="button" className={styles.secondaryButton}
+              disabled={busy!==null}
+              title="Improve the same article, preserve source claims, then run all gates and SERP Replay"
+              onClick={offerQualityImprovement}>
+              <Sparkles size={12}/> Improve existing article (verified CLI)
+            </button>
+          ) : null}
+
           {(article.status ===
             "DRAFT" ||
             article.status ===
@@ -1581,14 +1615,17 @@ ${article.bodyMarkdown}`
                 busy !== null ||
                 detectPersistedArticleEditorialRepetitionV1(
                   article.bodyMarkdown
-                ).length > 0
+                ).length > 0 ||
+                qualityNeedsImprovement
               }
               title={
                 detectPersistedArticleEditorialRepetitionV1(
                   article.bodyMarkdown
                 ).length > 0
                   ? "Resolve repeated low-information sections before approval"
-                  : "Approve verified article"
+                  : qualityNeedsImprovement
+                    ? "Expand and structure this comprehensive guide before approval"
+                    : "Approve verified article"
               }
               onClick={() =>
                 void articleAction(
@@ -1637,6 +1674,15 @@ ${article.bodyMarkdown}`
           ) : null}
         </div>
       </div>
+
+      {qualityNeedsImprovement ? (
+        <p role="status" className={styles.error}>
+          Needs editorial improvement: {qualityCurrentWords} words;
+          comprehensive guide target {qualityMinimumWords}+ words.
+          Exact planned keywords alone do not prove useful coverage.
+          Improve this same article before approving or publishing.
+        </p>
+      ) : null}
 
       {error ? (
         <div
