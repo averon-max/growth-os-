@@ -35,7 +35,7 @@ const joins=[
   // (2026-10-16). These are precise, literal join defects; do not
   // invent broad word-splitting rules that harm brands or technical text.
   "creditcard","thereview","informationyou","assumptionto",
-  "ofcoverage","whosecoverage","toreview","toa",
+  "ofcoverage","whosecoverage","toreview",
 ];
 const normalize=(s:string)=>s.toLowerCase().normalize("NFKC")
   .replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
@@ -49,6 +49,9 @@ export function inspectProseJoinAnomaliesV2(body:string):string[]{
     const re=new RegExp("\\b"+candidate+"\\b","iu");
     if(re.test(text))out.add(candidate);
   }
+  // "toa" alone is also a real name/brand. Only flag the exact observed
+  // English spacing defect rather than blocking unrelated brands.
+  if(/\brelevant toa particular\b/iu.test(text))out.add("toa");
   return [...out].sort().slice(0,20);
 }
 export function evaluateArticleSearchReadinessV2({
