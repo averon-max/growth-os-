@@ -84,6 +84,7 @@ export async function loadReviewedSignedCitationDraftV1({
     const semantic=reviewed.audit[i]!;
     return {
       sectionIndex:i,heading:section.heading,
+      exactClaimAnchorMissing:section.exactClaimAnchorMissing,
       proposedCitationCount:section.proposedCitationCount+semantic.added,
       proposed:[
         ...section.proposed.map(x=>({
