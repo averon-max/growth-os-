@@ -40,6 +40,9 @@ async function main(){
       "../src/lib/content/serp-replay-fingerprint");
     const {previewObservedArticleJoinCopyeditV1}=await import(
       "../src/lib/content/article-copyedit-join-repair-v1");
+    const {probeSavedArticleJoinIntegrityV1,
+      simulateQueryOwnerBindingWithoutPersistenceV1}=await import(
+      "../src/lib/content/existing-article-postcommit-integrity-v1");
     const {evaluateArticleSearchReadinessV2}=await import(
       "../src/lib/content/article-search-readiness-v2");
     const {inspectMasterRuntimeSnapshot}=await import(
@@ -79,6 +82,12 @@ async function main(){
         primaryKeyword:article.brief.primaryKeyword,
         secondaryKeywords:article.brief.secondaryKeywords,replay,
       }):null;
+    const queryBindingWhatIf=runtime&&plan?
+      simulateQueryOwnerBindingWithoutPersistenceV1({
+        article:original,runtime,plan,
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,replay,
+      }):null;
     const provenance=object(replay?.provenance);
     const editorialRecovery=object(provenance?.editorialRecovery);
     const result={
@@ -109,6 +118,9 @@ async function main(){
         })),
       }:null,
       queryBindingProposal,
+      queryBindingWhatIf,
+      independentCopyeditProbe:
+        probeSavedArticleJoinIntegrityV1(article.bodyMarkdown),
       searchEditorial:{
         status:readiness.status,canClaimSeoReady:readiness.canClaimSeoReady,
         publishRecommendation:readiness.publishRecommendation,
