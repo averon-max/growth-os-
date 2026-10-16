@@ -111,14 +111,22 @@ async function main(): Promise<void> {
         createdAt: true,
       },
     });
-    const hasReadyArticle = existing.some(
-      (a) => a.status === "IN_REVIEW" || a.status === "APPROVED" || a.status === "PUBLISHED"
-    );
-    const hasActiveGeneration = existing.some((a) => a.status === "GENERATING");
-    // A PUBLISH_FAILED article has already been generated. An external
-    // CMS/integration failure must be repaired by the publication owner,
-    // never by paying for another Writer attempt for the same brief.
-    const hasFailedPublication = existing.some((a) => a.status === "PUBLISH_FAILED");
+    // The five displayed rows are diagnostics only. A valid older
+    // completed/publish-failed article must still prevent duplicate
+    // generation even when newer rejected attempts pushed it out.
+    const occupied=await prisma.contentArticle.findMany({
+      where:{
+        briefId,
+        status:{in:["IN_REVIEW","APPROVED","PUBLISHED","GENERATING","PUBLISH_FAILED"]},
+      },
+      select:{status:true},
+    });
+    const hasReadyArticle=occupied.some(a=>
+      a.status==="IN_REVIEW"||a.status==="APPROVED"||a.status==="PUBLISHED");
+    const hasActiveGeneration=occupied.some(a=>a.status==="GENERATING");
+    // An external CMS/integration failure belongs to publishing,
+    // not an additional paid attempt for the same brief.
+    const hasFailedPublication=occupied.some(a=>a.status==="PUBLISH_FAILED");
     const writable = plan?.sections.filter((s) => s.state === "WRITABLE") ?? [];
     const deferred = plan?.sections.filter((s) => s.state === "DEFERRED_NO_EVIDENCE") ?? [];
     const ready = runtime.readiness === "READY" && inspected.runtime !== null &&
