@@ -10,6 +10,8 @@ import {
 } from "./stage-plan-information-gain-v1";
 import {buildStagePlanInformationGainRetryV1}
   from "./stage-plan-information-gain-retry-v1";
+import {inspectComprehensiveStagePlanStructureV1}
+  from "./comprehensive-stage-plan-structure-v1";
 
 import {
 
@@ -1848,6 +1850,14 @@ function inspectStagePlanCompleteness(
       if(informationGain.issueCode){
         missing.push(informationGain.issueCode);
       }
+      const comprehensiveStructure=inspectComprehensiveStagePlanStructureV1({
+        intent:mission.missionIntent,
+        pageType:candidate.pageType,
+        sections:candidate.sections,
+      });
+      if(comprehensiveStructure.issueCode){
+        missing.push(comprehensiveStructure.issueCode);
+      }
 
       /*
        * TEMPLATE_H2_PLANNING_GUIDANCE_ONLY_V2
@@ -2644,6 +2654,18 @@ function inspectStagePlanCompleteness(
             sections:plan.sections,
             claims:plan.claims,
           })??""] : []),
+        ...(missingStagePlanFields.includes("sections[].comprehensiveReaderJobs")?
+          [
+            "COMPREHENSIVE_READER_JOBS_RECOVERY_V1:",
+            "This is a 2000+ word informational explainer. Only 1-2 major reader information jobs cannot make a complete comprehensive guide.",
+            "For Growth OS, a comprehensive article needs at least SIX genuinely distinct source-verifiable major H2 jobs.",
+            "Do not invent padding headings or split synonymous questions to meet six. If the evidence cannot support six jobs, fail research rather than fabricate.",
+            "H3 must subdivide meaningful complex H2 concepts across sections, without repeating headings or inserting filler.",
+            "Actual current jobs: "+JSON.stringify(plan.sections.map(x=>({
+              heading:x.heading,mission:x.mission,
+              topics:x.topics,questions:x.questions,
+            }))),
+          ]:[]),
 
 
         "Regenerate the ENTIRE Stage Plan JSON object from scratch.",

@@ -87,6 +87,11 @@ on:
       - "src/lib/content/production-master-live-stage-planner.ts"
       - "src/lib/content/stage-plan-information-gain-retry-v1.ts"
       - "src/lib/content/stage-plan-information-gain-retry-v1.test.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.test.ts"
+      - "src/lib/content/comprehensive-stage-plan-structure-v1.ts"
+      - "src/lib/content/comprehensive-stage-plan-structure-v1.test.ts"
+      - "src/lib/content/production-master-live-stage-planner.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
@@ -114,6 +119,8 @@ jobs:
         run: npx vitest run src/lib/content/master-article-critic-repair-execution.test.ts src/lib/content/production-final-article-readiness-adapter-v1.test.ts
       - name: Content module regression
         run: npx vitest run src/lib/content
+      - name: Longform H2/H3 and semantic reader-job regression
+        run: npx vitest run src/lib/content/comprehensive-editorial-release-gate-v1.test.ts src/lib/content/comprehensive-stage-plan-structure-v1.test.ts
       - name: Keyword entity and topic scope regression
         run: npx vitest run src/lib/keywords/keyword-topic-intent-gate-v1.test.ts src/lib/keywords/keyword-topic-scoped-shortlist-v1.test.ts src/lib/keywords/keyword-research-v2.test.ts src/lib/keywords/keyword-intelligence-v2.test.ts
       - name: DataForSEO question provider regression
