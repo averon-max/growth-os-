@@ -56,6 +56,13 @@ async function main(){
       throw new Error("ARTICLE_PLAN_WEBSITE_MISMATCH");
     const result=draftExistingArticleSignedCitationsV1({
       bodyMarkdown:original.bodyMarkdown,plan,runtime});
+    const {verifyExistingArticleCitationScopeV1}=await import(
+      "../src/lib/content/existing-article-citation-authority-v1");
+    const scope=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:result.proposedBodyMarkdown,plan,runtime,
+    });
+    if(scope.unapprovedLinks>0)
+      throw new Error("PROPOSED_CITATIONS_OUTSIDE_SIGNED_H2_AUTHORITY");
     const beforeFingerprint=buildSerpReplayArticleFingerprintV1(original);
     const afterFingerprint=buildSerpReplayArticleFingerprintV1({
       title:original.title,metaDescription:original.metaDescription,
@@ -68,6 +75,7 @@ async function main(){
       oldArticleFingerprint:beforeFingerprint,
       proposedArticleFingerprint:afterFingerprint,
       totalAddedCitations:result.totalAddedCitations,
+      citationScope:scope,
       sections:result.sections.map(({proposedBody,...r})=>r),
       next:result.totalAddedCitations>0
         ?"SEMANTIC_CLAIM_LINK_VERIFICATION_PLUS_9_CRITICS_PLUS_FRESH_SERP_REPLAY_REQUIRED"
