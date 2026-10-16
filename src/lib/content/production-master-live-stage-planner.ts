@@ -8,6 +8,8 @@ import {
   inspectStagePlanInformationGainV1,
   INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
 } from "./stage-plan-information-gain-v1";
+import {buildStagePlanInformationGainRetryV1}
+  from "./stage-plan-information-gain-retry-v1";
 
 import {
 
@@ -2629,6 +2631,20 @@ function inspectStagePlanCompleteness(
         "Your previous response was valid JSON but did not satisfy the complete production Stage Plan contract.",
 
         `Missing or invalid fields: ${missingStagePlanFields.join(", ")}`,
+        /*
+         * A generic full retry kept reproducing one broad claim per H2
+         * even after consuming a second paid planner call.
+         *
+         * Supply the ACTUAL failed sections and factual hypotheses so
+         * this one existing regeneration re-architects the real reader
+         * jobs; no invented claim is ever marked verified.
+         */
+        ...(missingStagePlanFields.includes("sections[].informationGainClaimBreadth")?
+          [buildStagePlanInformationGainRetryV1({
+            sections:plan.sections,
+            claims:plan.claims,
+          })??""] : []),
+
 
         "Regenerate the ENTIRE Stage Plan JSON object from scratch.",
 
