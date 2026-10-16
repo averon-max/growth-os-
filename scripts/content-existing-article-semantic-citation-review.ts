@@ -72,6 +72,19 @@ async function main(){
     const worklist=buildSignedSemanticCitationWorklistV1({
       bodyMarkdown:base,plan,runtime,
     });
+    // A deep source review is REQUIRED only when the saved H2 still has
+    // no citation to any of its already signed VERIFIED_EXCERPT sources.
+    // Optional checkpoints from earlier paid reviews remain reusable,
+    // but no NEW payment is needed for already-covered sections.
+    const baselineScope=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:base,plan,runtime,
+    });
+    if(baselineScope.unapprovedLinks>0)
+      throw new Error("SEMANTIC_CITATION_BASELINE_SOURCE_OUTSIDE_H2");
+    const requiresReview=(index:number)=>(
+      (baselineScope.sections[index]?.assignedEvidence??0)>0 &&
+      (baselineScope.sections[index]?.approvedLinks??0)===0
+    );
     const {
       semanticCitationCheckpointKeyV1,
       validateSemanticCitationChoicesV1,
@@ -88,7 +101,8 @@ async function main(){
       });
       const file=join(reviewCheckpointDir,
         section.sectionIndex+"-"+reviewKey+".json");
-      let state="NOT_CHECKPOINTED";
+      let state=requiresReview(section.sectionIndex)
+        ?"NOT_CHECKPOINTED":"ALREADY_SOURCE_COVERED";
       try{
         const data=rec(JSON.parse(await readFile(file,"utf8")));
         if(!data||data.reviewKey!==reviewKey||
@@ -111,7 +125,8 @@ async function main(){
           }catch(rawError){
             if(rawError&&typeof rawError==="object"&&
               "code" in rawError&&rawError.code==="ENOENT")
-              state="NOT_CHECKPOINTED";
+              state=requiresReview(section.sectionIndex)
+                ?"NOT_CHECKPOINTED":"ALREADY_SOURCE_COVERED";
             else state="RAW_RESPONSE_NEEDS_MANUAL_REVIEW";
           }
         }else state="VALIDATED_CHECKPOINT_NEEDS_MANUAL_REVIEW";
@@ -130,7 +145,8 @@ async function main(){
         claimIds:[...new Set(s.availableSources.map(x=>x.claimId))],
       })),
       maxReviewCalls:worklist.filter(s=>
-        s.availableSources.length&&s.sentences.length).length,
+        s.availableSources.length&&s.sentences.length &&
+        requiresReview(s.sectionIndex)).length,
       checkpointInventory,
       reusableReviewSections:checkpointInventory.filter(s=>
         s.state==="VALIDATED_REUSABLE"||
@@ -226,6 +242,13 @@ async function main(){
         "SIGNED VERIFIED EXCERPTS (previously checked source, NOT new research):",
         JSON.stringify(section.availableSources),
       ].join("\n");
+      // A signed source link already covers this H2; do not pay for
+      // optional extra citations. Existing reviewed checkpoints are still
+      // consumed and revalidated above when they are present.
+      if(rawResponse===null && !requiresReview(section.sectionIndex)){
+        verdicts.push({sectionIndex:section.sectionIndex,choices:[]});
+        continue;
+      }
       let raw=rawResponse;
       if(raw===null){
         raw=await callContentAiJson(prompt,{reasoningEffort:"low"});
