@@ -126,6 +126,44 @@ async function main(){
       }catch{/* absent or unusable, never a source of authority */}
     }
     const checkpointReady=compatibleArchive||exactFinalCheckpoint;
+    // Read ONLY the exact source+article-version-scoped local progress.
+    // Inspecting the actual verified partial article prevents a needless
+    // paid redo when its H3 headings were simply counted by a broken regex.
+    const {qualityImprovementProgressDirectoryV1}=
+      await import("../src/lib/content/quality-improvement-progress-scope-v1");
+    const {fingerprintMasterWriterContractV1,
+      readMasterWriterSectionProgressV1}=
+      await import("../src/lib/content/master-writer-section-progress-v1");
+    const progressDir=qualityImprovementProgressDirectoryV1({
+      root:resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
+        ".growth-os-tmp/article-checkpoints"),
+      articleId,briefId:article.briefId,
+      updatedAt:article.updatedAt.toISOString(),
+      article:{title:article.title,metaDescription:article.metaDescription,
+        h1:article.h1,bodyMarkdown:article.bodyMarkdown},
+      snapshot:snapshot.plan,contract,modelName:geminiGenerator.modelName,
+    });
+    const progress=await readMasterWriterSectionProgressV1({
+      directory:progressDir,articleId,briefId:article.briefId,
+      contractHash:fingerprintMasterWriterContractV1(
+        contract,geminiGenerator.modelName),
+      modelName:geminiGenerator.modelName,
+    });
+    const verifiedProgress=progress?.accepted.length===
+      contract.sectionContracts.length?progress:null;
+    const partialH3=verifiedProgress?.accepted.reduce(
+      (n,e)=>n+(e.section.bodyMarkdown.match(/^###\s+\S/gm)??[]).length,0)??0;
+    const partialWords=verifiedProgress?.accepted.reduce(
+      (n,e)=>n+countWords(e.section.bodyMarkdown),0)??null;
+    const incrementalQualityProgress={
+      found:!!verifiedProgress,
+      verifiedSections:verifiedProgress?.accepted.length??0,
+      h3Count:partialH3,
+      sectionWordTotal:partialWords,
+      sourceBound:true,
+      note:"Section-only word total excludes H2 heading words.",
+    };
+
 
     console.log(JSON.stringify({
       mode:execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
@@ -135,6 +173,7 @@ async function main(){
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
       improvement,
       verifiedCheckpointReady:checkpointReady,
+      incrementalQualityProgress,
       checkpointEvidence:{
         compatibleArchivedProgress:compatibleArchive,
         exactFinalCheckpoint,
