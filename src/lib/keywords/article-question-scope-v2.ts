@@ -137,8 +137,12 @@ export function groupObservedArticleQuestionsV2<T extends {
     bucket.push(item);
     byFamily.set(family,bucket);
   }
-  const byVolume=(a:T,b:T)=>(b.searchVolume??-1)-
-    (a.searchVolume??-1)||a.keyword.localeCompare(b.keyword);
+  const byVolume=(a:{
+    searchVolume:number|null;query?:string;keyword?:string;
+  },b:{
+    searchVolume:number|null;query?:string;keyword?:string;
+  })=>(b.searchVolume??-1)-(a.searchVolume??-1)||
+    (a.keyword??a.query??"").localeCompare(b.keyword??b.query??"");
   const familyGroups=[...byFamily.entries()].map(([family,rows])=>({
     family,
     distinctObservedQueries:rows.length,
