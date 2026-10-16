@@ -34,6 +34,12 @@ import { supportsMasterSectionSemanticVerifier }
   from "./master-section-semantic-verifier";
 import { rebuildWriterRunV1 } from "./master-article-critic-repair-execution";
 import { createMasterArticleCriticFindingV1 } from "./master-article-critic";
+import {readMasterWriterSectionProgressV1,
+  fingerprintMasterWriterContractV1}
+  from "./master-writer-section-progress-v1";
+import {executeMasterWriterV1} from "./master-writer-orchestrator";
+import {splitPersistedArticleByCanonicalH2V1}
+  from "./existing-article-section-rebind-v1";
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeSerpReplayV1 } from "./serp-replay";
@@ -123,32 +129,112 @@ export async function improveExistingArticleQualityV1(articleId:string,
       plan,contract:buildArticleGenerationContractV1(runtime),
     });
 
+    const budget=createContentRunBudgetV1({
+      maxModelCalls:30,maxEstimatedInputTokens:160000,maxRepairCalls:5,
+    });
+    const generator=withContentRunBudgetV1({generator:geminiGenerator,budget});
+    check(supportsMasterSectionRepairGenerator(generator)&&
+      supportsMasterSectionSemanticVerifier(generator),
+      "SAVED_QUALITY_REPAIR_GENERATOR_UNAVAILABLE");
+    const initial=articleShape(original);
+    let run:MasterWriterRunV1|null=null;
+    let checkpointSha256:string|null=null;
+
+    // Old article-generation checkpoint (if it still matches the exact
+    // currently persisted article and the current Research snapshot).
     const dir=checkpointDir();
     const path=join(dir,articleId+"-POST_FINAL_REPLAY.json");
-    let raw:string;
+    let raw:string|null=null;
     try{raw=await readFile(path,"utf8");}
-    catch{throw new Error("SAVED_EDITORIAL_FINAL_CHECKPOINT_REQUIRED");}
-    const payload=record(JSON.parse(raw)),cp=record(payload.checkpoint);
-    check(payload.sha256===sha(JSON.stringify(cp)) &&
-      cp.version==="ARTICLE_RECOVERY_CHECKPOINT_V1" &&
-      cp.stage==="POST_FINAL_REPLAY"&&cp.articleId===articleId &&
-      cp.briefId===original.briefId,
-      "SAVED_EDITORIAL_FINAL_CHECKPOINT_HASH_OR_SCOPE_MISMATCH");
-    const savedRun=record(cp.writerRun);
-    check(savedRun.version==="MASTER_WRITER_RUN_V1" &&
-      Array.isArray(savedRun.sections) &&
-      savedRun.sections.length===contract.sectionContracts.length,
-      "SAVED_EDITORIAL_WRITER_RUN_INVALID");
-    const run=savedRun as unknown as MasterWriterRunV1;
-    const initial=articleShape(original);
-    const fromCheckpoint=articleShape(run.article);
-    check(fromCheckpoint.title===initial.title &&
-      fromCheckpoint.metaDescription===initial.metaDescription &&
-      fromCheckpoint.h1===initial.h1 &&
-      normalizeMasterArticleProseSpacesV1(fromCheckpoint.bodyMarkdown)===
-        initial.bodyMarkdown,
-      "SAVED_EDITORIAL_CHECKPOINT_ARTICLE_VERSION_MISMATCH");
+    catch(error){
+      if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;
+    }
+    if(raw){
+      const payload=record(JSON.parse(raw)),cp=record(payload.checkpoint);
+      check(payload.sha256===sha(JSON.stringify(cp)),
+        "SAVED_QUALITY_FINAL_CHECKPOINT_CORRUPTED");
+      if(cp.version==="ARTICLE_RECOVERY_CHECKPOINT_V1" &&
+        cp.stage==="POST_FINAL_REPLAY"&&cp.articleId===articleId&&
+        cp.briefId===original.briefId){
+        const savedRun=record(cp.writerRun);
+        if(savedRun.version==="MASTER_WRITER_RUN_V1"&&
+          Array.isArray(savedRun.sections)&&
+          savedRun.sections.length===contract.sectionContracts.length){
+          const candidate=savedRun as unknown as MasterWriterRunV1;
+          const checked=articleShape(candidate.article);
+          if(checked.title===initial.title&&
+            checked.metaDescription===initial.metaDescription&&
+            checked.h1===initial.h1&&
+            normalizeMasterArticleProseSpacesV1(checked.bodyMarkdown)===
+              initial.bodyMarkdown){
+            run=candidate;checkpointSha256=String(payload.sha256);
+          }
+        }
+      }
+    }
 
+    // RESEARCH_RECOVERY does not write POST_FINAL_REPLAY: its immutable
+    // source-verified SHA256 section progress is the real authority.
+    // Only the exact current contract and generator can be resumed.
+    // A later critic may have changed the persisted text: rebind each
+    // changed H2 body from the actual DB article, then re-verify it
+    // semantically using the current source graph before any edit.
+    if(!run){
+      const contractHash=fingerprintMasterWriterContractV1(
+        contract,generator.modelName);
+      const suffix=contractHash.slice(0,20);
+      const roots=[
+        resolve(".growth-os-tmp/article-checkpoints/research-recovery-editorial",suffix),
+        resolve(".growth-os-tmp/article-checkpoints/research-recovery",suffix),
+      ];
+      for(const directory of roots){
+        const progress=await readMasterWriterSectionProgressV1({
+          directory,articleId,briefId:original.briefId,
+          contractHash,modelName:generator.modelName,
+        });
+        if(!progress || progress.accepted.length!==contract.sectionContracts.length)
+          continue;
+        const persistedBodies=splitPersistedArticleByCanonicalH2V1(
+          original.bodyMarkdown,
+          contract.sectionContracts.map(x=>x.blueprint.heading));
+        const verifiedRun=await executeMasterWriterV1({
+          contract,generator,resumeProgress:progress,
+        });
+        check(verifiedRun.shell.title===initial.title&&
+          verifiedRun.shell.metaDescription===initial.metaDescription&&
+          verifiedRun.shell.h1===initial.h1,
+          "SAVED_QUALITY_SIGNED_SHELL_MISMATCH");
+        const sections=[...verifiedRun.sections],
+          reconciliations=[...verifiedRun.reconciliations],
+          semanticVerifications=[...verifiedRun.semanticVerifications];
+        for(let i=0;i<sections.length;i++){
+          if(sections[i].bodyMarkdown.trim()===persistedBodies[i])continue;
+          const current=await verifyGeneratedSectionOnlyV1({
+            contract:contract.sectionContracts[i],
+            section:{...sections[i],bodyMarkdown:persistedBodies[i]},
+            generator,
+          });
+          sections[i]=current.section;
+          reconciliations[i]=current.reconciliation;
+          semanticVerifications[i]=current.semanticVerification;
+        }
+        const rebound=rebuildWriterRunV1({
+          contract,run:verifiedRun,sections,reconciliations,
+          semanticVerifications,
+        });
+        const checked=articleShape(rebound.article);
+        check(checked.title===initial.title&&
+          checked.metaDescription===initial.metaDescription&&
+          checked.h1===initial.h1&&
+          normalizeMasterArticleProseSpacesV1(checked.bodyMarkdown)===
+            initial.bodyMarkdown,
+          "SAVED_QUALITY_REBOUND_ARTICLE_VERSION_MISMATCH");
+        run=rebound;checkpointSha256=sha(JSON.stringify(progress));
+        break;
+      }
+    }
+    check(run!==null&&checkpointSha256!==null,
+      "SAVED_QUALITY_SIGNED_CURRENT_WRITER_CHECKPOINT_REQUIRED");
     const storedCtx=buildMasterArticleSemanticCriticContextV1(runtime);
     const fallbackCandidates=storedCtx.cannibalizationCandidates.length
       ? [] : await buildCrawlCannibalizationCandidatesV1({
@@ -179,13 +265,6 @@ export async function improveExistingArticleQualityV1(articleId:string,
       })),
     });
     check(improvePlan.eligible,"SAVED_QUALITY_"+improvePlan.reason);
-    const budget=createContentRunBudgetV1({
-      maxModelCalls:22,maxEstimatedInputTokens:120000,maxRepairCalls:5,
-    });
-    const generator=withContentRunBudgetV1({generator:geminiGenerator,budget});
-    check(supportsMasterSectionRepairGenerator(generator)&&
-      supportsMasterSectionSemanticVerifier(generator),
-      "SAVED_QUALITY_REPAIR_GENERATOR_UNAVAILABLE");
     const sections=[...run.sections],reconciliations=[...run.reconciliations],
       semanticVerifications=[...run.semanticVerifications];
     const repairedSectionIds:number[]=[];
@@ -384,7 +463,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
               previousFingerprint:oldFingerprint,
               previousReplayArtifactId:priorReplay?.id??null,
               evidenceSnapshotSha256:sha(JSON.stringify(snap.plan)),
-              checkpointSha256:payload.sha256,
+              checkpointSha256,
               initialCriticStatus:"NOT_RUN_AVOID_PAID_BASELINE",
               finalCriticStatus:repaired.finalCritics.suite.status,
               repairSections:repaired.repairs.map(x=>x.sectionIndex),
