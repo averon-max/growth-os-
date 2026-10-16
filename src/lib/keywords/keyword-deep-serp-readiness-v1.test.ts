@@ -99,6 +99,6 @@ describe("deep competitor research coverage",()=>{
     expect(result.status).toBe("DEEP_COMPETITOR_OBSERVED");
     expect(result.publisherReady).toBe(false);
     expect(result.canGuaranteeRankOne).toBe(false);
-    expect(result.competitorMedianH2).toBe(6);
+    expect(result.competitorMedianH2).toBe(1); // recomputed from qualified article headings, not stale raw benchmark
   });
 });
