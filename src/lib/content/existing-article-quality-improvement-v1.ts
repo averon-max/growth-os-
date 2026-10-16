@@ -5,7 +5,9 @@
  * fresh brief/research/Writer. Reuses genuine saved Evidence, the exact
  * post-final-replay checkpoint, and the existing production section repair.
  *
- * Physical model calls: <=10; model repair calls: <=1.
+ * Logical model calls are bounded by ContentRunBudgetV1; section edits
+ * are individually saved in SHA256-scoped local progress after verification.
+ * The persistent Article and SERP Replay change only after all gates pass.
  * Any failure leaves the entire ContentArticle and its replay untouched.
  * Only a fully source-supported, 9-critic-accepted, SERP-compared version
  * may be committed. Original article is archived in append-only provenance.
@@ -27,7 +29,7 @@ import { buildCrawlCannibalizationCandidatesV1 } from "./crawl-cannibalization-c
 import { detectPersistedArticleEditorialRepetitionV1 } from "./editorial-repetition-guard-v1";
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
-import { planSameArticleQualityImprovementV1 } from "./same-article-quality-improvement-v1";
+import { planSameArticleQualityImprovementV1, evaluateWholeArticleQualityWordRangeV1 } from "./same-article-quality-improvement-v1";
 import { countSectionWordsV1,verifyGeneratedSectionOnlyV1,
   supportsMasterSectionRepairGenerator } from "./master-section-repair";
 import { supportsMasterSectionSemanticVerifier }
@@ -390,8 +392,8 @@ export async function improveExistingArticleQualityV1(articleId:string,
       // independent publication gates. A safe, verified 352-word section
       // may be 9 words short of its 361-word target while the other
       // sections can still satisfy the ARTICLE's actual 2000-word gate.
-      // Preserve hard per-section MAX and the existing evidence/semantic
-      // checks. The final full-article minimum is enforced below.
+      // Preserve original evidence/semantic checks, while applying the
+      // bounded global ARTICLE min/max before the expensive critic pass.
       const actualSectionWords=countSectionWordsV1(
         verified.section.bodyMarkdown);
       // This is an editorial allocation, NOT an individual hard quota.
@@ -429,9 +431,13 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const expectedRange=resolveArticleLengthContractV1(plan).targetWords;
     check(expectedRange,"SAVED_QUALITY_ARTICLE_RANGE_MISSING");
     const candidateWords=countWords(improvedRun.article.bodyMarkdown);
-    check(candidateWords>=expectedRange.min &&
-      candidateWords<=expectedRange.max,
-      "SAVED_QUALITY_FINAL_ARTICLE_WORD_RANGE:"+candidateWords);
+    const globalDepth=evaluateWholeArticleQualityWordRangeV1({
+      actualWords:candidateWords,
+      minWords:expectedRange.min,maxWords:expectedRange.max,
+    });
+    check(globalDepth.pass,
+      "SAVED_QUALITY_FINAL_ARTICLE_WORD_RANGE:"+
+        globalDepth.reason+":"+candidateWords);
     // The meaningful H3 release rule is not a per-section quota.
     // Evaluate it before spending the nine-critic pass.
     check(improvePlan.headingOpportunityCount<2 ||
