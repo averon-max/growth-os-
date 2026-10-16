@@ -68,6 +68,8 @@ on:
       - "src/lib/content/observed-keyword-article-bridge-v1.test.ts"
       - "scripts/content-existing-article-search-readiness.ts"
       - "scripts/content-research-article-keyword-clusters.ts"
+      - "src/lib/content/observed-query-heading-candidate-v1.ts"
+      - "src/lib/content/observed-query-heading-candidate-v1.test.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 

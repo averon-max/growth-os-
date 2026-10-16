@@ -109,3 +109,93 @@ describe("real-evidence SEO readiness never confused with 3/3 brief tokens",()=>
       "Review your report, then contact the bureau.")).toEqual([]);
   });
 });
+
+describe("real 2026-10-16 Mac query-to-H2 evidence mismatch",()=>{
+  const savedArticle={
+    ...article,
+    bodyMarkdown:"## What is credit monitoring?\n\nA service monitors reports.\n"+
+      "## How does credit monitoring work?\n\nAlerts can be sent.\n"+
+      "## What are the limitations of credit monitoring?\n\nNot prevention.\n"+
+      "## Does credit monitoring affect your credit score?\n\nMonitoring the report is not a hard inquiry.\n"+
+      "## What should you look for in a credit monitoring service?\n\nCompare notices.\n"+
+      "## What should you do after a credit monitoring alert?\n\nRead it carefully.",
+  };
+  const savedRuntime={
+    ...runtime,
+    queryGraph:{
+      missionIntent:"INFORMATIONAL",
+      samePageNodeIds:["node-real"],
+      provenance:[{nodeId:"node-real",sources:["DATAFORSEO"]}],
+      nodes:[{id:"node-real",
+        query:"does credit monitoring affect credit score",
+        cluster:"credit monitoring basics",intent:"INFORMATIONAL",
+        subIntent:"impact and limitations",sourceConfidence:0.9,
+        searchVolume:40,gscImpressions:undefined}],
+    },
+    sectionBlueprints:{sections:[
+      {heading:"What is credit monitoring?",queryNodeIds:[]},
+      {heading:"How does credit monitoring work?",queryNodeIds:[]},
+      {heading:"What are the limitations of credit monitoring?",queryNodeIds:[]},
+      {heading:"Does credit monitoring affect your credit score?",
+        queryNodeIds:[],requiredClaims:["claim-score"],evidenceIds:["e-score"]},
+      {heading:"What should you look for in a credit monitoring service?",
+        queryNodeIds:[]},
+      {heading:"What should you do after a credit monitoring alert?",
+        queryNodeIds:[]},
+    ]},
+    evidenceGraph:{
+      sources:[{id:"s-score",url:"https://www.consumerfinance.gov/",
+        sourceType:"PRIMARY_GOVERNMENT",publisher:"CFPB"}],
+      claimEvidence:[{id:"e-score",claimId:"claim-score",sourceId:"s-score",
+        kind:"VERIFIED_EXCERPT",relation:"SUPPORTS",
+        excerpt:"Requesting one's own report is not a hard inquiry."}],
+    },
+  } as unknown as MasterRuntimeSnapshotV1;
+  const replayMissing={
+    ...replay,
+    articleFingerprint:buildSerpReplayArticleFingerprintV1(savedArticle),
+    warnings:["SERP_REPLAY_MISSING_DATA:https://money.com/best-credit-monitoring-services"],
+    blockers:[],
+  };
+  it("finds existing sourced H2 without lying that immutable queryNodeId assignment exists",()=>{
+    const result=audit({
+      article:savedArticle,runtime:savedRuntime,replay:replayMissing,
+    });
+    expect(result.observedSupportingQueries).toBe(1);
+    expect(result.assignedSupportingQueries).toBe(0);
+    expect(result.existingH2MatchSuggestions).toBe(1);
+    expect(result.suggestedQueryRebindings[0]).toMatchObject({
+      query:"does credit monitoring affect credit score",
+      ownerSectionIndex:3,
+      ownerHeading:"Does credit monitoring affect your credit score?",
+      verifiedEvidenceCount:1,
+    });
+    expect(result.findings.map(x=>x.code)).toContain(
+      "QUERY_BINDING_REVIEW_REQUIRED");
+    expect(result.findings.map(x=>x.code)).not.toContain(
+      "QUERY_TO_SECTION_BRIDGE_MISSING");
+    expect(result.canClaimSeoReady).toBe(false);
+    expect(result.status).toBe("HUMAN_REVIEW_REQUIRED");
+  });
+  it("attributes missing-data replay WARN to source availability, not article inferiority",()=>{
+    const result=audit({
+      article:savedArticle,runtime:savedRuntime,replay:replayMissing,
+    });
+    const missing=result.findings.find(
+      x=>x.code==="SERP_REPLAY_EVIDENCE_INCOMPLETE");
+    expect(missing?.detail).toContain("money.com");
+    expect(result.replay.status).toBe("WARN");
+    expect(result.replay.articleFingerprintMatches).toBe(true);
+  });
+  it("does not invent an evidence-backed heading match when source proof is absent",()=>{
+    const noEvidence={
+      ...savedRuntime,evidenceGraph:{sources:[],claimEvidence:[]},
+    } as unknown as MasterRuntimeSnapshotV1;
+    const r=audit({
+      article:savedArticle,runtime:noEvidence,replay:replayMissing,
+    });
+    expect(r.existingH2MatchSuggestions).toBe(0);
+    expect(r.findings.map(x=>x.code)).toContain(
+      "QUERY_TO_SECTION_BRIDGE_MISSING");
+  });
+});

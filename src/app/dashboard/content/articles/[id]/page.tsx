@@ -174,13 +174,31 @@ export default async function ArticlePage({
               x=>x.exactMentions>0).length}/
             {searchReadiness.briefLexicalCoverage.length} (lexical only).
             Real observed supporting queries: {searchReadiness.observedSupportingQueries},
-            mapped to H2: {searchReadiness.assignedSupportingQueries}.
+            assigned to H2: {searchReadiness.assignedSupportingQueries}.
+            Existing evidenced H2 matches awaiting re-binding:
+            {" "}{searchReadiness.existingH2MatchSuggestions}.
             SERP Replay: {searchReadiness.replay.status??"MISSING"}.
           </p>
           <p style={{fontSize:12,color:"#9CA0A8",marginBottom:10}}>
             Exact keywords and article word count do not predict Google rankings.
             This review uses only persisted search evidence.
           </p>
+          {searchReadiness.suggestedQueryRebindings.length>0?(
+            <div style={{fontSize:12,color:"#CED0D5",marginBottom:9}}>
+              <strong>Queries already matching an evidenced H2
+                (unsigned suggestion only):</strong>
+              <ul style={{paddingLeft:18,marginTop:5}}>
+                {searchReadiness.suggestedQueryRebindings.slice(0,5).map(
+                  match=>(
+                    <li key={match.query} style={{marginBottom:4}}>
+                      {match.query} → {match.ownerHeading}
+                      {" "}(H2 #{match.ownerSectionIndex+1}; planning
+                      re-binding required)
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ):null}
           {searchReadiness.findings.length>0?(
             <ul style={{paddingLeft:18,marginTop:6,marginBottom:10}}>
               {searchReadiness.findings.slice(0,7).map(finding=>(
