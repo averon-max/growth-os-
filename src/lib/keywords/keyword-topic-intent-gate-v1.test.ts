@@ -34,6 +34,13 @@ describe("concept and intent scope before paid SERP",()=>{
     ["best credit monitoring services","SEPARATE_COMMERCIAL_PAGE"],
     ["credit monitoring reviews","SEPARATE_COMMERCIAL_PAGE"],
     ["credit monitoring jobs near me","SEPARATE_NAVIGATION_OR_SUPPORT"],
+    ["credit monitoring arrangement meaning","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
+    ["what is credit monitoring arrangement","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
+    ["credit monitoring arrangements","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
+    ["is idx credit monitoring legit","SEPARATE_BRAND_PRODUCT_PAGE"],
+    ["is idx credit monitoring legitimate","SEPARATE_BRAND_PRODUCT_PAGE"],
+    ["is kroll credit monitoring legit","SEPARATE_BRAND_PRODUCT_PAGE"],
+    ["is kroll credit monitoring legitimate","SEPARATE_BRAND_PRODUCT_PAGE"],
     ["credit score","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
     ["how to improve your credit score","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
     ["credit freeze","ADJACENT_ENTITY_NOT_SAME_TOPIC"],
@@ -43,6 +50,11 @@ describe("concept and intent scope before paid SERP",()=>{
     expect(assess(query)).toMatchObject({
       decision:expected,eligibleForArticleSerp:false,
     });
+  });
+  it("preserves separate IDX/Kroll review pages when brand is the explicit subject",()=>{
+    const explicit="is kroll credit monitoring legit";
+    const result=classify({seed:explicit,query:explicit});
+    expect(result.eligibleForArticleSerp).toBe(true);
   });
   it("retains the brand when it IS the explicit seed topic",()=>{
     expect(classify({seed:"aura credit monitoring reviews",
