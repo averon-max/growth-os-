@@ -21,6 +21,18 @@ Article ID: `cmv606xg60006siqlir66uq23`, still `IN_REVIEW` on last user DB check
 - The editorial V3 candidate with 14/16 citations outside section authority MUST NOT be directly imported as approved. No source laundering by trusting its manually added links.
 - The previous `PUBLISH_FAILED` article for separate Data Broker topic is an unrelated CMS 404, NOT a reason to regenerate Credit Monitoring.
 
+## Real original-article citation preview (user's 2026-10-16 Mac run)
+
+- `tsc --noEmit` clean, three suites **12/12 tests PASSED**.
+- Original SHA unchanged; article `IN_REVIEW`, 2078 words, six H2/two H3. Existing exact-source draft creates six links from *previously signed* excerpts, **zero off-section links**, but only 3/6 H2s have any cited source.
+- Citations by H2 index: `0:1`, `1:0`, `2:0`, `3:2`, `4:3`, `5:0`. Sections 1,2,5 have signed evidence but paraphrased article sentences rather than literal claim text. Exact-claim citation insertion alone CANNOT finalize the article.
+- Existing `same-article signed citation` free preview had `canBeginSameArticleSignedCitationRepair:true` despite this coverage defect. **Fixed**: the paid path now preflights ALL signed evidence-bearing H2s to have >=1 authorized visible citation and checks the same condition again before nine critics; this six-link-only draft is ineligible for paid persistence.
+- Added `existing-article-semantic-citation-v1.ts` which prepares a bounded signed claim/excerpt → exact **existing** sentence worklist per H2, and verifies each model-chosen sentence ID exists in the unchanged stored article and evidence pair is section-owned. A reviewer cannot invent a claim, source, H2 or sentence. Model `SUPPORTED` results remain proposals, not certified publication evidence.
+- Added `scripts/content-existing-article-semantic-citation-review.ts`: FREE by default, with no-cost worklist and counts of missing paraphrase alignments. Only `--execute --authorize-paid-semantic-review` explicitly authorizes at most one bounded semantic model review per eligible section. The optional paid review writes a local candidate Markdown+report only; **NEVER mutates DB**, never runs CMS, and cannot skip nine critics/new exact fingerprint SERP Replay. Model review is not legal or scientific fact verification.
+- Further stage still required: connect reviewed, signed exact-sentence suggestions into the existing same-ID semantic verification + nine-critic+Replay+CAS engine with explicit proof of their provenance and stable version; do not read an untrusted Markdown candidate and write it directly. Also versioned Query Graph re-binding for `does credit monitoring affect credit score`.
+
+**Important nuance:** Some observed source URLs are from publishers of different authority; signed evidence allocation does not imply that every paragraph is source-supported. Paid semantic review must reject any complete sentence that is not directly entailed by its exact signed excerpt, not simply topical overlap.
+
 ## Safe local acceptance sequence
 
 1. Fetch PR and test all changed TypeScript and the specific pure verifier tests.
