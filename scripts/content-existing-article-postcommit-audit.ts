@@ -56,6 +56,12 @@ async function main(){
       h1:article.h1,bodyMarkdown:article.bodyMarkdown,
     };
     const proposal=previewObservedArticleJoinCopyeditV1(article.bodyMarkdown);
+    const {buildArticleDemandOutlineAuditV1}=await import(
+      "../src/lib/content/article-demand-outline-audit-v1");
+    const {detectArticleInformationGainDefectsV1}=await import(
+      "../src/lib/content/article-editorial-information-gain-v1");
+    const {previewArticleWithoutInlineSourceLabelsV1}=await import(
+      "../src/lib/content/article-reader-cleanup-v1");
     const oldFingerprint=buildSerpReplayArticleFingerprintV1(original);
     const proposedFingerprint=buildSerpReplayArticleFingerprintV1({
       ...original,bodyMarkdown:proposal.proposedBodyMarkdown,
@@ -141,6 +147,20 @@ async function main(){
     const effectiveReadiness=afterApproval??readiness;
     const provenance=object(replay?.provenance);
     const editorialRecovery=object(provenance?.editorialRecovery);
+    const approvedNodeOwners:Record<string,number>={};
+    if(approvedOwner?.valid)
+      approvedNodeOwners[approvedOwner.queryNodeId]=approvedOwner.ownerSectionIndex;
+    const demandOutline=buildArticleDemandOutlineAuditV1({
+      ...original,
+      primaryKeyword:article.brief.primaryKeyword,
+      secondaryKeywords:article.brief.secondaryKeywords,
+      runtime,
+      approvedNodeOwners,
+    });
+    const semanticFillerFindings=detectArticleInformationGainDefectsV1(
+      article.bodyMarkdown);
+    const readerPreview=previewArticleWithoutInlineSourceLabelsV1(
+      article.bodyMarkdown);
     const result={
       mode:"FREE_EXISTING_ARTICLE_POSTCOMMIT_AUDIT",
       articleId,websiteId:article.brief.websiteId,
@@ -168,6 +188,20 @@ async function main(){
           signedLinks:x.approvedLinks,
         })),
       }:null,
+      demandOutline,
+      editorialInformationDensity:{
+        totalHighConfidenceFindings:semanticFillerFindings.length,
+        findings:semanticFillerFindings,
+        releaseGateNeedsRevision:semanticFillerFindings.length>0,
+        noModelCalls:true,
+      },
+      readerSourcePresentation:{
+        inlineSourceLabelLinksMovedToOptionalFooter:
+          readerPreview.researchLinks.length,
+        savedMarkdownUnchanged:readerPreview.originalUnchanged,
+        sourceUrlsPreserved:true,
+        requiresReviewBeforePublishing:readerPreview.researchLinks.length>0,
+      },
       queryBindingProposal,
       queryBindingWhatIf,
       approvedQueryOwnerReview:{
