@@ -27,14 +27,27 @@ export function createTopicScopedKeywordShortlistV1({
   const excluded:KeywordExclusionV2[]=assessments.filter(x=>
     !x.eligibleForArticleSerp).map(x=>({
       keyword:x.query,
-      reason:x.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
+      reason:x.decision==="AMBIGUOUS_TOPIC_REVIEW"?
+        "INTENT_REVIEW_REQUIRED" as const:
+        x.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
         x.decision==="SEPARATE_COMMERCIAL_PAGE"||
         x.decision==="SEPARATE_NAVIGATION_OR_SUPPORT"?
         "SEPARATE_PAGE_INTENT" as const:
         "TOPIC_SCOPE_MISMATCH" as const,
     }));
-  const accepted=candidates.filter((candidate,index)=>
-    assessments[index].eligibleForArticleSerp);
+  // The original generic intent classifier mislabels definitional
+  // phrases containing "service" as TRANSACTIONAL and concept-vs-concept
+  // explanations as COMMERCIAL. Correct ONLY accepted informational
+  // candidates; keep untouched raw observed candidates in the archive.
+  const accepted:KeywordCandidateV2[]=candidates.flatMap(
+    (candidate,index)=>{
+      const assessment=assessments[index];
+      if(!assessment?.eligibleForArticleSerp)return [];
+      return [{...candidate,
+        intent:assessment.pageIntent==="INFORMATIONAL"?
+          "INFORMATIONAL" as const:candidate.intent,
+      }];
+    });
   const byCluster=new Map<string,KeywordCandidateV2[]>();
   for(const candidate of accepted){
     const arr=byCluster.get(candidate.clusterId)??[];
