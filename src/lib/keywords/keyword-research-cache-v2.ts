@@ -1,5 +1,6 @@
 import type { RelatedKeywordResult } from "./dataforseo-provider";
 import {assessKeywordTopicIntentV1} from "./keyword-topic-intent-gate-v1";
+import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
 import {
   validateKeywordOpportunityChoiceV2,
   selectVerifiedKeywordOpportunityV2,
@@ -38,6 +39,7 @@ export interface KeywordResearchResultV2 {
   selectedKeyword: string | null;
   cacheHit: boolean;
   aiUsed: boolean;
+  requireDeepCompetitorEvidence?: boolean;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -140,12 +142,20 @@ export function parseCachedKeywordResearchV2(
     result.clusterId === decision.selectedClusterId &&
     result.query === winner && !result.error &&
     result.organicResults >= 3 && result.uniqueDomains >= 2)) return null;
+  if (winner && v.requireDeepCompetitorEvidence === true &&
+    !v.serpResults.some(row =>
+      row.query===winner && row.clusterId===decision.selectedClusterId &&
+      auditDeepSerpReadinessV1(row).status==="DEEP_COMPETITOR_OBSERVED"))
+    return null;
   if (winner && !v.aiUsed) {
     // A stored deterministic decision must reproduce EXACTLY from the
     // recorded clusters/SERP. Otherwise it is not approved authority.
     const expected = selectVerifiedKeywordOpportunityV2(
       v.clusters as KeywordClusterV2[],
-      v.serpResults as SerpOpportunityV2[],
+      v.requireDeepCompetitorEvidence === true
+        ?(v.serpResults as SerpOpportunityV2[]).filter(row =>
+          auditDeepSerpReadinessV1(row).status==="DEEP_COMPETITOR_OBSERVED")
+        :v.serpResults as SerpOpportunityV2[],
     );
     if (expected.status !== "SELECTED" ||
       expected.selectedClusterId !== decision.selectedClusterId ||
@@ -184,6 +194,7 @@ export function parseCachedKeywordResearchV2(
     selectedKeyword: winner,
     cacheHit: true,
     aiUsed: v.aiUsed,
+    requireDeepCompetitorEvidence:v.requireDeepCompetitorEvidence===true,
   };
 }
 
