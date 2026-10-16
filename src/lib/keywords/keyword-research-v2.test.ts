@@ -199,6 +199,35 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.serp).toHaveBeenCalledTimes(1);
   });
 
+  it("retains actually observed SERP positions and competitor URLs",async()=>{
+    mocks.website.mockResolvedValue({
+      id:"website-test",
+      url:"https://scanmycreds.com/",
+      business:{industry:"credit monitoring",workspaceId:"workspace"},
+    });
+    mocks.serp.mockResolvedValue({
+      organic:[
+        {rank:1,domain:"example.org",url:"https://example.org/credit-monitoring"},
+        {rank:2,domain:"scanmycreds.com",url:"https://scanmycreds.com/guide"},
+        {rank:3,domain:"another.org",url:"https://another.org/credit"},
+      ],
+      benchmark:{dominantPageType:"blog",analyzedPages:3},
+      serpFeatures:[],
+    });
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(result.serpResults[0]).toMatchObject({
+      ownOrganicRank:2,
+      topOrganic:[
+        {rank:1,domain:"example.org"},
+        {rank:2,domain:"scanmycreds.com"},
+        {rank:3,domain:"another.org"},
+      ],
+    });
+    expect(result.selectedKeyword).toBe("credit monitoring benefits");
+  });
+
   it("keeps REVIEW when demand and KD are both missing",async()=>{
     mocks.related.mockResolvedValue([
       {keyword:"credit monitoring benefits",searchVolume:null,
