@@ -69,7 +69,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v2"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v3-market-scoped"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -92,7 +92,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     produce: () => fetchRelatedKeywords(seed, locationName, "English", 3, limit, true),
   });
   const [context, trends] = await Promise.all([
-    getWebsiteKeywordContext(website.id).catch(() => null),
+    getWebsiteKeywordContext(website.id, 250, market).catch(() => null),
     fetchTrendingQueries(seed, market).catch(() => null),
   ]);
   const topTrends = new Map((trends?.topQueries ?? []).map(item => [
