@@ -17,7 +17,7 @@ export type ArticleQuestionScopeV2=
   "SEPARATE_PAGE_INTENT"|
   "HUMAN_INTENT_REVIEW";
 export type ArticleQuestionFamilyV2=
-  "DEFINITION"|"OPERATION_AND_ALERTS"|"PRICE_AND_VALUE"|
+  "DEFINITION"|"OPERATION_AND_ALERTS"|"COST"|"VALUE_AND_NECESSITY"|
   "WHO_NEEDS_IT"|"FREE_AND_PAID"|"CREDIT_SCORE_RELATION"|
   "FREEZE_AND_PROTECTION"|"ACTIVATION_AND_ACCESS"|
   "LIMITS_AND_BENEFITS"|"MISCELLANEOUS";
@@ -49,16 +49,18 @@ function familyForQuestion(value:string):ArticleQuestionFamilyV2{
     return "CREDIT_SCORE_RELATION";
   if(/\b(?:frozen|freeze|freezing|identity theft|prevent fraud)\b/u.test(value))
     return "FREEZE_AND_PROTECTION";
-  if(/\b(?:how much|cost|price|pay|worth it|worth the|per year|expensive|afford)\b/u.test(value))
-    return "PRICE_AND_VALUE";
-  if(/\b(?:alert|alerts|notification|notifications|how does|how do|what does.+do|what can.+detect)\b/u.test(value))
-    return "OPERATION_AND_ALERTS";
+  if(/\b(?:do i have|how do i know|already have|am i enrolled|enroll|signed up)\b/u.test(value))
+    return "ACTIVATION_AND_ACCESS";
+  if(/\b(?:worth it|worth the|is it worth|should you pay|should i pay)\b/u.test(value))
+    return "VALUE_AND_NECESSITY";
+  if(/\b(?:how much|cost|price|per year|expensive|afford)\b/u.test(value))
+    return "COST";
   if(/\b(?:free|without paying|no cost)\b/u.test(value))
     return "FREE_AND_PAID";
   if(/\b(?:do i need|should i|why.+important|benefit|benefits|who needs)\b/u.test(value))
     return "WHO_NEEDS_IT";
-  if(/\b(?:do i have|how do i know|already have|enroll|signed up)\b/u.test(value))
-    return "ACTIVATION_AND_ACCESS";
+  if(/\b(?:alert|alerts|notification|notifications|how does|how do|what does.+do|what can.+detect)\b/u.test(value))
+    return "OPERATION_AND_ALERTS";
   if(/\b(?:limitations|protect|prevent|can it|risks|does it help)\b/u.test(value))
     return "LIMITS_AND_BENEFITS";
   if(/\b(?:what is|what are|mean|meaning|definition|what does.+mean)\b/u.test(value))
@@ -84,6 +86,21 @@ export function assessArticleQuestionScopeV2({
 
   // Evaluate the READER'S ASK before letting "credit monitoring" or
   // a provider's broad informational intent certify this page.
+  // Credit Monitoring Arrangement (CMA) is a distinct banking
+  // business-credit appraisal concept in verified lender terminology,
+  // NOT consumer credit-report monitoring. Protect the top-volume
+  // false positive rather than trusting lexical/topic match.
+  if(/\bcredit monitoring arrangements?\b/u.test(value)&&
+    !/\bcredit monitoring arrangements?\b/u.test(normalize(seed)))
+    return reply("SEPARATE_PAGE_INTENT",
+      "BANKING_CREDIT_MONITORING_ARRANGEMENT_NOT_CONSUMER_REPORT_SERVICE");
+  // Named provider hidden in enrollment grammar: "should i enroll in IDX
+  // credit monitoring". The general "should i sign up for credit
+  // monitoring" has NO named provider, so this rule must not exclude it.
+  const brandedEnrollment=/^(?:should|can|do|how do|how can)\s+(?:i\s+)?(?:enroll in|sign up for|activate|join|subscribe to)\s+(.+?)\s+credit monitoring\b/u.exec(value);
+  if(brandedEnrollment&&brandedEnrollment[1].trim())
+    return reply("SEPARATE_PAGE_INTENT",
+      "NAMED_PROVIDER_ENROLLMENT_INTENT");
   if(/\b(?:tax deductible|tax deduction|tax return|tax write off)\b/u.test(value))
     return reply("SEPARATE_PAGE_INTENT","TAX_TREATMENT_NOT_CONSUMER_EXPLAINER");
   if(/\b(?:start|launch|build|create|open|run)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,4}(?:business|company|agency)\b/u.test(value))
