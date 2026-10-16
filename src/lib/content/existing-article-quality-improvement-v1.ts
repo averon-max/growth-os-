@@ -34,6 +34,9 @@ import {selectQualityEditorialRepairSectionsV1,
   from "./quality-improvement-editorial-recovery-v1";
 import {planPostEditorialDepthRecoveryV1}
   from "./quality-improvement-post-editorial-depth-v1";
+import {inspectQualityKeywordRegressionV1,
+  selectQualityKeywordRepairSectionV1}
+  from "./quality-improvement-keyword-recovery-v1";
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
 import { planSameArticleQualityImprovementV1, evaluateWholeArticleQualityWordRangeV1 } from "./same-article-quality-improvement-v1";
@@ -792,6 +795,157 @@ export async function improveExistingArticleQualityV1(articleId:string,
         });
       }
     }
+    // A source-verified local rewrite may replace an EXACT planned query
+    // with a grammatical synonym and lose the last mention. Restore it
+    // BEFORE expensive nine-critic review, not after. The original saved
+    // article had this exact phrase in a specific verified H2; NEVER
+    // force it into an unrelated H2, invent a claim or keyword-stuff.
+    const inspectKeywords=()=>inspectQualityKeywordRegressionV1({
+      original:initial,current:currentDraft(),
+      primaryKeyword:original.brief.primaryKeyword,
+      secondaryKeywords:original.brief.secondaryKeywords,
+      originalSectionBodies:originalBodies,
+      editableSectionIndices:improvePlan.steps.map(step=>step.index),
+    });
+    let keywords=inspectKeywords();
+    if(!keywords.restored){
+      console.info("[content quality planned keyword regression]",{
+        originalUsed:keywords.originalUsed,currentUsed:keywords.currentUsed,
+        lost:keywords.losses,
+      });
+      const attempted:number[]=[];
+      const maxKeywordEdits=3;
+      for(let attempt=0;attempt<maxKeywordEdits&&!keywords.restored;
+        attempt++){
+        const index=selectQualityKeywordRepairSectionV1(
+          keywords.losses,attempted);
+        if(index===null)break;
+        attempted.push(index);
+        const section=sections[index],scope=contract.sectionContracts[index];
+        if(!section||!scope)continue;
+        const targetKeywords=keywords.losses.filter(loss=>
+          loss.repairableOwningSections.includes(index))
+          .map(loss=>loss.keyword);
+        if(!targetKeywords.length)continue;
+        const finding=createMasterArticleCriticFindingV1({
+          criticId:"COVERAGE",
+          code:"SOURCE_BACKED_PLANNED_KEYWORD_RESTORATION",
+          severity:"BLOCK",
+          location:{scope:"SECTION",sectionIndex:index,
+            sectionNumber:scope.sectionNumber,
+            heading:scope.blueprint.heading},
+          repairScope:"SECTION",
+          message:"Earlier source-verified text in this H2 contained "+
+            "one or more of the exact planned topic terms that the "+
+            "subsequent rewrite accidentally removed. Recover only "+
+            "the lost phrases, without changing the reader intent.",
+          recommendation:"Return this FULL section with each applicable "+
+            "phrase used ONCE naturally, in a directly relevant "+
+            "explanatory sentence or existing H3. Missing: "+
+            JSON.stringify(targetKeywords)+". Do not place keywords "+
+            "in unrelated passages or add duplicate wording. "+
+            "Preserve all approved facts, citations, qualifiers, "+
+            "unique reader value, heading structure and length. "+
+            "These exact phrases existed in the original verified "+
+            "section; the current SectionContract and its assigned "+
+            "verified evidence, not historical prose, remain the "+
+            "sole factual authority.",
+          evidence:{claimIds:scope.blueprint.requiredClaims,
+            evidenceIds:scope.blueprint.evidenceIds,
+            queryNodeIds:scope.blueprint.queryNodeIds,sourceIds:[]},
+        });
+        const revised=await generator.repairSection({
+          contract:scope,section,
+          reconciliation:reconciliations[index],
+          semanticVerification:semanticVerifications[index],
+          attempt:1,criticFindings:[finding],
+          crossSectionEditorialContext:sections.flatMap((neighbor,i)=>
+            i===index?[]:[{
+              sectionIndex:i,heading:neighbor.heading,
+              prosePreview:neighbor.bodyMarkdown.slice(0,1600),
+            }]),
+        });
+        const draftSectionBodies=sections.map((x,i)=>i===index?
+          revised.bodyMarkdown:x.bodyMarkdown);
+        const sourceScopedProposal=rebuildWriterRunV1({
+          contract,run,
+          sections:sections.map((x,i)=>i===index?revised:x),
+          reconciliations,semanticVerifications,
+        }).article;
+        const proposalKeywords=inspectQualityKeywordRegressionV1({
+          original:initial,current:sourceScopedProposal,
+          primaryKeyword:original.brief.primaryKeyword,
+          secondaryKeywords:original.brief.secondaryKeywords,
+          originalSectionBodies:originalBodies,
+          editableSectionIndices:improvePlan.steps.map(step=>step.index),
+        });
+        const draftWords=countWords(sourceScopedProposal.bodyMarkdown);
+        const draftEditorialFindings=detectHighConfidenceEditorialRepetitionV1(
+          sections.map((x,i)=>({
+            heading:x.heading,bodyMarkdown:draftSectionBodies[i],
+          }))
+        );
+        const h3Existing=sections.reduce(
+          (n,x)=>n+countQualityArticleH3V1(x.bodyMarkdown),0);
+        const h3Proposed=draftSectionBodies.reduce(
+          (n,body)=>n+countQualityArticleH3V1(body),0);
+        // Do not pay to verify a failed candidate. A proposed repair
+        // must restore at least one lost exact keyword and preserve
+        // every already-present keyword, facts/structure and word range.
+        if(proposalKeywords.losses.length>=keywords.losses.length ||
+          proposalKeywords.currentUsed<keywords.currentUsed ||
+          draftWords<fullRange.min||draftWords>fullRange.max ||
+          draftEditorialFindings.length>0||h3Proposed<h3Existing ||
+          revised.bodyMarkdown===section.bodyMarkdown){
+          console.info("[content quality keyword repair declined]",{
+            sectionIndex:index,reason:"NOT_A_SAFE_COVERAGE_IMPROVEMENT",
+            missingBefore:keywords.losses.map(x=>x.keyword),
+            missingAfter:proposalKeywords.losses.map(x=>x.keyword),
+            words:draftWords,remainingRepetition:draftEditorialFindings.length,
+          });
+          continue;
+        }
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:scope,section:revised,generator,
+        });
+        const verifiedTrial=rebuildWriterRunV1({
+          contract,run,
+          sections:sections.map((x,i)=>i===index?verified.section:x),
+          reconciliations,semanticVerifications,
+        }).article;
+        const after=inspectQualityKeywordRegressionV1({
+          original:initial,current:verifiedTrial,
+          primaryKeyword:original.brief.primaryKeyword,
+          secondaryKeywords:original.brief.secondaryKeywords,
+          originalSectionBodies:originalBodies,
+          editableSectionIndices:improvePlan.steps.map(step=>step.index),
+        });
+        const afterWords=countWords(verifiedTrial.bodyMarkdown);
+        if(after.losses.length>=keywords.losses.length ||
+          afterWords<fullRange.min||afterWords>fullRange.max ||
+          countQualityArticleH3V1(verifiedTrial.bodyMarkdown)<h3Existing ||
+          detectPersistedArticleEditorialRepetitionV1(
+            verifiedTrial.bodyMarkdown).length>0)continue;
+        sections[index]=verified.section;
+        reconciliations[index]=verified.reconciliation;
+        semanticVerifications[index]=verified.semanticVerification;
+        if(!repairedSectionIds.includes(index))
+          repairedSectionIds.push(index);
+        keywords=after;
+        await saveQualityProgress();
+        console.info("[content quality keyword restored and verified]",{
+          sectionIndex:index,remainingMissing:keywords.losses.map(x=>x.keyword),
+          wordCount:afterWords,editorialClean:true,
+        });
+      }
+    }
+    check(keywords.restored,
+      "SAVED_QUALITY_PLANNED_KEYWORD_RESTORATION_UNRESOLVED:"+
+      JSON.stringify(keywords.losses.map(loss=>({
+        keyword:loss.keyword,
+        originalOwners:loss.originalOwningSections,
+        eligibleOwners:loss.repairableOwningSections,
+      }))));
     const improvedRun=rebuildWriterRunV1({
       contract,run,sections,reconciliations,semanticVerifications,
     });
