@@ -81,8 +81,9 @@ describe("immutable in-memory QueryGraph owner rebind simulation",()=>{
     expect(runtime.sectionBlueprints.sections[1]!.queryNodeIds).toEqual([]);
   });
   it("does not claim binding is approved when evidence absent",()=>{
-    const changed={...runtime,evidenceGraph:{sources:[],claimEvidence:[]}}
-      as unknown as MasterRuntimeSnapshotV1;
+    const changed=({
+      ...runtime,evidenceGraph:{sources:[],claimEvidence:[]},
+    } as unknown) as MasterRuntimeSnapshotV1;
     const result=simulateQueryOwnerBindingWithoutPersistenceV1({
       article,runtime:changed,plan,
       primaryKeyword:"what is credit monitoring",
