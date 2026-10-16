@@ -32,6 +32,8 @@ import {detectHighConfidenceEditorialRepetitionV1}
 import {selectQualityEditorialRepairSectionsV1,
   isQualityEditorialFindingResolvedV1}
   from "./quality-improvement-editorial-recovery-v1";
+import {planPostEditorialDepthRecoveryV1}
+  from "./quality-improvement-post-editorial-depth-v1";
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
 import { planSameArticleQualityImprovementV1, evaluateWholeArticleQualityWordRangeV1 } from "./same-article-quality-improvement-v1";
@@ -648,6 +650,148 @@ export async function improveExistingArticleQualityV1(articleId:string,
           repeatedPhrases:x.repeatedPhrases,
         })),
       }));
+    // A verified removal of repeated boilerplate may shorten the draft
+    // below the comprehensive ARTICLE minimum (real run: 2044 section
+    // words → 1952 final article words). Do not restore duplication,
+    // bypass the word gate, or throw away the signed clean checkpoint.
+    // Instead add only new useful detail authorized by existing claims.
+    const fullRange=resolveArticleLengthContractV1(plan).targetWords;
+    check(fullRange,"SAVED_QUALITY_ARTICLE_RANGE_MISSING");
+    const currentDraft=()=>rebuildWriterRunV1({
+      contract,run,sections,reconciliations,semanticVerifications,
+    }).article;
+    const afterEditorialWords=countWords(currentDraft().bodyMarkdown);
+    if(afterEditorialWords<fullRange.min){
+      const depthCandidates=planPostEditorialDepthRecoveryV1({
+        articleWords:afterEditorialWords,
+        minArticleWords:fullRange.min,
+        maxArticleWords:fullRange.max,
+        sections:sections.map((section,index)=>({
+          index,sectionWords:countSectionWordsV1(section.bodyMarkdown),
+          verifiedClaims:sectionPlan[index]?.requiredClaimIds.length??0,
+          assignedEvidence:sectionPlan[index]?.evidenceIds.length??0,
+        })).filter(section=>improvePlan.steps.some(s=>s.index===section.index)),
+      });
+      check(depthCandidates.length>0,
+        "SAVED_QUALITY_POST_EDITORIAL_EVIDENCE_CAPACITY_MISSING");
+      for(const target of depthCandidates){
+        const beforeDraft=currentDraft();
+        const beforeWords=countWords(beforeDraft.bodyMarkdown);
+        if(beforeWords>=fullRange.min)break;
+        const index=target.index;
+        const scope=contract.sectionContracts[index];
+        const current=sections[index];
+        if(!scope||!current)continue;
+        const sectionWords=countSectionWordsV1(current.bodyMarkdown);
+        const remaining=fullRange.min-beforeWords;
+        const desiredGain=Math.max(60,remaining+24);
+        const goal=sectionWords+desiredGain;
+        const finding=createMasterArticleCriticFindingV1({
+          criticId:"COVERAGE",
+          code:"SOURCE_BACKED_POST_EDITORIAL_DEPTH_RECOVERY",
+          severity:"BLOCK",
+          location:{scope:"SECTION",sectionIndex:index,
+            sectionNumber:scope.sectionNumber,
+            heading:scope.blueprint.heading},
+          repairScope:"SECTION",
+          message:"The verified article is now nonrepetitive but missing "+
+            remaining+" useful words to meet the comprehensive editorial "+
+            "floor. Improve THIS already-evidenced section; never "+
+            "reintroduce repeated introductory definitions or alert advice.",
+          recommendation:"Provide about "+desiredGain+
+            " additional words of genuinely distinct reader value "+
+            "within THIS section's assigned claims and evidence. Deepen "+
+            "its specific mechanism, scope, limitations or practical "+
+            "implications only when supported. Keep ALL existing "+
+            "required facts, citations, qualifications, descriptive H3s, "+
+            "and SEO query coverage. Avoid recycled explanations from "+
+            "other sections. Do not invent numbers, services, data or "+
+            "new H2 topics. Do not pad words merely to reach a target.",
+          evidence:{claimIds:scope.blueprint.requiredClaims,
+            evidenceIds:scope.blueprint.evidenceIds,
+            queryNodeIds:scope.blueprint.queryNodeIds,sourceIds:[]},
+        });
+        const revised=await generator.repairSection({
+          contract:scope,section:current,
+          reconciliation:reconciliations[index],
+          semanticVerification:semanticVerifications[index],
+          attempt:1,
+          depthRepair:{
+            currentWords:sectionWords,
+            minWords:sectionWords+Math.max(25,remaining),
+            preferredWords:goal,
+            maxWords:goal+80,
+          },
+          criticFindings:[finding],
+          crossSectionEditorialContext:sections.flatMap((neighbor,i)=>
+            i===index?[]:[{
+              sectionIndex:i,heading:neighbor.heading,
+              prosePreview:neighbor.bodyMarkdown.slice(0,1800),
+            }]),
+        });
+        const trial=sections.map((section,i)=>({
+          heading:section.heading,
+          bodyMarkdown:i===index?revised.bodyMarkdown:
+            section.bodyMarkdown,
+        }));
+        if(detectHighConfidenceEditorialRepetitionV1(trial).length){
+          console.info("[content quality depth top-up declined]",{
+            sectionIndex:index,reason:"REINTRODUCED_REPETITION",
+          });
+          continue;
+        }
+        if(countQualityArticleH3V1(revised.bodyMarkdown)<
+          countQualityArticleH3V1(current.bodyMarkdown)){
+          console.info("[content quality depth top-up declined]",{
+            sectionIndex:index,reason:"LOST_H3_STRUCTURE",
+          });
+          continue;
+        }
+        const proposedRun=rebuildWriterRunV1({
+          contract,run,
+          sections:sections.map((section,i)=>i===index?revised:section),
+          reconciliations,semanticVerifications,
+        });
+        const proposedWords=countWords(proposedRun.article.bodyMarkdown);
+        if(proposedWords<=beforeWords+18||
+          proposedWords>fullRange.max){
+          console.info("[content quality depth top-up declined]",{
+            sectionIndex:index,reason:"NO_SUBSTANTIVE_SAFE_NET_GAIN",
+            beforeWords,proposedWords,
+          });
+          continue;
+        }
+        // Only verify a candidate that passed free global quality gates.
+        // A pass then updates signed local progress, never the DB.
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:scope,section:revised,generator,
+        });
+        const afterTrial=sections.map((section,i)=>({
+          heading:section.heading,
+          bodyMarkdown:i===index?verified.section.bodyMarkdown:
+            section.bodyMarkdown,
+        }));
+        if(detectHighConfidenceEditorialRepetitionV1(afterTrial).length)
+          continue;
+        if(countQualityArticleH3V1(verified.section.bodyMarkdown)<
+          countQualityArticleH3V1(current.bodyMarkdown))
+          continue;
+        sections[index]=verified.section;
+        reconciliations[index]=verified.reconciliation;
+        semanticVerifications[index]=verified.semanticVerification;
+        if(!repairedSectionIds.includes(index))
+          repairedSectionIds.push(index);
+        await saveQualityProgress();
+        console.info("[content quality post-editorial depth verified]",{
+          sectionIndex:index,
+          wordsBefore:beforeWords,
+          wordsAfter:countWords(currentDraft().bodyMarkdown),
+          remainingWords:Math.max(0,
+            fullRange.min-countWords(currentDraft().bodyMarkdown)),
+          sourceVerified:true,editorialClean:true,
+        });
+      }
+    }
     const improvedRun=rebuildWriterRunV1({
       contract,run,sections,reconciliations,semanticVerifications,
     });
