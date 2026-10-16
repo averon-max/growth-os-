@@ -59,10 +59,10 @@ describe("signed paraphrase citation review",()=>{
   it("offers already written exact sentences and ONLY the signed H2 sources",()=>{
     const w=make();
     expect(w).toHaveLength(2);
-    expect(w[0].availableSources.map(s=>s.claimId)).toEqual(["claim_alert"]);
-    expect(w[1].availableSources.map(s=>s.claimId)).toEqual(["claim_dispute"]);
-    expect(w[0].sentences[0].text).toContain("After you enroll");
-    expect(w[0].availableSources[0].verifiedExcerpt).toContain("Alerts notify");
+    expect(w[0]!.availableSources.map(s=>s.claimId)).toEqual(["claim_alert"]);
+    expect(w[1]!.availableSources.map(s=>s.claimId)).toEqual(["claim_dispute"]);
+    expect(w[0]!.sentences[0]!.text).toContain("After you enroll");
+    expect(w[0]!.availableSources[0]!.verifiedExcerpt).toContain("Alerts notify");
   });
   it("adds reviewed citation to an unchanged pre-existing sentence, never creates claims",()=>{
     const w=make();
@@ -71,12 +71,12 @@ describe("signed paraphrase citation review",()=>{
       verdicts:[
         {sectionIndex:0,choices:[{
           claimId:"claim_alert",evidenceId:"ev_alert",
-          sentenceId:w[0].sentences[0].id,verdict:"SUPPORTED",
+          sentenceId:w[0]!.sentences[0]!.id,verdict:"SUPPORTED",
           reason:"Same restricted category of alerts about credit file changes.",
         }]},
         {sectionIndex:1,choices:[{
           claimId:"claim_dispute",evidenceId:"ev_dispute",
-          sentenceId:w[1].sentences[0].id,verdict:"SUPPORTED",
+          sentenceId:w[1]!.sentences[0]!.id,verdict:"SUPPORTED",
           reason:"Both concern disputing a mistaken credit report entry.",
         }]},
       ],
@@ -119,12 +119,12 @@ describe("signed paraphrase citation review",()=>{
   });
   it("cannot promote a missing or different signed excerpt",()=>{
     const w=make();
-    const changed={...w[0],availableSources:[{
-      ...w[0].availableSources[0],verifiedExcerpt:"New model-written content",
+    const changed={...w[0]!,availableSources:[{
+      ...w[0]!.availableSources[0],verifiedExcerpt:"New model-written content",
     }]};
     expect(()=>applyReviewedSignedSemanticCitationsV1({
       bodyMarkdown:article,plan,runtime,
-      worklist:[changed,w[1]],
+      worklist:[changed,w[1]!],
       verdicts:[{sectionIndex:0,choices:[]},{sectionIndex:1,choices:[]}],
     })).toThrow("CITATION_REVIEW_SOURCE_OR_ARTICLE_CHANGED");
   });
