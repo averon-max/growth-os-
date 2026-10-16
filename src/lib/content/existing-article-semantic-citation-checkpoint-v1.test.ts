@@ -44,12 +44,29 @@ describe("signed semantic citation section checkpoints",()=>{
       ...correct,sentenceId:7,
     }])).toThrow("SEMANTIC_CITATION_REVIEW_SENTENCE_NOT_FOUND");
   });
-  it("rejects unsupported choices that still try to attach a citation",()=>{
+  it("canonicalizes PARTIAL and UNSUPPORTED verdicts to NO CITATION even when the model returns a sentenceId",()=>{
+    for(const verdict of ["PARTIAL","UNSUPPORTED","CONTRADICTORY"]){
+      const withId=validateSemanticCitationChoicesV1(section,[{
+        ...correct,verdict,sentenceId:4,
+      }]);
+      expect(withId[0]?.sentenceId).toBeNull();
+      expect(withId[0]?.verdict).toBe(verdict);
+      const withoutId=validateSemanticCitationChoicesV1(section,[{
+        claimId:"claim1",evidenceId:"evidence1",
+        verdict,reason:"The full source evidence does not entail the sentence.",
+      }]);
+      expect(withoutId[0]?.sentenceId).toBeNull();
+    }
+  });
+  it("never tolerates fabricated citations under a SUPPORTED verdict",()=>{
     expect(()=>validateSemanticCitationChoicesV1(section,[{
-      ...correct,verdict:"PARTIAL",sentenceId:4,
-    }])).toThrow("SEMANTIC_CITATION_REVIEW_NON_SUPPORTED_HAS_SENTENCE");
-    expect(validateSemanticCitationChoicesV1(section,[{
-      ...correct,verdict:"UNSUPPORTED",sentenceId:null,
-    }])[0]?.sentenceId).toBeNull();
+      ...correct,verdict:"SUPPORTED",sentenceId:null,
+    }])).toThrow("SEMANTIC_CITATION_REVIEW_SCHEMA_INVALID");
+    expect(()=>validateSemanticCitationChoicesV1(section,[{
+      ...correct,verdict:"SUPPORTED",sentenceId:444,
+    }])).toThrow("SEMANTIC_CITATION_REVIEW_SENTENCE_NOT_FOUND");
+    expect(()=>validateSemanticCitationChoicesV1(section,[{
+      ...correct,verdict:"SUPPORTED",sentenceId:"4",
+    }])).toThrow("SEMANTIC_CITATION_REVIEW_SCHEMA_INVALID");
   });
 });
