@@ -178,14 +178,17 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // hash equality. Use the already-proven archive inspector, then
     // freshly verify the EXACT persisted prose of every archived section.
     if(!run){
-      const base=resolve(
-        process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
-          ".growth-os-tmp/article-checkpoints"
-      );
-      const roots=[
+      const archiveBases=[...new Set([
+        resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
+          ".growth-os-tmp/article-checkpoints"),
+        ...(process.env.GROWTH_OS_ENV_DIR?.trim()
+          ?[resolve(process.env.GROWTH_OS_ENV_DIR,
+            ".growth-os-tmp/article-checkpoints")]:[]),
+      ])];
+      const roots=archiveBases.flatMap(base=>[
         join(base,"research-recovery-editorial"),
         join(base,"research-recovery"),
-      ];
+      ]);
       const rejectionReasons:string[]=[];
       for(const rootDirectory of roots){
         const inspection=await inspectArchivedWriterProgressV1({
