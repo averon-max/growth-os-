@@ -32,6 +32,7 @@ async function main():Promise<void>{
       orderBy:[{fetchedAt:"desc"}],
       take:10,
     });
+    const {auditDeepSerpReadinessV1}=await import("../src/lib/keywords/keyword-deep-serp-readiness-v1");
     const {parseCachedKeywordResearchV2,
       projectApprovedKeywordEvidenceV2}=
       await import("../src/lib/keywords/keyword-research-cache-v2");
@@ -145,6 +146,7 @@ async function main():Promise<void>{
         serpChecksAttempted:snapshot.serpResults.length,
         serpVerified:serpValid.length,
         serpFailures:snapshot.serpResults.filter(x=>!!x.error).length,
+        deepSerpQualityReplay:snapshot.serpResults.map(row=>auditDeepSerpReadinessV1(row, snapshot.seed.replace(/^(what is|how does) +/i,""))),
         observedSerpSnapshots:snapshot.serpResults.map(row=>({
           keyword:row.query,
           organicResults:row.organicResults,
