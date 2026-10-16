@@ -36,6 +36,13 @@ export function verifyExistingArticleCitationScopeV1(input:{
       rejectedLinks:rejected,assignedEvidence:allowed.length,
     };
   });
+  const uncitedEvidenceSections=results.filter(section=>
+    section.assignedEvidence>0&&section.approvedLinks===0)
+    .map(section=>({
+      sectionIndex:section.sectionIndex,heading:section.heading,
+      assignedEvidence:section.assignedEvidence,
+    }));
+  const completeSectionCitationCoverage=uncitedEvidenceSections.length===0;
   const rejected=results.flatMap(r=>r.rejectedLinks);
   const totalLinks=results.reduce((n,r)=>n+r.links,0);
   return {
@@ -43,6 +50,7 @@ export function verifyExistingArticleCitationScopeV1(input:{
     status:rejected.length?"BLOCK_WRONG_SECTION_CITATIONS":
       totalLinks===0?"BLOCK_NO_VISIBLE_CITATIONS":"REVIEW_SEMANTIC_PROOF_REQUIRED",
     totalLinks,unapprovedLinks:rejected.length,sections:results,
+    uncitedEvidenceSections,completeSectionCitationCoverage,
     fullySemanticallyVerified:false,
     commitAllowed:false,
     warning:"URL scope alone does not prove a claim or authorize a write. Exact content still requires sentence entailment, nine critics and fingerprinted replay.",
