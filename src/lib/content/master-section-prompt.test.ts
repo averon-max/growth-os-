@@ -151,6 +151,19 @@ describe(
   "Master Section Prompt V1",
   () => {
     it(
+      "delimits no-evidence rules as separate readable lines",
+      () => {
+        const prompt = buildMasterSectionPrompt(makeContract());
+        expect(prompt).toContain(
+          "NO-EVIDENCE SECTION MODE V1:\\n- Apply these rules"
+        );
+        expect(prompt).not.toContain(
+          "NO-EVIDENCE SECTION MODE V1:\\\\n- Apply these rules"
+        );
+      }
+    );
+
+    it(
       "sends the real section blueprint and authority boundaries to the model",
       () => {
         const prompt =
