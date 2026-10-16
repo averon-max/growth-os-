@@ -469,6 +469,7 @@ model ContentEvidenceSnapshot {
   primaryKeyword String
   searchIntent   String
   plan           Json
+  queryOwnerReviews ContentQueryOwnerReview[]
   businessFacts  Json
   keywordContext Json?
   plannerVersion String
@@ -536,6 +537,7 @@ model ContentArticle {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   serpReplayArtifacts SerpReplayArtifact[]
+  queryOwnerReviews ContentQueryOwnerReview[]
 
   backlinkTarget BacklinkTarget?
 
@@ -584,6 +586,36 @@ model SerpReplayArtifact {
   @@index([contentArticleId, createdAt])
   @@index([serpSnapshotFingerprint])
   @@index([replayStatus])
+}
+
+
+/**
+ * Append-only human review of ONE existing observed QueryGraph node's
+ * owning H2. Does NOT rewrite ContentEvidenceSnapshot.plan, the signed
+ * research graph, any article prose, or a fingerprinted SERP replay.
+ */
+model ContentQueryOwnerReview {
+  id                            String @id @default(cuid())
+  contentArticleId              String
+  contentArticle                ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
+  evidenceSnapshotId            String
+  evidenceSnapshot              ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade)
+  queryNodeId                   String
+  observedQuery                 String
+  ownerSectionIndex             Int
+  ownerHeading                  String
+  sourceArticleFingerprint      String
+  sourceQueryGraphSha256        String
+  sourceSectionBlueprintSha256  String
+  sourceExecutionPlanSha256     String
+  sourceReplayArtifactId        String
+  decisionVersion               String @default("QUERY_OWNER_HUMAN_APPROVAL_V1")
+  decision                     String @default("APPROVED")
+  reviewerAttestation           String
+  createdAt                     DateTime @default(now())
+
+  @@unique([contentArticleId, queryNodeId, sourceArticleFingerprint, sourceQueryGraphSha256])
+  @@index([contentArticleId, createdAt])
 }
 
 model Competitor {
