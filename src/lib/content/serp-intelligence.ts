@@ -878,6 +878,12 @@ async function fetchHtmlSafely(
         continue;
       }
 
+      // A 403/429/503 HTML error is not the ranked competitor document.
+      // Do not parse its CAPTCHA text as content intelligence.
+      if (!response.ok) {
+        return null;
+      }
+
       const contentType =
         response.headers.get(
           "content-type"
