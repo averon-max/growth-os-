@@ -4,6 +4,8 @@ import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v
 import { fetchRelatedKeywords } from "./dataforseo-provider";
 import {createTopicScopedKeywordShortlistV1}
   from "./keyword-topic-scoped-shortlist-v1";
+import {assessKeywordTopicIntentV1}
+  from "./keyword-topic-intent-gate-v1";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
@@ -146,8 +148,35 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     brief.articles.some(article => article.status === "PUBLISHED" || Boolean(article.publishedUrl)))
     .map(brief => brief.primaryKeyword);
 
+  // Gate the RAW observed provider/GSC rows before ANY volume/rank
+  // truncation. Otherwise 75 high-volume but wrong-entity keywords can
+  // completely crowd out relevant long-tail monitoring questions.
+  const scopedObservations=observations.map(item=>({
+    item,assessment:assessKeywordTopicIntentV1({
+      seed,query:item.keyword,
+    }),
+  }));
+  const onTopicObservations=scopedObservations.filter(x=>
+    x.assessment.eligibleForArticleSerp).map(x=>x.item);
+  const rawTopicExclusions=scopedObservations.filter(x=>
+    !x.assessment.eligibleForArticleSerp).map(x=>({
+      keyword:x.item.keyword,
+      reason:(x.assessment.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
+        x.assessment.decision==="SEPARATE_COMMERCIAL_PAGE"||
+        x.assessment.decision==="SEPARATE_NAVIGATION_OR_SUPPORT"?
+        "SEPARATE_PAGE_INTENT":"TOPIC_SCOPE_MISMATCH") as
+          "SEPARATE_PAGE_INTENT"|"TOPIC_SCOPE_MISMATCH",
+    }));
   const cleanup = prepareKeywordOpportunitiesV2({
-    seed, industry: website.business.industry, observations, publishedKeywords: published, limit,
+    seed,industry:website.business.industry,
+    observations:onTopicObservations,
+    publishedKeywords:published,limit,
+  });
+  // Full source observation audit must remain available, including
+  // excluded wrong-page queries and their actual non-invented volumes.
+  const rawCleanup=prepareKeywordOpportunitiesV2({
+    seed,industry:website.business.industry,
+    observations,publishedKeywords:published,limit:500,
   });
 
   // This must happen BEFORE selecting by volume / keyword difficulty and
@@ -233,15 +262,15 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     approvedResearchKey: cacheKey,
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
-    observed: cleanup.observed,
-    excludedCount: cleanup.excluded.length+scoped.excluded.length,
-    excluded: [...cleanup.excluded,...scoped.excluded],
+    observed: observations.length,
+    excludedCount: cleanup.excluded.length+scoped.excluded.length+rawTopicExclusions.length,
+    excluded: [...cleanup.excluded,...scoped.excluded,...rawTopicExclusions],
     clusters: shortlist,
     // Preserve the complete observed candidate set for replay and audit;
     // the response UI can render only the ten strongest clusters.
     // Keep the raw observed candidates for reproducibility, including
     // rejected other-topic phrases. Only scoped clusters reach paid SERP.
-    candidateSnapshots: cleanup.candidates,
+    candidateSnapshots: rawCleanup.candidates,
     serpMetadata: related.map(row => ({
       keyword: row.keyword,
       resultCount: row.serpInfo?.resultCount ?? null,
