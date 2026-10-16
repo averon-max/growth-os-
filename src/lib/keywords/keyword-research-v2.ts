@@ -192,7 +192,14 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const cheapSerpByKeyword = new Map(related.map(row => [
     row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
   ] as const));
+  // A SEED-only phrase is not evidence of observed query demand.
+  // Pay for deep SERP only when DataForSEO or GSC actually surfaced
+  // this *same-intent* cluster. Leave mixed-intent observations for
+  // review instead of purchasing synthetic/seed variants.
   const shortlist = scoped.clusters
+    .filter(cluster=>cluster.keywords.some(keyword=>
+      keyword.sources.includes("DATAFORSEO")||
+      keyword.sources.includes("GSC")))
     .sort((a, b) => {
       const aInfo = cheapSerpByKeyword.get(a.primary.keyword.trim().toLowerCase());
       const bInfo = cheapSerpByKeyword.get(b.primary.keyword.trim().toLowerCase());
@@ -237,8 +244,10 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     ? reviewNeeded(eligibleForGpt.length
       ? "SERP-verified opportunities found. GPT decision not requested."
       : "No SERP-verified opportunity: review source reliability before choosing a primary.")
-    : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
-      reasons: ["No eligible candidates"], risks: [] };
+    : scoped.assessments.some(a=>a.decision==="AMBIGUOUS_TOPIC_REVIEW")
+      ? reviewNeeded("Observed terms have mixed informational/product intent or only SEED terms remain. Human SERP-intent review required; no paid deep-SERP calls were made.")
+      : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
+        reasons: ["No source-observed same-topic informational candidates"], risks: [] };
   if (input.useGptDecision && eligibleForGpt.length) {
     const { default: OpenAI } = await import("openai");
     if (!process.env.OPENAI_API_KEY) throw new Error("KEYWORD_V2_OPENAI_KEY_REQUIRED");
