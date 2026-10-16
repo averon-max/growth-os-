@@ -1,4 +1,5 @@
 import type { RelatedKeywordResult } from "./dataforseo-provider";
+import {assessKeywordTopicIntentV1} from "./keyword-topic-intent-gate-v1";
 import {
   validateKeywordOpportunityChoiceV2,
   selectVerifiedKeywordOpportunityV2,
@@ -107,6 +108,18 @@ export function parseCachedKeywordResearchV2(
     !Array.isArray(v.serpMetadata) || !v.serpMetadata.every(meta) ||
     !Array.isArray(v.serpResults) || !v.serpResults.every(serp)) return null;
 
+  // Old stored sessions can claim "approved" while containing brand
+  // navigation, support and unrelated topics. Revalidate against the
+  // CURRENT same-page topic/intent authority before trusting ANY selection.
+  // Raw archives remain readable through read-only forensic diagnostics.
+  if ((v.clusters as KeywordClusterV2[]).some(cluster =>
+    !assessKeywordTopicIntentV1({seed:v.seed as string,
+      query:cluster.primary.keyword}).eligibleForArticleSerp ||
+    cluster.keywords.some(row =>
+      !assessKeywordTopicIntentV1({seed:v.seed as string,
+        query:row.keyword}).eligibleForArticleSerp)
+  )) return null;
+
   let decision: KeywordOpportunityChoiceV2;
   try {
     decision = validateKeywordOpportunityChoiceV2(v.decision, v.clusters);
@@ -179,14 +192,28 @@ export function projectApprovedKeywordEvidenceV2(
   const winner = research.candidateSnapshots.find(candidate => normalize(candidate.keyword) === key);
   if (!winner) throw new Error("KEYWORD_V2_WINNER_NOT_OBSERVED");
 
-  // The raw candidate archive intentionally includes wrong-page/product,
-  // navigational and off-topic queries for audit. NEVER hand that archive
-  // directly to Content Writer. Only previously approved topic-scoped
-  // clusters are authorized as same-page supporting keyword evidence.
-  const approvedKeys = new Set(research.clusters.flatMap(cluster =>
-    cluster.keywords.map(candidate => normalize(candidate.keyword))));
-  if (winner.clusterId !== research.decision.selectedClusterId ||
-      !approvedKeys.has(key)) {
+  // Never trust even the cached cluster labels without checking current
+  // topic/page-intent policy. No raw archive or selected keyword can bypass.
+  const selectedCluster=research.clusters.find(cluster =>
+    cluster.id===research.decision.selectedClusterId);
+  if(!selectedCluster ||
+    !assessKeywordTopicIntentV1({seed:research.seed,query:selected})
+      .eligibleForArticleSerp) {
+    throw new Error("KEYWORD_V2_WINNER_TOPIC_INTENT_NOT_APPROVED");
+  }
+  const normalizeApproved=(candidate:KeywordCandidateV2)=>normalize(candidate.keyword);
+  const allowedByQuery=new Map<string,string>();
+  for(const cluster of research.clusters){
+    if(!assessKeywordTopicIntentV1({seed:research.seed,
+        query:cluster.primary.keyword}).eligibleForArticleSerp)continue;
+    for(const item of cluster.keywords){
+      if(!assessKeywordTopicIntentV1({seed:research.seed,
+          query:item.keyword}).eligibleForArticleSerp)continue;
+      allowedByQuery.set(normalizeApproved(item),cluster.id);
+    }
+  }
+  if(winner.clusterId!==research.decision.selectedClusterId ||
+    allowedByQuery.get(key)!==winner.clusterId) {
     throw new Error("KEYWORD_V2_WINNER_NOT_APPROVED_CLUSTER");
   }
   const toRelated = (candidate: KeywordCandidateV2): RelatedKeywordResult => ({
@@ -201,7 +228,7 @@ export function projectApprovedKeywordEvidenceV2(
   const remaining = research.candidateSnapshots
     .filter(candidate =>
       normalize(candidate.keyword) !== key &&
-      approvedKeys.has(normalize(candidate.keyword)));
+      allowedByQuery.get(normalize(candidate.keyword))===candidate.clusterId);
   const seen = new Set<string>();
   return [winner, ...remaining].filter(candidate => {
     const normalized = normalize(candidate.keyword);
