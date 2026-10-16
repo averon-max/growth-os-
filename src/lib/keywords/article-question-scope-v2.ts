@@ -34,12 +34,12 @@ const normalize=(value:string)=>normalizeKeywordV2(value);
 function isProviderSpecificSubject(value:string,core:string){
   if(!core||!value.includes(core))return false;
   const before=value.slice(0,value.indexOf(core)).trim();
-  if(/^(?:does|do|can|is|are|has|have|will)\s+.+\s+(?:offer|offers|offering|provide|provides|providing|include|includes|give|gives)\s+(?:free\s+|paid\s+)?$/u.test(before))
+  if(/^(?:does|do|can|is|are|has|have|will)\s+.+\s+(?:offer|offers|offering|provide|provides|providing|include|includes|give|gives)(?:\s+(?:free|paid))?$/u.test(before))
     return true;
   const prefix=/^(?:what is|what was|is|are|how much is|how much does|what happened to|how does)\s+(.+)$/u.exec(before);
   if(prefix){
-    const leftover=prefix[1].replace(/^(?:a|an|the)\s+/u,"")
-      .replace(/^(?:free|paid|premium|basic|good|3|three|single|new|personal|consumer)\s+/u,"").trim();
+    const leftover=prefix[1].replace(/^(?:a|an|the)(?:\s+|$)/u,"")
+      .replace(/^(?:free|paid|premium|basic|good|3|three|single|new|personal|consumer)(?:\s+|$)/u,"").trim();
     if(leftover)return true;
   }
   return false;
@@ -94,6 +94,9 @@ export function assessArticleQuestionScopeV2({
     return reply("SEPARATE_PAGE_INTENT","VENDOR_NEWS_OR_ACCOUNT_STATUS_INTENT");
   if(/\b(?:which|what are|what is a good|what is the good)\b.+\b(?:companies|company|providers|provider|brands|good .+ service)\b/u.test(value))
     return reply("SEPARATE_PAGE_INTENT","VENDOR_SELECTION_OR_DIRECTORY_INTENT");
+  if(/^what is (?:a|the) good .*(?:service|provider|company)\b/u.test(value)||
+    /^which .*(?:service|provider|company)\b/u.test(value))
+    return reply("SEPARATE_PAGE_INTENT","PROVIDER_CHOICE_REQUIRES_COMPARISON_PAGE");
   if(isProviderSpecificSubject(value,core))
     return reply("SEPARATE_PAGE_INTENT","NAMED_SUBJECT_OR_PROVIDER_SERVICE_INTENT");
   if(/\b(?:internet surveillance|dark web scan)\b.+\b(?:report|dashboard|feature)\b/u.test(value))
