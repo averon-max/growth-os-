@@ -69,7 +69,8 @@ export function buildSignedSemanticCitationWorklistV1(input:{
     let index=0;
     const sentences=body.split(/\n{2,}/u).flatMap((paragraph,paragraphIndex)=>
       !/^#{1,6}\s|^[-*]\s|^\d+\.|^> |^\|/mu.test(paragraph.trim()) &&
-      !paragraph.includes("](") && !paragraph.includes("~~~")\n        ?splitSentences(paragraph)
+      !paragraph.includes("](") && !paragraph.includes("~~~")
+        ?splitSentences(paragraph)
         .map(text=>({id:index++,paragraphIndex,text:text.trim()}))
         .filter(row=>completeProse(row.text)):[]
     ).slice(0,35);
