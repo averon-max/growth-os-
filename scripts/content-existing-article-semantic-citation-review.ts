@@ -72,6 +72,52 @@ async function main(){
     const worklist=buildSignedSemanticCitationWorklistV1({
       bodyMarkdown:base,plan,runtime,
     });
+    const {
+      semanticCitationCheckpointKeyV1,
+      validateSemanticCitationChoicesV1,
+    }=await import(
+      "../src/lib/content/existing-article-semantic-citation-checkpoint-v1");
+    const reviewCheckpointDir=resolve(
+      ".growth-os-tmp/citation-review/checkpoints",articleId);
+    const checkpointInventory=[];
+    for(const section of worklist){
+      if(!section.availableSources.length||!section.sentences.length)
+        continue;
+      const reviewKey=semanticCitationCheckpointKeyV1({
+        articleId,originalArticleSha256:expectedSha,section,
+      });
+      const file=join(reviewCheckpointDir,
+        section.sectionIndex+"-"+reviewKey+".json");
+      let state="NOT_CHECKPOINTED";
+      try{
+        const data=rec(JSON.parse(await readFile(file,"utf8")));
+        if(!data||data.reviewKey!==reviewKey||
+          data.sectionIndex!==section.sectionIndex)
+          throw new Error("WRONG_SOURCE_SCOPE");
+        validateSemanticCitationChoicesV1(section,data.choices);
+        state="VALIDATED_REUSABLE";
+      }catch(e){
+        if(e&&typeof e==="object"&&"code" in e &&
+          e.code==="ENOENT"){
+          try{
+            const data=rec(JSON.parse(await readFile(file+".raw.json","utf8")));
+            if(!data||data.reviewKey!==reviewKey||
+              data.sectionIndex!==section.sectionIndex||
+              typeof data.response!=="string")
+              throw new Error("WRONG_RAW_SOURCE_SCOPE");
+            const raw=rec(JSON.parse(data.response));
+            validateSemanticCitationChoicesV1(section,raw?.choices);
+            state="RAW_RESPONSE_REUSABLE";
+          }catch(rawError){
+            if(rawError&&typeof rawError==="object"&&
+              "code" in rawError&&rawError.code==="ENOENT")
+              state="NOT_CHECKPOINTED";
+            else state="RAW_RESPONSE_NEEDS_MANUAL_REVIEW";
+          }
+        }else state="VALIDATED_CHECKPOINT_NEEDS_MANUAL_REVIEW";
+      }
+      checkpointInventory.push({sectionIndex:section.sectionIndex,state});
+    }
     const preview={
       mode:execute?"PAID_ONLY_SIGNED_SENTENCE_REVIEW_NO_DATABASE_WRITE":
         "READ_ONLY_SIGNED_SEMANTIC_CITATION_WORKLIST",
@@ -85,6 +131,14 @@ async function main(){
       })),
       maxReviewCalls:worklist.filter(s=>
         s.availableSources.length&&s.sentences.length).length,
+      checkpointInventory,
+      reusableReviewSections:checkpointInventory.filter(s=>
+        s.state==="VALIDATED_REUSABLE"||
+        s.state==="RAW_RESPONSE_REUSABLE").length,
+      remainingUnpaidReviewSections:checkpointInventory.filter(s=>
+        s.state==="NOT_CHECKPOINTED").length,
+      unsafeCheckpointSections:checkpointInventory.filter(s=>
+        s.state.endsWith("MANUAL_REVIEW")).length,
       noNewSourceDiscovery:true,
       articleCreated:false,databaseUnchanged:true,
     };
@@ -96,13 +150,6 @@ async function main(){
     }
     const {callContentAiJson}=await import(
       "../src/lib/content/gemini-generator");
-    const {
-      semanticCitationCheckpointKeyV1,
-      validateSemanticCitationChoicesV1,
-    }=await import(
-      "../src/lib/content/existing-article-semantic-citation-checkpoint-v1");
-    const reviewCheckpointDir=resolve(
-      ".growth-os-tmp/citation-review/checkpoints",articleId);
     await mkdir(reviewCheckpointDir,{recursive:true});
     type Result=Parameters<typeof applyReviewedSignedSemanticCitationsV1>[0]["verdicts"];
     const verdicts:{sectionIndex:number;choices:Array<{
