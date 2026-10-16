@@ -38,6 +38,8 @@ import {
 import {
   detectHighConfidenceEditorialRepetitionV1,
 } from "./editorial-repetition-guard-v1";
+import {detectArticleInformationGainDefectsV1}
+  from "./article-editorial-information-gain-v1";
 
 
 export interface MasterArticleCriticExecutionV1 {
@@ -596,14 +598,33 @@ export async function executeMasterArticleCriticsV1({
         bodyMarkdown:section.bodyMarkdown,
       }))
     );
+  const lowInformation=
+    detectArticleInformationGainDefectsV1(run.article.bodyMarkdown);
   const editorial =
-    repeatedAdvice.length===0 ?
+    repeatedAdvice.length===0 && lowInformation.length===0 ?
       semanticEditorial :
       finalizeMasterArticleCriticResultV1({
         criticId:"EDITORIAL",
         modelName:semanticRun.modelName,
         findings:[
           ...semanticEditorial.findings,
+          ...lowInformation.map(issue=>{
+            const owning=contract.sectionContracts[issue.sectionIndex];
+            if(!owning)throw new ContentGenerationError(
+              "EDITORIAL_INFORMATION_GAIN_SECTION_CONTRACT_MISSING");
+            return createMasterArticleCriticFindingV1({
+              criticId:"EDITORIAL",code:issue.code,severity:"BLOCK",
+              location:{
+                scope:"SECTION",sectionIndex:owning.sectionIndex,
+                sectionNumber:owning.sectionNumber,
+                heading:owning.blueprint.heading,
+              },
+              repairScope:"SECTION",
+              message:issue.excerpt,
+              recommendation:issue.recommendation,
+              evidence:{claimIds:[],evidenceIds:[],queryNodeIds:[],sourceIds:[]},
+            });
+          }),
           ...repeatedAdvice.map(issue=>{
             const owning=contract.sectionContracts[issue.sectionIndex];
             if(!owning){
