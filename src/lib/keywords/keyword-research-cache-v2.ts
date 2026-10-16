@@ -18,6 +18,10 @@ export interface KeywordResearchResultV2 {
   seed: string;
   collectedAt: string;
   observed: number;
+  discoveryBreakdown?: {
+    relatedRows:number;suggestionRows:number;gscRows:number;
+    trendOnlyRows:number;expandedDiscovery:boolean;
+  };
   excludedCount: number;
   excluded: Array<{ keyword: string; reason: KeywordCleanupReasonV2 }>;
   clusters: KeywordClusterV2[];
@@ -157,6 +161,18 @@ export function parseCachedKeywordResearchV2(
     seed: expected.seed,
     collectedAt: v.collectedAt,
     observed: v.observed,
+    ...(record(v.discoveryBreakdown) && typeof record(v.discoveryBreakdown)?.relatedRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.suggestionRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.gscRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.trendOnlyRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.expandedDiscovery === "boolean"
+      ?{discoveryBreakdown:{
+        relatedRows:Number(record(v.discoveryBreakdown)?.relatedRows),
+        suggestionRows:Number(record(v.discoveryBreakdown)?.suggestionRows),
+        gscRows:Number(record(v.discoveryBreakdown)?.gscRows),
+        trendOnlyRows:Number(record(v.discoveryBreakdown)?.trendOnlyRows),
+        expandedDiscovery:record(v.discoveryBreakdown)?.expandedDiscovery === true,
+      }}:{}),
     excludedCount: v.excludedCount,
     excluded: v.excluded,
     clusters: v.clusters,
