@@ -166,17 +166,29 @@ export function projectApprovedKeywordEvidenceV2(
   const winner = research.candidateSnapshots.find(candidate => normalize(candidate.keyword) === key);
   if (!winner) throw new Error("KEYWORD_V2_WINNER_NOT_OBSERVED");
 
+  // The raw candidate archive intentionally includes wrong-page/product,
+  // navigational and off-topic queries for audit. NEVER hand that archive
+  // directly to Content Writer. Only previously approved topic-scoped
+  // clusters are authorized as same-page supporting keyword evidence.
+  const approvedKeys = new Set(research.clusters.flatMap(cluster =>
+    cluster.keywords.map(candidate => normalize(candidate.keyword))));
+  if (winner.clusterId !== research.decision.selectedClusterId ||
+      !approvedKeys.has(key)) {
+    throw new Error("KEYWORD_V2_WINNER_NOT_APPROVED_CLUSTER");
+  }
   const toRelated = (candidate: KeywordCandidateV2): RelatedKeywordResult => ({
     keyword: candidate.keyword,
     searchVolume: candidate.searchVolume,
     keywordDifficulty: candidate.keywordDifficulty,
     cpc: candidate.cpc,
     competitionLevel: null,
-    monthlySearches: [],
-    trend: null,
+    monthlySearches: candidate.monthlySearches ?? [],
+    trend: candidate.trend ?? null,
   });
   const remaining = research.candidateSnapshots
-    .filter(candidate => normalize(candidate.keyword) !== key);
+    .filter(candidate =>
+      normalize(candidate.keyword) !== key &&
+      approvedKeys.has(normalize(candidate.keyword)));
   const seen = new Set<string>();
   return [winner, ...remaining].filter(candidate => {
     const normalized = normalize(candidate.keyword);
