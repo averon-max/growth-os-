@@ -74,6 +74,8 @@ import {
   classifyVerifiedQualitySectionsV1,
 } from "./quality-improvement-progress-scope-v1";
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
+import {assertArticleProseHygieneV2}
+  from "./article-search-readiness-v2";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeSerpReplayV1 } from "./serp-replay";
 import { buildSerpReplayArticleFingerprintV1 } from "./serp-replay-fingerprint";
@@ -1139,6 +1141,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
             improvedRun.article.bodyMarkdown.includes("]("+link.url+")"))),
         "SAVED_SIGNED_CITATION_FINAL_SOURCE_SCOPE_REGRESSION");
     }
+    // The nine-critic suite can return WARN despite joined English
+    // words (e.g. "creditcard", "informationyou"). Fail BEFORE paying
+    // for critics and SERP Replay or committing broken article bytes.
+    // Never silently edit prose inside a semantic verification stage.
+    assertArticleProseHygieneV2(improvedRun.article.bodyMarkdown);
     const finalCritics=await executeMasterArticleCriticsV1({
       contract,run:improvedRun,generator,context,
     });
