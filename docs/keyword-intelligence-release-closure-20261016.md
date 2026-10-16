@@ -27,6 +27,7 @@ Given a real website + business context + market, discover measured search deman
 2. GSC keyword context historically mixed country samples, used a fixed take 50 and trusted substring page URL matches. Research now requests market-specific up-to-250 site observations, guarded by exact/www host match. **Remaining:** GSC latest daily snapshot is not the same as a 28/90-day window or a real-time rank.
 3. No-GPT mode historically only returned REVIEW, even with qualified organic SERP and measured demand. It can now SELECT a uniquely stronger grounded cluster deterministically, or stop at REVIEW if no evidence or close scores. Cached deterministic decisions must be reproducible from saved SERP/clusters.
 4. Added read-only `scripts/keyword-research-v2-cached-audit.ts`: inspect actually cached keyword universe, measured KD/volume coverage, GSC positions, organic SERP proof, selection result and Writer-allowed cluster members at **zero new cost**.
+5. The existing paid SERP result now records **observed top-10 competitor URLs and own organic rank** (if actually present in fetched SERP); it does not confuse missing rank with zero or request an extra provider call. Old cached SERPs may not have these optional fields and are not secretly refreshed.
 
 ## What remains — priority order, NO parallel refactor
 
