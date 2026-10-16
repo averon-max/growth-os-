@@ -175,6 +175,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
       });
       check(scoped.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
         "SAVED_SIGNED_CITATION_REPAIR_SCOPE_INVALID");
+      // An article with section-owned evidence but no visible sources in
+      // three of six H2s must never be committed as "citation repaired".
+      check(scoped.sections.every(section=>
+        section.assignedEvidence===0||section.approvedLinks>0),
+        "SAVED_SIGNED_CITATION_REPAIR_UNCITED_EVIDENCE_SECTIONS");
     }
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(runtime),
@@ -1113,6 +1118,8 @@ export async function improveExistingArticleQualityV1(articleId:string,
         candidateBodyMarkdown:improvedRun.article.bodyMarkdown,plan,runtime,
       });
       check(citationScope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED" &&
+        citationScope.sections.every(section=>
+          section.assignedEvidence===0||section.approvedLinks>0) &&
         citationScope.totalLinks>=signedCitationDraft!.totalAddedCitations &&
         signedCitationDraft!.sections.every(section=>
           section.proposed.every(link=>
