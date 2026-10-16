@@ -1575,9 +1575,8 @@ ${article.bodyMarkdown}`
           ) : null}
 
           {article.status==="IN_REVIEW"&&!editing &&
-            (detectPersistedArticleEditorialRepetitionV1(
-              article.bodyMarkdown).length>0 ||
-              substantiveWarnings.length>0) ? (
+            detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ? (
             <button
               type="button"
               className={styles.secondaryButton}
@@ -1591,9 +1590,8 @@ ${article.bodyMarkdown}`
           ) : null}
 
           {article.status==="IN_REVIEW"&&!editing &&
-            (detectPersistedArticleEditorialRepetitionV1(
-              article.bodyMarkdown).length>0 ||
-              substantiveWarnings.length>0) ? (
+            detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ? (
             <button
               type="button"
               className={styles.secondaryButton}
