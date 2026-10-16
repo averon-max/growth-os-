@@ -40,6 +40,12 @@ const navOrSupport=[
   "phone number verification","hours of operation","opening hours",
   "login","log in","sign in","account recovery","reset password",
   "activation code","verification code",
+  "jobs near me","job openings","career opportunities",
+  "salary","careers","employment","vacancies",
+] as const;
+const commercialReviews=[
+  "best","top","reviews","review","alternatives","buy",
+  "purchase","subscribe","plans","cheapest",
 ] as const;
 function isBrandQuery(query:string,core:string){
   // When a brand is the TOPIC (e.g. "Aura review"), don't exclude it.
@@ -67,6 +73,17 @@ export function assessKeywordTopicIntentV1({
     decision:"SEPARATE_NAVIGATION_OR_SUPPORT",
     eligibleForArticleSerp:false,
     reason:"SUPPORT_OR_NAVIGATION_INTENT_NOT_EDUCATIONAL_CONTENT",
+  };
+  const informationalSeed=/^(what is|what are|how does|how do|how can|why|does|is)\s/u
+    .test(normalize(seed));
+  const commercialIntent=informationalSeed&&
+    (commercialReviews.some(term=>phrase(normalized,term)) ||
+      /\b(?:comparison of providers|compare monitoring companies)\b/u
+        .test(normalized));
+  if(commercialIntent)return {
+    seed,query,coreTopic:core,
+    decision:"SEPARATE_BRAND_PRODUCT_PAGE",eligibleForArticleSerp:false,
+    reason:"BUYER_COMPARISON_INTENT_SEPARATE_FROM_INFORMATIONAL_DEFINITION",
   };
   if(isBrandQuery(normalized,core))return {
     seed,query,coreTopic:core,
