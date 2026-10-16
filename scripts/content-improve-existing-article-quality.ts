@@ -155,6 +155,15 @@ async function main(){
       (n,e)=>n+(e.section.bodyMarkdown.match(/^###\s+\S/gm)??[]).length,0)??0;
     const partialWords=verifiedProgress?.accepted.reduce(
       (n,e)=>n+countWords(e.section.bodyMarkdown),0)??null;
+    const {composeMasterArticleV1}=
+      await import("../src/lib/content/master-article-composer");
+    const signedPartialArticle=verifiedProgress?
+      composeMasterArticleV1({
+        contract,shell:verifiedProgress.shell,
+        sections:verifiedProgress.accepted.map(x=>x.section),
+      }):null;
+    const actualCachedArticleWords=signedPartialArticle?
+      countWords(signedPartialArticle.bodyMarkdown):null;
     const {detectHighConfidenceEditorialRepetitionV1}=
       await import("../src/lib/content/editorial-repetition-guard-v1");
     const verifiedEditorialFindings=verifiedProgress?
@@ -170,6 +179,10 @@ async function main(){
       verifiedSections:verifiedProgress?.accepted.length??0,
       h3Count:partialH3,
       sectionWordTotal:partialWords,
+      completeArticleWords:actualCachedArticleWords,
+      completeArticleMinimumWords:minimumWords,
+      needsPostEditorialDepthRecovery:actualCachedArticleWords!==null&&
+        actualCachedArticleWords<minimumWords,
       editorialRepetitionFindings:verifiedEditorialFindings.map(f=>({
         code:f.code,sectionIndex:f.sectionIndex,
         affectedSections:f.affectedSections,
