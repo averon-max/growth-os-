@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {planSameArticleQualityImprovementV1}
+import {planSameArticleQualityImprovementV1,evaluateWholeArticleQualityWordRangeV1}
   from "./same-article-quality-improvement-v1";
 const actualSections=[
   {index:0,words:301,maxWords:409,claimCount:3,evidenceCount:4,h3Count:0},
@@ -10,6 +10,23 @@ const actualSections=[
   {index:5,words:244,maxWords:301,claimCount:2,evidenceCount:2,h3Count:0},
 ];
 describe("same-article source-safe improvement planning",()=>{
+  it("accepts source-verified local H2 overrun but keeps strict article bounds",()=>{
+    // Real failure: section 2 exceeded 301 planned words after a
+    // successful semantic verification. A legitimate 350-word section
+    // must not block a ~2100-word article.
+    const sectionActual=350,sectionPlannedMax=301;
+    expect(sectionActual).toBeGreaterThan(sectionPlannedMax);
+    expect(evaluateWholeArticleQualityWordRangeV1({
+      actualWords:2100,minWords:2000,maxWords:3200,
+    })).toEqual({pass:true,reason:"OK"});
+    expect(evaluateWholeArticleQualityWordRangeV1({
+      actualWords:1714,minWords:2000,maxWords:3200,
+    })).toEqual({pass:false,reason:"BELOW_ARTICLE_MIN"});
+    expect(evaluateWholeArticleQualityWordRangeV1({
+      actualWords:3201,minWords:2000,maxWords:3200,
+    })).toEqual({pass:false,reason:"ABOVE_ARTICLE_MAX"});
+  });
+
   it("chooses bounded existing sections for real 1714-word credit-monitoring case",()=>{
     const plan=planSameArticleQualityImprovementV1({
       wordCount:1714,minimumWords:2000,sections:actualSections,

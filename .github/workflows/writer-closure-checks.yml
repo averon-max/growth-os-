@@ -49,6 +49,8 @@ on:
       - "src/lib/content/verified-archived-writer-run-v1.ts"
       - "src/lib/content/verified-archived-writer-run-v1.test.ts"
       - "scripts/content-improve-existing-article-quality.ts"
+      - "src/lib/content/quality-improvement-progress-scope-v1.ts"
+      - "src/lib/content/quality-improvement-progress-scope-v1.test.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
