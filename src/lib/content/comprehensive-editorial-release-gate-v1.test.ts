@@ -22,7 +22,7 @@ function section(i:number,words=350,withH3=false){
     "A source-backed explanation of distinct consumer information job "+i+".",
     "The reader learns the meaning, limitation, or next practical step.",
   ].join(" ");
-  const body=Array(words).fill("fact").join(" ");
+  const body=Array(words).fill("distinctfacet"+i).join(" ");
   return "## Reader question "+i+"?\n\n"+
     sentences+"\n\n"+(withH3?
       "### Specific consideration for question "+i+"\n\n"+
