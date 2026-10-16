@@ -5,7 +5,7 @@
  * fresh brief/research/Writer. Reuses genuine saved Evidence, the exact
  * post-final-replay checkpoint, and the existing production section repair.
  *
- * Physical model calls: <=10; model repair calls: <=1.
+ * Maximum model calls: 16; section repair calls: 2, explicit consent required.
  * Any failure leaves the entire ContentArticle and its replay untouched.
  * Only a fully source-supported, 9-critic-accepted, SERP-compared version
  * may be committed. Original article is archived in append-only provenance.
@@ -36,6 +36,8 @@ import {inspectArchivedWriterProgressV1}
   from "./writer-recovery-archived-progress-v1";
 import {rebindSignedArchivedWriterRunV1}
   from "./verified-archived-writer-run-v1";
+import {verifyExistingArticleCitationScopeV1}
+  from "./existing-article-citation-authority-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeMasterArticleCriticRepairReplayV1 } from "./master-article-critic-repair-execution";
 import { executeSerpReplayV1 } from "./serp-replay";
@@ -208,8 +210,8 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       "SAVED_EDITORIAL_REAL_CRAWL_CONTEXT_REQUIRED");
 
     const budget=createContentRunBudgetV1({
-      maxModelCalls:10,maxEstimatedInputTokens:60000,
-      maxRepairCalls:1,
+      maxModelCalls:16,maxEstimatedInputTokens:100000,
+      maxRepairCalls:2,
     });
     const generator=withContentRunBudgetV1({
       generator:geminiGenerator,budget,
@@ -234,7 +236,8 @@ export async function repairExistingArticleEditorialV1(articleId:string,
         f.code==="EDITORIAL_REPEATED_PARAGRAPH_ACROSS_SECTIONS" ||
         f.code==="EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS" ||
         f.code==="NON_ACTIONABLE_JUSTIFICATION" ||
-        f.code==="SOURCE_LABEL_IN_PROSE"));
+        f.code==="SOURCE_LABEL_IN_PROSE" ||
+        f.code==="SOURCE_BACKED_H3_STRUCTURE_REPAIR"));
     check(beforeCritics.suite.status==="BLOCK"&&supportedEditorialDefect,
       "SAVED_EDITORIAL_NEW_CRITIC_NOT_REPRODUCED");
 
@@ -245,7 +248,7 @@ export async function repairExistingArticleEditorialV1(articleId:string,
     check(repaired.finalCritics.suite.status!=="BLOCK" &&
       repaired.provenance.wholeArticleRewriteCount===0 &&
       repaired.provenance.repairedSectionCount>=1 &&
-      repaired.provenance.repairAttemptCount<=1,
+      repaired.provenance.repairAttemptCount<=2,
       "SAVED_EDITORIAL_BOUNDED_REPAIR_FAILED");
     const candidate=articleShape(repaired.run.article);
     check(!sameArticle(initial,candidate)&&candidate.title===initial.title &&
@@ -262,6 +265,22 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       evaluateComprehensiveEditorialReleaseV1({
         plan,bodyMarkdown:candidate.bodyMarkdown,
       }));
+    // Never trade source provenance for prettier prose. URLs may be
+    // presented outside visible paragraphs, but the canonical saved
+    // content must retain original signed links in their owning H2s.
+    const sourceBefore=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:initial.bodyMarkdown,plan,runtime,
+    });
+    const sourceAfter=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate.bodyMarkdown,plan,runtime,
+    });
+    check(sourceAfter.status==="REVIEW_SEMANTIC_PROOF_REQUIRED" &&
+      sourceAfter.unapprovedLinks.length===0 &&
+      sourceAfter.totalLinks>=sourceBefore.totalLinks &&
+      sourceAfter.sections.every((section,index)=>
+        section.approvedLinks>=
+          (sourceBefore.sections[index]?.approvedLinks??0)),
+      "SAVED_EDITORIAL_SIGNED_CITATION_REGRESSION");
     const audit=auditArticle({article:candidate,
       primaryKeyword:original.brief.primaryKeyword});
     const intelligence=analyzeArticleAgainstPlan({
