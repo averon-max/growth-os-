@@ -90,9 +90,50 @@ async function main():Promise<void>{
             keyword,decision:assessment.decision,
           }];
         });
+        const safelyObserved=serpRuns.flatMap(item=>{
+          const row=record(item);
+          const keyword=typeof row?.query==="string"?row.query:null;
+          if(!keyword)return [];
+          const intent=assessKeywordTopicIntentV1({
+            seed:v.seed as string,query:keyword});
+          let deepReview:unknown=null;
+          try {
+            if(typeof row?.organicResults==="number" &&
+              typeof row.uniqueDomains==="number" &&
+              (!row.competitiveResearch ||
+                (Array.isArray(record(row.competitiveResearch)?.competitorPages)&&
+                 Array.isArray(record(row.competitiveResearch)?.commonSections)))) {
+              deepReview=auditDeepSerpReadinessV1(
+                item as Parameters<typeof auditDeepSerpReadinessV1>[0],
+                intent.coreTopic);
+            }
+          } catch {
+            deepReview={status:"HISTORICAL_SERP_SHAPE_UNREADABLE"};
+          }
+          return [{
+            keyword,
+            intentDecision:intent.decision,
+            onTopicForRequestedPage:intent.eligibleForArticleSerp,
+            deepReview,
+            resultCostPreviouslyIncurred:true,
+            mayAuthorizeWriter:false,
+          }];
+        });
+        const decision=record(v.decision);
         return {
           cacheKey:item.normalized,
           fetchedAt:item.fetchedAt.toISOString(),
+          originalSelectionStatus:typeof decision?.status==="string"?
+            decision.status:null,
+          originalSelectionReasons:Array.isArray(decision?.reasons)?
+            decision.reasons:[],
+          originalSelectionRisks:Array.isArray(decision?.risks)?
+            decision.risks:[],
+          originallySelectedKeyword:typeof v.selectedKeyword==="string"?
+            v.selectedKeyword:null,
+          deepSerpForensicReadOnly:safelyObserved,
+          previouslyPaidOnTopicSerps:safelyObserved.filter(x=>
+            x.onTopicForRequestedPage).length,
           invalidSnapshot:true,
           reason:unsafe.length>0
             ?"HISTORICAL_CACHE_WRONG_TOPIC_OR_INTENT"
@@ -105,6 +146,9 @@ async function main():Promise<void>{
           rejectedClusterExamples:unsafe.slice(0,20),
           historicalSerpCount:serpRuns.length,
           historicalSerpsOutsideSamePageIntent:unsafeSerps,
+          historicalSerpsStillOnTopic:safelyObserved
+            .filter(row=>row.onTopicForRequestedPage)
+            .map(row=>row.keyword),
           selectedKeywordTrusted:false,
           allowedToWriter:false,
           providerCalls:0,
