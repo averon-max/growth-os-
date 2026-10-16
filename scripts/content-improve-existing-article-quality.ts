@@ -352,8 +352,11 @@ async function main(){
     })():null;
 
     console.log(JSON.stringify({
-      mode:execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
-        "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW",
+      mode:citationMode
+        ?(execute?"EXPLICIT_PAID_SAME_ID_SIGNED_CITATION_REPAIR":
+          "FREE_SAME_ID_SIGNED_CITATION_REPAIR_PREVIEW")
+        :(execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
+          "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW"),
       articleId,status:article.status,updatedAt:article.updatedAt.toISOString(),
       currentWords:countWords(article.bodyMarkdown),requiredWords:minimumWords,
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
