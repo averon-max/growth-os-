@@ -36,7 +36,21 @@ function safeInteger(value: number | undefined, fallback: number, max: number): 
 }
 
 function summarizeSerp(keyword: string, clusterId: string, serp:
-  Awaited<ReturnType<typeof buildSerpIntelligence>>): SerpOpportunityV2 {
+  Awaited<ReturnType<typeof buildSerpIntelligence>>, websiteUrl: string): SerpOpportunityV2 {
+  const host = (() => {
+    try { return new URL(websiteUrl).hostname.toLowerCase().replace(/^www\./, ""); }
+    catch { return ""; }
+  })();
+  const topOrganic = serp.organic.flatMap(item =>
+    typeof item.rank === "number" && item.rank > 0 &&
+    typeof item.url === "string" && item.url.startsWith("http") &&
+    typeof item.domain === "string" && item.domain.length > 0
+      ? [{rank:item.rank,domain:item.domain,url:item.url}]
+      : []).slice(0,10);
+  const ownOrganicRank = host
+    ? topOrganic.find(row =>
+        row.domain.toLowerCase().replace(/^www\./, "") === host)?.rank ?? null
+    : null;
   return {
     query: keyword,
     clusterId,
@@ -45,6 +59,8 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
     dominantPageType: serp.benchmark.dominantPageType,
     pagesAnalyzed: serp.benchmark.analyzedPages,
     features: [...serp.serpFeatures],
+    topOrganic,
+    ownOrganicRank,
   };
 }
 
@@ -225,7 +241,8 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
         produce: async () => {
           const serp = await buildSerpIntelligence({ keyword: cluster.primary.keyword,
             locationName, languageName: "English" });
-          return summarizeSerp(cluster.primary.keyword, cluster.id, serp);
+          return summarizeSerp(cluster.primary.keyword, cluster.id, serp,
+            typeof website.url === "string" ? website.url : "");
         },
       });
       serpResults.push(serpSummary);
