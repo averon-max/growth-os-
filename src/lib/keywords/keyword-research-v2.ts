@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { parseCachedKeywordResearchV2, type KeywordResearchResultV2 } from "./keyword-research-cache-v2";
 import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
+import {createTopicScopedKeywordShortlistV1}
+  from "./keyword-topic-scoped-shortlist-v1";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
@@ -65,7 +67,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "momentum-v1"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-scope-v1"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -147,11 +149,18 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const cleanup = prepareKeywordOpportunitiesV2({
     seed, industry: website.business.industry, observations, publishedKeywords: published, limit,
   });
+
+  // This must happen BEFORE selecting by volume / keyword difficulty and
+  // BEFORE any paid SERP calls. "credit monitoring" is the core entity;
+  // "credit score", Credit Karma support, and Equifax product navigation
+  // are different intents even when they share the word "credit".
+  const scoped=createTopicScopedKeywordShortlistV1({
+    seed,candidates:cleanup.candidates,maxClusters:30,
+  });
   const cheapSerpByKeyword = new Map(related.map(row => [
     row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
   ] as const));
-  const shortlist = cleanup.clusters
-    .slice(0, 30)
+  const shortlist = scoped.clusters
     .sort((a, b) => {
       const aInfo = cheapSerpByKeyword.get(a.primary.keyword.trim().toLowerCase());
       const bInfo = cheapSerpByKeyword.get(b.primary.keyword.trim().toLowerCase());
@@ -225,11 +234,13 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
     observed: cleanup.observed,
-    excludedCount: cleanup.excluded.length,
-    excluded: cleanup.excluded,
+    excludedCount: cleanup.excluded.length+scoped.excluded.length,
+    excluded: [...cleanup.excluded,...scoped.excluded],
     clusters: shortlist,
     // Preserve the complete observed candidate set for replay and audit;
     // the response UI can render only the ten strongest clusters.
+    // Keep the raw observed candidates for reproducibility, including
+    // rejected other-topic phrases. Only scoped clusters reach paid SERP.
     candidateSnapshots: cleanup.candidates,
     serpMetadata: related.map(row => ({
       keyword: row.keyword,
@@ -237,7 +248,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       features: row.serpInfo?.features ?? [],
       updatedAt: row.serpInfo?.updatedAt ?? null,
     })),
-    totalClusters: cleanup.clusters.length,
+    totalClusters: scoped.clusters.length,
     serpResults,
     decision,
     selectedKeyword: decision.status === "SELECTED"
