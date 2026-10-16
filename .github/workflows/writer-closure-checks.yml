@@ -84,6 +84,9 @@ on:
       - "src/lib/content/article-question-gap-audit-v1.ts"
       - "src/lib/content/article-question-gap-audit-v1.test.ts"
       - "scripts/content-existing-article-question-gap-audit.ts"
+      - "src/lib/content/production-master-live-stage-planner.ts"
+      - "src/lib/content/stage-plan-information-gain-retry-v1.ts"
+      - "src/lib/content/stage-plan-information-gain-retry-v1.test.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 

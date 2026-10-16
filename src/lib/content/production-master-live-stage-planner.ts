@@ -8,6 +8,8 @@ import {
   inspectStagePlanInformationGainV1,
   INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
 } from "./stage-plan-information-gain-v1";
+import {buildStagePlanInformationGainRetryV1}
+  from "./stage-plan-information-gain-retry-v1";
 
 import {
 
@@ -2629,6 +2631,20 @@ function inspectStagePlanCompleteness(
         "Your previous response was valid JSON but did not satisfy the complete production Stage Plan contract.",
 
         `Missing or invalid fields: ${missingStagePlanFields.join(", ")}`,
+        /*
+         * A generic full retry kept reproducing one broad claim per H2
+         * even after consuming a second paid planner call.
+         *
+         * Supply the ACTUAL failed sections and factual hypotheses so
+         * this one existing regeneration re-architects the real reader
+         * jobs; no invented claim is ever marked verified.
+         */
+        ...(missingStagePlanFields.includes("sections[].informationGainClaimBreadth")?
+          [buildStagePlanInformationGainRetryV1({
+            sections:plan.sections,
+            claims:plan.claims,
+          })??""] : []),
+
 
         "Regenerate the ENTIRE Stage Plan JSON object from scratch.",
 
@@ -2776,9 +2792,22 @@ function inspectStagePlanCompleteness(
       }
     );
 
+    /*
+     * Do not misreport model-proposed breadth as a JSON/schema field
+     * missing. The real failure is insufficient distinct source-
+     * verifiable information for many explanatory H2 reader jobs.
+     * A retry of the same provider with the same prompt is not a fix.
+     */
+    const breadthOnly=
+      missingStagePlanFields.length===1&&
+      missingStagePlanFields[0]==="sections[].informationGainClaimBreadth";
     throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
-      `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
+      breadthOnly?
+        "LIVE_STAGE_PLAN_INFORMATION_GAIN_UNRESOLVED":
+        "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
+      breadthOnly?
+        "Research planning still has many broad explanatory sections with only one generic factual proposition each. No brief/article was created. Review the distinct information jobs and obtain verifiable facts before retrying; keyword or H2 quotas cannot replace evidence.":
+        `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
     );
   }
 
