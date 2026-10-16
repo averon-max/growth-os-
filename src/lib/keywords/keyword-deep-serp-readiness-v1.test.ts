@@ -39,10 +39,10 @@ describe("deep competitor research coverage",()=>{
       wordCount:1500,schemaTypes:[],tableCount:0,
       authorSignal:false,dateSignal:false,error:null,
     }));
-    pages[5]={...pages[5],title:"Attention Required! | Cloudflare",
+    pages[5]={...pages[5]!,title:"Attention Required! | Cloudflare",
       h1:"Sorry, you have been blocked",wordCount:123};
-    pages[6]={...pages[6],title:"Reddit",h1:"",wordCount:0};
-    pages[7]={...pages[7],title:"",h1:"",wordCount:46};
+    pages[6]={...pages[6]!,title:"Reddit",h1:"",wordCount:0};
+    pages[7]={...pages[7]!,title:"",h1:"",wordCount:46};
     const result=auditDeepSerpReadinessV1({...base,competitiveResearch:{
       fetchedCompetitorPages:8,fetchFailures:0,observedQuestions:[],
       aiOverviewPresent:false,commonSections:[{
