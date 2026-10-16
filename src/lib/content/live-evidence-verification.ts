@@ -3,6 +3,7 @@ import {
 } from "../crawler/crawler";
 
 import { findExactSourceSentenceV1 } from "./exact-source-sentence-v1";
+import { inspectClaimMaterialQualifiersV1 } from "./claim-material-qualifier-v1";
 
 import {
   defaultAuthorityTier,
@@ -978,6 +979,18 @@ export function findVerifiedExcerptCandidateV1({
 
 
     /*
+     * MATERIAL_SCOPE_AND_ORDER_VERIFICATION_V1
+     *
+     * The same topic words do not support an unsupported condition
+     * ("unexpected", "before deciding", "only"), even when lexical
+     * overlap, numeric values, and polarity already match.
+     * No model, new sources, or weaker fallback is used here.
+     */
+    if(!inspectClaimMaterialQualifiersV1({
+      claimText,excerpt,
+    }).passed)continue;
+
+    /*
      * VERIFIED_EXCERPT_NEGATIVE_TARGET_GATE_V1
      *
      * Topical overlap + matching negation is not enough.
@@ -1091,7 +1104,8 @@ function stableHash(
 
 async function fetchSourceBodies(
   graph:
-    EvidenceGraphInput
+    EvidenceGraphInput,
+  maxSources=MAX_EVIDENCE_FETCH_SOURCES
 ): Promise<
   Map<
     string,
@@ -1113,7 +1127,7 @@ async function fetchSourceBodies(
   const sources =
     graph.sources.slice(
       0,
-      MAX_EVIDENCE_FETCH_SOURCES
+      Math.max(1,Math.min(72,Math.floor(maxSources)))
     );
 
 
@@ -1843,6 +1857,7 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
  */
 
 export interface EvidenceClaimRecoveryCandidateV1 {
+  readonly provenance?:"SECTION_FIRST_GOVERNMENT_PROCEDURE";
   readonly claimId:
     string;
 
@@ -2748,10 +2763,328 @@ export function rankEvidenceRecoveryExcerptsV1({
 }
 
 
+/**
+ * SOURCE-FIRST PROCEDURAL FACT CANDIDATES
+ *
+ * For a practical "what should I do / how to" section, discover
+ * literal, actionable sentences on explicitly seeded government
+ * pages independently of speculative LLM claim wording.
+ * This creates CANDIDATES only. Existing live re-fetch, strict
+ * lexical validation and semantic entailment still own authority.
+ */
+export function rankOfficialProceduralFactSentencesV1({
+  heading,mission,bodyText,maxCandidates=5,
+}:{
+  heading:string;mission:string;bodyText:string;maxCandidates?:number;
+}):readonly Readonly<{excerpt:string;coverage:number;score:number}>[]{
+  if(!/\b(?:what (?:should|do|can)|how (?:to|do|can)|steps? to)\b/i
+    .test(heading))return [];
+  const topic=new Set(semanticTokens(heading+" "+mission).filter(
+    t=>!new Set(["what","should","after","before","how","when","step",
+      "do","does","action","take","first","next"]).has(t)));
+  if(topic.size===0)return [];
+  const action=/\b(?:contact|dispute|review|check|report|verify|request|file|correct|investigate|compare|send|call|notify|provide|submit|look for)\b/i;
+  const reader=/\b(?:you|your|should|must|if you|to (?:dispute|report|contact|check|review|file|request))\b/i;
+  const ranked=sentenceWindows(bodyText)
+    .filter(sentence=>sentence.length>=65&&sentence.length<=320&&
+      /[.!?]$/.test(sentence)&&
+      sentence.split(/(?<=[.!?])\s+/).length===1&&
+      action.test(sentence)&&reader.test(sentence))
+    .map(excerpt=>{
+      const shared=semanticTokens(excerpt)
+        .filter(t=>topic.has(t)).length;
+      const actionMatches=excerpt.match(new RegExp(action.source,"gi"))??[];
+      return {
+        excerpt,score:shared*5+Math.min(3,actionMatches.length),
+        coverage:Math.min(0.95,0.35+shared*0.11),
+        shared,
+      };
+    })
+    .filter(item=>item.shared>=1)
+    .sort((a,b)=>b.score-a.score||
+      a.excerpt.length-b.excerpt.length);
+  const result:Readonly<{excerpt:string;coverage:number;score:number}>[]=[];
+  const seen=new Set<string>();
+  for(const item of ranked){
+    const key=normalize(item.excerpt);
+    if(!key||seen.has(key))continue;
+    seen.add(key);
+    result.push({excerpt:item.excerpt,coverage:item.coverage,score:item.score});
+    if(result.length>=Math.max(1,Math.min(8,maxCandidates)))break;
+  }
+  return result;
+}
+
+export async function collectOfficialSectionProcedureCandidatesV1({
+  graph,sections,claims,governmentSourceIds,
+}:{
+  graph:EvidenceGraphInput;
+  sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
+  claims:readonly MinimalClaim[];
+  governmentSourceIds:readonly string[];
+}):Promise<readonly EvidenceClaimRecoveryCandidateV1[]>{
+  if(sections.length===0||governmentSourceIds.length===0)return [];
+  const governmentIds=new Set(governmentSourceIds);
+  const government=graph.sources.filter(source=>
+    governmentIds.has(source.id)&&
+    source.sourceType==="PRIMARY_GOVERNMENT"&&
+    source.authorityTier==="A").slice(0,6);
+  if(government.length===0)return [];
+  const bodies=await fetchSourceBodies({
+    sources:government,claimEvidence:[],
+  },6);
+  const result:EvidenceClaimRecoveryCandidateV1[]=[];
+  for(const section of sections){
+    const owned=claims.filter(c=>c.id&&
+      c.id.startsWith("research-"+section.id+"-"));
+    if(owned.length===0)continue;
+    const ranked=government.flatMap(source=>{
+      const body=bodies.get(source.id);
+      if(!body)return [];
+      return rankOfficialProceduralFactSentencesV1({
+        heading:section.heading,mission:section.mission,bodyText:body,
+        maxCandidates:6,
+      }).map(candidate=>({...candidate,source}));
+    }).sort((a,b)=>b.score-a.score||
+      a.source.url.localeCompare(b.source.url));
+    const usedHosts=new Set<string>(),usedTexts=new Set<string>();
+    const available=[...owned],count=Math.min(2,owned.length);
+    for(const entry of ranked){
+      const host=new URL(entry.source.url).hostname;
+      const sentence=normalize(entry.excerpt);
+      if(usedHosts.has(host)||usedTexts.has(sentence))continue;
+      // Match a different EXISTING claim ID to each literal source
+      // fact. The claim wording is a hypothesis and is replaced
+      // only by a separately strictly-verified restatement.
+      const eligible=available
+        .map(c=>({c,score:lexicalRecoveryCoverageV1({
+          claimText:c.text,excerpt:entry.excerpt,
+        })}))
+        .sort((a,b)=>b.score-a.score||
+          a.c.id.localeCompare(b.c.id));
+      const assigned=eligible[0]?.c;
+      if(!assigned)break;
+      result.push({
+        claimId:assigned.id,sourceId:entry.source.id,
+        sourceUrl:entry.source.url,excerpt:entry.excerpt,
+        coverage:entry.coverage,
+        provenance:"SECTION_FIRST_GOVERNMENT_PROCEDURE",
+      });
+      available.splice(available.findIndex(c=>c.id===assigned.id),1);
+      usedHosts.add(host);usedTexts.add(sentence);
+      if(usedHosts.size>=count)break;
+    }
+  }
+  return result;
+}
+
+/**
+ * Secondary official procedure sentences for one post-semantic rescue.
+ * A previous speculative claim can be rejected even though another
+ * actionable sentence exists in the SAME government page. We return
+ * LITERAL sentences only (never evidence authority); the caller must
+ * re-fetch and re-check before allowing the Writer to use them.
+ */
+export interface OfficialPostSemanticProcedureAlternativeV1{
+  readonly sectionId:string;
+  readonly sourceId:string;
+  readonly sourceUrl:string;
+  readonly text:string;
+}
+export async function collectOfficialPostSemanticProcedureAlternativesV1({
+  graph,sections,governmentSourceIds,
+}:{
+  graph:EvidenceGraphInput;
+  sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
+  governmentSourceIds:readonly string[];
+}):Promise<readonly OfficialPostSemanticProcedureAlternativeV1[]>{
+  if(sections.length===0||governmentSourceIds.length===0)return [];
+  const allowed=new Set(governmentSourceIds);
+  const government=graph.sources.filter(source=>
+    allowed.has(source.id)&&source.sourceType==="PRIMARY_GOVERNMENT"&&
+    source.authorityTier==="A").slice(0,6);
+  if(government.length===0)return [];
+  const bodies=await fetchSourceBodies({
+    sources:government,claimEvidence:[],
+  },6);
+  const result:OfficialPostSemanticProcedureAlternativeV1[]=[];
+  for(const section of sections){
+    const ranked=government.flatMap(source=>{
+      const body=bodies.get(source.id);
+      if(!body)return [];
+      return rankOfficialProceduralFactSentencesV1({
+        heading:section.heading,mission:section.mission,
+        bodyText:body,maxCandidates:8,
+      }).map(sentence=>({...sentence,source}));
+    }).sort((a,b)=>b.score-a.score||
+      a.source.url.localeCompare(b.source.url));
+    const seen=new Set<string>();
+    for(const item of ranked){
+      const key=normalize(item.excerpt);
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      result.push({
+        sectionId:section.id,sourceId:item.source.id,
+        sourceUrl:item.source.url,text:item.excerpt,
+      });
+      // At most eight existing-source suggestions PER section.
+      if(seen.size>=8)break;
+    }
+  }
+  return result;
+}
+
+/**
+ * Comparison sections can fail semantic review even when the fetched
+ * page contains OTHER, narrower facts about price, features, or alert
+ * differences. Look only at a bounded set of the same rejected-claim
+ * source pages and return complete source sentences, NOT authority.
+ *
+ * This does not use SERP search, AI, or new source URLs. The caller
+ * must re-fetch and semantically review every proposed replacement.
+ */
+export interface PostSemanticComparisonAlternativeV1 {
+  readonly sectionId:string;
+  readonly sourceId:string;
+  readonly sourceUrl:string;
+  readonly text:string;
+}
+/**
+ * Shared with post-semantic claim selection. A "what should you look
+ * for in ..." service-scope question is a comparison, NOT an action
+ * plan to fix a credit file.
+ */
+export function isServiceChoiceSectionV1(heading:string):boolean{
+  return /\b(?:how\s+(?:(?:to|do\s+you|should\s+you)\s+)?(?:choose|compare|select)|what\s+(?:(?:should|can|do)\s+you\s+)?(?:look\s+for|compare|consider)|which\s+(?:features?|factors?)\s+(?:should|do)\s+you\s+(?:compare|consider))\b/i
+    .test(heading);
+}
+/**
+ * Selection information must describe a concrete service dimension,
+ * not merely restate the definition of monitoring or number of bureaus.
+ * This selects source candidates only, never fact authority.
+ */
+export function isServiceChoiceSourceFactV1(sentence:string):boolean{
+  if(!/\b(?:credit|monitoring|service|services|report|reports)\b/i.test(sentence))
+    return false;
+  // Do not confuse choosing a MONITORING SERVICE with advice to combine
+  // monitoring with other protection methods (freezes, fraud alerts).
+  // Neither broad protection advice nor site navigation is a service
+  // coverage, cost or feature difference.
+  if(/\b(?:combine|alongside|in addition to|other protective measures)\b/i
+    .test(sentence)&&
+    /\b(?:freezes?|fraud alerts?|other protective measures)\b/i.test(sentence))
+    return false;
+  if(/\b(?:reading time|highlights|in this article)\b/i.test(sentence)||
+    /\b(?:things to consider|questions to ask)\b[^.]{0,90}:\s*(?:cost|coverage|price|features?)\s*[.!]$/i.test(sentence))
+    return false;
+  const service=/\b(?:credit monitoring|monitoring service|monitoring services|service|services|plan|plans)\b/i;
+  const price=/\b(?:costs?|prices?|fees?|free|paid|pay|paying|trial|trials|premium|subscriptions?)\b/i;
+  const features=/\b(?:functionalit(?:y|ies)|features?|plans?|services?|coverage|covered|includes?|tracks?|checks?|monitors?|alerts?|notifications?)\b/i;
+  const scopeVerb=/\b(?:check|checks|monitor|monitors|track|tracks|notify|notifies|alerts?|cover|covers|includes?)\b/i;
+  const scopeObject=/\b(?:inquir(?:y|ies)|new accounts?|score changes?|credit limits?|utilization|balances?|credit reports?|account activity|types? of alerts?)\b/i;
+  return service.test(sentence)&&(
+    price.test(sentence)&&features.test(sentence)||
+    scopeVerb.test(sentence)&&scopeObject.test(sentence)
+  );
+}
+/** Prioritize the distinct selection VALUE a paragraph supplies, rather
+ * than raw overlap with H2 terms, which favored broad protective advice.
+ * Ranking never changes verification status.
+ */
+export function scoreServiceChoiceDecisionFactV1(sentence:string):number{
+  if(!isServiceChoiceSourceFactV1(sentence))return -1;
+  if(/\b(?:free|pay|paid|paying|fee|fees|cost|price|premium)\b/i.test(sentence)&&
+    /\b(?:functionalit(?:y|ies)|features?|plans?|coverage|more|different)\b/i.test(sentence))
+    return 100;
+  if(/\b(?:trials?|subscriptions?|fees?|prices?)\b/i.test(sentence))return 75;
+  if(/\b(?:utilization|balances|inquir(?:y|ies)|new accounts?)\b/i.test(sentence))
+    return 60;
+  return 35;
+}
+export function rankCreditMonitoringComparisonSentencesV1({
+  heading,mission,bodyText,
+}:{
+  heading:string;mission:string;bodyText:string;
+}):readonly string[]{
+  if(!isServiceChoiceSectionV1(heading))return [];
+  const topic=new Set(semanticTokens(heading+" "+mission));
+  const comparison=/\b(?:costs?|prices?|fees?|free|paid|premium|features?|alerts?|plans?|subscriptions?|coverage|notifications?|notifies|notify|includes?|covers?|tracks?|inquir(?:y|ies)|changes?)\b/i;
+  const subject=/\b(?:credit|monitoring|services?|reports?|bureaus?)\b/i;
+  const ranked=sentenceWindows(bodyText)
+    .filter(s=>s.length>=65&&s.length<=320&&
+      /[.!]$/.test(s)&&!s.includes("?")&&
+      s.split(/(?<=[.!?])\s+/).length===1&&
+      comparison.test(s)&&subject.test(s)&&
+      isServiceChoiceSourceFactV1(s))
+    .map(text=>({
+      text,shared:semanticTokens(text).filter(t=>topic.has(t)).length,
+      valueScore:scoreServiceChoiceDecisionFactV1(text),
+      specific:/\b(?:costs?|prices?|fees?|free|paid|premium|subscriptions?|features?|alerts?|notifications?|accounts?|inquir(?:y|ies)|changes?|identity|fraud)\b/i.test(text),
+    }))
+    .filter(x=>x.shared>=1&&x.specific)
+    .sort((a,b)=>b.valueScore-a.valueScore||
+      b.shared-a.shared||a.text.length-b.text.length);
+  const seen=new Set<string>(),out:string[]=[];
+  for(const x of ranked){
+    const key=normalize(x.text);
+    if(!key||seen.has(key))continue;
+    seen.add(key);out.push(x.text);
+    if(out.length>=6)break;
+  }
+  return out;
+}
+export async function collectPostSemanticComparisonAlternativesV1({
+  graph,sections,demotedEvidenceIds,targetClaimIds,
+}:{
+  graph:EvidenceGraphInput;
+  sections:readonly Readonly<{id:string;heading:string;mission:string}>[];
+  demotedEvidenceIds:readonly string[];
+  targetClaimIds:readonly string[];
+}):Promise<readonly PostSemanticComparisonAlternativeV1[]>{
+  const demoted=new Set(demotedEvidenceIds);
+  const target=new Set(targetClaimIds);
+  const trusted=new Map(graph.sources.filter(s=>
+    ["A","B","C"].includes(s.authorityTier)&&
+    ["PRIMARY_GOVERNMENT","PRIMARY_OFFICIAL","REPUTABLE_SECONDARY",
+      "ACADEMIC"].includes(s.sourceType)).map(s=>[s.id,s] as const));
+  const selected=graph.claimEvidence.filter(e=>
+    demoted.has(e.id)&&target.has(e.claimId)&&
+    trusted.has(e.sourceId)&&e.kind==="VERIFIED_EXCERPT"&&e.relation==="SUPPORTS");
+  const unique=new Set<string>(),sources:EvidenceGraphInput["sources"][number][]=[];
+  for(const e of selected){
+    if(unique.has(e.sourceId))continue;
+    const s=trusted.get(e.sourceId);
+    if(!s)continue;
+    unique.add(e.sourceId);sources.push(s);
+    if(sources.length>=6)break;
+  }
+  if(!sources.length)return [];
+  const bodies=await fetchSourceBodies({
+    sources,claimEvidence:[],
+  },6);
+  const out:PostSemanticComparisonAlternativeV1[]=[];
+  for(const section of sections){
+    for(const source of sources){
+      const body=bodies.get(source.id);
+      if(!body)continue;
+      for(const text of rankCreditMonitoringComparisonSentencesV1({
+        heading:section.heading,mission:section.mission,bodyText:body,
+      })){
+        out.push({sectionId:section.id,sourceId:source.id,
+          sourceUrl:source.url,text});
+        if(out.filter(x=>x.sectionId===section.id).length>=12)break;
+      }
+      if(out.filter(x=>x.sectionId===section.id).length>=12)break;
+    }
+  }
+  return out;
+}
+
 export async function collectEvidenceClaimRecoveryCandidatesV1({
   graph,
   claims,
   maxPerClaim = 3,
+  maxSources = MAX_EVIDENCE_FETCH_SOURCES,
 }: {
   graph:
     EvidenceGraphInput;
@@ -2761,6 +3094,7 @@ export async function collectEvidenceClaimRecoveryCandidatesV1({
 
   maxPerClaim?:
     number;
+  maxSources?:number;
 }): Promise<
   readonly Readonly<
     EvidenceClaimRecoveryCandidateV1
@@ -2768,7 +3102,7 @@ export async function collectEvidenceClaimRecoveryCandidatesV1({
 > {
   const bodies =
     await fetchSourceBodies(
-      graph
+      graph,maxSources
     );
 
   const output:
@@ -2989,16 +3323,18 @@ export function selectVerifiedClaimSourcesV1({
 export async function enrichLiveEvidenceGraphV1({
   graph,
   claims,
+  maxSources=MAX_EVIDENCE_FETCH_SOURCES,
 }: {
   graph:
     EvidenceGraphInput;
 
   claims:
     readonly MinimalClaim[];
+  maxSources?:number;
 }): Promise<EvidenceGraphInput> {
   const bodies =
     await fetchSourceBodies(
-      graph
+      graph,maxSources
     );
 
 

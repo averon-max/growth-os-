@@ -15,6 +15,8 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { getContentBriefById } from "@/lib/content/repository";
+import { prisma } from "@/lib/prisma";
+import { normalizeContentTopicKeyV1 } from "@/lib/content/article-library-grouping-v1";
 import { generateArticleFromBrief } from "@/lib/content/service";
 import {
   ARTICLE_RECOVERY_ORCHESTRATOR_V1,
@@ -35,6 +37,46 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     await requireWebsiteAccess(user.id, brief.websiteId);
+
+    /*
+     * ACTIVE_SAME_KEYWORD_PRODUCTION_NO_DUPLICATE_V1
+     *
+     * Old briefs remain in the library, but they must not cause
+     * fresh paid generation when another brief for this same site,
+     * primary keyword AND intent has an active publishable article.
+     * Never modify or delete historical records.
+     */
+    const activeAlternatives=await prisma.contentArticle.findMany({
+      where:{
+        briefId:{not:id},
+        brief:{
+          websiteId:brief.websiteId,
+          primaryKeyword:{equals:brief.primaryKeyword,mode:"insensitive"},
+          searchIntent:{equals:brief.searchIntent,mode:"insensitive"},
+        },
+        status:{in:["IN_REVIEW","APPROVED","PUBLISHED"]},
+      },
+      select:{
+        id:true,
+        status:true,
+        briefId:true,
+        brief:{select:{primaryKeyword:true}},
+      },
+      orderBy:{updatedAt:"desc"},
+      take:20,
+    });
+    const active=activeAlternatives.find(article=>
+      normalizeContentTopicKeyV1(article.brief.primaryKeyword)===
+        normalizeContentTopicKeyV1(brief.primaryKeyword)
+    );
+    if(active){
+      return NextResponse.json({
+        error:"An active article for this exact website, keyword and intent already exists. Open or revise it instead of generating another duplicate.",
+        code:"CONTENT_ACTIVE_ARTICLE_ALREADY_EXISTS",
+        existingArticleId:active.id,
+        existingBriefId:active.briefId,
+      },{status:409});
+    }
 
     /*
      * CONTENT_ARTICLE_RUN_BUDGET_V1

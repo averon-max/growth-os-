@@ -1927,6 +1927,39 @@
   }
 }
 
+
+.contentArticleGroup {
+  min-width: 0;
+  border-bottom: 1px solid #202327;
+}
+
+.contentArticleGroup > .contentArticleRow {
+  border-bottom: 0;
+}
+
+.contentRelatedDrafts {
+  border-top: 1px solid #202327;
+  background: #0b0d0e;
+}
+
+.contentRelatedDrafts > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px 14px 9px 33px;
+  color: #848b95;
+  font-size: 10px;
+}
+
+.contentRelatedDrafts > summary span {
+  color: #b9bdc3;
+}
+
+.contentRelatedDrafts .contentArticleRow {
+  padding-left: 32px;
+}
+
 .contentArticleList {
   display: grid;
 }

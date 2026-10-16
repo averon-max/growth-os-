@@ -112,6 +112,56 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.trends).toHaveBeenCalledWith("credit monitoring", "US");
   });
 
+  it("never pays for SERP on the five real buyer/mixed-intent keywords; SEED-only terms do not count as discovery", async () => {
+    mocks.related.mockResolvedValue([
+      {keyword:"credit monitoring companies",searchVolume:14800,keywordDifficulty:52,cpc:1.3},
+      {keyword:"free credit monitoring services",searchVolume:2900,keywordDifficulty:52,cpc:1.1},
+      {keyword:"3 bureau credit monitoring",searchVolume:480,keywordDifficulty:42,cpc:0.5},
+      {keyword:"free credit monitoring",searchVolume:135000,keywordDifficulty:61,cpc:1.9},
+      {keyword:"free credit monitoring app",searchVolume:1900,keywordDifficulty:68,cpc:1.2},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,seed:"what is credit monitoring",deepSerpLimit:3,
+      useGptDecision:false,
+    });
+    expect(result.observed).toBe(6);
+    expect(result.candidateSnapshots.some(x=>
+      x.keyword==="credit monitoring companies")).toBe(true);
+    expect(result.excluded).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword:"credit monitoring companies",reason:"SEPARATE_PAGE_INTENT",
+      }),
+      expect.objectContaining({
+        keyword:"free credit monitoring",reason:"INTENT_REVIEW_REQUIRED",
+      }),
+      expect.objectContaining({
+        keyword:"3 bureau credit monitoring",reason:"INTENT_REVIEW_REQUIRED",
+      }),
+    ]));
+    expect(result.decision.status).toBe("REVIEW");
+    expect(result.serpResults).toEqual([]);
+    expect(mocks.serp).not.toHaveBeenCalled();
+    expect(mocks.openai).not.toHaveBeenCalled();
+  });
+
+  it("does deep SERP for genuinely observed informational what-is-service question, not mistaken service-purchase intent", async () => {
+    mocks.related.mockResolvedValue([
+      {keyword:"what is credit monitoring service",
+        searchVolume:60,keywordDifficulty:18,cpc:0.3},
+      {keyword:"free credit monitoring app",
+        searchVolume:1900,keywordDifficulty:21,cpc:0.4},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,seed:"what is credit monitoring",deepSerpLimit:2,
+      useGptDecision:false,
+    });
+    expect(result.serpResults.map(x=>x.query)).toEqual([
+      "what is credit monitoring service",
+    ]);
+    expect(result.clusters[0]?.intent).toBe("INFORMATIONAL");
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+  });
+
   it("does not invoke paid providers when authorization is absent", async () => {
     await expect(researchKeywordOpportunitiesV2({
       ...input, authorizePaidResearch: false,

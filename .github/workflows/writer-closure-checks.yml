@@ -1,0 +1,129 @@
+name: Writer closure checks
+
+on:
+  pull_request:
+    branches:
+      - fix/writer-direct-answer-replan-20261012
+    paths:
+      - "src/lib/content/master-article-critic-repair-execution.ts"
+      - "src/lib/content/master-article-critic-repair-execution.test.ts"
+      - "src/lib/content/production-final-article-readiness-adapter-v1.ts"
+      - "src/lib/content/production-final-article-readiness-adapter-v1.test.ts"
+      - "src/lib/content/source-grounded-claim-replan-v1.ts"
+      - "src/lib/content/source-grounded-claim-replan-v1.test.ts"
+      - "src/lib/content/post-semantic-source-narrowing-v1.ts"
+      - "src/lib/content/post-semantic-source-narrowing-v1.test.ts"
+      - "scripts/content-existing-article-official-response-facts-audit.ts"
+      - "src/lib/content/live-evidence-verification.ts"
+      - "src/lib/content/existing-article-research-recovery-v1.ts"
+      - "src/lib/content/research-recovery-publication-bridge-v1.ts"
+      - "src/lib/content/research-recovery-publication-bridge-v1.test.ts"
+      - "src/lib/content/article-length-contract-v1.ts"
+      - "src/lib/content/master-section-prompt.ts"
+      - "src/lib/content/comprehensive-article-depth-profile-v1.test.ts"
+      - "scripts/content-existing-article-seo-depth-audit.ts"
+      - "src/lib/content/existing-article-research-recovery-v1.test.ts"
+      - "src/lib/content/unsupported-price-sentence-recovery-v1.ts"
+      - "src/lib/content/unsupported-price-sentence-recovery-v1.test.ts"
+      - "src/lib/content/research-recovery-authoritative-sources-v1.ts"
+      - "src/lib/content/research-recovery-authoritative-sources-v1.test.ts"
+      - "scripts/content-existing-article-research-recovery-live.ts"
+      - "scripts/content-existing-article-research-evidence-diagnose.ts"
+      - "src/lib/content/research-diagnosis-cli-source-v1.test.ts"
+      - "src/lib/content/content-topic-typo-guard-v1.ts"
+      - "src/lib/content/content-topic-typo-guard-v1.test.ts"
+      - "src/app/api/content/briefs/route.ts"
+      - "src/components/dashboard/content-create-button.tsx"
+      - "src/lib/content/existing-article-quality-improvement-v1.ts"
+      - "src/lib/content/same-article-quality-improvement-v1.ts"
+      - "src/lib/content/same-article-quality-improvement-v1.test.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.test.ts"
+      - "scripts/content-improve-existing-article-quality.ts"
+      - "src/lib/content/service.ts"
+      - "src/components/dashboard/article-workspace.tsx"
+      - "src/app/dashboard/content/articles/[id]/page.tsx"
+      - "src/app/api/content/articles/[id]/approve/route.ts"
+      - "src/app/api/content/articles/[id]/publish/route.ts"
+      - "src/lib/content/existing-article-quality-improvement-v1.ts"
+      - "src/lib/content/verified-archived-writer-run-v1.ts"
+      - "src/lib/content/verified-archived-writer-run-v1.test.ts"
+      - "scripts/content-improve-existing-article-quality.ts"
+      - "src/lib/content/quality-improvement-progress-scope-v1.ts"
+      - "src/lib/content/quality-improvement-progress-scope-v1.test.ts"
+      - "src/lib/content/quality-improvement-h3-v1.ts"
+      - "src/lib/content/quality-improvement-h3-v1.test.ts"
+      - "src/lib/content/master-section-repair-prompt.ts"
+      - "src/lib/content/quality-improvement-editorial-recovery-v1.ts"
+      - "src/lib/content/quality-improvement-editorial-recovery-v1.test.ts"
+      - "src/lib/content/quality-improvement-post-editorial-depth-v1.ts"
+      - "src/lib/content/quality-improvement-post-editorial-depth-v1.test.ts"
+      - "src/lib/content/quality-improvement-keyword-recovery-v1.ts"
+      - "src/lib/content/quality-improvement-keyword-recovery-v1.test.ts"
+      - "src/lib/content/quality-improvement-keyword-original-sentence-v1.ts"
+      - "src/lib/content/quality-improvement-keyword-original-sentence-v1.test.ts"
+      - "src/lib/content/article-search-readiness-v2.ts"
+      - "src/lib/content/article-search-readiness-v2.test.ts"
+      - "src/lib/content/observed-keyword-article-bridge-v1.ts"
+      - "src/lib/content/observed-keyword-article-bridge-v1.test.ts"
+      - "scripts/content-existing-article-search-readiness.ts"
+      - "scripts/content-research-article-keyword-clusters.ts"
+      - "src/lib/content/observed-query-heading-candidate-v1.ts"
+      - "src/lib/content/observed-query-heading-candidate-v1.test.ts"
+      - "src/lib/keywords/keyword-topic-intent-gate-v1.ts"
+      - "src/lib/keywords/keyword-topic-intent-gate-v1.test.ts"
+      - "src/lib/keywords/keyword-topic-scoped-shortlist-v1.ts"
+      - "src/lib/keywords/keyword-topic-scoped-shortlist-v1.test.ts"
+      - "src/lib/keywords/keyword-research-v2.ts"
+      - "scripts/content-audit-cached-keyword-topic-fit.ts"
+      - "src/lib/keywords/keyword-question-suggestions-provider-v1.ts"
+      - "src/lib/keywords/keyword-question-suggestions-provider-v1.test.ts"
+      - "scripts/content-research-article-questions.ts"
+      - "src/lib/keywords/article-question-scope-v2.ts"
+      - "src/lib/keywords/article-question-scope-v2.test.ts"
+      - "src/lib/content/article-question-gap-audit-v1.ts"
+      - "src/lib/content/article-question-gap-audit-v1.test.ts"
+      - "scripts/content-existing-article-question-gap-audit.ts"
+      - "src/lib/content/production-master-live-stage-planner.ts"
+      - "src/lib/content/stage-plan-information-gain-retry-v1.ts"
+      - "src/lib/content/stage-plan-information-gain-retry-v1.test.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.ts"
+      - "src/lib/content/comprehensive-editorial-release-gate-v1.test.ts"
+      - "src/lib/content/comprehensive-stage-plan-structure-v1.ts"
+      - "src/lib/content/comprehensive-stage-plan-structure-v1.test.ts"
+      - "src/lib/content/production-master-live-stage-planner.ts"
+      - ".github/workflows/writer-closure-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Local placeholder for Prisma generate and tests; no live DB access.
+      DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies and generate Prisma client
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Focused Writer regression
+        run: npx vitest run src/lib/content/master-article-critic-repair-execution.test.ts src/lib/content/production-final-article-readiness-adapter-v1.test.ts
+      - name: Content module regression
+        run: npx vitest run src/lib/content
+      - name: Longform H2/H3 and semantic reader-job regression
+        run: npx vitest run src/lib/content/comprehensive-editorial-release-gate-v1.test.ts src/lib/content/comprehensive-stage-plan-structure-v1.test.ts
+      - name: Keyword entity and topic scope regression
+        run: npx vitest run src/lib/keywords/keyword-topic-intent-gate-v1.test.ts src/lib/keywords/keyword-topic-scoped-shortlist-v1.test.ts src/lib/keywords/keyword-research-v2.test.ts src/lib/keywords/keyword-intelligence-v2.test.ts
+      - name: DataForSEO question provider regression
+        run: npx vitest run src/lib/keywords/keyword-question-suggestions-provider-v1.test.ts
+      - name: Question query semantic scope and reader job regression
+        run: npx vitest run src/lib/keywords/article-question-scope-v2.test.ts

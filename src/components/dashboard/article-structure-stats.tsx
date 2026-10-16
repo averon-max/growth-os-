@@ -19,12 +19,17 @@ import {
   computeArticleStructureStatsV1,
 } from "@/lib/content/article-structure-stats-v1";
 
+import {
+  detectPersistedArticleEditorialRepetitionV1,
+} from "@/lib/content/editorial-repetition-guard-v1";
+
 
 export function ArticleStructureStats({
   title,
   h1,
   bodyMarkdown,
   keywords,
+  status,
 }: {
   title:
     string;
@@ -37,6 +42,7 @@ export function ArticleStructureStats({
 
   keywords:
     readonly string[];
+  status?: string;
 }) {
   /*
    * ARTICLE_STRUCTURE_CANONICAL_V1
@@ -61,7 +67,12 @@ export function ArticleStructureStats({
     );
 
 
-  const metrics = [
+  const editorialFindings=useMemo(
+    ()=>detectPersistedArticleEditorialRepetitionV1(bodyMarkdown),
+    [bodyMarkdown]
+  );
+
+    const metrics = [
     {
       label:
         "Words",
@@ -174,10 +185,31 @@ export function ArticleStructureStats({
             styles.badge
           }
         >
-          Live draft
+          {status === "IN_REVIEW"
+            ? "In review"
+            : status === "APPROVED"
+              ? "Approved"
+              : status === "PUBLISHED"
+                ? "Published"
+                : status === "GENERATING"
+                  ? "Generating"
+                  : status === "REJECTED"
+                    ? "Needs revision"
+                    : status === "BLOCKED_EXTERNAL"
+                      ? "Waiting for provider"
+                      : "Draft"}
         </span>
       </div>
 
+
+      {editorialFindings.length>0 && (
+        <div className={styles.editorialWarning} role="alert">
+          <strong>Editorial revision required.</strong>{" "}
+          Repeated explanations or advice were detected across
+          sections. Keyword coverage alone does not measure article quality.
+          Review section {editorialFindings[0].sectionIndex+1} before approval.
+        </div>
+      )}
 
       <div
         className={

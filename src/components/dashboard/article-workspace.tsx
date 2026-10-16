@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
+import {countWords} from "@/lib/content/article-analyzer";
 
 import {
   Area,
@@ -42,6 +43,10 @@ import styles from "./article-workspace.module.css";
 import {
   ArticleStructureStats,
 } from "./article-structure-stats";
+
+import {
+  detectPersistedArticleEditorialRepetitionV1,
+} from "@/lib/content/editorial-repetition-guard-v1";
 
 
 type ArticleState = {
@@ -452,10 +457,10 @@ function deltaText(
 }
 
 export function ArticleWorkspace({
-  initialArticle,
+  initialArticle,qualityMinimumWords=0,
 }: {
-  initialArticle:
-    ArticleState;
+  initialArticle:ArticleState;
+  qualityMinimumWords?:number;
 }) {
   const [
     article,
@@ -973,6 +978,88 @@ export function ArticleWorkspace({
     }
   }
 
+  async function recoverResearch(){
+    if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
+    // Paid full-pipeline jobs may outlive the browser HTTP request.
+    // Give the operator an exact local CLI command instead of making
+    // a background paid POST that could time out or be accidentally retried.
+    const command="cd /Users/user/growth-os && NODE_OPTIONS=--conditions=react-server "+
+      "npx tsx scripts/content-existing-article-research-recovery-live.ts "+
+      "--article="+article.id+" --execute";
+    window.prompt(
+      "Research recovery is CLI-only until persistent jobs are available. "+
+      "This command can cost money. Run FREE preflight first; "+
+      "copy the command below only after checking evidence readiness.",
+      command
+    );
+  }
+
+  const qualityCurrentWords=countWords(article.bodyMarkdown);
+  const qualityNeedsImprovement=article.status==="IN_REVIEW" &&
+    !editing&&qualityMinimumWords>0&&
+    (qualityCurrentWords<qualityMinimumWords||
+      ((article.bodyMarkdown.match(/^##\\s+/gm)??[]).length>=4 &&
+       (article.bodyMarkdown.match(/^###\\s+/gm)??[]).length<2));
+
+  function offerQualityImprovement(){
+    if(!qualityNeedsImprovement||busy!==null)return;
+    const base="cd /Users/user/growth-os-writer-verified && "+
+      "GROWTH_OS_ENV_DIR=/Users/user/growth-os "+
+      "NODE_OPTIONS=--conditions=react-server "+
+      "npx tsx scripts/content-improve-existing-article-quality.ts "+
+      "--article="+article.id;
+    const command=base+" && "+base+
+      " --execute --authorize-paid-improvement";
+    window.prompt(
+      "Quality improvement of this SAME article. First command is a FREE "+
+      "read-only preview; the second explicitly authorizes paid, bounded "+
+      "source-verified section rewrites. Original article remains unchanged "+
+      "unless all checks and the new SERP Replay pass. Copy the command:",
+      command);
+  }
+
+  async function repairEditorial(){
+    if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
+    const accepted=window.confirm(
+      "Repair repeated sections using verified saved evidence? "+
+      "This uses a limited number of paid AI requests, never re-runs "+
+      "Research or the full Writer, and saves only if all checks pass."
+    );
+    if(!accepted)return;
+    setBusy("editorial-repair");
+    setError(null);
+    try{
+      const response=await fetch(
+        "/api/content/articles/"+encodeURIComponent(article.id)+
+        "/repair-editorial",
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            expectedUpdatedAt:article.updatedAt,
+            authorizeBoundedPaidRepair:true,
+          }),
+        }
+      );
+      const result=await response.json();
+      if(!response.ok){
+        throw new Error(
+          typeof result?.error==="string"
+            ? result.error
+            : "Editorial repair did not complete. The original article is unchanged."
+        );
+      }
+      // The new persisted article is bound to a real replay artifact
+      // and current Evidence. Reload exact committed state from server.
+      window.location.reload();
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:
+        "Editorial repair failed. Original article was preserved.");
+    }finally{
+      setBusy(null);
+    }
+  }
+
   async function articleAction(
     action:
       "approve" |
@@ -1475,6 +1562,45 @@ ${article.bodyMarkdown}`
             </button>
           ) : null}
 
+          {article.status==="IN_REVIEW"&&!editing &&
+            detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ? (
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={busy!==null}
+              title="Copy terminal command for controlled research recovery (browser HTTP is disabled)"
+              onClick={()=>void recoverResearch()}
+            >
+              <Sparkles size={12}/>
+              Research recovery (CLI)
+            </button>
+          ) : null}
+
+          {article.status==="IN_REVIEW"&&!editing &&
+            detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ? (
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={busy!==null}
+              onClick={()=>void repairEditorial()}
+            >
+              <Sparkles size={12}/>
+              {busy==="editorial-repair"?"Repairing & verifying…":
+                "Repair article"}
+            </button>
+          ) : null}
+
+          {qualityNeedsImprovement ? (
+            <button type="button" className={styles.secondaryButton}
+              disabled={busy!==null}
+              title="Improve the same article, preserve source claims, then run all gates and SERP Replay"
+              onClick={offerQualityImprovement}>
+              <Sparkles size={12}/> Improve existing article (verified CLI)
+            </button>
+          ) : null}
+
           {(article.status ===
             "DRAFT" ||
             article.status ===
@@ -1486,8 +1612,20 @@ ${article.bodyMarkdown}`
                 styles.primaryButton
               }
               disabled={
-                busy !==
-                null
+                busy !== null ||
+                detectPersistedArticleEditorialRepetitionV1(
+                  article.bodyMarkdown
+                ).length > 0 ||
+                qualityNeedsImprovement
+              }
+              title={
+                detectPersistedArticleEditorialRepetitionV1(
+                  article.bodyMarkdown
+                ).length > 0
+                  ? "Resolve repeated low-information sections before approval"
+                  : qualityNeedsImprovement
+                    ? "Expand and structure this comprehensive guide before approval"
+                    : "Approve verified article"
               }
               onClick={() =>
                 void articleAction(
@@ -1536,6 +1674,15 @@ ${article.bodyMarkdown}`
           ) : null}
         </div>
       </div>
+
+      {qualityNeedsImprovement ? (
+        <p role="status" className={styles.error}>
+          Needs editorial improvement: {qualityCurrentWords} words;
+          comprehensive guide target {qualityMinimumWords}+ words.
+          Exact planned keywords alone do not prove useful coverage.
+          Improve this same article before approving or publishing.
+        </p>
+      ) : null}
 
       {error ? (
         <div
@@ -2424,6 +2571,7 @@ ${article.bodyMarkdown}`
 
       {/* ARTICLE_STRUCTURE_STATS_SIDEBAR_BLUE_V1 */}
       <ArticleStructureStats
+        status={article.status}
         title={
           draft.title
         }

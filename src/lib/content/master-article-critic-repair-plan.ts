@@ -416,30 +416,44 @@ export function buildMasterArticleCriticRepairPlanV1({
 
 
   /*
-   * MASTER_CRITIC_WARN_DIAGNOSTIC_ONLY_V1
+   * RANK_READY_OPTIONAL_KEYWORD_REPAIR_V1
    *
-   * WARN is review telemetry, not an automatic authoring mandate.
+   * Nearly all WARNs remain diagnostic. The sole exception is an
+   * explicitly section-scoped missing production-planned keyword.
    *
-   * Spending Writer/repair calls on non-blocking cosmetic warnings
-   * creates unnecessary model cost and can itself introduce new
-   * semantic risk.
+   * One bounded targeted repair transaction may integrate up to
+   * TWO such phrases. It must pass the usual reconciliation,
+   * semantic verifier and full nine-critic replay. The caller
+   * rolls back to the original already-accepted Writer run if
+   * this optional enhancement cannot pass.
    *
-   * Only a localized BLOCK may enter the bounded model-repair
-   * transaction.
-   *
-   * WARN findings remain in the critic suite and therefore remain
-   * visible to Final Readiness / human review.
+   * Never route evidence/cannibalization/ownership WARNs to prose
+   * repair. Never introduce a new topic or fabricate authority.
    */
-  const repairable =
+  const blockingRepairable =
     classifications.filter(
       (
         item
       ) =>
-        item.severity ===
-          "BLOCK" &&
-        item.repairability ===
-          "REPAIRABLE_SECTION"
+        item.severity === "BLOCK" &&
+        item.repairability === "REPAIRABLE_SECTION"
     );
+
+  const keywordWarns =
+    classifications.filter(
+      (
+        item
+      ) =>
+        item.severity === "WARN" &&
+        item.criticId === "COVERAGE" &&
+        item.code === "RANK_READY_PLANNED_KEYWORD_MISSING" &&
+        item.repairability === "REPAIRABLE_SECTION"
+    ).slice(0, 2);
+
+  const repairable =
+    blockingRepairable.length > 0
+      ? [...blockingRepairable, ...keywordWarns]
+      : keywordWarns;
 
 
   /*

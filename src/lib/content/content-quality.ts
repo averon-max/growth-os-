@@ -3,6 +3,14 @@ import {
 } from "./article-structure-stats-v1";
 
 import {
+  countWords as countReaderWords,
+} from "./article-analyzer";
+
+import {
+  normalizeMasterArticleProseSpacesV1,
+} from "./article-prose-whitespace-v1";
+
+import {
   ContentGenerationError,
 } from "./generator";
 
@@ -31,18 +39,9 @@ function normalize(
 function countWords(
   markdown: string
 ): number {
-  return markdown
-    .replace(
-      /[#>*_`\[\]()!-]/g,
-      " "
-    )
-    .split(
-      /\s+/
-    )
-    .filter(Boolean)
-    .length;
+  // Reader-facing Article Intelligence and final quality must agree.
+  return countReaderWords(markdown);
 }
-
 
 function countPhrase(
   text: string,
@@ -322,19 +321,30 @@ export function auditArticle({
   }
 
   /*
-   * Detect unambiguous spacing defects, not dictionary-based
-   * spelling guesses. Strip fenced/inline code and URLs so a URL or
-   * code literal cannot be misclassified as broken prose.
+   * PROSE_SPACING_AUDIT_MATCHES_COMPOSER_V1
+   *
+   * The canonical composer already repairs 3+ spaces in plain prose
+   * before Master Critics and SERP Replay. Audit ONLY the spaces it
+   * can legitimately change. Indented Markdown/list/code/table
+   * structures, URLs and inline code are NOT malformed prose.
+   *
+   * Previously, the Audit flagged protected Markdown formatting as
+   * BROKEN_ARTICLE_EXCESSIVE_SPACES after the article had already
+   * passed 9 critics and SERP Replay, causing a paid-for draft to
+   * be REJECTED for correct indentation.
    */
+  if (
+    normalizeMasterArticleProseSpacesV1(article.bodyMarkdown) !==
+    article.bodyMarkdown
+  ) {
+    issues.push("BROKEN_ARTICLE_EXCESSIVE_SPACES");
+  }
+
   const proseOnly =
     article.bodyMarkdown
       .replace(/```[\s\S]*?```/g, "[code]")
       .replace(/`[^`\n]*`/g, "[code]")
       .replace(/https?:\/\/[^\s)]+/g, "[url]");
-
-  if (/ {3,}/.test(proseOnly)) {
-    issues.push("BROKEN_ARTICLE_EXCESSIVE_SPACES");
-  }
 
   if (/\p{L},(?=\p{Ll})/u.test(proseOnly)) {
     issues.push("BROKEN_ARTICLE_COMMA_SPACING");

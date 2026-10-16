@@ -2,6 +2,17 @@ import {
   normalizeProductionClaimCategoryV2,
 } from "./production-claim-category-normalization-v2";
 
+import {reviewAndConstrainVerifiedEvidenceV1} from "./semantic-evidence-review-v1";
+
+import {
+  inspectStagePlanInformationGainV1,
+  INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
+} from "./stage-plan-information-gain-v1";
+import {buildStagePlanInformationGainRetryV1}
+  from "./stage-plan-information-gain-retry-v1";
+import {inspectComprehensiveStagePlanStructureV1}
+  from "./comprehensive-stage-plan-structure-v1";
+
 import {
 
   ARTICLE_TEMPLATE_POLICIES_V1,
@@ -1555,6 +1566,8 @@ export async function planProductionMasterArtifactsFromLiveSources({
 
       atomicClaimContract,
 
+      INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
+
       sectionClaimOwnershipContract,
 
       seoContentTargetPolicy,
@@ -1821,6 +1834,29 @@ function inspectStagePlanCompleteness(
         missing.push(
           "sections[].evidenceSensitiveRole.requiredClaimIds"
         );
+      }
+
+      /*
+       * STAGE_PLAN_INFORMATION_GAIN_CLAIM_BREADTH_V1
+       *
+       * A six-section explanatory article with one generic fact per
+       * reader job must be repaired at the Stage Plan, not padded by
+       * the Writer. Reuse the existing one bounded plan regeneration;
+       * no invented claims gain evidence authority here.
+       */
+      const informationGain=inspectStagePlanInformationGainV1(
+        candidate.sections
+      );
+      if(informationGain.issueCode){
+        missing.push(informationGain.issueCode);
+      }
+      const comprehensiveStructure=inspectComprehensiveStagePlanStructureV1({
+        intent:mission.missionIntent,
+        pageType:candidate.pageType,
+        sections:candidate.sections,
+      });
+      if(comprehensiveStructure.issueCode){
+        missing.push(comprehensiveStructure.issueCode);
       }
 
       /*
@@ -2605,6 +2641,32 @@ function inspectStagePlanCompleteness(
         "Your previous response was valid JSON but did not satisfy the complete production Stage Plan contract.",
 
         `Missing or invalid fields: ${missingStagePlanFields.join(", ")}`,
+        /*
+         * A generic full retry kept reproducing one broad claim per H2
+         * even after consuming a second paid planner call.
+         *
+         * Supply the ACTUAL failed sections and factual hypotheses so
+         * this one existing regeneration re-architects the real reader
+         * jobs; no invented claim is ever marked verified.
+         */
+        ...(missingStagePlanFields.includes("sections[].informationGainClaimBreadth")?
+          [buildStagePlanInformationGainRetryV1({
+            sections:plan.sections,
+            claims:plan.claims,
+          })??""] : []),
+        ...(missingStagePlanFields.includes("sections[].comprehensiveReaderJobs")?
+          [
+            "COMPREHENSIVE_READER_JOBS_RECOVERY_V1:",
+            "This is a 2000+ word informational explainer. Only 1-2 major reader information jobs cannot make a complete comprehensive guide.",
+            "For Growth OS, a comprehensive article needs at least SIX genuinely distinct source-verifiable major H2 jobs.",
+            "Do not invent padding headings or split synonymous questions to meet six. If the evidence cannot support six jobs, fail research rather than fabricate.",
+            "H3 must subdivide meaningful complex H2 concepts across sections, without repeating headings or inserting filler.",
+            "Actual current jobs: "+JSON.stringify(plan.sections.map(x=>({
+              heading:x.heading,mission:x.mission,
+              topics:x.topics,questions:x.questions,
+            }))),
+          ]:[]),
+
 
         "Regenerate the ENTIRE Stage Plan JSON object from scratch.",
 
@@ -2752,9 +2814,22 @@ function inspectStagePlanCompleteness(
       }
     );
 
+    /*
+     * Do not misreport model-proposed breadth as a JSON/schema field
+     * missing. The real failure is insufficient distinct source-
+     * verifiable information for many explanatory H2 reader jobs.
+     * A retry of the same provider with the same prompt is not a fix.
+     */
+    const breadthOnly=
+      missingStagePlanFields.length===1&&
+      missingStagePlanFields[0]==="sections[].informationGainClaimBreadth";
     throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
-      `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
+      breadthOnly?
+        "LIVE_STAGE_PLAN_INFORMATION_GAIN_UNRESOLVED":
+        "LIVE_STAGE_PLAN_MODEL_OUTPUT_INCOMPLETE",
+      breadthOnly?
+        "Research planning still has many broad explanatory sections with only one generic factual proposition each. No brief/article was created. Review the distinct information jobs and obtain verifiable facts before retrying; keyword or H2 quotas cannot replace evidence.":
+        `Stage Plan remained incomplete after one bounded regeneration. Missing or invalid: ${missingStagePlanFields.join(", ")}`
     );
   }
 
@@ -6162,6 +6237,31 @@ function inspectStagePlanCompleteness(
     }
   );
 
+
+  /*
+   * FINAL_EVIDENCE_SEMANTIC_ENTAILMENT_V1
+   *
+   * The lexical verifier checks vocabulary, numeric identity and
+   * negation; it does NOT prove that the excerpt states the complete
+   * proposition. A single bounded review after all evidence/claim
+   * re-planning checks full claim->excerpt support, before Section
+   * Contracts and any Writer spend. Never promotes unsupported
+   * material. Rejected verified pairs become REFERENCE_ONLY.
+   *
+   * At most four logical provider batches (18 pairs each).
+   * Model response failure aborts Stage Plan without persisting it.
+   */
+  const semanticEvidenceReview=await reviewAndConstrainVerifiedEvidenceV1({
+    claims:claimsInput,
+    graph:evidenceGraphInput,
+  });
+  evidenceGraphInput=semanticEvidenceReview.graph;
+  console.info("[content semantic evidence review]",{
+    reviewed:semanticEvidenceReview.reviewedPairs,
+    approved:semanticEvidenceReview.approvedPairs,
+    demoted:semanticEvidenceReview.demotedEvidenceIds.length,
+    logicalAiCalls:semanticEvidenceReview.calls,
+  });
 
   // ---- Stage 8A/8B ----
   const questions = [...new Set(plan.questions.map((q) => q.trim()).filter(Boolean))];

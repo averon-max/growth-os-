@@ -33,7 +33,10 @@ export const COMPREHENSIVE_INFORMATIONAL_TARGET_WORDS_V1 = Object.freeze({
    *
    * This is NOT claimed to be a Google ranking rule.
    */
-  min: 1500,
+  // Reader-first product preference for genuinely comprehensive guides.
+  // If sources cannot support this depth, research/section gates must
+  // fail closed rather than padding words or fabricating claims.
+  min: 2000,
 
   /*
    * Planning headroom.
@@ -41,7 +44,7 @@ export const COMPREHENSIVE_INFORMATIONAL_TARGET_WORDS_V1 = Object.freeze({
    * Final publication quality is still governed by coverage,
    * evidence, structure, critics and SERP replay.
    */
-  max: 2350,
+  max: 3200,
 });
 
 const INFORMATIONAL_INTENTS = new Set(["INFORMATIONAL", "DEFINITIONAL"]);

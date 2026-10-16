@@ -2612,9 +2612,8 @@ export function ContentExplorer({
 
                   const canGenerate =
                     !latestArticle ||
-                    latestArticle
-                      .status ===
-                      "REJECTED";
+                    latestArticle.status === "REJECTED" ||
+                    latestArticle.status === "BLOCKED_EXTERNAL";
 
                   return (
                     <div
@@ -2672,7 +2671,7 @@ export function ContentExplorer({
                                 brief.id
                                   ? "Generating…"
                                   : latestArticle
-                                    ? "Regenerate article"
+                                    ? "Retry article"
                                     : "Generate article"
                               }
 

@@ -111,3 +111,43 @@ describe(
     );
   }
 );
+
+describe("direct question claim replan safety", () => {
+  const scoreQuestion = {
+    originalText:
+      "Credit monitoring uses soft inquiries, which do not affect credit scores.",
+    primaryQuery: "what is credit monitoring",
+    sectionHeading: "Does Credit Monitoring Affect Your Credit Score?",
+    sectionMission: "Answer the score-impact question and clarify how soft inquiries work.",
+    sectionQuestions: ["What is a soft inquiry?"],
+    sectionExpectedOutcome: "Reader knows whether monitoring changes their score.",
+  };
+
+  it("permits a narrower direct answer despite an adjacent definition subquestion", () => {
+    expect(isSafeMissionPreservingClaimReplanCandidateV1({
+      ...scoreQuestion,
+      candidateText: "Credit monitoring has no impact on your credit scores.",
+    })).toBe(true);
+  });
+
+  it("blocks a same-subject answer that drops the actual score-impact information job", () => {
+    expect(isSafeMissionPreservingClaimReplanCandidateV1({
+      ...scoreQuestion,
+      candidateText: "Credit monitoring does not require identity theft insurance.",
+    })).toBe(false);
+  });
+
+  it("preserves polarity while moving to the exact answer", () => {
+    expect(isSafeMissionPreservingClaimReplanCandidateV1({
+      ...scoreQuestion,
+      candidateText: "Credit monitoring raises your credit scores.",
+    })).toBe(false);
+  });
+
+  it("still rejects invented numerical claims", () => {
+    expect(isSafeMissionPreservingClaimReplanCandidateV1({
+      ...scoreQuestion,
+      candidateText: "Credit monitoring has no impact on your scores within 30 days.",
+    })).toBe(false);
+  });
+});

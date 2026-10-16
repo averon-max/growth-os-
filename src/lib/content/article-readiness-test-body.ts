@@ -3,8 +3,8 @@
  *
  * Builds a structurally valid article body for a plan: one heading per
  * WRITABLE section (at the planned level) plus neutral body words.
- * Total length is ~1950 words so comprehensive-informational fixtures
- * land inside the 1800-2350 product range.
+ * Total length is ~2600 words so comprehensive-informational fixtures
+ * land inside the 2000-3200 product-specific editorial range.
  */
 export function buildCompliantArticleBody(
   plan: {
@@ -14,7 +14,7 @@ export function buildCompliantArticleBody(
       readonly level?: number;
     }[];
   },
-  totalWords = 1950
+  totalWords = 2600
 ): string {
   const writable =
     plan.sections.filter(

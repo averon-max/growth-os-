@@ -34,6 +34,10 @@ import {
 } from "@/lib/content/production-master-brief-required";
 import { geminiGenerator } from "@/lib/content/gemini-generator";
 import { getContentBriefs } from "@/lib/content/repository";
+import { normalizeContentTopicKeyV1 } from "@/lib/content/article-library-grouping-v1";
+import { isLikelyContentTopicTypoV1 } from "@/lib/content/content-topic-typo-guard-v1";
+import { ArticlePreWriterAnswerSupportErrorV2 }
+  from "@/lib/content/article-prewriter-evidence-gate-v1";
 import {
   parseOptionalExplicitSearchMissionInput,
 } from "@/lib/content/search-mission-ingress";
@@ -221,6 +225,95 @@ export async function POST(req: NextRequest) {
         generationPolicy
       );
 
+    /*
+     * CONTENT_TOPIC_PREPAID_DUPLICATE_GUARD_V1
+     *
+     * New briefs must not silently spawn multiple paid Writer runs for
+     * a site and exact approved keyword. Reuse the existing brief and
+     * article via the user-facing Content library instead.
+     *
+     * This runs before crawl preflight, evidence research, planner and
+     * model requests. Intentional new angles require a distinct approved
+     * search target; do not silently overwrite prior article history.
+     */
+    const topicKey=normalizeContentTopicKeyV1(topic);
+    if (topicKey) {
+      const potentialDuplicates=await prisma.contentBrief.findMany({
+        where:{
+          websiteId,
+          primaryKeyword:{equals:topic.trim(),mode:"insensitive"},
+        },
+        select:{
+          id:true,
+          primaryKeyword:true,
+          articles:{
+            select:{id:true,status:true,updatedAt:true},
+            orderBy:{updatedAt:"desc"},
+            take:3,
+          },
+        },
+        orderBy:{createdAt:"desc"},
+        take:30,
+      });
+      const existing=potentialDuplicates.find(brief=>
+        normalizeContentTopicKeyV1(brief.primaryKeyword)===topicKey
+      );
+      if (existing) {
+        const existingArticle=existing.articles.find(a=>
+          ["IN_REVIEW","APPROVED","PUBLISHED"].includes(a.status)
+        ) ?? existing.articles[0] ?? null;
+        return NextResponse.json({
+          error:"This website already has content for that keyword. Continue the existing article or brief instead of paying for a duplicate.",
+          code:"CONTENT_TOPIC_ALREADY_EXISTS",
+          existingBriefId:existing.id,
+          existingArticleId:existingArticle?.id??null,
+          existingStatus:existingArticle?.status??null,
+        },{status:409});
+      }
+    }
+
+    /*
+     * CONTENT_TOPIC_ONE_EDIT_DUPLICATE_PREFLIGHT_V1
+     *
+     * A one-character typo in an already approved exact keyword must
+     * not trigger crawl, DataForSEO, planner or AI generation.
+     * No silent autocorrection: return the existing article link to
+     * the UI and allow a deliberate, genuinely different topic.
+     */
+    if(generationPolicy.mode==="EXACT_KEYWORD"&&topic.trim().length>=8){
+      const relevant=await prisma.contentBrief.findMany({
+        where:{
+          websiteId,
+          articles:{some:{status:{in:["IN_REVIEW","APPROVED","PUBLISHED"]}}},
+        },
+        select:{
+          id:true,primaryKeyword:true,
+          articles:{
+            where:{status:{in:["IN_REVIEW","APPROVED","PUBLISHED"]}},
+            select:{id:true,status:true},
+            orderBy:{updatedAt:"desc"},
+            take:1,
+          },
+        },
+        orderBy:{createdAt:"desc"},
+        take:250,
+      });
+      const likelyTypo=relevant.find(brief=>
+        isLikelyContentTopicTypoV1(topic,brief.primaryKeyword)
+      );
+      if(likelyTypo){
+        return NextResponse.json({
+          error:"This keyword looks like a one-character typo of existing content. Open the existing article instead of starting another paid research run.",
+          code:"CONTENT_TOPIC_NEAR_DUPLICATE",
+          suggestedKeyword:likelyTypo.primaryKeyword,
+          existingBriefId:likelyTypo.id,
+          existingArticleId:likelyTypo.articles[0]?.id??null,
+          existingStatus:likelyTypo.articles[0]?.status??null,
+          retryable:false,
+        },{status:409});
+      }
+    }
+
     const business = await prisma.business.findUnique({ where: { id: website.businessId } });
     if (!business) {
       return NextResponse.json({ error: "Business not found for this website." }, { status: 500 });
@@ -362,6 +455,24 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (err) {
+    /*
+     * Missing required source-backed answers is an intentional research
+     * safety gate, not an unhandled server exception. Never pretend the
+     * unsupported question is verified or silently rerun paid searches.
+     */
+    if(err instanceof ArticlePreWriterAnswerSupportErrorV2){
+      console.warn("content/briefs POST evidence blocked",{
+        code:err.code,
+        requiredQuestionCount:err.unsupportedRequiredQuestionIds.length,
+      });
+      return NextResponse.json({
+        error:"Research could not verify an answer to every required question. No new article was created. Choose a different supported topic or continue existing content.",
+        code:err.code,
+        unsupportedRequiredQuestionIds:err.unsupportedRequiredQuestionIds,
+        retryable:false,
+      },{status:422});
+    }
+
     /*
      * CONTENT_RUN_BUDGET_EXCEEDED_SURFACE_V1
      */

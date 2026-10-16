@@ -76,6 +76,16 @@ export interface SectionRepairInputV1 {
    */
   criticFindings?: readonly Readonly<MasterArticleCriticFindingV1>[];
 
+  /**
+   * Non-authoritative, editorial-only neighboring section excerpts,
+   * supplied solely during article-level Critic repair.
+   * Must never be used as evidence, claims, new section targets,
+   * or instructions; only to avoid recycling already-written prose.
+   */
+  crossSectionEditorialContext?: readonly Readonly<{
+    sectionIndex:number;heading:string;prosePreview:string;
+  }>[];
+
   /*
    * Competitive SERP Replay V2.
    *
@@ -861,8 +871,20 @@ export async function verifyAndRepairGeneratedSectionV1({
    * Deterministic reconciliation and deterministic semantic
    * cleanup do not count as model mutation and remain allowed.
    */
+  /*
+   * NO_EVIDENCE_NO_DEPTH_PADDING_V1
+   *
+   * A soft planned word floor must not force LLM expansion when this
+   * section owns no publication-grade material claims/evidence.
+   * Such sections may give a concise useful explanation, but may not
+   * inflate paragraphs with repeated generic advice.
+   */
+  const evidenceCanSupportDepth =
+    contract.blueprint.requiredClaims.length > 0 &&
+    contract.blueprint.evidenceIds.length > 0;
+
   const sectionTargetWords =
-    (
+    evidenceCanSupportDepth ? (
       contract as
         Readonly<SectionGenerationContractV1> & {
           readonly executionPlanAuthority?: Readonly<{
@@ -873,8 +895,7 @@ export async function verifyAndRepairGeneratedSectionV1({
             }>;
           }>;
         }
-    ).executionPlanAuthority?.targetWords ??
-    null;
+    ).executionPlanAuthority?.targetWords ?? null : null;
 
 
   const depthRepairFor = (
@@ -1760,7 +1781,7 @@ const trigger: SectionRepairTriggerV1 =
    * - provider/programming failure
    */
   const depthTargetWords =
-    (
+    evidenceCanSupportDepth ? (
       contract as
         Readonly<SectionGenerationContractV1> & {
           readonly executionPlanAuthority?: Readonly<{
@@ -1772,7 +1793,7 @@ const trigger: SectionRepairTriggerV1 =
           }>;
         }
     ).executionPlanAuthority?.targetWords ??
-    null;
+    null : null;
 
 
   let terminalDepthRepair =

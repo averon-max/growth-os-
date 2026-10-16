@@ -30,8 +30,14 @@ export function directAnswerEvidenceSearchProbeV3({
   heading: string;
   questions: readonly string[];
 }): string {
+  const exactHeading = heading.trim();
+  // A question-shaped H2 is the approved information job. A nested
+  // definition/FAQ question must not silently replace it in search.
+  if (/\?\s*$/.test(exactHeading)) {
+    return exactHeading;
+  }
   const exact = questions.find(question => /\?\s*$/.test(question.trim()));
-  return (exact ?? heading).trim();
+  return (exact ?? exactHeading).trim();
 }
 
 

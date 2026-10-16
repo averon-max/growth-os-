@@ -580,6 +580,17 @@ function mapSerpReplayStatus({
       replayRecord?.status
     );
 
+  // The production SERP Replay engine reports READY / WARN / BLOCK,
+  // while Final Readiness expects PASS / WARN / FAIL. Never treat
+  // a real production success as an unknown (and therefore failed) state.
+  if (rawStatus === "READY") {
+    return "PASS";
+  }
+
+  if (rawStatus === "BLOCK") {
+    return "FAIL";
+  }
+
   if (
     rawStatus ===
       "PASS" ||

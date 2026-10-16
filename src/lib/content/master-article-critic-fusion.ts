@@ -35,6 +35,10 @@ import {
   ContentGenerationError,
 } from "./generator";
 
+import {
+  detectHighConfidenceEditorialRepetitionV1,
+} from "./editorial-repetition-guard-v1";
+
 
 export interface MasterArticleCriticExecutionV1 {
   version:
@@ -558,7 +562,7 @@ export async function executeMasterArticleCriticsV1({
     });
 
 
-  const editorial =
+  const semanticEditorial =
     semanticReviewToFinalResult({
       criticId:
         "EDITORIAL",
@@ -575,6 +579,66 @@ export async function executeMasterArticleCriticsV1({
       modelName:
         semanticRun.modelName,
     });
+
+  /*
+   * EDITORIAL_INFORMATION_GAIN_PRODUCTION_GUARD_V1
+   *
+   * A clean model editorial review does not prove the article avoids
+   * mechanically recycled advice. The deterministic cross-section
+   * check catches only high-confidence cases, using actual generated
+   * sections. It remains part of the SAME ninth-critic roster, with
+   * section-local repair ownership and no extra model request.
+   */
+  const repeatedAdvice =
+    detectHighConfidenceEditorialRepetitionV1(
+      run.sections.map(section => ({
+        heading:section.heading,
+        bodyMarkdown:section.bodyMarkdown,
+      }))
+    );
+  const editorial =
+    repeatedAdvice.length===0 ?
+      semanticEditorial :
+      finalizeMasterArticleCriticResultV1({
+        criticId:"EDITORIAL",
+        modelName:semanticRun.modelName,
+        findings:[
+          ...semanticEditorial.findings,
+          ...repeatedAdvice.map(issue=>{
+            const owning=contract.sectionContracts[issue.sectionIndex];
+            if(!owning){
+              throw new ContentGenerationError(
+                "EDITORIAL_REPETITION_SECTION_CONTRACT_MISSING"
+              );
+            }
+            return createMasterArticleCriticFindingV1({
+              criticId:"EDITORIAL",
+              code:issue.code,
+              severity:"BLOCK",
+              location:{
+                scope:"SECTION",
+                sectionIndex:owning.sectionIndex,
+                sectionNumber:owning.sectionNumber,
+                heading:owning.blueprint.heading,
+              },
+              repairScope:"SECTION",
+              message:
+                "Multiple distinct sections recycle generic language instead of completing their own reader task. Repeated phrases: "+
+                  issue.repeatedPhrases.join(" / ")+".",
+              recommendation:
+                "Rewrite ONLY this section using its existing assigned evidence, claims and unique mission. "+
+                "Remove recycled advice; add concrete supported explanation only when authorized. "+
+                "If no further supported detail exists, be concise rather than filling word budget.",
+              evidence:{
+                claimIds:[],
+                evidenceIds:[],
+                queryNodeIds:[],
+                sourceIds:[],
+              },
+            });
+          }),
+        ],
+      });
 
 
   const semanticDrift =

@@ -5,6 +5,10 @@ import {
 } from "./final-article-version-integrity-v1";
 
 import {
+  assertSectionEvidenceCapacityV1,
+} from "./section-evidence-capacity-v1";
+
+import {
   assertArticlePreWriterAnswerSupportV2,
   assertArticlePreWriterRequiredCoverageV1,
 } from "./article-prewriter-evidence-gate-v1";
@@ -56,6 +60,12 @@ import {
 import {
   executeMasterWriterV1,
 } from "./master-writer-orchestrator";
+import {
+  evaluateComprehensiveEditorialReleaseV1,
+  assertComprehensiveEditorialReleaseV1,
+} from "./comprehensive-editorial-release-gate-v1";
+import {assertArticleProseHygieneV2}
+  from "./article-search-readiness-v2";
 
 import {
   writeArticleRecoveryCheckpointV1,
@@ -83,6 +93,10 @@ import {
 import {
   executeMasterArticleCriticRepairReplayV1,
 } from "./master-article-critic-repair-execution";
+
+import {
+  buildMasterArticleCriticRepairPlanV1,
+} from "./master-article-critic-repair-plan";
 
 import type {
   SerpReplayV1,
@@ -180,6 +194,11 @@ import type {
 import {
   ContentGenerationError,
 } from "./generator";
+
+import {
+  detectPersistedArticleEditorialRepetitionV1,
+  EditorialRepetitionGateErrorV1,
+} from "./editorial-repetition-guard-v1";
 
 import type {
   ContentBriefInput,
@@ -1428,6 +1447,19 @@ export async function generateArticleFromBrief(
   assertArticlePreWriterAnswerSupportV2(
     persistedArticleExecutionPlan
   );
+
+  /*
+   * EVIDENCE_BEFORE_EDITORIAL_VOLUME_V1
+   *
+   * A locked WRITABLE section with no material authority must not
+   * receive 200-300 words of generic safety advice merely because
+   * a soft word budget exists. Route it back to Research/Scope
+   * BEFORE paying the full Writer and SERP pipeline.
+   */
+  assertSectionEvidenceCapacityV1(
+    persistedArticleExecutionPlan.sections
+  );
+
   assertPreWriterMissionAuthorityV1({
     sections: persistedArticleExecutionPlan.sections,
     blueprints: masterRuntimeInspection.runtime.sectionBlueprints.sections,
@@ -2310,18 +2342,9 @@ export async function generateArticleFromBrief(
           },
 
           data: {
-            title:
-              "",
-
-            metaDescription:
-              "",
-
-            h1:
-              "",
-
-            bodyMarkdown:
-              "",
-
+            // Do not erase a paid-for earlier draft on retry.
+            // POST_WRITER overwrites these fields only when the new
+            // Writer run actually completes.
             status:
               "GENERATING",
 
@@ -2613,22 +2636,78 @@ export async function generateArticleFromBrief(
      * - ALL 9 critics replay
      * - second BLOCK -> fail closed
      */
-    const masterCriticRepairExecution =
-      await executeMasterArticleCriticRepairReplayV1({
-        contract:
-          articleGenerationContract,
+    /*
+     * OPTIONAL_KEYWORD_COVERAGE_RECOVERY_V1
+     *
+     * Try at most one ordinary section-repair/reverify/critic-replay
+     * transaction for two missing planned secondary keywords.
+     *
+     * If an already acceptable article cannot safely incorporate
+     * those optional terms, retain its accepted original text and
+     * warnings. Do NOT reject or erase the paid-for article. Genuine
+     * initial BLOCKs must still fail closed and cannot use fallback.
+     */
+    let masterCriticRepairExecution;
+    try {
+      masterCriticRepairExecution =
+        await executeMasterArticleCriticRepairReplayV1({
+          contract:
+            articleGenerationContract,
 
-        run:
-          masterWriterRun,
+          run:
+            masterWriterRun,
 
-        initialCritics:
-          masterCriticExecution,
+          initialCritics:
+            masterCriticExecution,
 
-        generator,
+          generator,
 
-        context:
-          masterCriticContext,
+          context:
+            masterCriticContext,
+        });
+    } catch (optionalRepairError) {
+      const baselinePlan =
+        buildMasterArticleCriticRepairPlanV1({
+          contract:
+            articleGenerationContract,
+
+          suite:
+            masterCriticExecution.suite,
+        });
+      const warningOnly =
+        masterCriticExecution.suite.status !== "BLOCK" &&
+        baselinePlan.repairTasks.length > 0 &&
+        baselinePlan.repairTasks.every(task =>
+          task.findings.every(finding =>
+            finding.severity === "WARN" &&
+            finding.code === "RANK_READY_PLANNED_KEYWORD_MISSING"
+          )
+        );
+      if (!warningOnly) {
+        throw optionalRepairError;
+      }
+      console.warn("[content optional keyword recovery] kept verified original", {
+        briefId: brief.id,
+        articleId: pendingArticle.id,
+        reason: optionalRepairError instanceof Error
+          ? optionalRepairError.message.slice(0, 220)
+          : "OPTIONAL_REPAIR_FAILED",
       });
+      masterCriticRepairExecution = Object.freeze({
+        version: "MASTER_ARTICLE_CRITIC_REPAIR_EXECUTION_V1" as const,
+        initialCritics: masterCriticExecution,
+        repairPlan: baselinePlan,
+        run: masterWriterRun,
+        finalCritics: masterCriticExecution,
+        repairs: Object.freeze([]),
+        provenance: Object.freeze({
+          criticReplayCount: 0 as const,
+          repairedSectionCount: 0,
+          repairAttemptCount: 0,
+          wholeArticleRewriteCount: 0 as const,
+        }),
+      });
+    }
 
 
     /*
@@ -3805,6 +3884,21 @@ export async function approveArticle(
     );
   }
 
+  /*
+   * Editorial acceptance is separate from technical audit and keyword
+   * coverage. Old IN_REVIEW drafts must NOT escape the new guard simply
+   * because they were generated before its introduction.
+   */
+  const approvalEditorialFindings =
+    detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
+  if (approvalEditorialFindings.length > 0) {
+    throw new EditorialRepetitionGateErrorV1(approvalEditorialFindings);
+  }
+
+  // A saved article may have passed model/SEO gates while still
+  // containing visible text corruption. Never approve or publish that.
+  assertArticleProseHygieneV2(article.bodyMarkdown);
+
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
   );
@@ -3917,6 +4011,24 @@ export async function approveArticle(
   assertArticlePublicationPolicyPassed(
     publicationPolicy
   );
+
+  // Final approval AND publication must honor the same product-level
+  // editorial quality floor as the Writer. A technical score of 100
+  // cannot release a source-rich but shallow comprehensive guide.
+  const editorialPlanRecord=article.brief.evidenceSnapshot?.plan;
+  const editablePlan=editorialPlanRecord&&
+    typeof editorialPlanRecord==="object"&&
+    !Array.isArray(editorialPlanRecord)
+      ? editorialPlanRecord as Record<string,unknown> : null;
+  if(editablePlan?.articleExecutionPlan){
+    const editorialPlan=parsePersistedArticleExecutionPlanV1(
+      editablePlan.articleExecutionPlan);
+    assertComprehensiveEditorialReleaseV1(
+      evaluateComprehensiveEditorialReleaseV1({
+        plan:editorialPlan,
+        bodyMarkdown:article.bodyMarkdown,
+      }));
+  }
 
 
   const approvalReplayArtifact =
@@ -4059,6 +4171,18 @@ export async function publishArticle(
     );
   }
 
+  // Enforce on publish, too: existing APPROVED records may predate
+  // the current editorial quality policy.
+  const publishEditorialFindings =
+    detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
+  if (publishEditorialFindings.length > 0) {
+    throw new EditorialRepetitionGateErrorV1(publishEditorialFindings);
+  }
+
+  // A saved article may have passed model/SEO gates while still
+  // containing visible text corruption. Never approve or publish that.
+  assertArticleProseHygieneV2(article.bodyMarkdown);
+
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
   );
@@ -4171,6 +4295,24 @@ export async function publishArticle(
   assertArticlePublicationPolicyPassed(
     publicationPolicy
   );
+
+  // Final approval AND publication must honor the same product-level
+  // editorial quality floor as the Writer. A technical score of 100
+  // cannot release a source-rich but shallow comprehensive guide.
+  const editorialPlanRecord=article.brief.evidenceSnapshot?.plan;
+  const editablePlan=editorialPlanRecord&&
+    typeof editorialPlanRecord==="object"&&
+    !Array.isArray(editorialPlanRecord)
+      ? editorialPlanRecord as Record<string,unknown> : null;
+  if(editablePlan?.articleExecutionPlan){
+    const editorialPlan=parsePersistedArticleExecutionPlanV1(
+      editablePlan.articleExecutionPlan);
+    assertComprehensiveEditorialReleaseV1(
+      evaluateComprehensiveEditorialReleaseV1({
+        plan:editorialPlan,
+        bodyMarkdown:article.bodyMarkdown,
+      }));
+  }
 
 
   const publishReplayArtifact =

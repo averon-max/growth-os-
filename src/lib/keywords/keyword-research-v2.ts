@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { parseCachedKeywordResearchV2, type KeywordResearchResultV2 } from "./keyword-research-cache-v2";
 import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
+import {createTopicScopedKeywordShortlistV1}
+  from "./keyword-topic-scoped-shortlist-v1";
+import {assessKeywordTopicIntentV1}
+  from "./keyword-topic-intent-gate-v1";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
@@ -65,7 +69,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "momentum-v1"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v2"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -144,14 +148,58 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     brief.articles.some(article => article.status === "PUBLISHED" || Boolean(article.publishedUrl)))
     .map(brief => brief.primaryKeyword);
 
+  // Gate the RAW observed provider/GSC rows before ANY volume/rank
+  // truncation. Otherwise 75 high-volume but wrong-entity keywords can
+  // completely crowd out relevant long-tail monitoring questions.
+  const scopedObservations=observations.map(item=>({
+    item,assessment:assessKeywordTopicIntentV1({
+      seed,query:item.keyword,
+    }),
+  }));
+  const onTopicObservations=scopedObservations.filter(x=>
+    x.assessment.eligibleForArticleSerp).map(x=>x.item);
+  const rawTopicExclusions=scopedObservations.filter(x=>
+    !x.assessment.eligibleForArticleSerp).map(x=>({
+      keyword:x.item.keyword,
+      reason:(x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW"?
+        "INTENT_REVIEW_REQUIRED":
+        x.assessment.decision==="SEPARATE_BRAND_PRODUCT_PAGE"||
+        x.assessment.decision==="SEPARATE_COMMERCIAL_PAGE"||
+        x.assessment.decision==="SEPARATE_NAVIGATION_OR_SUPPORT"?
+        "SEPARATE_PAGE_INTENT":"TOPIC_SCOPE_MISMATCH") as
+          "SEPARATE_PAGE_INTENT"|"TOPIC_SCOPE_MISMATCH"|
+          "INTENT_REVIEW_REQUIRED",
+    }));
   const cleanup = prepareKeywordOpportunitiesV2({
-    seed, industry: website.business.industry, observations, publishedKeywords: published, limit,
+    seed,industry:website.business.industry,
+    observations:onTopicObservations,
+    publishedKeywords:published,limit,
+  });
+  // Full source observation audit must remain available, including
+  // excluded wrong-page queries and their actual non-invented volumes.
+  const rawCleanup=prepareKeywordOpportunitiesV2({
+    seed,industry:website.business.industry,
+    observations,publishedKeywords:published,limit:500,
+  });
+
+  // This must happen BEFORE selecting by volume / keyword difficulty and
+  // BEFORE any paid SERP calls. "credit monitoring" is the core entity;
+  // "credit score", Credit Karma support, and Equifax product navigation
+  // are different intents even when they share the word "credit".
+  const scoped=createTopicScopedKeywordShortlistV1({
+    seed,candidates:cleanup.candidates,maxClusters:30,
   });
   const cheapSerpByKeyword = new Map(related.map(row => [
     row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
   ] as const));
-  const shortlist = cleanup.clusters
-    .slice(0, 30)
+  // A SEED-only phrase is not evidence of observed query demand.
+  // Pay for deep SERP only when DataForSEO or GSC actually surfaced
+  // this *same-intent* cluster. Leave mixed-intent observations for
+  // review instead of purchasing synthetic/seed variants.
+  const shortlist = scoped.clusters
+    .filter(cluster=>cluster.keywords.some(keyword=>
+      keyword.sources.includes("DATAFORSEO")||
+      keyword.sources.includes("GSC")))
     .sort((a, b) => {
       const aInfo = cheapSerpByKeyword.get(a.primary.keyword.trim().toLowerCase());
       const bInfo = cheapSerpByKeyword.get(b.primary.keyword.trim().toLowerCase());
@@ -196,8 +244,10 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     ? reviewNeeded(eligibleForGpt.length
       ? "SERP-verified opportunities found. GPT decision not requested."
       : "No SERP-verified opportunity: review source reliability before choosing a primary.")
-    : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
-      reasons: ["No eligible candidates"], risks: [] };
+    : scopedObservations.some(x=>x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW")
+      ? reviewNeeded("Observed terms have mixed informational/product intent or only SEED terms remain. Human SERP-intent review required; no paid deep-SERP calls were made.")
+      : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
+        reasons: ["No source-observed same-topic informational candidates"], risks: [] };
   if (input.useGptDecision && eligibleForGpt.length) {
     const { default: OpenAI } = await import("openai");
     if (!process.env.OPENAI_API_KEY) throw new Error("KEYWORD_V2_OPENAI_KEY_REQUIRED");
@@ -224,20 +274,22 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     approvedResearchKey: cacheKey,
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
-    observed: cleanup.observed,
-    excludedCount: cleanup.excluded.length,
-    excluded: cleanup.excluded,
+    observed: observations.length,
+    excludedCount: cleanup.excluded.length+scoped.excluded.length+rawTopicExclusions.length,
+    excluded: [...cleanup.excluded,...scoped.excluded,...rawTopicExclusions],
     clusters: shortlist,
     // Preserve the complete observed candidate set for replay and audit;
     // the response UI can render only the ten strongest clusters.
-    candidateSnapshots: cleanup.candidates,
+    // Keep the raw observed candidates for reproducibility, including
+    // rejected other-topic phrases. Only scoped clusters reach paid SERP.
+    candidateSnapshots: rawCleanup.candidates,
     serpMetadata: related.map(row => ({
       keyword: row.keyword,
       resultCount: row.serpInfo?.resultCount ?? null,
       features: row.serpInfo?.features ?? [],
       updatedAt: row.serpInfo?.updatedAt ?? null,
     })),
-    totalClusters: cleanup.clusters.length,
+    totalClusters: scoped.clusters.length,
     serpResults,
     decision,
     selectedKeyword: decision.status === "SELECTED"
