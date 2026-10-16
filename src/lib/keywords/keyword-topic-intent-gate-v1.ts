@@ -81,15 +81,15 @@ export function assessKeywordTopicIntentV1({
     (commercialReviews.some(term=>phrase(normalized,term)) ||
       /\b(?:comparison of providers|compare monitoring companies)\b/u
         .test(normalized));
-  if(commercialIntent)return {
-    seed,query,coreTopic:core,
-    decision:"SEPARATE_COMMERCIAL_PAGE",eligibleForArticleSerp:false,
-    reason:"BUYER_COMPARISON_INTENT_SEPARATE_FROM_INFORMATIONAL_DEFINITION",
-  };
   if(isBrandQuery(normalized,core))return {
     seed,query,coreTopic:core,
     decision:"SEPARATE_BRAND_PRODUCT_PAGE",eligibleForArticleSerp:false,
     reason:"NAMED_PRODUCT_OR_BRAND_REQUIRES_OWN_PAGE_INTENT",
+  };
+  if(commercialIntent)return {
+    seed,query,coreTopic:core,
+    decision:"SEPARATE_COMMERCIAL_PAGE",eligibleForArticleSerp:false,
+    reason:"BUYER_COMPARISON_INTENT_SEPARATE_FROM_INFORMATIONAL_DEFINITION",
   };
   // Core entity must remain the SUBJECT. "credit score" alone is not
   // "credit monitoring"; but the relational question "does credit
