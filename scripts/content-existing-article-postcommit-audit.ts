@@ -161,6 +161,92 @@ async function main(){
       article.bodyMarkdown);
     const readerPreview=previewArticleWithoutInlineSourceLabelsV1(
       article.bodyMarkdown);
+    // Cost-free go/no-go before anyone authorizes a bounded model repair.
+    // Old generation checkpoints can be outdated after the 13 citations
+    // were saved. The exact article and CURRENT evidence must be validated.
+    const {evaluateComprehensiveEditorialReleaseV1}=await import(
+      "../src/lib/content/comprehensive-editorial-release-gate-v1");
+    const {detectPersistedArticleEditorialRepetitionV1}=await import(
+      "../src/lib/content/editorial-repetition-guard-v1");
+    const {assertSectionEvidenceCapacityV1}=await import(
+      "../src/lib/content/section-evidence-capacity-v1");
+    const structuralGate=plan?
+      evaluateComprehensiveEditorialReleaseV1({
+        plan,bodyMarkdown:article.bodyMarkdown,
+      }):null;
+    const repeatedAdvice=detectPersistedArticleEditorialRepetitionV1(
+      article.bodyMarkdown);
+    let repairEvidencePreflight="RESEARCH_NOT_AVAILABLE";
+    if(plan&&runtime){
+      try{
+        assertSectionEvidenceCapacityV1(plan.sections);
+        repairEvidencePreflight="PASS";
+      }catch(e){
+        repairEvidencePreflight="STOP:"+(e instanceof Error?e.message:String(e));
+      }
+    }
+    let checkpointPreflight:"RESEARCH_NOT_AVAILABLE"|"VERIFIED_ARCHIVE_FOUND"|
+      "NO_COMPATIBLE_SIGNED_ARCHIVE"="RESEARCH_NOT_AVAILABLE";
+    let archivedSections=0;
+    if(plan&&runtime&&repairEvidencePreflight==="PASS"){
+      const {buildArticleGenerationContractV1}=await import(
+        "../src/lib/content/article-generation-contract");
+      const {bindArticleExecutionPlanToGenerationContractV1}=await import(
+        "../src/lib/content/article-execution-plan-binding-v1");
+      const {inspectArchivedWriterProgressV1}=await import(
+        "../src/lib/content/writer-recovery-archived-progress-v1");
+      const {geminiGenerator}=await import(
+        "../src/lib/content/gemini-generator");
+      const {resolve,join}=await import("node:path");
+      const contract=bindArticleExecutionPlanToGenerationContractV1({
+        plan,contract:buildArticleGenerationContractV1(runtime),
+      });
+      const roots=[...new Set([
+        resolve(process.env.GROWTH_OS_ARTICLE_CHECKPOINT_DIR?.trim()||
+          ".growth-os-tmp/article-checkpoints"),
+        ...(process.env.GROWTH_OS_ENV_DIR?.trim()?
+          [resolve(process.env.GROWTH_OS_ENV_DIR,
+            ".growth-os-tmp/article-checkpoints")]:[]),
+      ])].flatMap(base=>[
+        join(base,"research-recovery-editorial"),
+        join(base,"research-recovery"),
+      ]);
+      checkpointPreflight="NO_COMPATIBLE_SIGNED_ARCHIVE";
+      for(const rootDirectory of roots){
+        const inspection=await inspectArchivedWriterProgressV1({
+          rootDirectory,articleId,briefId:article.briefId,
+          modelName:geminiGenerator.modelName,contract,
+        });
+        if(inspection.compatible&&inspection.candidate){
+          checkpointPreflight="VERIFIED_ARCHIVE_FOUND";
+          archivedSections=inspection.verifiedSections;
+          break;
+        }
+      }
+    }
+    const repairPreflight={
+      version:"EXISTING_ARTICLE_FREE_REPAIR_PREFLIGHT_V1",
+      mode:"NO_PROVIDER_CALLS_NO_WRITES",
+      currentArticleStatus:article.status,
+      currentArticleFingerprint:oldFingerprint,
+      highConfidenceInformationDefects:semanticFillerFindings.map(f=>({
+        code:f.code,sectionIndex:f.sectionIndex,
+      })),
+      repeatedAdviceSections:repeatedAdvice.map(f=>f.sectionIndex),
+      structureBlockers:structuralGate?.blockers??["RESEARCH_NOT_AVAILABLE"],
+      currentH2Count:structuralGate?.h2Count??null,
+      currentH3Count:structuralGate?.h3Count??null,
+      currentH3OwnerSections:structuralGate?.h3OwnerSections??null,
+      requiredH3ForThisProduct:structuralGate?.minimumH3??null,
+      evidencePreflight:repairEvidencePreflight,
+      signedArchivePreflight:checkpointPreflight,
+      signedArchiveSectionCount:archivedSections,
+      estimatedModelCalls:null,
+      modelCallHardCapIfSeparatelyAuthorized:16,
+      repairAttemptHardCapIfSeparatelyAuthorized:2,
+      paidRepairNotAuthorized:true,
+      canGuaranteeRepairSuccess:false,
+    };
     const result={
       mode:"FREE_EXISTING_ARTICLE_POSTCOMMIT_AUDIT",
       articleId,websiteId:article.brief.websiteId,
@@ -195,6 +281,7 @@ async function main(){
         releaseGateNeedsRevision:semanticFillerFindings.length>0,
         noModelCalls:true,
       },
+      repairPreflight,
       readerSourcePresentation:{
         inlineSourceLabelLinksMovedToOptionalFooter:
           readerPreview.researchLinks.length,
