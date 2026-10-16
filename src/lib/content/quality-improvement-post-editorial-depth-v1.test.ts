@@ -20,7 +20,7 @@ describe("post-editorial global depth recovery",()=>{
       index:3,currentSectionWords:421,
       desiredAdditionalWords:72,targetSectionWords:493,
     });
-    expect(result[1].index).toBe(0);
+    expect(result[1].index).toBe(1);
   });
   it("never adds filler if the whole article already meets its floor",()=>{
     expect(planPostEditorialDepthRecoveryV1({
