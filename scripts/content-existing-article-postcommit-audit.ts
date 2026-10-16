@@ -29,7 +29,7 @@ async function main(){
     if(!article)throw new Error("ARTICLE_NOT_FOUND");
     const [saved,replay]=await Promise.all([
       prisma.contentEvidenceSnapshot.findUnique({
-        where:{briefId:article.briefId},select:{plan:true},
+        where:{briefId:article.briefId},select:{id:true,plan:true},
       }),
       prisma.serpReplayArtifact.findFirst({
         where:{contentArticleId:articleId},
@@ -88,6 +88,52 @@ async function main(){
         primaryKeyword:article.brief.primaryKeyword,
         secondaryKeywords:article.brief.secondaryKeywords,replay,
       }):null;
+    // The canonical evidence snapshot is frozen. An optional, separately
+    // approved owner decision is accepted only when *all* original SHA
+    // fingerprints, replay ID and evidence snapshot ID still match.
+    // P2021 means this new append-only table hasn't been migrated yet;
+    // the legacy audit remains fully read-only and functional.
+    const {evaluateApprovedExistingArticleQueryOwnerV1}=await import(
+      "../src/lib/content/existing-article-approved-query-owner-v1");
+    let approvedReviewStore="AVAILABLE";
+    let approvedReview:null|{
+      id:string;decisionVersion:string;decision:string;
+      contentArticleId:string;evidenceSnapshotId:string;queryNodeId:string;
+      observedQuery:string;ownerSectionIndex:number;ownerHeading:string;
+      sourceArticleFingerprint:string;sourceQueryGraphSha256:string;
+      sourceSectionBlueprintSha256:string;sourceExecutionPlanSha256:string;
+      sourceReplayArtifactId:string;reviewerAttestation:string;
+    }=null;
+    const singleNode=queryBindingProposal?.candidateCount===1
+      ?queryBindingProposal.proposals[0]?.nodeId:null;
+    if(singleNode){
+      try{
+        approvedReview=await prisma.contentQueryOwnerReview.findFirst({
+          where:{contentArticleId:articleId,queryNodeId:singleNode,
+            sourceArticleFingerprint:oldFingerprint},
+          orderBy:[{createdAt:"desc"},{id:"desc"}],
+        });
+      }catch(e){
+        if(e&&typeof e==="object"&&"code" in e&&e.code==="P2021")
+          approvedReviewStore="MIGRATION_NOT_INSTALLED";
+        else throw e;
+      }
+    }
+    const approvedOwner=runtime&&plan&&saved?
+      evaluateApprovedExistingArticleQueryOwnerV1({
+        articleId,evidenceSnapshotId:saved.id,
+        replayArtifactId:replay?.id??null,
+        article:original,runtime,plan,
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,replay,
+        review:approvedReview,
+      }):null;
+    const afterApproval=approvedOwner?.valid?
+      evaluateArticleSearchReadinessV2({
+        article:original,runtime:approvedOwner.runtime,plan,replay,
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,
+      }):null;
     const provenance=object(replay?.provenance);
     const editorialRecovery=object(provenance?.editorialRecovery);
     const result={
@@ -119,6 +165,17 @@ async function main(){
       }:null,
       queryBindingProposal,
       queryBindingWhatIf,
+      approvedQueryOwnerReview:{
+        storeStatus:approvedReviewStore,
+        existingReviewId:approvedReview?.id??null,
+        validForExactSavedArticle:approvedOwner?.valid??false,
+        validationReason:approvedOwner?.reason??"RESEARCH_UNAVAILABLE",
+        sourceResearchUnchanged:true,
+        effectiveFindingCodesAfterHumanApproval:
+          afterApproval?.findings.map(x=>x.code)??null,
+        canClaimSeoReadyAfterApproval:
+          afterApproval?.canClaimSeoReady??false,
+      },
       independentCopyeditProbe:
         probeSavedArticleJoinIntegrityV1(article.bodyMarkdown),
       searchEditorial:{
