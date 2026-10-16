@@ -29,6 +29,14 @@ Given a real website + business context + market, discover measured search deman
 4. Added read-only `scripts/keyword-research-v2-cached-audit.ts`: inspect actually cached keyword universe, measured KD/volume coverage, GSC positions, organic SERP proof, selection result and Writer-allowed cluster members at **zero new cost**.
 5. The existing paid SERP result now records **observed top-10 competitor URLs and own organic rank** (if actually present in fetched SERP); it does not confuse missing rank with zero or request an extra provider call. Old cached SERPs may not have these optional fields and are not secretly refreshed.
 
+## Historical cached research forensic result — real Mac audit 2026-10-16
+
+The single saved `momentum-v1` US run for `what is credit monitoring` showed 77 observed queries, 59 archived candidates, 10 historically marked 'approved' and three paid SERP summaries — all for the WRONG page intents (`credit karma phone number hours`, `equifax credit monitoring`, `equifax core credit`). It had no observed GSC average positions, decision REVIEW and no authorized primary. This was an **old cached run**, not a new current v3 live discovery, so do not assert the current pipeline would replicate it.
+
+Root cause: the cache parser and Writer handoff previously trusted historical 'approved' cluster labels. New code rechecks current topic/intent for selected AND supporting terms at the trust boundary and invalidates contaminated cached decisions. Free forensic audit still examines the raw archive and recovers only legitimately observed, topic-compatible candidates for fresh SERP confirmation without turning them into approved keywords.
+
+Acceptance for this defect: original bad cache reports `HISTORICAL_CACHE_WRONG_TOPIC_OR_INTENT`, lists rejected historical SERPs, and `allowedToWriter:false`. A new run must show zero paid SERPs for provider support/login/brand navigation under an informational seed; no unverified keywords may cross into the Writer.
+
 ## What remains — priority order, NO parallel refactor
 
 ### Phase A — prove existing saved research end-to-end (free)
