@@ -39,7 +39,12 @@ import {rebindSignedArchivedWriterRunV1}
 import {verifyExistingArticleCitationScopeV1}
   from "./existing-article-citation-authority-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
-import { executeMasterArticleCriticRepairReplayV1 } from "./master-article-critic-repair-execution";
+import { executeMasterArticleCriticRepairReplayV1,
+  rebuildWriterRunV1 } from "./master-article-critic-repair-execution";
+import {draftSavedArticleSectionReferenceLayoutV1}
+  from "./article-reader-cleanup-v1";
+import {splitPersistedArticleByCanonicalH2V1}
+  from "./existing-article-section-rebind-v1";
 import { executeSerpReplayV1 } from "./serp-replay";
 import { buildSerpReplayArticleFingerprintV1 } from "./serp-replay-fingerprint";
 import { auditArticle } from "./content-quality";
@@ -123,6 +128,40 @@ export async function repairExistingArticleEditorialV1(articleId:string,
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(runtime),
     });
+    const layoutDraft=draftSavedArticleSectionReferenceLayoutV1(
+      original.bodyMarkdown);
+    const sectionHeadings=contract.sectionContracts.map(
+      x=>x.blueprint.heading);
+    const originalBodies=splitPersistedArticleByCanonicalH2V1(
+      original.bodyMarkdown,sectionHeadings);
+    const layoutBodies=splitPersistedArticleByCanonicalH2V1(
+      layoutDraft.proposedBodyMarkdown,sectionHeadings);
+    const beforeLayout=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:original.bodyMarkdown,plan,runtime,
+    });
+    const afterLayout=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:layoutDraft.proposedBodyMarkdown,plan,runtime,
+    });
+    check(layoutDraft.h2Count===sectionHeadings.length &&
+      layoutDraft.movedSourceLabels>0 &&
+      !layoutDraft.sourceLabelsStillInline &&
+      layoutDraft.everyH2RetainsItsOwnUrls &&
+      beforeLayout.unapprovedLinks===0 &&
+      afterLayout.unapprovedLinks===0 &&
+      beforeLayout.totalLinks===afterLayout.totalLinks &&
+      beforeLayout.sections.every((section,index)=>
+        section.approvedLinks===afterLayout.sections[index]?.approvedLinks),
+      "SAVED_EDITORIAL_SOURCE_LAYOUT_PREVIEW_NOT_SAFE");
+    const comparable=(value:string)=>value
+      .replace(/\n\n\*\*References:\*\*[^\n]*/giu,"")
+      .replace(/\[\s*Source:\s*[^\]]+\]\(https?:\/\/[^)\s]+\)/giu,"")
+      .replace(/\bSource:\s*\[[^\]]+\]\(https?:\/\/[^)\s]+\)/giu,"")
+      .replace(/[ \t]+([.,;:!?])/gu,"$1")
+      .replace(/\s+/gu," ").trim();
+    check(originalBodies.length===layoutBodies.length &&
+      originalBodies.every((body,i)=>comparable(body)===
+        comparable(layoutBodies[i]!)),
+      "SAVED_EDITORIAL_SOURCE_LAYOUT_CHANGED_FACTUAL_PROSE");
 
     const initial=articleShape(original);
     let run:MasterWriterRunV1|null=null;
@@ -225,6 +264,24 @@ export async function repairExistingArticleEditorialV1(articleId:string,
     }
     check(run!==null&&checkpointSha256!==null,
       "SAVED_EDITORIAL_REBIND_DID_NOT_VERIFY");
+    // Source labels are presentation, not factual claims. This is a
+    // deterministic SAME-H2 move with EXACTLY identical claim prose and
+    // source URL multiset. Reuse current-source section semantics only
+    // because NO facts or evidence relations changed. The new bytes
+    // must still pass all nine critics, reparative verification, CAS and
+    // an exact-fingerprint SERP replay before any persistence.
+    const formattedSections=run.sections.map((section,index)=>({
+      ...section,bodyMarkdown:layoutBodies[index]!,
+    }));
+    const formattedRun=rebuildWriterRunV1({
+      contract,run,sections:formattedSections,
+      reconciliations:run.reconciliations,
+      semanticVerifications:run.semanticVerifications,
+    });
+    check(comparable(formattedRun.article.bodyMarkdown)===
+      comparable(initial.bodyMarkdown),
+      "SAVED_EDITORIAL_FORMATTED_RUN_PROSE_CHANGED");
+    run=formattedRun;
     // Baseline full critic re-evaluation is necessary: old checkpoints
     // predate the stricter editorial policy.
     const beforeCritics=await executeMasterArticleCriticsV1({
