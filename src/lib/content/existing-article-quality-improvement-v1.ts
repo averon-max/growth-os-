@@ -208,8 +208,10 @@ export async function improveExistingArticleQualityV1(articleId:string,
       // Separate the word-expansion and citation-repair checkpoints:
       // each requires different editor intent and allowable mutations.
       root:citationMode
-        ?join(checkpointDir(),repairMode==="REVIEWED_SIGNED_CITATIONS"
-          ?"reviewed-signed-citation-repair":"signed-citation-repair")
+        ?repairMode==="REVIEWED_SIGNED_CITATIONS"
+          ?join(checkpointDir(),"reviewed-signed-citation-repair",
+            sha(signedCitationDraft!.proposedBodyMarkdown))
+          :join(checkpointDir(),"signed-citation-repair")
         :checkpointDir(),
       articleId,briefId:original.briefId,
       updatedAt:original.updatedAt.toISOString(),
@@ -1284,6 +1286,17 @@ export async function improveExistingArticleQualityV1(articleId:string,
               previousReplayArtifactId:priorReplay?.id??null,
               evidenceSnapshotSha256:sha(JSON.stringify(snap.plan)),
               checkpointSha256,
+              citationReview:repairMode==="REVIEWED_SIGNED_CITATIONS"
+                ?{
+                  source:"SIGNED_H2_REVIEW_CHECKPOINTS",
+                  proposalSha256:sha(signedCitationDraft!.proposedBodyMarkdown),
+                  reviewCheckpointKeys:"reviewCheckpointKeys" in signedCitationDraft!
+                    ?signedCitationDraft!.reviewCheckpointKeys:[],
+                  approvedCitationCount:signedCitationDraft!.totalAddedCitations,
+                  allEvidenceBearingSectionsCited:true,
+                  finalVerifierAndCriticsRequired:true,
+                }
+                :null,
               initialCriticStatus:"NOT_RUN_AVOID_PAID_BASELINE",
               finalCriticStatus:repaired.finalCritics.suite.status,
               repairSections:repaired.repairs.map(x=>x.sectionIndex),
