@@ -1033,9 +1033,11 @@ export function ArticleWorkspace({
   async function repairEditorial(){
     if(busy!==null||article.status!=="IN_REVIEW"||editing)return;
     const accepted=window.confirm(
-      "Repair repeated sections using verified saved evidence? "+
-      "This uses a limited number of paid AI requests, never re-runs "+
-      "Research or the full Writer, and saves only if all checks pass."
+      "Repair low-information text, intrusive Source labels or repeated "+
+      "sections using EXISTING signed evidence? This can use up to 10 "+
+      "paid AI model calls total (not 10 guaranteed). No fresh research "+
+      "or new article. It saves the SAME article only after source "+
+      "verification, critics and exact-article SERP Replay pass."
     );
     if(!accepted)return;
     setBusy("editorial-repair");
@@ -1590,8 +1592,9 @@ ${article.bodyMarkdown}`
           ) : null}
 
           {article.status==="IN_REVIEW"&&!editing &&
-            detectPersistedArticleEditorialRepetitionV1(
-              article.bodyMarkdown).length>0 ? (
+            (detectPersistedArticleEditorialRepetitionV1(
+              article.bodyMarkdown).length>0 ||
+              substantiveWarnings.length>0) ? (
             <button
               type="button"
               className={styles.secondaryButton}
@@ -1638,6 +1641,7 @@ ${article.bodyMarkdown}`
                 detectPersistedArticleEditorialRepetitionV1(
                   article.bodyMarkdown
                 ).length > 0 ||
+                substantiveWarnings.length > 0 ||
                 qualityNeedsImprovement
               }
               title={
