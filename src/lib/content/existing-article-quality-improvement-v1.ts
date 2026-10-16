@@ -63,6 +63,10 @@ import {executeMasterWriterV1}
   from "./master-writer-orchestrator";
 import {splitPersistedArticleByCanonicalH2V1}
   from "./existing-article-section-rebind-v1";
+import {draftExistingArticleSignedCitationsV1}
+  from "./existing-article-source-citation-repair-v1";
+import {verifyExistingArticleCitationScopeV1}
+  from "./existing-article-citation-authority-v1";
 import {
   qualityImprovementProgressDirectoryV1,
   classifyVerifiedQualitySectionsV1,
@@ -107,7 +111,8 @@ function sameArticle(a:ReturnType<typeof articleShape>,
 const active=new Set<string>();
 
 export async function improveExistingArticleQualityV1(articleId:string,
-  expectedUpdatedAt:string){
+  expectedUpdatedAt:string,
+  repairMode:"DEPTH"|"EXACT_SIGNED_CITATIONS"="DEPTH"){
   check(/^[a-z0-9_-]{5,100}$/i.test(articleId),
     "SAVED_EDITORIAL_INVALID_ARTICLE_ID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -129,8 +134,9 @@ export async function improveExistingArticleQualityV1(articleId:string,
       !original.publishedAt && !original.publishedUrl &&
       original.updatedAt.getTime()===Date.parse(expectedUpdatedAt),
       "SAVED_EDITORIAL_ARTICLE_STATE_CHANGED");
-    check(countWords(original.bodyMarkdown)<2000,
-      "SAVED_QUALITY_ARTICLE_NOT_BELOW_DEPTH_TARGET");
+    if(repairMode==="DEPTH")
+      check(countWords(original.bodyMarkdown)<2000,
+        "SAVED_QUALITY_ARTICLE_NOT_BELOW_DEPTH_TARGET");
     check(detectPersistedArticleEditorialRepetitionV1(
       original.bodyMarkdown).length===0,
       "SAVED_QUALITY_REPETITION_REQUIRES_SEPARATE_REPAIR");
@@ -152,6 +158,24 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // the requested substantive answer. Evidence recovery belongs
     // upstream; a language-only edit must not impersonate it.
     assertSectionEvidenceCapacityV1(plan.sections);
+    // Citation-only repair is not a word-count expansion and cannot
+    // claim new evidence authority. Preflight exact claim anchors BEFORE
+    // spending on any verifier or reading/writing section progress.
+    const signedCitationDraft=repairMode==="EXACT_SIGNED_CITATIONS"
+      ?draftExistingArticleSignedCitationsV1({
+        bodyMarkdown:original.bodyMarkdown,plan,runtime})
+      :null;
+    if(repairMode==="EXACT_SIGNED_CITATIONS"){
+      check(signedCitationDraft &&
+        signedCitationDraft.totalAddedCitations>0,
+        "SAVED_SIGNED_CITATION_REPAIR_NO_EXACT_CLAIM_ANCHORS");
+      const scoped=verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:signedCitationDraft.proposedBodyMarkdown,
+        plan,runtime,
+      });
+      check(scoped.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
+        "SAVED_SIGNED_CITATION_REPAIR_SCOPE_INVALID");
+    }
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(runtime),
     });
