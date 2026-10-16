@@ -29,6 +29,23 @@ Given a real website + business context + market, discover measured search deman
 4. Added read-only `scripts/keyword-research-v2-cached-audit.ts`: inspect actually cached keyword universe, measured KD/volume coverage, GSC positions, organic SERP proof, selection result and Writer-allowed cluster members at **zero new cost**.
 5. The existing paid SERP result now records **observed top-10 competitor URLs and own organic rank** (if actually present in fetched SERP); it does not confuse missing rank with zero or request an extra provider call. Old cached SERPs may not have these optional fields and are not secretly refreshed.
 
+## Post-audit bounded discovery extension (PR-only, not yet locally verified)
+
+The real archive has 59 candidates but just **three** same-page informational questions, all with null volume/KD. This is not a Writer failure. DataForSEO Related Keywords can return SERP-related navigational/vendor topics; relying on Related alone is poor recall for page-intent questions.
+
+Added a second provider only on individual, explicit authorization:
+- `keyword-suggestions-provider-v1.ts`: DataForSEO Labs Google Keyword Suggestions; documented full-text retrieval of terms containing the **core subject**, distinct from SERP-derived related keywords. Brings measured search volume, organic KD, CPC, monthly history/trends, lightweight SERP metadata.
+- `keywordCoreTopicV1` ensures a seed like `what is credit monitoring` purchases suggestions for `credit monitoring`, not the awkward whole question.
+- `keyword-research-v2.ts` enables Suggestions ONLY when `authorizeExpandedDiscovery:true` on top of `authorizePaidResearch:true`. The second discovery is durable-checkpointed; all observations pass existing topic/intent/cannibalization, then bounded deep SERP and selected-cluster evaluation. The v4 result cache key distinguishes paid consent and new logic.
+- Existing API `/api/keywords/opportunities-v2` validates a separate Boolean `authorizeExpandedDiscovery` flag.
+- New `scripts/keyword-research-v2-live.ts` FREE preflight by default. Only `--execute` performs provider requests and caches results; `--expanded` selects second provider; `--serp=3` caps up to three SERPs. NO Writer/article creation, CMS publication or grant of SEO readiness.
+- **Use this preflight first**: `GROWTH_OS_ENV_DIR=/Users/user/growth-os NODE_OPTIONS=--conditions=react-server npx tsx scripts/keyword-research-v2-live.ts --website=cmtjl7vdm00010eqlnt1xbkhd --seed="what is credit monitoring" --market=US --limit=300 --serp=3 --expanded`.
+- Then, only after a local green test run and explicit approval of provider charges, adding `--execute` performs a bounded live run. If result is REVIEW, diagnose source coverage vs semantic mismatch; do not force model choice or regenerate Writer.
+
+DataForSEO docs: https://docs.dataforseo.com/v3/dataforseo_labs/google/keyword_suggestions/live/ (response uses `items[].keyword`, `keyword_info`, `keyword_properties.keyword_difficulty`) and https://docs.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live/ (SERP-related, different retrieval objective).
+
+**Still missing for entire-industry scope:** business-verified multi-seed discovery and site/topic entity expansion; don't falsely claim one seed + full-text suggestion yields all niche keywords. A production acceptance test needs this before calling the system finished.
+
 ## Historical cached research forensic result — real Mac audit 2026-10-16
 
 The single saved `momentum-v1` US run for `what is credit monitoring` showed 77 observed queries, 59 archived candidates, 10 historically marked 'approved' and three paid SERP summaries — all for the WRONG page intents (`credit karma phone number hours`, `equifax credit monitoring`, `equifax core credit`). It had no observed GSC average positions, decision REVIEW and no authorized primary. This was an **old cached run**, not a new current v3 live discovery, so do not assert the current pipeline would replicate it.
