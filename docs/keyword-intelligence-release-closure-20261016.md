@@ -54,6 +54,27 @@ Root cause: the cache parser and Writer handoff previously trusted historical 'a
 
 Acceptance for this defect: original bad cache reports `HISTORICAL_CACHE_WRONG_TOPIC_OR_INTENT`, lists rejected historical SERPs, and `allowedToWriter:false`. A new run must show zero paid SERPs for provider support/login/brand navigation under an informational seed; no unverified keywords may cross into the Writer.
 
+## Deep SERP / top-one competitive intelligence (new draft code)
+
+The first preflight with `--limit=300 --serp=3 --expanded` returned zero calls, not proof of SERP coverage. Focused tests 67/67 plus TS passed at commit `d110d08` prior to this new draft; later changes need another local test.
+
+**Implemented:** the existing `buildSerpIntelligence` already observes organic top-10, crawls competitor pages with safety/timeouts, parses H1/H2/H3, word counts, author/date/schema/tables, common sections/terms, related PAA questions, and AI Overview presence. The old `summarizeSerp` discarded nearly all of it. New `SerpOpportunityV2.competitiveResearch` retains a bounded observational snapshot, with actual fetch-success and fetch-failure counts. No extra provider request is purchased beyond the pre-existing SERP check.
+
+**New explicit `--deep` mode:** `requireDeepCompetitorEvidence:true` enables a fail-closed evidence gate before `SELECTED`. Each candidate needs seven organic results, five distinct domains, >=five fetched competitor pages, observed repeating section structure, and an accessible organic #1 competitor page. If competitor crawls fail, decision remains REVIEW. The decision is rechecked when replaying the cache, with distinct paid SERP checkpoint keys for deep vs standard sessions. This is content/competition observability, NOT backlink authority scoring or a guarantee of Google ranking #1.
+
+Example read-only preflight: `GROWTH_OS_ENV_DIR=/Users/user/growth-os NODE_OPTIONS=--conditions=react-server npx tsx scripts/keyword-research-v2-live.ts --website=cmtjl7vdm00010eqlnt1xbkhd --seed="what is credit monitoring" --market=US --limit=500 --serp=10 --expanded --deep`.
+
+This budgets up to **1 Related + 1 Suggestions + 10 organic SERPs**, with each SERP already configured to inspect up to ten competing pages. At most 100 competitor document observations; successful pages may be fewer due to crawl blocks. All still **zero new calls** without `--execute`. Actual DataForSEO fees are provider-defined and can change; show pricing before authorization. Do not select based on median word count or artificial H3 targets.
+
+**Top-one editorial acceptance is separate:**
+- Pick business-relevant page intent and user jobs; use source-observed questions and semantic overlap to map possible H2/H3.
+- Identify distinct value *not* present in the competitor pages (original analysis, actionable examples, real user outcome), not just recombine copied headings.
+- Prove YMYL claims with authoritative source excerpts and show relevant citations in the article; SERP titles and AI Overview are NOT proof.
+- Assess on-page title, direct answers, page technical crawlability, canonical, internal links, page ownership, off-page competitive authority and GSC progress. A better article alone does not guarantee ranking ahead of stronger domains.
+- New body fingerprint → full editorial QA/nine critics + fresh SERP Replay; keep human IN_REVIEW gate and publication verification.
+
+**Not yet implemented:** true website-wide multi-seed market research with category-level Keyword Ideas and competitor Ranked Keywords; GSC 28/90-day by country/page/device; SERP overlap clustering across page families; validated competitor backlink authority comparison; actual live deep research acceptance + 3 end-to-end samples. Treat those as independent release requirements, not accomplishments.
+
 ## What remains — priority order, NO parallel refactor
 
 ### Phase A — prove existing saved research end-to-end (free)
