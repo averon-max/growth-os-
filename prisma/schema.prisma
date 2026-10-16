@@ -611,8 +611,8 @@ model ContentQueryOwnerReview {
   reviewerAttestation           String
   createdAt                     DateTime @default(now())
 
-  @@unique([contentArticleId, queryNodeId, sourceArticleFingerprint, sourceQueryGraphSha256])
-  @@index([contentArticleId, createdAt])
+  @@unique([contentArticleId, queryNodeId, sourceArticleFingerprint, sourceQueryGraphSha256], map: "uq_cqor_article_node_fingerprint_graph")
+  @@index([contentArticleId, createdAt], map: "ix_cqor_article_created")
 }
 
 model Competitor {
