@@ -56,6 +56,8 @@ on:
       - "src/lib/content/master-section-repair-prompt.ts"
       - "src/lib/content/quality-improvement-editorial-recovery-v1.ts"
       - "src/lib/content/quality-improvement-editorial-recovery-v1.test.ts"
+      - "src/lib/content/quality-improvement-post-editorial-depth-v1.ts"
+      - "src/lib/content/quality-improvement-post-editorial-depth-v1.test.ts"
       - ".github/workflows/writer-closure-checks.yml"
   workflow_dispatch:
 
