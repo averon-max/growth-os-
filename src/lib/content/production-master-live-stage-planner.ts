@@ -1,5 +1,9 @@
 import { recordWriterTraceV1 } from "./writer-trace-v1";
 import {
+  DUPLICATE_STAGE_PLAN_CLAIM_OWNER_PREFIX_V1,
+  selectStagePlanRecoveryRouteV1,
+} from "./stage-plan-recovery-route-v1";
+import {
   collectStagePlanValidationIssuesV1,
 } from "./stage-plan-validation-collector-v1";
 import {
@@ -1613,25 +1617,25 @@ function inspectStagePlanCompleteness(
    * Deterministic code validates and applies the choice.
    */
   const duplicateClaimOwnerPrefixV1 =
-    "sections[].requiredClaimIds duplicate-owner:";
+    DUPLICATE_STAGE_PLAN_CLAIM_OWNER_PREFIX_V1;
 
-  const onlyDuplicateClaimOwnershipFailureV1 =
-    missingStagePlanFields.length > 0 &&
-    missingStagePlanFields.every(
-      (
-        issue
-      ) =>
-        issue.startsWith(
-          duplicateClaimOwnerPrefixV1
-        )
-    );
+  const initialRecoveryRouteV1 = selectStagePlanRecoveryRouteV1({
+    issues: missingStagePlanFields,
+  });
+  recordWriterTraceV1("stage_plan.recovery.route", {
+    phase: "after_initial_question_contraction",
+    route: initialRecoveryRouteV1,
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: false,
+    fullRegenerationAttempted: false,
+  });
 
   let localClaimOwnerRepairAttemptedV1 =
     false;
 
 
   if (
-    onlyDuplicateClaimOwnershipFailureV1
+    initialRecoveryRouteV1 === "LOCAL_CLAIM_OWNER_REPAIR"
   ) {
     localClaimOwnerRepairAttemptedV1 =
       true;
@@ -1899,11 +1903,21 @@ function inspectStagePlanCompleteness(
    *
    * Reserved for NON-local structural Stage Plan failures.
    */
-  if (
-    missingStagePlanFields.length >
-      0 &&
-    !localClaimOwnerRepairAttemptedV1
-  ) {
+  let fullRegenerationAttemptedV1 = false;
+  const preRetryRecoveryRouteV1 = selectStagePlanRecoveryRouteV1({
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+  });
+  recordWriterTraceV1("stage_plan.recovery.route", {
+    phase: "before_full_plan_retry",
+    route: preRetryRecoveryRouteV1,
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+    fullRegenerationAttempted: false,
+  });
+
+  if (preRetryRecoveryRouteV1 === "FULL_REGENERATION") {
+    fullRegenerationAttemptedV1 = true;
     console.warn(
       "[content stage planner] incomplete structured output; regenerating once",
       {
@@ -2054,6 +2068,19 @@ function inspectStagePlanCompleteness(
    */
   applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction");
 
+
+  const finalRecoveryRouteV1 = selectStagePlanRecoveryRouteV1({
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+    fullRegenerationAttempted: fullRegenerationAttemptedV1,
+  });
+  recordWriterTraceV1("stage_plan.recovery.route", {
+    phase: "terminal_stage_plan_boundary",
+    route: finalRecoveryRouteV1,
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+    fullRegenerationAttempted: fullRegenerationAttemptedV1,
+  });
 
   if (
     missingStagePlanFields.length >
