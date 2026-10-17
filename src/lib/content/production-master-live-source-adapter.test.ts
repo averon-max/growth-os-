@@ -491,6 +491,125 @@ describe(
 
 
     it(
+      "retains observed competitor headings and DOM counts for future SERP Replay without another request",
+      async () => {
+        const {deps,mocks} = dependencies();
+        mocks.serp.mockImplementation(async () => ({
+          organic: [{
+            rank: 1,
+            absoluteRank: 2,
+            domain: "www.consumerfinance.gov",
+            url: "https://www.consumerfinance.gov/example",
+            title: "What is credit monitoring?",
+            description: "SERP snippet, not a full page.",
+            featuredSnippet: false,
+          }],
+          competitors: [{
+            rank: 1,
+            domain: "consumerfinance.gov",
+            url: "https://consumerfinance.gov/example",
+            fetched: true,
+            statusCode: 200,
+            pageType: "GUIDE",
+            title: "Credit monitoring overview",
+            h1: "Monitoring your credit",
+            h2: ["How monitoring works", "What it cannot do"],
+            h3: ["Alerts"],
+            wordCount: 450,
+            tableCount: 1,
+            imageCount: 2,
+            videoCount: 0,
+            externalLinkCount: 4,
+            error: null,
+          }],
+          questions: [],
+          aiOverview: {present: false, asynchronous: null, references: []},
+        }) as unknown as Awaited<ReturnType<typeof buildSerpIntelligence>>);
+
+        const output = await collectProductionMasterLiveSources({
+          websiteId: "website-1",
+          keyword: "what is credit monitoring",
+        }, deps);
+
+        expect(output.serpSnapshot.results[0]).toMatchObject({
+          url: "https://www.consumerfinance.gov/example",
+          title: "What is credit monitoring?",
+          snippet: "SERP snippet, not a full page.",
+          h1: "Monitoring your credit",
+          h2: ["How monitoring works", "What it cannot do"],
+          h3: ["Alerts"],
+          pageType: "GUIDE",
+          wordCount: 450,
+          tables: 1,
+          images: 2,
+          videos: 0,
+          externalLinks: 4,
+        });
+        expect(output.serpSnapshot.results[0]?.claims).toBeUndefined();
+        expect(output.serpSnapshot.results[0]?.sources).toBeUndefined();
+        expect(mocks.serp).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it(
+      "never copies unfetched or cross-domain competitor data into the SERP snapshot",
+      async () => {
+        const {deps,mocks} = dependencies();
+        mocks.serp.mockImplementation(async () => ({
+          organic: [{
+            rank: 1,
+            absoluteRank: 2,
+            domain: "consumerfinance.gov",
+            url: "https://www.consumerfinance.gov/example",
+            title: "What is credit monitoring?",
+            description: "Observed snippet.",
+            featuredSnippet: false,
+          }],
+          competitors: [{
+            rank: 1,
+            domain: "consumerfinance.gov",
+            url: "https://www.consumerfinance.gov/example",
+            fetched: false,
+            statusCode: 403,
+            pageType: "GUIDE",
+            title: "Error page",
+            h1: "Access denied",
+            h2: ["Captcha"],
+            h3: [],
+            wordCount: 20,
+            error: "UNUSABLE_COMPETITOR_HTML",
+          },{
+            rank: 1,
+            domain: "unrelated.example",
+            url: "https://unrelated.example/redirect",
+            fetched: true,
+            statusCode: 200,
+            pageType: "ARTICLE",
+            title: "Different page",
+            h1: "Wrong source",
+            h2: ["Wrong heading"],
+            h3: [],
+            wordCount: 300,
+            error: null,
+          }],
+          questions: [],
+          aiOverview: {present: false, asynchronous: null, references: []},
+        }) as unknown as Awaited<ReturnType<typeof buildSerpIntelligence>>);
+        const output = await collectProductionMasterLiveSources({
+          websiteId: "website-1",
+          keyword: "what is credit monitoring",
+        }, deps);
+        const result = output.serpSnapshot.results[0];
+        expect(result?.h1).toBeUndefined();
+        expect(result?.h2).toBeUndefined();
+        expect(result?.pageType).toBeUndefined();
+        expect(result?.title).toBe("What is credit monitoring?");
+        expect(mocks.serp).toHaveBeenCalledTimes(1);
+      }
+    );
+
+
+    it(
       "preserves unknown provider metrics as null rather than zero",
       async () => {
         const {

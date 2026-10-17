@@ -309,42 +309,51 @@ function snapshotResults(
   typeof createSerpSnapshot
 >[0]["results"] {
   /*
-   * Only observed fields are copied.
+   * The SERP provider already fetches competitor HTML. Preserve its
+   * verified DOM observations in the signed snapshot so SERP Replay
+   * can judge real headings and structure, not just SERP snippets.
    *
-   * We intentionally do not infer page type, query intent,
-   * authority, quality, or any missing SEO metric here.
+   * Match by observed rank and hostname (www-insensitive); never join
+   * an unrelated redirect or a blocked / unusable fetched page.
+   * The crawler's fetched flag is set only for usable competitor HTML.
+   * Never synthesize missing body, questions, claims or citations.
    */
-  return serp.organic.map(
-    (
-      item
-    ) => ({
-      rank:
-        item.rank,
-
-      url:
-        item.url,
-
-      domain:
-        item.domain,
-
-      /*
-       * REAL_SERP_ORIGINALITY_CONTEXT_V1
-       *
-       * These values come directly from the observed live SERP.
-       * They are comparison context only — never publication evidence.
-       */
-      title:
-        item.title,
-
-      snippet:
-        item.description ??
-        undefined,
-    })
-  ) as Parameters<
-    typeof createSerpSnapshot
-  >[0]["results"];
+  const hostname = (url: string): string | null => {
+    try {
+      return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+  };
+  return serp.organic.map((item) => {
+    const host = hostname(item.url);
+    const page = host
+      ? (serp.competitors ?? []).find((candidate) =>
+          candidate.fetched === true &&
+          candidate.rank === item.rank &&
+          hostname(candidate.url) === host
+        )
+      : undefined;
+    return {
+      rank: item.rank,
+      url: item.url,
+      domain: item.domain,
+      title: item.title,
+      snippet: item.description ?? undefined,
+      ...(page ? {
+        pageType: page.pageType,
+        h1: page.h1,
+        h2: page.h2,
+        h3: page.h3,
+        wordCount: page.wordCount,
+        tables: page.tableCount ?? null,
+        images: page.imageCount ?? null,
+        videos: page.videoCount ?? null,
+        externalLinks: page.externalLinkCount ?? null,
+      } : {}),
+    };
+  });
 }
-
 
 function snapshotFeatures(
   serp:
