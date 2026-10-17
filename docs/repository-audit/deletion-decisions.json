@@ -1,0 +1,5 @@
+{
+  "version": "GROWTH_OS_DELETION_DECISIONS_V1",
+  "policy": "Each deletion requires an individually verified decision for the exact Git blob. Run --inspect, inspect dynamic entry points and persisted state, document test proof and rollback, then commit the change with the deletion.",
+  "decisions": []
+}
