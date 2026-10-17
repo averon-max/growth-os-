@@ -25,6 +25,8 @@ import { resolveApprovedKeywordPrimaryV2 } from "@/lib/keywords/keyword-decision
 import { parseCachedKeywordResearchV2, projectApprovedKeywordEvidenceV2 } from "@/lib/keywords/keyword-research-cache-v2";
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 
+import { withWriterTraceV1, recordWriterTraceV1, hashTraceTextV1 } from "@/lib/content/writer-trace-v1";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
@@ -59,6 +61,7 @@ import {
 } from "@/lib/content/production-master-live-research-assembler";
 
 export async function POST(req: NextRequest) {
+  return withWriterTraceV1({ scope: "content.brief.create" }, async () => {
   try {
     const user = await requireUser();
     const body = await req.json();
@@ -418,6 +421,13 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    recordWriterTraceV1("brief.created", {
+      briefIdHash: hashTraceTextV1(brief.id),
+      primaryKeyword: brief.primaryKeyword,
+      searchIntent: brief.searchIntent,
+      secondaryKeywordCount: Array.isArray(brief.secondaryKeywords) ? brief.secondaryKeywords.length : null,
+    });
+
     return NextResponse.json(
       {
         brief,
@@ -719,6 +729,7 @@ export async function POST(req: NextRequest) {
       }
     );
   }
+  });
 }
 
 export async function GET(req: NextRequest) {
