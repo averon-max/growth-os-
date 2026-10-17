@@ -114,7 +114,9 @@ function checkDeletionGate() {
   let parent;
   try { parent = git(["rev-parse","HEAD^"]); }
   catch { console.log("DELETION_GATE_ROOT_COMMIT_SKIP"); return; }
-  const deleted = git(["diff-tree","--no-commit-id","--name-status","--no-renames","-r","HEAD"])
+  // Compare against the first parent even for a merge commit; diff-tree
+  // without -m may silently return no paths for a merge.
+  const deleted = git(["diff","--name-status","--no-renames","HEAD^","HEAD","--"])
     .split("\n").filter(v => v.startsWith("D\t")).map(v => v.slice(2));
   if (!deleted.length) {
     console.log("DELETION_GATE_PASS: no deleted tracked files in current commit");
