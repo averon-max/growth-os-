@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - audit/full-repository-inventory-20261016
+      - cleanup/category-pass-20261017
   workflow_dispatch:
 
 permissions:
