@@ -59,6 +59,21 @@ describe("writer execution tracing", () => {
     }
   });
 
+  it("distinguishes HTTP error results from successful article runs", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "growth-os-trace-"));
+    process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
+    try {
+      const response = await withWriterTraceV1({scope: "http.test"}, async () => ({status: 422}));
+      expect(response.status).toBe(422);
+      const [name] = await readdir(directory);
+      const events = (await readFile(join(directory, name), "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+      expect(events.at(-1).stage).toBe("run.http_error");
+      expect(events.at(-1).fields.httpStatus).toBe(422);
+    } finally {
+      await rm(directory, {recursive: true, force: true});
+    }
+  });
+
   it("propagates failures after tracing their error class", async () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-trace-"));
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;

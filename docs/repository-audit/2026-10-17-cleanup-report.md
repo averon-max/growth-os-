@@ -13,8 +13,8 @@
 | Measure | Before | After |
 |---|---:|---:|
 | Tracked files | 1,281 | 810 |
-| Original files excluded from audit branch | 0 | 476 |
-| New audit/trace files | 0 | 5 |
+| Original files excluded from audit branch | 0 | 477 |
+| New audit/trace files | 0 | 6 |
 | Historical backups in current tree | 280 | 0 |
 | Tracked temporary run files | 23 | 0 |
 | Claude/Windsurf/agent skill files and lockfile | 103 | 0 |
@@ -33,7 +33,7 @@ The identical `public/world-110m.json` and `src/data/world-110m.json` are delibe
 
 ## AI transport and tracing
 
-Content AI uses OpenAI for live structured generation. The retained `gemini-generator.ts` filename and `geminiGenerator` export are **compatibility names** still imported by existing production code; their original Gemini and Groq HTTP clients have been removed. Rename only after a full import codemod with a validation pass.
+Content AI uses OpenAI for live structured generation. The old `gemini-generator.ts` implementation and `geminiGenerator` export were renamed to `openai-generator.ts` and `openAiGenerator` across their known call sites in one atomic commit. The obsolete Gemini and Groq HTTP transports were removed. The current OpenAI-only runtime is covered by branch validation.
 
 Opt-in trace: `GROWTH_OS_WRITER_TRACE_DIR="$PWD/.growth-os-traces" npm run dev`.
 

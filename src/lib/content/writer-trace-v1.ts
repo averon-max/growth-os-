@@ -105,7 +105,13 @@ export async function withWriterTraceV1<T>(
     });
     try {
       const result = await action();
-      recordWriterTraceV1("run.succeeded", { scope: input.scope });
+      const httpStatus = result && typeof result === "object" &&
+        "status" in result && typeof result.status === "number"
+        ? result.status : null;
+      recordWriterTraceV1(
+        httpStatus !== null && httpStatus >= 400 ? "run.http_error" : "run.succeeded",
+        { scope: input.scope, httpStatus }
+      );
       return result;
     } catch (error) {
       recordWriterTraceV1("run.failed", {
