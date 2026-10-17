@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     briefs: vi.fn(),
     keywordContext: vi.fn(),
     related: vi.fn(),
+    suggestions:vi.fn(),
     trends: vi.fn(),
     serp: vi.fn(),
     openai: vi.fn(),
@@ -38,6 +39,9 @@ vi.mock("@/lib/prisma", () => ({ prisma: {
 }}));
 
 vi.mock("./dataforseo-provider", () => ({ fetchRelatedKeywords: mocks.related }));
+vi.mock("./keyword-suggestions-provider-v1",()=>({
+  fetchGoogleKeywordSuggestionsV1:mocks.suggestions,
+}));
 vi.mock("./trends-provider", () => ({ fetchTrendingQueries: mocks.trends }));
 vi.mock("@/lib/content/keyword-context", () => ({
   getWebsiteKeywordContext: mocks.keywordContext,
@@ -70,6 +74,7 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     mocks.briefs.mockResolvedValue([]);
     mocks.keywordContext.mockResolvedValue({ topKeywords: [] });
     mocks.trends.mockResolvedValue(null);
+    mocks.suggestions.mockResolvedValue([]);
     mocks.related.mockResolvedValue([
       { keyword: "credit monitoring benefits", searchVolume: 260, keywordDifficulty: 18,
         cpc: 1.2, serpInfo: { resultCount: 1000, features: [], updatedAt: null } },
@@ -144,6 +149,38 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.openai).not.toHaveBeenCalled();
   });
 
+  it("never spends SERP on six observed wrong-intent phrases or CMA plural variant",async()=>{
+    const rejected=[
+      "credit monitoring arrangement meaning",
+      "what is credit monitoring arrangement",
+      "is idx credit monitoring legit",
+      "is idx credit monitoring legitimate",
+      "is kroll credit monitoring legit",
+      "is kroll credit monitoring legitimate",
+      "credit monitoring arrangements",
+    ];
+    mocks.related.mockResolvedValue([
+      ...rejected.map(keyword=>({
+        keyword,searchVolume:12000,keywordDifficulty:4,cpc:2.3,
+      })),
+      {keyword:"does credit monitoring affect credit score",
+        searchVolume:40,keywordDifficulty:22,cpc:0.4},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,seed:"what is credit monitoring",useGptDecision:false,
+      deepSerpLimit:10,limit:500,
+    });
+    expect(result.serpResults.map(row=>row.query)).toEqual([
+      "does credit monitoring affect credit score",
+    ]);
+    for(const keyword of rejected){
+      expect(result.clusters.map(c=>c.primary.keyword))
+        .not.toContain(keyword);
+    }
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+    expect(mocks.openai).not.toHaveBeenCalled();
+  });
+
   it("does deep SERP for genuinely observed informational what-is-service question, not mistaken service-purchase intent", async () => {
     mocks.related.mockResolvedValue([
       {keyword:"what is credit monitoring service",
@@ -162,11 +199,50 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(mocks.serp).toHaveBeenCalledTimes(1);
   });
 
+  it("never buys extra suggestion discovery without its separate authorization",async()=>{
+    await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(mocks.suggestions).not.toHaveBeenCalled();
+  });
+
+  it("augments old noisy SERP relatives using explicitly purchased topic-contained suggestions",async()=>{
+    mocks.related.mockResolvedValue([
+      {keyword:"credit karma phone number hours",searchVolume:4400,
+        keywordDifficulty:24,cpc:0.8},
+      {keyword:"equifax credit monitoring",searchVolume:3600,
+        keywordDifficulty:28,cpc:1.1},
+    ]);
+    mocks.suggestions.mockResolvedValue([
+      {keyword:"does credit monitoring affect your score",searchVolume:240,
+        keywordDifficulty:18,cpc:0.3,
+        monthlySearches:[{year:2026,month:9,searchVolume:240}],
+        trend:{monthly:10,quarterly:20,yearly:40}},
+      {keyword:"credit karma phone number hours",searchVolume:4400,
+        keywordDifficulty:24,cpc:0.8},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,seed:"what is credit monitoring",
+      authorizeExpandedDiscovery:true,useGptDecision:false,
+    });
+    expect(mocks.suggestions).toHaveBeenCalledWith(expect.objectContaining({
+      topic:"credit monitoring",locationName:"United States",
+    }));
+    expect(result.discoveryBreakdown?.suggestionRows).toBe(2);
+    expect(result.serpResults.map(s=>s.query)).toEqual([
+      "does credit monitoring affect your score",
+    ]);
+    expect(result.selectedKeyword).toBe("does credit monitoring affect your score");
+    expect(result.clusters.every(c=>
+      !/credit karma|equifax/i.test(c.primary.keyword))).toBe(true);
+  });
+
   it("does not invoke paid providers when authorization is absent", async () => {
     await expect(researchKeywordOpportunitiesV2({
       ...input, authorizePaidResearch: false,
     })).rejects.toThrow("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
     expect(mocks.related).not.toHaveBeenCalled();
+    expect(mocks.suggestions).not.toHaveBeenCalled();
     expect(mocks.serp).not.toHaveBeenCalled();
     expect(mocks.openai).not.toHaveBeenCalled();
   });
@@ -178,6 +254,165 @@ describe("Keyword Intelligence V2 research orchestration", () => {
     expect(result.approvedResearchKey).toContain("website-test");
     expect(mocks.serp).toHaveBeenCalled();
     expect(mocks.cacheUpsert).toHaveBeenCalled();
+  });
+
+  it("selects a real SERP-and-KD-supported winner without optional GPT",async()=>{
+    const first=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(first.decision.status).toBe("SELECTED");
+    expect(first.decision.reasons).toContain(
+      "DETERMINISTIC_SERP_VERIFIED_SELECTION_V1");
+    expect(first.selectedKeyword).toBe("credit monitoring benefits");
+    expect(first.aiUsed).toBe(false);
+    expect(mocks.openai).not.toHaveBeenCalled();
+    const second=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(second.cacheHit).toBe(true);
+    expect(second.selectedKeyword).toBe(first.selectedKeyword);
+    expect(mocks.related).toHaveBeenCalledTimes(1);
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains actually observed SERP positions and competitor URLs",async()=>{
+    mocks.website.mockResolvedValue({
+      id:"website-test",
+      url:"https://scanmycreds.com/",
+      business:{industry:"credit monitoring",workspaceId:"workspace"},
+    });
+    mocks.serp.mockResolvedValue({
+      organic:[
+        {rank:1,domain:"example.org",url:"https://example.org/credit-monitoring"},
+        {rank:2,domain:"scanmycreds.com",url:"https://scanmycreds.com/guide"},
+        {rank:3,domain:"another.org",url:"https://another.org/credit"},
+      ],
+      benchmark:{dominantPageType:"blog",analyzedPages:3},
+      serpFeatures:[],
+    });
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(result.serpResults[0]).toMatchObject({
+      ownOrganicRank:2,
+      topOrganic:[
+        {rank:1,domain:"example.org"},
+        {rank:2,domain:"scanmycreds.com"},
+        {rank:3,domain:"another.org"},
+      ],
+    });
+    expect(result.selectedKeyword).toBe("credit monitoring benefits");
+  });
+
+  it("preserves deep SERP competitor structure and observed questions without an extra provider request",async()=>{
+    mocks.serp.mockResolvedValue({
+      organic:[
+        {rank:1,domain:"example.org",url:"https://example.org/a"},
+        {rank:2,domain:"reference.org",url:"https://reference.org/b"},
+        {rank:3,domain:"other.org",url:"https://other.org/c"},
+      ],
+      benchmark:{
+        dominantPageType:"blog",analyzedPages:2,
+        medianWordCount:1870,medianH2:6,medianH3:8,
+      },
+      serpFeatures:["organic","people_also_ask"],
+      questions:["Does credit monitoring lower my score?"],
+      aiOverview:{present:true,asynchronous:false,references:[]},
+      competitors:[
+        {rank:1,domain:"example.org",url:"https://example.org/a",
+          fetched:true,pageType:"blog",title:"What is monitoring",
+          h1:"What is credit monitoring",h2:["How it works","Costs"],
+          h3:["What alerts mean"],wordCount:2300,
+          schemaTypes:["Article"],tableCount:1,
+          authorSignal:true,dateSignal:true,error:null},
+        {rank:2,domain:"reference.org",url:"https://reference.org/b",
+          fetched:false,pageType:"OTHER",title:null,h1:null,
+          h2:[],h3:[],wordCount:null,error:"FETCH_DENIED"},
+      ],
+      commonSections:[{topic:"costs",pages:2,coveragePct:50,examples:[]}],
+      commonTerms:[{term:"credit monitoring",pages:2,coveragePct:50}],
+    });
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    const research=result.serpResults[0]?.competitiveResearch;
+    expect(research).toMatchObject({
+      fetchedCompetitorPages:1,
+      fetchFailures:1,
+      aiOverviewPresent:true,
+      observedQuestions:["Does credit monitoring lower my score?"],
+      benchmark:{medianWordCount:1870,medianH2:6,medianH3:8},
+      competitorPages:[{
+        rank:1,fetched:true,
+        h2:["How it works","Costs"],
+        h3:["What alerts mean"],
+        wordCount:2300,authorSignal:true,dateSignal:true,
+        schemaTypes:["Article"],
+      },{rank:2,fetched:false,error:"FETCH_DENIED"}],
+    });
+    expect(mocks.serp).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps REVIEW when demand and KD are both missing",async()=>{
+    mocks.related.mockResolvedValue([
+      {keyword:"credit monitoring benefits",searchVolume:null,
+        keywordDifficulty:null,cpc:null},
+    ]);
+    const result=await researchKeywordOpportunitiesV2({
+      ...input,useGptDecision:false,
+    });
+    expect(result.decision.status).toBe("REVIEW");
+    expect(result.selectedKeyword).toBeNull();
+    expect(mocks.openai).not.toHaveBeenCalled();
+  });
+
+  it("requires true deep top-one competitor coverage before automatic selection",async()=>{
+    const limited=await researchKeywordOpportunitiesV2({
+      ...input,requireDeepCompetitorEvidence:true,useGptDecision:false,
+    });
+    expect(limited.decision.status).toBe("REVIEW");
+    expect(limited.selectedKeyword).toBeNull();
+    const organic=Array.from({length:8},(_,i)=>({
+      rank:i+1,domain:"domain"+i+".example",
+      url:"https://domain"+i+".example/article",
+    }));
+    mocks.serp.mockResolvedValue({
+      organic,serpFeatures:["organic"],
+      benchmark:{
+        dominantPageType:"blog",analyzedPages:6,
+        medianWordCount:2100,medianH2:7,medianH3:9,
+      },
+      questions:["What does credit monitoring do?"],
+      aiOverview:{present:false,asynchronous:false,references:[]},
+      commonSections:[{topic:"Alerts",pages:5,coveragePct:80,examples:[]}],
+      commonTerms:[],
+      competitors:organic.map((row,i)=>({
+        ...row,fetched:i<6,pageType:"blog",
+        title:"Credit monitoring",h1:"What is credit monitoring",
+        h2:["Alerts"],h3:["Fraud"],wordCount:2050,
+        schemaTypes:["Article"],tableCount:0,
+        authorSignal:true,dateSignal:true,error:i<6?null:"BLOCKED",
+      })),
+    });
+    // Change the website ID so each pass uses an independent checkpoint.
+    // The first limited result must never be promoted retroactively.
+    mocks.website.mockResolvedValue({
+      id:"another-website",url:"https://scanmycreds.com",
+      business:{industry:"credit monitoring",workspaceId:"workspace"},
+    });
+    const deep=await researchKeywordOpportunitiesV2({
+      ...input,websiteId:"another-website",
+      requireDeepCompetitorEvidence:true,useGptDecision:false,
+    });
+    expect(deep.decision.status).toBe("SELECTED");
+    expect(deep.serpResults[0]?.competitiveResearch?.fetchedCompetitorPages).toBe(6);
+    expect(deep.serpResults[0]?.competitiveResearch?.competitorPages[0]?.rank).toBe(1);
+    const rerun=await researchKeywordOpportunitiesV2({
+      ...input,websiteId:"another-website",
+      requireDeepCompetitorEvidence:true,useGptDecision:false,
+    });
+    expect(rerun.cacheHit).toBe(true);
+    expect(rerun.selectedKeyword).toBe(deep.selectedKeyword);
   });
 
   it("after a GPT failure, does not pay for discovery or completed SERPs again", async () => {

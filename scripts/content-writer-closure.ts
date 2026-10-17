@@ -12,7 +12,7 @@
 import { loadEnvConfig } from "@next/env";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-loadEnvConfig(process.cwd());
+loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim() || process.cwd());
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -111,10 +111,22 @@ async function main(): Promise<void> {
         createdAt: true,
       },
     });
-    const hasReadyArticle = existing.some(
-      (a) => a.status === "IN_REVIEW" || a.status === "APPROVED" || a.status === "PUBLISHED"
-    );
-    const hasActiveGeneration = existing.some((a) => a.status === "GENERATING");
+    // The five displayed rows are diagnostics only. A valid older
+    // completed/publish-failed article must still prevent duplicate
+    // generation even when newer rejected attempts pushed it out.
+    const occupied=await prisma.contentArticle.findMany({
+      where:{
+        briefId,
+        status:{in:["IN_REVIEW","APPROVED","PUBLISHED","GENERATING","PUBLISH_FAILED"]},
+      },
+      select:{status:true},
+    });
+    const hasReadyArticle=occupied.some(a=>
+      a.status==="IN_REVIEW"||a.status==="APPROVED"||a.status==="PUBLISHED");
+    const hasActiveGeneration=occupied.some(a=>a.status==="GENERATING");
+    // An external CMS/integration failure belongs to publishing,
+    // not an additional paid attempt for the same brief.
+    const hasFailedPublication=occupied.some(a=>a.status==="PUBLISH_FAILED");
     const writable = plan?.sections.filter((s) => s.state === "WRITABLE") ?? [];
     const deferred = plan?.sections.filter((s) => s.state === "DEFERRED_NO_EVIDENCE") ?? [];
     const ready = runtime.readiness === "READY" && inspected.runtime !== null &&
@@ -132,7 +144,11 @@ async function main(): Promise<void> {
       verifiedEvidenceIds: plan?.verifiedEvidenceIds.length ?? 0,
       requiredClaims: [...new Set(writable.flatMap((s) => s.requiredClaimIds))].length,
       blockers,
-      readyToAttemptGeneration: ready && !hasReadyArticle && !hasActiveGeneration,
+      readyToAttemptGeneration: ready && !hasReadyArticle && !hasActiveGeneration &&
+        !hasFailedPublication,
+      ...(hasFailedPublication ? {
+        existingArticleAction: "REPAIR_PUBLISH_INTEGRATION_NOT_WRITER",
+      } : {}),
       existingArticles: existing.map((a) => ({
         id: a.id,
         status: a.status,
@@ -153,6 +169,7 @@ async function main(): Promise<void> {
     }
     if (!ready) throw new Error("PREWRITER_NOT_READY: see blockers above");
     if (hasReadyArticle) throw new Error("ALREADY_HAS_REVIEW_OR_PUBLISHED_ARTICLE");
+    if (hasFailedPublication) throw new Error("PUBLISH_FAILED_REPAIR_CMS_INTEGRATION_NOT_WRITER");
     if (hasActiveGeneration) throw new Error("EXISTING_GENERATING_ARTICLE: do not overlap");
 
     // Preserve each verified section across a failed local CLI attempt.

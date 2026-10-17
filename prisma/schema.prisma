@@ -469,6 +469,7 @@ model ContentEvidenceSnapshot {
   primaryKeyword String
   searchIntent   String
   plan           Json
+  queryOwnerReviews ContentQueryOwnerReview[]
   businessFacts  Json
   keywordContext Json?
   plannerVersion String
@@ -536,6 +537,7 @@ model ContentArticle {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   serpReplayArtifacts SerpReplayArtifact[]
+  queryOwnerReviews ContentQueryOwnerReview[]
 
   backlinkTarget BacklinkTarget?
 
@@ -558,7 +560,7 @@ enum SerpReplayArtifactStatus {
 model SerpReplayArtifact {
   id               String         @id @default(cuid())
   contentArticleId String
-  contentArticle   ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade)
+  contentArticle   ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade, map: "cqor_article_fk")
 
   artifactVersion String                            @default("SERP_REPLAY_ARTIFACT_V1")
   replayVersion   String                            @default("SERP_REPLAY_V1")
@@ -584,6 +586,33 @@ model SerpReplayArtifact {
   @@index([contentArticleId, createdAt])
   @@index([serpSnapshotFingerprint])
   @@index([replayStatus])
+}
+
+
+// Append-only human-reviewed owner of an existing observed query.
+// Does not change research, article Markdown or any SERP replay.
+model ContentQueryOwnerReview {
+  id                            String @id @default(cuid())
+  contentArticleId              String
+  contentArticle                ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade, map: "cqor_article_fk")
+  evidenceSnapshotId            String
+  evidenceSnapshot              ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade, map: "cqor_evidence_fk")
+  queryNodeId                   String
+  observedQuery                 String
+  ownerSectionIndex             Int
+  ownerHeading                  String
+  sourceArticleFingerprint      String
+  sourceQueryGraphSha256        String
+  sourceSectionBlueprintSha256  String
+  sourceExecutionPlanSha256     String
+  sourceReplayArtifactId        String
+  decisionVersion               String @default("QUERY_OWNER_HUMAN_APPROVAL_V1")
+  decision                     String @default("APPROVED")
+  reviewerAttestation           String
+  createdAt                     DateTime @default(now())
+
+  @@unique([contentArticleId, queryNodeId, sourceArticleFingerprint, sourceQueryGraphSha256], map: "uq_cqor_article_node_fingerprint_graph")
+  @@index([contentArticleId, createdAt], map: "ix_cqor_article_created")
 }
 
 model Competitor {

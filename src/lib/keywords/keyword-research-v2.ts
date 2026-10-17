@@ -2,14 +2,19 @@ import { prisma } from "@/lib/prisma";
 import { parseCachedKeywordResearchV2, type KeywordResearchResultV2 } from "./keyword-research-cache-v2";
 import { withKeywordResearchCheckpointV2 } from "./keyword-research-checkpoint-v2";
 import { fetchRelatedKeywords } from "./dataforseo-provider";
+import { fetchGoogleKeywordSuggestionsV1 } from "./keyword-suggestions-provider-v1";
 import {createTopicScopedKeywordShortlistV1}
   from "./keyword-topic-scoped-shortlist-v1";
-import {assessKeywordTopicIntentV1}
+import {keywordCoreTopicV1,assessKeywordTopicIntentV1}
   from "./keyword-topic-intent-gate-v1";
 import { getWebsiteKeywordContext } from "@/lib/content/keyword-context";
 import { fetchTrendingQueries } from "./trends-provider";
 import { buildSerpIntelligence } from "@/lib/content/serp-intelligence";
+import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
+import {assessSerpCompetitorPageQualityV1,
+  isSubstantiveSerpHeadingV1} from "@/lib/content/serp-competitor-page-quality-v1";
 import { prepareKeywordOpportunitiesV2, validateKeywordOpportunityChoiceV2,
+  selectVerifiedKeywordOpportunityV2,
   type KeywordObservationV2, type KeywordOpportunityChoiceV2, type SerpOpportunityV2,
 } from "./keyword-intelligence-v2";
 
@@ -22,6 +27,10 @@ export interface KeywordResearchRequestV2 {
   /** Must be explicit: true means paid DataForSEO and potentially OpenAI requests. */
   authorizePaidResearch: boolean;
   useGptDecision?: boolean;
+  /** One ADDITIONAL paid DataForSEO request, only with explicit opt-in. */
+  authorizeExpandedDiscovery?: boolean;
+  /** Requires >=5 fetched competitor pages including #1 before SELECTED. */
+  requireDeepCompetitorEvidence?: boolean;
 }
 
 const MARKET: Record<string, string> = {
@@ -35,7 +44,21 @@ function safeInteger(value: number | undefined, fallback: number, max: number): 
 }
 
 function summarizeSerp(keyword: string, clusterId: string, serp:
-  Awaited<ReturnType<typeof buildSerpIntelligence>>): SerpOpportunityV2 {
+  Awaited<ReturnType<typeof buildSerpIntelligence>>, websiteUrl: string): SerpOpportunityV2 {
+  const host = (() => {
+    try { return new URL(websiteUrl).hostname.toLowerCase().replace(/^www\./, ""); }
+    catch { return ""; }
+  })();
+  const topOrganic = serp.organic.flatMap(item =>
+    typeof item.rank === "number" && item.rank > 0 &&
+    typeof item.url === "string" && item.url.startsWith("http") &&
+    typeof item.domain === "string" && item.domain.length > 0
+      ? [{rank:item.rank,domain:item.domain,url:item.url}]
+      : []).slice(0,10);
+  const ownOrganicRank = host
+    ? topOrganic.find(row =>
+        row.domain.toLowerCase().replace(/^www\./, "") === host)?.rank ?? null
+    : null;
   return {
     query: keyword,
     clusterId,
@@ -44,6 +67,44 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
     dominantPageType: serp.benchmark.dominantPageType,
     pagesAnalyzed: serp.benchmark.analyzedPages,
     features: [...serp.serpFeatures],
+    topOrganic,
+    ownOrganicRank,
+    competitiveResearch:{
+      fetchedCompetitorPages:(serp.competitors??[]).filter(p=>
+        assessSerpCompetitorPageQualityV1(p).usable).length,
+      fetchFailures:(serp.competitors??[]).filter(p=>
+        !assessSerpCompetitorPageQualityV1(p).usable).length,
+      observedQuestions:(serp.questions??[]).slice(0,25),
+      aiOverviewPresent:serp.aiOverview?.present===true,
+      commonSections:(serp.commonSections??[])
+        .filter(item=>isSubstantiveSerpHeadingV1(item.topic))
+        .slice(0,25).map(item=>({
+        topic:item.topic,pages:item.pages,coveragePct:item.coveragePct,
+      })),
+      commonTerms:(serp.commonTerms??[]).slice(0,35).map(item=>({
+        term:item.term,pages:item.pages,coveragePct:item.coveragePct,
+      })),
+      benchmark:{
+        medianWordCount:serp.benchmark.medianWordCount,
+        medianH2:serp.benchmark.medianH2,
+        medianH3:serp.benchmark.medianH3,
+      },
+      competitorPages:(serp.competitors??[]).slice(0,10).map(item=>({
+        rank:item.rank,domain:item.domain,url:item.url,
+        fetched:assessSerpCompetitorPageQualityV1(item).usable,
+        statusCode:item.statusCode??null,pageType:item.pageType,
+        title:item.title,h1:item.h1,
+        h2:item.h2.slice(0,30),h3:item.h3.slice(0,35),
+        wordCount:item.wordCount,
+        schemaTypes:(item.schemaTypes??[]).slice(0,15),
+        tableCount:item.tableCount??0,
+        authorSignal:item.authorSignal===true,
+        dateSignal:item.dateSignal===true,
+        error:item.error?.slice(0,160)??(
+          assessSerpCompetitorPageQualityV1(item).usable?null:
+            "UNUSABLE_COMPETITOR_CONTENT"),
+      })),
+    },
   };
 }
 
@@ -69,7 +130,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), "topic-and-page-intent-v2"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), Boolean(input.authorizeExpandedDiscovery), Boolean(input.requireDeepCompetitorEvidence), "topic-and-page-intent-v5-depth-gated"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -91,8 +152,25 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
         row && typeof row === "object" && typeof row.keyword === "string"),
     produce: () => fetchRelatedKeywords(seed, locationName, "English", 3, limit, true),
   });
+  // A SECOND provider request is permitted only with dedicated consent.
+  // It retrieves long-tail queries containing the core topic, unlike
+  // SERP-derived related keywords that may expand to unrelated brands.
+  // Reuse durable discovery checkpoints to prevent repurchase after failure.
+  const suggestions=input.authorizeExpandedDiscovery
+    ?await withKeywordResearchCheckpointV2({
+      stage:"DISCOVERY",
+      key:[website.id,market,keywordCoreTopicV1(seed),"suggestions-v1",Math.min(200,limit)].join(":"),
+      isValid:(value):value is Awaited<ReturnType<typeof fetchGoogleKeywordSuggestionsV1>>=>
+        Array.isArray(value)&&value.every(row=>
+          row&&typeof row==="object"&&typeof row.keyword==="string"),
+      produce:()=>fetchGoogleKeywordSuggestionsV1({
+        topic:keywordCoreTopicV1(seed),
+        locationName,limit:Math.min(200,limit),includeSerpInfo:true,
+      }),
+    })
+    :[];
   const [context, trends] = await Promise.all([
-    getWebsiteKeywordContext(website.id).catch(() => null),
+    getWebsiteKeywordContext(website.id, 250, market).catch(() => null),
     fetchTrendingQueries(seed, market).catch(() => null),
   ]);
   const topTrends = new Map((trends?.topQueries ?? []).map(item => [
@@ -113,7 +191,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       impressions: keyword.impressions,
       clicks: keyword.clicks,
     })),
-    ...related.map(keyword => ({
+    ...[...related,...suggestions].map(keyword => ({
       keyword: keyword.keyword,
       searchVolume: keyword.searchVolume,
       keywordDifficulty: keyword.keywordDifficulty,
@@ -189,7 +267,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   const scoped=createTopicScopedKeywordShortlistV1({
     seed,candidates:cleanup.candidates,maxClusters:30,
   });
-  const cheapSerpByKeyword = new Map(related.map(row => [
+  const cheapSerpByKeyword = new Map([...related,...suggestions].map(row => [
     row.keyword.trim().toLowerCase(), row.serpInfo ?? null,
   ] as const));
   // A SEED-only phrase is not evidence of observed query demand.
@@ -212,7 +290,8 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     try {
       const serpSummary = await withKeywordResearchCheckpointV2({
         stage: "SERP",
-        key: [website.id, market, cluster.id, cluster.primary.keyword].join(":"),
+        key: [website.id, market, cluster.id, cluster.primary.keyword,
+          input.requireDeepCompetitorEvidence?"deep-v1":"standard"].join(":"),
         isValid: (value): value is SerpOpportunityV2 => {
           if (!value || typeof value !== "object" || Array.isArray(value)) return false;
           const row = value as Record<string, unknown>;
@@ -224,7 +303,8 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
         produce: async () => {
           const serp = await buildSerpIntelligence({ keyword: cluster.primary.keyword,
             locationName, languageName: "English" });
-          return summarizeSerp(cluster.primary.keyword, cluster.id, serp);
+          return summarizeSerp(cluster.primary.keyword, cluster.id, serp,
+            typeof website.url === "string" ? website.url : "");
         },
       });
       serpResults.push(serpSummary);
@@ -236,14 +316,18 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   }
 
   const verifiedSerp = serpResults.filter(result =>
-    !result.error && result.organicResults >= 3 && result.uniqueDomains >= 2
+    !result.error && result.organicResults >= 3 && result.uniqueDomains >= 2 &&
+    (!input.requireDeepCompetitorEvidence ||
+      auditDeepSerpReadinessV1(result,keywordCoreTopicV1(seed)).status==="DEEP_COMPETITOR_OBSERVED")
   );
   const verifiedClusterIds = new Set(verifiedSerp.map(result => result.clusterId));
   const eligibleForGpt = shortlist.filter(cluster => verifiedClusterIds.has(cluster.id));
   let decision: KeywordOpportunityChoiceV2 = shortlist.length
-    ? reviewNeeded(eligibleForGpt.length
-      ? "SERP-verified opportunities found. GPT decision not requested."
-      : "No SERP-verified opportunity: review source reliability before choosing a primary.")
+    ? input.useGptDecision
+      ? reviewNeeded(eligibleForGpt.length
+        ? "SERP-verified opportunities found. GPT decision pending."
+        : "No SERP-verified opportunity: review source reliability before choosing a primary.")
+      : selectVerifiedKeywordOpportunityV2(shortlist, verifiedSerp)
     : scopedObservations.some(x=>x.assessment.decision==="AMBIGUOUS_TOPIC_REVIEW")
       ? reviewNeeded("Observed terms have mixed informational/product intent or only SEED terms remain. Human SERP-intent review required; no paid deep-SERP calls were made.")
       : { status: "NO_GO", selectedClusterId: null, confidence: "LOW",
@@ -275,6 +359,13 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     websiteId: website.id, market, seed,
     collectedAt: new Date().toISOString(),
     observed: observations.length,
+    discoveryBreakdown:{
+      relatedRows:related.length,suggestionRows:suggestions.length,
+      gscRows:context?.topKeywords?.length??0,
+      trendOnlyRows:Math.max(0,observations.length-
+        1-(context?.topKeywords?.length??0)-related.length-suggestions.length),
+      expandedDiscovery:input.authorizeExpandedDiscovery===true,
+    },
     excludedCount: cleanup.excluded.length+scoped.excluded.length+rawTopicExclusions.length,
     excluded: [...cleanup.excluded,...scoped.excluded,...rawTopicExclusions],
     clusters: shortlist,
@@ -283,7 +374,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
     // Keep the raw observed candidates for reproducibility, including
     // rejected other-topic phrases. Only scoped clusters reach paid SERP.
     candidateSnapshots: rawCleanup.candidates,
-    serpMetadata: related.map(row => ({
+    serpMetadata: [...related,...suggestions].map(row => ({
       keyword: row.keyword,
       resultCount: row.serpInfo?.resultCount ?? null,
       features: row.serpInfo?.features ?? [],
@@ -297,6 +388,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       : null,
     cacheHit: false,
     aiUsed: Boolean(input.useGptDecision),
+    requireDeepCompetitorEvidence:input.requireDeepCompetitorEvidence===true,
   };
   await prisma.keywordSuggestionCache.upsert({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },

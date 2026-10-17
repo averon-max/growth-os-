@@ -22,6 +22,9 @@ describe("saved article editorial recovery production closure",()=>{
 
   it("reuses saved verified material rather than creating new brief or Writer run",()=>{
     expect(service).toContain("POST_FINAL_REPLAY.json");
+    expect(service).toContain("inspectArchivedWriterProgressV1");
+    expect(service).toContain("rebindSignedArchivedWriterRunV1");
+    expect(service).toContain("SAVED_EDITORIAL_NO_COMPATIBLE_ARCHIVED_CHECKPOINT_FREE_STOP");
     expect(service).toContain("assertStoredPublicationEvidenceV1(snap.plan)");
     expect(service).toContain("buildArticleGenerationContractV1(runtime)");
     expect(service).toContain("executeMasterArticleCriticRepairReplayV1");
@@ -29,9 +32,23 @@ describe("saved article editorial recovery production closure",()=>{
     expect(service).not.toContain("createContentBrief");
   });
 
+  it("moves every inline Source link before paid critic, while proving same-H2 source and unchanged factual prose",()=>{
+    expect(service).toContain("draftSavedArticleSectionReferenceLayoutV1");
+    expect(service).toContain("SAVED_EDITORIAL_SOURCE_LAYOUT_CHANGED_FACTUAL_PROSE");
+    expect(service).toContain("SAVED_EDITORIAL_SOURCE_LAYOUT_PREVIEW_NOT_SAFE");
+    expect(service).toContain("layoutDraft.everyH2RetainsItsOwnUrls");
+    expect(service).toContain("beforeLayout.totalLinks===afterLayout.totalLinks");
+    expect(service).toContain("rebuildWriterRunV1({");
+    expect(service).toContain("SAVED_EDITORIAL_FORMATTED_RUN_PROSE_CHANGED");
+    const formatted=service.indexOf("run=formattedRun;");
+    const critics=service.indexOf("const beforeCritics=await");
+    expect(formatted).toBeGreaterThan(-1);
+    expect(critics).toBeGreaterThan(formatted);
+  });
+
   it("caps paid provider requests and limits model repairs",()=>{
-    expect(service).toContain("maxModelCalls:10");
-    expect(service).toContain("maxRepairCalls:1");
+    expect(service).toContain("maxModelCalls:16");
+    expect(service).toContain("maxRepairCalls:2");
     expect(service).toContain("withContentRunBudgetV1");
     expect(service).toContain("SAVED_EDITORIAL_BOUNDED_REPAIR_FAILED");
   });
@@ -47,6 +64,11 @@ describe("saved article editorial recovery production closure",()=>{
     expect(fourth).toBeGreaterThan(third);
     expect(service).toContain("buildProductionFinalArticleReadinessV1");
     expect(service).toContain("assertMasterArticleCriticExecutionPassed");
+    expect(service).toContain("assertArticleInformationGainV1(candidate.bodyMarkdown)");
+    expect(service).toContain("assertComprehensiveEditorialReleaseV1");
+    expect(service).toContain("SAVED_EDITORIAL_SIGNED_CITATION_REGRESSION");
+    expect(service).toContain("sourceAfter.unapprovedLinks===0");
+    expect(service).not.toContain("sourceAfter.unapprovedLinks.length");
   });
 
   it("does not silently edit, publish, or accept stale article versions",()=>{
@@ -65,6 +87,9 @@ describe("saved article editorial recovery production closure",()=>{
     expect(workspace).toContain("window.confirm(");
     expect(workspace).toContain('expectedUpdatedAt:article.updatedAt');
     expect(workspace).toContain("Repair article");
+    expect(workspace).toContain("substantiveWarnings.length>0");
+    expect(service).toContain("SOURCE_LABEL_IN_PROSE");
+    expect(service).toContain("SOURCE_BACKED_H3_STRUCTURE_REPAIR");
   });
 
   it("normalizes old checkpoint whitespace without accepting changed content",()=>{

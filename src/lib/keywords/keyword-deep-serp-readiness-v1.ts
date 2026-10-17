@@ -1,0 +1,86 @@
+import type {SerpOpportunityV2} from "./keyword-intelligence-v2";
+import {
+  assessSerpCompetitorPageQualityV1,
+  isSubstantiveSerpHeadingV1,
+} from "@/lib/content/serp-competitor-page-quality-v1";
+
+/**
+ * Deep analysis needs actual rendered source content.
+ * Historical "fetched=true" alone is not authority: Cloudflare pages,
+ * empty responses and support templates cannot satisfy this gate.
+ */
+export function auditDeepSerpReadinessV1(
+  row:SerpOpportunityV2, coreTopic?:string,
+){
+  const evidence=row.competitiveResearch;
+  const pages=evidence?.competitorPages??[];
+  const valid=pages.filter(page=>
+    assessSerpCompetitorPageQualityV1(page).usable);
+  const fetched=valid.length;
+  const topOne=valid.find(p=>p.rank===1)??null;
+  const normalize=(x:string)=>x.toLocaleLowerCase("en-US")
+    .replace(/[^\p{L}\p{N}]+/gu," ").trim();
+  const topical=coreTopic?.trim()?normalize(coreTopic):"";
+  const topicalPages=topical?valid.filter(page=>
+    normalize([page.title,page.h1].filter(Boolean).join(" ")).includes(topical)):[];
+  const topOneTopical=!topical||(
+    topOne!==null&&topicalPages.includes(topOne));
+  const cleanSections=(evidence?.commonSections??[])
+    .filter(section=>isSubstantiveSerpHeadingV1(section.topic));
+  const median=(values:number[]):number|null=>{
+    if(values.length===0)return null;
+    const sorted=[...values].sort((a,b)=>a-b);
+    const middle=Math.floor(sorted.length/2);
+    return sorted.length%2?sorted[middle]!:
+      (sorted[middle-1]!+sorted[middle]!)/2;
+  };
+  const cleanWordMedian=median(valid.flatMap(page=>
+    page.wordCount!==null&&page.wordCount>0?[page.wordCount]:[]));
+  const cleanH2Median=median(valid.map(page=>
+    page.h2.filter(isSubstantiveSerpHeadingV1).length));
+  const cleanH3Median=median(valid.map(page=>
+    page.h3.filter(isSubstantiveSerpHeadingV1).length));
+  const blockers:string[]=[];
+  if(row.error)blockers.push("SERP_PROVIDER_ERROR");
+  if(row.organicResults<7)blockers.push("ORGANIC_SERP_COVERAGE_LOW");
+  if(row.uniqueDomains<5)blockers.push("SERP_DOMAIN_DIVERSITY_LOW");
+  if(!evidence)blockers.push("DEEP_COMPETITOR_SNAPSHOT_MISSING");
+  else {
+    if(fetched<5)blockers.push("FEWER_THAN_FIVE_USABLE_COMPETITORS");
+    if(!topOne)blockers.push("TOP_ONE_PAGE_NOT_USABLE");
+    if(topical&&!topOneTopical)blockers.push("TOP_ONE_PAGE_DIFFERENT_TASK");
+    if(topical&&topicalPages.length<Math.ceil(valid.length*0.5))
+      blockers.push("SERP_DOMINATED_BY_DIFFERENT_TOPIC");
+    if(cleanSections.length===0)
+      blockers.push("SUBSTANTIVE_RECURRING_COMPETITOR_SECTIONS_UNOBSERVED");
+  }
+  return {
+    version:"DEEP_SERP_RESEARCH_READINESS_V2" as const,
+    query:row.query,
+    status:blockers.length===0?"DEEP_COMPETITOR_OBSERVED" as const:
+      "DEEP_COMPETITOR_INCOMPLETE" as const,
+    organicResults:row.organicResults,
+    uniqueDomains:row.uniqueDomains,
+    fetchedCompetitorPages:fetched,
+    falselyFetchedOrUnusablePages:pages.filter(page=>
+      page.fetched&&!assessSerpCompetitorPageQualityV1(page).usable)
+      .map(page=>({rank:page.rank,url:page.url,reasons:
+        assessSerpCompetitorPageQualityV1(page).reasons})),
+    inaccessibleCompetitorPages:evidence?.fetchFailures??null,
+    topOneFetched:topOne!==null,
+    coreTopicChecked:topical||null,
+    topOneMatchesCoreTopic:topical?topOneTopical:null,
+    matchingMainTopicCompetitors:topical?topicalPages.length:null,
+    observedUserQuestions:evidence?.observedQuestions??[],
+    recurringSectionTopics:cleanSections,
+    competitorMedianWords:cleanWordMedian,
+    competitorMedianH2:cleanH2Median,
+    competitorMedianH3:cleanH3Median,
+    originalUnfilteredBenchmark:evidence?.benchmark??null,
+    blockers,
+    verifiedFactualClaims:false,
+    canGuaranteeRankOne:false,
+    publisherReady:false,
+    note:"Challenge/error/empty pages are excluded on replay; historic benchmark values remain observations and should be recomputed from qualified main article text.",
+  };
+}

@@ -30,7 +30,7 @@ export function buildResearchRecoveryGovernmentSeedsV1(
     // Only literal US .gov hosts; no numeric hosts, userinfo, odd
     // ports, protocol downgrades, or misleading .gov.evil.com.
     if(url.protocol!=="https:"||
-      !/^(?:[a-z0-9-]+\.)+[a-z0-9-]+\.gov$/.test(host)||
+      !/^(?:[a-z0-9-]+\.)*[a-z0-9-]+\.gov$/.test(host)||
       url.username||url.password||
       (url.port!==""&&url.port!=="443")||
       url.search.length>0||url.hash.length>0)

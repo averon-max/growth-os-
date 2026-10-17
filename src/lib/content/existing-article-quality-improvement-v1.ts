@@ -63,11 +63,21 @@ import {executeMasterWriterV1}
   from "./master-writer-orchestrator";
 import {splitPersistedArticleByCanonicalH2V1}
   from "./existing-article-section-rebind-v1";
+import {draftExistingArticleSignedCitationsV1}
+  from "./existing-article-source-citation-repair-v1";
+import {loadReviewedSignedCitationDraftV1}
+  from "./existing-article-reviewed-citation-recovery-v1";
+import {verifyExistingArticleCitationScopeV1}
+  from "./existing-article-citation-authority-v1";
 import {
   qualityImprovementProgressDirectoryV1,
   classifyVerifiedQualitySectionsV1,
 } from "./quality-improvement-progress-scope-v1";
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
+import {assertArticleProseHygieneV2}
+  from "./article-search-readiness-v2";
+import {assertArticleInformationGainV1}
+  from "./article-editorial-information-gain-v1";
 import { executeMasterArticleCriticsV1, assertMasterArticleCriticExecutionPassed } from "./master-article-critic-fusion";
 import { executeSerpReplayV1 } from "./serp-replay";
 import { buildSerpReplayArticleFingerprintV1 } from "./serp-replay-fingerprint";
@@ -107,7 +117,9 @@ function sameArticle(a:ReturnType<typeof articleShape>,
 const active=new Set<string>();
 
 export async function improveExistingArticleQualityV1(articleId:string,
-  expectedUpdatedAt:string){
+  expectedUpdatedAt:string,
+  repairMode:"DEPTH"|"EXACT_SIGNED_CITATIONS"|
+    "REVIEWED_SIGNED_CITATIONS"="DEPTH"){
   check(/^[a-z0-9_-]{5,100}$/i.test(articleId),
     "SAVED_EDITORIAL_INVALID_ARTICLE_ID");
   check(typeof expectedUpdatedAt==="string"&&
@@ -129,8 +141,9 @@ export async function improveExistingArticleQualityV1(articleId:string,
       !original.publishedAt && !original.publishedUrl &&
       original.updatedAt.getTime()===Date.parse(expectedUpdatedAt),
       "SAVED_EDITORIAL_ARTICLE_STATE_CHANGED");
-    check(countWords(original.bodyMarkdown)<2000,
-      "SAVED_QUALITY_ARTICLE_NOT_BELOW_DEPTH_TARGET");
+    if(repairMode==="DEPTH")
+      check(countWords(original.bodyMarkdown)<2000,
+        "SAVED_QUALITY_ARTICLE_NOT_BELOW_DEPTH_TARGET");
     check(detectPersistedArticleEditorialRepetitionV1(
       original.bodyMarkdown).length===0,
       "SAVED_QUALITY_REPETITION_REQUIRES_SEPARATE_REPAIR");
@@ -152,6 +165,33 @@ export async function improveExistingArticleQualityV1(articleId:string,
     // the requested substantive answer. Evidence recovery belongs
     // upstream; a language-only edit must not impersonate it.
     assertSectionEvidenceCapacityV1(plan.sections);
+    // Citation-only repair is not a word-count expansion and cannot
+    // claim new evidence authority. Preflight exact claim anchors BEFORE
+    // spending on any verifier or reading/writing section progress.
+    const citationMode=repairMode!=="DEPTH";
+    const signedCitationDraft=repairMode==="EXACT_SIGNED_CITATIONS"
+      ?draftExistingArticleSignedCitationsV1({
+        bodyMarkdown:original.bodyMarkdown,plan,runtime})
+      :repairMode==="REVIEWED_SIGNED_CITATIONS"
+        ?await loadReviewedSignedCitationDraftV1({
+          articleId,bodyMarkdown:original.bodyMarkdown,plan,runtime})
+        :null;
+    if(citationMode){
+      check(signedCitationDraft &&
+        signedCitationDraft.totalAddedCitations>0,
+        "SAVED_SIGNED_CITATION_REPAIR_NO_EXACT_CLAIM_ANCHORS");
+      const scoped=verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:signedCitationDraft.proposedBodyMarkdown,
+        plan,runtime,
+      });
+      check(scoped.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
+        "SAVED_SIGNED_CITATION_REPAIR_SCOPE_INVALID");
+      // An article with section-owned evidence but no visible sources in
+      // three of six H2s must never be committed as "citation repaired".
+      check(scoped.sections.every(section=>
+        section.assignedEvidence===0||section.approvedLinks>0),
+        "SAVED_SIGNED_CITATION_REPAIR_UNCITED_EVIDENCE_SECTIONS");
+    }
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(runtime),
     });
@@ -169,7 +209,15 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const writerContractHash=fingerprintMasterWriterContractV1(
       contract,generator.modelName);
     const qualityProgressDirectory=qualityImprovementProgressDirectoryV1({
-      root:checkpointDir(),articleId,briefId:original.briefId,
+      // Separate the word-expansion and citation-repair checkpoints:
+      // each requires different editor intent and allowable mutations.
+      root:citationMode
+        ?repairMode==="REVIEWED_SIGNED_CITATIONS"
+          ?join(checkpointDir(),"reviewed-signed-citation-repair",
+            sha(signedCitationDraft!.proposedBodyMarkdown))
+          :join(checkpointDir(),"signed-citation-repair")
+        :checkpointDir(),
+      articleId,briefId:original.briefId,
       updatedAt:original.updatedAt.toISOString(),
       article:initial,snapshot:snap.plan,contract,
       modelName:generator.modelName,
@@ -302,7 +350,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const sectionPlan=plan.sections.filter(section=>section.state==="WRITABLE");
     const originalBodies=splitPersistedArticleByCanonicalH2V1(
       original.bodyMarkdown,contract.sectionContracts.map(s=>s.blueprint.heading));
-    const improvePlan=planSameArticleQualityImprovementV1({
+    const ordinaryPlan=planSameArticleQualityImprovementV1({
       wordCount:countWords(original.bodyMarkdown),
       minimumWords,
       sections:originalBodies.map((body,index)=>({
@@ -313,6 +361,27 @@ export async function improveExistingArticleQualityV1(articleId:string,
         h3Count:(body.match(/^###\s+/gm)??[]).length,
       })),
     });
+    // A 2078-word article may lack all visible verified citations.
+    // Never treat reaching an editorial word floor as citation clearance.
+    const citationBodies=signedCitationDraft?
+      splitPersistedArticleByCanonicalH2V1(
+        signedCitationDraft.proposedBodyMarkdown,
+        contract.sectionContracts.map(s=>s.blueprint.heading)):[];
+    const citationSteps=signedCitationDraft?
+      signedCitationDraft.sections.filter(x=>x.proposedCitationCount>0)
+        .map(x=>({
+          index:x.sectionIndex,
+          currentWords:countSectionWordsV1(originalBodies[x.sectionIndex]!),
+          minWords:countSectionWordsV1(originalBodies[x.sectionIndex]!),
+          preferredWords:countSectionWordsV1(originalBodies[x.sectionIndex]!),
+          maxWords:sectionPlan[x.sectionIndex]?.targetWords?.max??0,
+          suggestUsefulH3:false,
+        })):[];
+    const improvePlan=citationMode
+      ?{...ordinaryPlan,eligible:citationSteps.length>0,
+        reason:"ENOUGH_VERIFIED_CAPACITY" as const,
+        neededWords:0,steps:citationSteps}
+      :ordinaryPlan;
     check(improvePlan.eligible,"SAVED_QUALITY_"+improvePlan.reason);
     const alreadyChanged=classifyVerifiedQualitySectionsV1({
       originalBodies,
@@ -343,6 +412,58 @@ export async function improveExistingArticleQualityV1(articleId:string,
       await saveQualityProgress();
     }
     for(const step of improvePlan.steps){
+      if(citationMode){
+        const originalBody=originalBodies[step.index];
+        const intendedBody=citationBodies[step.index];
+        const current=sections[step.index],scope=contract.sectionContracts[step.index];
+        check(current&&scope&&originalBody!==undefined&&
+          intendedBody!==undefined,
+          "SAVED_SIGNED_CITATION_REPAIR_SECTION_NOT_BOUND");
+        // No "nearby" or newly researched citation can be inserted by
+        // inference. Only exactly matching signed claim text in the
+        // persisted H2 is eligible; note that existing progress can differ.
+        if(alreadyChangedSet.has(step.index)){
+          check(current.bodyMarkdown.trim()===intendedBody.trim(),
+            "SAVED_SIGNED_CITATION_RESUMED_BODY_MISMATCH");
+          if(!repairedSectionIds.includes(step.index))
+            repairedSectionIds.push(step.index);
+          continue;
+        }
+        check(current.bodyMarkdown.trim()===originalBody.trim(),
+          "SAVED_SIGNED_CITATION_BASELINE_ARTICLE_DRIFT");
+        check(intendedBody.trim()!==originalBody.trim(),
+          "SAVED_SIGNED_CITATION_NO_ACTUAL_SECTION_CHANGE");
+        const proposal={...current,bodyMarkdown:intendedBody};
+        // The persisted SectionContract remains the sole source of facts;
+        // reuse the paid current-source semantic verifier. Reject any
+        // rewritten text or stripped source links after verification.
+        const verified=await verifyGeneratedSectionOnlyV1({
+          contract:scope,section:proposal,generator,
+        });
+        check(verified.section.bodyMarkdown.trim()===intendedBody.trim(),
+          "SAVED_SIGNED_CITATION_SEMANTIC_VERIFIER_CHANGED_TEXT");
+        const candidateBodies=sections.map((x,index)=>
+          index===step.index?verified.section.bodyMarkdown:x.bodyMarkdown);
+        const fullBody=candidateBodies.map((text,index)=>
+          "## "+contract.sectionContracts[index]!.blueprint.heading+
+          "\n\n"+text).join("\n\n");
+        const scoped=verifyExistingArticleCitationScopeV1({
+          candidateBodyMarkdown:fullBody,plan,runtime,
+        });
+        check(scoped.status==="REVIEW_SEMANTIC_PROOF_REQUIRED",
+          "SAVED_SIGNED_CITATION_URL_SCOPE_NOT_VERIFIED");
+        sections[step.index]=verified.section;
+        reconciliations[step.index]=verified.reconciliation;
+        semanticVerifications[step.index]=verified.semanticVerification;
+        repairedSectionIds.push(step.index);
+        await saveQualityProgress();
+        console.info("[same article citation section verified]",{
+          articleId,sectionIndex:step.index,
+          citationCount:signedCitationDraft!.sections[step.index]!
+            .proposedCitationCount,
+        });
+        continue;
+      }
       if(alreadyChangedSet.has(step.index)){
         console.info("[content quality section resume]",{
           sectionIndex:step.index,reason:"ALREADY_VERIFIED_SAME_SOURCE",
@@ -1007,6 +1128,30 @@ export async function improveExistingArticleQualityV1(articleId:string,
     check(detectPersistedArticleEditorialRepetitionV1(
       improvedRun.article.bodyMarkdown).length===0,
       "SAVED_QUALITY_PRECRITIC_EDITORIAL_REPETITION");
+    if(citationMode){
+      const citationScope=verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:improvedRun.article.bodyMarkdown,plan,runtime,
+      });
+      check(citationScope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED" &&
+        citationScope.sections.every(section=>
+          section.assignedEvidence===0||section.approvedLinks>0) &&
+        citationScope.totalLinks>=signedCitationDraft!.totalAddedCitations &&
+        signedCitationDraft!.sections.every(section=>
+          section.proposed.every(link=>
+            !citationScope.sections[section.sectionIndex]!.rejectedLinks
+              .includes(link.url) &&
+            improvedRun.article.bodyMarkdown.includes("]("+link.url+")"))),
+        "SAVED_SIGNED_CITATION_FINAL_SOURCE_SCOPE_REGRESSION");
+    }
+    // The nine-critic suite can return WARN despite joined English
+    // words (e.g. "creditcard", "informationyou"). Fail BEFORE paying
+    // for critics and SERP Replay or committing broken article bytes.
+    // Never silently edit prose inside a semantic verification stage.
+    assertArticleProseHygieneV2(improvedRun.article.bodyMarkdown);
+    // Reader value and source-placement are mandatory release gates,
+    // not a word-count or 9-critic WARN that can be silently committed.
+    // Use only conservative, evidenced, deterministic defects.
+    assertArticleInformationGainV1(improvedRun.article.bodyMarkdown);
     const finalCritics=await executeMasterArticleCriticsV1({
       contract,run:improvedRun,generator,context,
     });
@@ -1142,7 +1287,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
           provenance:json({
             ...replay.provenance,
             editorialRecovery:{
-              version:"SAVED_ARTICLE_QUALITY_IMPROVEMENT_V1",
+              version:repairMode==="REVIEWED_SIGNED_CITATIONS"
+                ?"SAVED_ARTICLE_REVIEWED_SIGNED_CITATION_REPAIR_V1":
+                repairMode==="EXACT_SIGNED_CITATIONS"
+                  ?"SAVED_ARTICLE_SIGNED_CITATION_REPAIR_V1":
+                  "SAVED_ARTICLE_QUALITY_IMPROVEMENT_V1",
               previousArticle:initial,
               previousStatus:original.status,
               previousArticleUpdatedAt:original.updatedAt.toISOString(),
@@ -1150,6 +1299,17 @@ export async function improveExistingArticleQualityV1(articleId:string,
               previousReplayArtifactId:priorReplay?.id??null,
               evidenceSnapshotSha256:sha(JSON.stringify(snap.plan)),
               checkpointSha256,
+              citationReview:repairMode==="REVIEWED_SIGNED_CITATIONS"
+                ?{
+                  source:"SIGNED_H2_REVIEW_CHECKPOINTS",
+                  proposalSha256:sha(signedCitationDraft!.proposedBodyMarkdown),
+                  reviewCheckpointKeys:"reviewCheckpointKeys" in signedCitationDraft!
+                    ?signedCitationDraft!.reviewCheckpointKeys:[],
+                  approvedCitationCount:signedCitationDraft!.totalAddedCitations,
+                  allEvidenceBearingSectionsCited:true,
+                  finalVerifierAndCriticsRequired:true,
+                }
+                :null,
               initialCriticStatus:"NOT_RUN_AVOID_PAID_BASELINE",
               finalCriticStatus:repaired.finalCritics.suite.status,
               repairSections:repaired.repairs.map(x=>x.sectionIndex),
@@ -1167,7 +1327,11 @@ export async function improveExistingArticleQualityV1(articleId:string,
     });
     return {
       articleId,status:"IN_REVIEW" as const,
-      result:"SAME_ARTICLE_QUALITY_IMPROVEMENT_COMMITTED" as const,
+      result:repairMode==="REVIEWED_SIGNED_CITATIONS"
+        ?"SAME_ARTICLE_REVIEWED_SIGNED_CITATIONS_COMMITTED" as const:
+        repairMode==="EXACT_SIGNED_CITATIONS"
+          ?"SAME_ARTICLE_SIGNED_CITATION_REPAIR_COMMITTED" as const:
+          "SAME_ARTICLE_QUALITY_IMPROVEMENT_COMMITTED" as const,
       newFingerprint:fingerprint,
       oldFingerprint,
       replayArtifactId:committed,

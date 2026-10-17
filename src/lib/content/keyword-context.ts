@@ -31,7 +31,8 @@ function extractHostname(url: string): string {
  */
 export async function getWebsiteKeywordContext(
   websiteId: string,
-  limit = 50
+  limit = 50,
+  market?: "US" | "CA" | "GB" | "AU",
 ): Promise<WebsiteKeywordContext | null> {
   const website = await prisma.website.findUnique({
     where: { id: websiteId },
@@ -39,25 +40,41 @@ export async function getWebsiteKeywordContext(
   });
   if (!website) return null;
 
-  const hostname = extractHostname(website.url);
+  const hostname = extractHostname(website.url).toLowerCase();
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500)
+    throw new Error("KEYWORD_CONTEXT_LIMIT_INVALID");
+  // Search Console rows have country/device dimensions: never import
+  // Canadian average positions into a US keyword ranking decision.
+  const scope = {
+    pageUrl: { contains: hostname },
+    ...(market ? { country: market.toLowerCase() } : {}),
+  };
+  const belongsToWebsite = (pageUrl: string | null): boolean => {
+    if (!pageUrl) return false;
+    try {
+      const host = new URL(pageUrl).hostname.toLowerCase();
+      return host === hostname || host === "www." + hostname;
+    } catch { return false; }
+  };
 
   const keywords = await prisma.keyword.findMany({
     where: {
       workspaceId: website.business.workspaceId,
-      snapshots: { some: { pageUrl: { contains: hostname } } },
+      snapshots: { some: scope },
     },
     include: {
       snapshots: {
-        where: { pageUrl: { contains: hostname } },
+        where: scope,
         orderBy: { date: "desc" },
         take: 1,
       },
     },
-    take: 50,
+    take: Math.min(500, Math.max(50, limit * 2)),
   });
 
   const topKeywords = keywords
-    .filter((k) => k.snapshots.length > 0)
+    .filter((k) => k.snapshots.length > 0 &&
+      belongsToWebsite(k.snapshots[0].pageUrl))
     .map((k) => ({
       keyword: k.text,
       volume: k.volume,

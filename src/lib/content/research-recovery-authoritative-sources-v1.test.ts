@@ -14,6 +14,15 @@ describe("explicit government source recovery seeds",()=>{
     expect(items[0].id).toMatch(/^research-gov-/);
     expect("claimEvidence" in items[0]).toBe(false);
   });
+  it("accepts a real apex .gov domain without granting fact verification",()=>{
+    const items=buildResearchRecoveryGovernmentSeedsV1([
+      "https://identitytheft.gov/Steps",
+    ],[]);
+    expect(items).toHaveLength(1);
+    expect(items[0].url).toBe("https://identitytheft.gov/Steps");
+    expect(items[0].sourceType).toBe("PRIMARY_GOVERNMENT");
+    expect("claimEvidence" in items[0]).toBe(false);
+  });
   it("does not re-add an existing URL",()=>{
     const existing=buildResearchRecoveryGovernmentSeedsV1([url],[]);
     expect(buildResearchRecoveryGovernmentSeedsV1([url],existing)).toEqual([]);

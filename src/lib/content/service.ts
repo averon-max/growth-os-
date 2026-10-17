@@ -66,6 +66,8 @@ import {
 } from "./comprehensive-editorial-release-gate-v1";
 import {assertArticleProseHygieneV2}
   from "./article-search-readiness-v2";
+import {assertArticleInformationGainV1}
+  from "./article-editorial-information-gain-v1";
 
 import {
   writeArticleRecoveryCheckpointV1,
@@ -3898,6 +3900,7 @@ export async function approveArticle(
   // A saved article may have passed model/SEO gates while still
   // containing visible text corruption. Never approve or publish that.
   assertArticleProseHygieneV2(article.bodyMarkdown);
+  assertArticleInformationGainV1(article.bodyMarkdown);
 
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
@@ -4182,6 +4185,7 @@ export async function publishArticle(
   // A saved article may have passed model/SEO gates while still
   // containing visible text corruption. Never approve or publish that.
   assertArticleProseHygieneV2(article.bodyMarkdown);
+  assertArticleInformationGainV1(article.bodyMarkdown);
 
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan

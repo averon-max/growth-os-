@@ -24,7 +24,7 @@ export type KeywordTopicAssessmentV1={
   reason:string;
 };
 const normalize=normalizeKeywordV2;
-const topicFromSeed=(seed:string)=>normalize(seed)
+export const keywordCoreTopicV1=(seed:string)=>normalize(seed)
   .replace(/^(what is|what are|how does|how do|how can|why does|why is|guide to|introduction to|understanding)\s+/u,"")
   .replace(/\s+(explained|guide|definition|meaning|overview)$/u,"").trim();
 const phrase=(text:string,value:string)=>
@@ -32,7 +32,7 @@ const phrase=(text:string,value:string)=>
 const vendors=[
   "credit karma","equifax","experian","transunion","trans union","aura",
   "myfico","identityforce","credit sesame","freescore360",
-  "capital one","chase","wallethub",
+  "capital one","chase","wallethub","idx","kroll",
 ] as const;
 const navigation=[
   "phone number","customer service","customer support","contact number",
@@ -71,7 +71,7 @@ function make(
 export function assessKeywordTopicIntentV1({
   seed,query,
 }:{seed:string;query:string;}):KeywordTopicAssessmentV1{
-  const core=topicFromSeed(seed);
+  const core=keywordCoreTopicV1(seed);
   const value=normalize(query);
   if(!core||!value)
     return make(seed,query,core,"AMBIGUOUS_TOPIC_REVIEW",
@@ -88,6 +88,22 @@ export function assessKeywordTopicIntentV1({
   if(!phrase(value,core))
     return make(seed,query,core,"ADJACENT_ENTITY_NOT_SAME_TOPIC",
       "UNDETERMINED","NO_EXPLICIT_CORE_TOPIC_OR_APPROVED_EQUIVALENT");
+  // "Credit monitoring arrangement(s)" is a separate CMA / loan-data
+  // concept, not consumer credit-file monitoring. It triggered paid SERPs
+  // for unrelated bank documents in a real 2026-10-16 research session.
+  if(core==="credit monitoring"&&
+    /\bcredit monitoring arrangements?\b/u.test(value))
+    return make(seed,query,core,"ADJACENT_ENTITY_NOT_SAME_TOPIC",
+      "UNDETERMINED","CMA_BANKING_ARRANGEMENT_NOT_CONSUMER_CREDIT_MONITORING");
+  // Trust/review questions about an unnamed vendor still require
+  // a separate brand-product page; never auto-purchase definition SERPs.
+  // Named IDX/Kroll are already blocked by the vendor list above.
+  if(core==="credit monitoring"&&
+    /\b(?:legit|legitimate|scam|trustworthy)\b/u.test(value)&&
+    new RegExp("^is\\s+.+\\s+"+core.replace(/\s+/gu,"\\s+")+"\\b","u")
+      .test(value))
+    return make(seed,query,core,"SEPARATE_BRAND_PRODUCT_PAGE",
+      "COMMERCIAL","NAMED_VENDOR_TRUST_QUERY_SEPARATE_PAGE_INTENT");
   // A buyer-comparison keyword is incompatible with a definition article,
   // including queries that literally contain the core concept.
   const informationalSeed=/^(?:what is|what are|how does|how do|how can|why|does|is)\s/u

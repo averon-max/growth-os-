@@ -38,6 +38,8 @@ import {
 import {
   detectHighConfidenceEditorialRepetitionV1,
 } from "./editorial-repetition-guard-v1";
+import {detectArticleInformationGainDefectsV1}
+  from "./article-editorial-information-gain-v1";
 
 
 export interface MasterArticleCriticExecutionV1 {
@@ -596,14 +598,78 @@ export async function executeMasterArticleCriticsV1({
         bodyMarkdown:section.bodyMarkdown,
       }))
     );
+  const lowInformation=
+    detectArticleInformationGainDefectsV1(run.article.bodyMarkdown);
+  // The source-rich guide cannot place all H3 under one H2. Locate a
+  // DIFFERENT, evidence-rich H2 with existing distinct paragraphs; allow
+  // a heading-only structure repair, not new facts or synthetic queries.
+  const nestedBySection=run.sections.map(section=>
+    (section.bodyMarkdown.match(/^###\s+\S/gm)??[]).length);
+  const h3Total=nestedBySection.reduce((n,x)=>n+x,0);
+  const h3Owners=nestedBySection.filter(x=>x>0).length;
+  const richSections=contract.sectionContracts.filter(section=>
+    section.blueprint.requiredClaims.length>=2 &&
+    section.blueprint.evidenceIds.length>=2);
+  const structureCandidate=
+    run.sections.length>=5 && richSections.length>=2 &&
+    (h3Total<3 || h3Owners<2)
+      ?run.sections.findIndex((section,index)=>{
+        const scoped=contract.sectionContracts[index];
+        const parts=section.bodyMarkdown.split(/\n\s*\n+/)
+          .filter(p=>p.trim().length>=85&&!/^#{1,6}\s/.test(p));
+        return !!scoped && nestedBySection[index]===0 &&
+          scoped.blueprint.requiredClaims.length>=2 &&
+          scoped.blueprint.evidenceIds.length>=2 && parts.length>=2;
+      }): -1;
   const editorial =
-    repeatedAdvice.length===0 ?
-      semanticEditorial :
+    repeatedAdvice.length===0 && lowInformation.length===0 &&
+    structureCandidate<0 ?semanticEditorial :
       finalizeMasterArticleCriticResultV1({
         criticId:"EDITORIAL",
         modelName:semanticRun.modelName,
         findings:[
           ...semanticEditorial.findings,
+          ...(structureCandidate>=0 ?( ()=>{
+            const owning=contract.sectionContracts[structureCandidate]!;
+            return [createMasterArticleCriticFindingV1({
+              criticId:"EDITORIAL",
+              code:"SOURCE_BACKED_H3_STRUCTURE_REPAIR",
+              severity:"BLOCK",
+              location:{
+                scope:"SECTION",sectionIndex:owning.sectionIndex,
+                sectionNumber:owning.sectionNumber,
+                heading:owning.blueprint.heading,
+              },
+              repairScope:"SECTION",
+              message:"Substantive guide has fewer than three H3 or all H3 "+
+                "are within one H2; add a heading in this OTHER "+
+                "already source-rich H2 only if existing paragraphs "+
+                "support a distinct reader subquestion.",
+              recommendation:"Use a precise H3 for an existing verified "+
+                "subtopic and retain all factual sentences, linked "+
+                "citations, section meaning and provenance unchanged. "+
+                "Do not invent content or decorative headings.",
+              evidence:{claimIds:[],evidenceIds:[],queryNodeIds:[],
+                sourceIds:[]},
+            })];
+          })():[]),
+          ...lowInformation.map(issue=>{
+            const owning=contract.sectionContracts[issue.sectionIndex];
+            if(!owning)throw new ContentGenerationError(
+              "EDITORIAL_INFORMATION_GAIN_SECTION_CONTRACT_MISSING");
+            return createMasterArticleCriticFindingV1({
+              criticId:"EDITORIAL",code:issue.code,severity:"BLOCK",
+              location:{
+                scope:"SECTION",sectionIndex:owning.sectionIndex,
+                sectionNumber:owning.sectionNumber,
+                heading:owning.blueprint.heading,
+              },
+              repairScope:"SECTION",
+              message:issue.excerpt,
+              recommendation:issue.recommendation,
+              evidence:{claimIds:[],evidenceIds:[],queryNodeIds:[],sourceIds:[]},
+            });
+          }),
           ...repeatedAdvice.map(issue=>{
             const owning=contract.sectionContracts[issue.sectionIndex];
             if(!owning){

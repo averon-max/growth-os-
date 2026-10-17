@@ -130,7 +130,7 @@ export function ArticleStructureStats({
 
     {
       label:
-        "Keywords used",
+        "Brief phrases found",
 
       value:
         `${stats.usedKeywords}/${stats.keywordRows.length}`,
@@ -141,7 +141,7 @@ export function ArticleStructureStats({
 
     {
       label:
-        "Coverage",
+        "Brief exact match",
 
       value:
         stats.coverage ===
@@ -176,7 +176,7 @@ export function ArticleStructureStats({
           </span>
 
           <h2>
-            Structure & keyword coverage
+            Headings & exact brief phrases
           </h2>
         </div>
 
@@ -268,6 +268,14 @@ export function ArticleStructureStats({
       </div>
 
 
+      <p style={{fontSize:12,color:"#9CA0A8",marginTop:9,marginBottom:10}}>
+        These numbers count exact matches for the saved primary and
+        secondary brief phrases only. 100% here is NOT total SEO
+        coverage, supporting-query coverage, heading sufficiency, or
+        a prediction of rankings. Review the research-backed query
+        inventory and section outline above this article.
+      </p>
+
       {stats.keywordRows
         .length >
         0 ? (
@@ -281,7 +289,7 @@ export function ArticleStructureStats({
               styles.keywordTitle
             }
           >
-            Planned keywords
+            Brief phrases only (not all SEO queries)
           </div>
 
           <div

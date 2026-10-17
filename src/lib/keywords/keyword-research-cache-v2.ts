@@ -1,6 +1,9 @@
 import type { RelatedKeywordResult } from "./dataforseo-provider";
+import {assessKeywordTopicIntentV1,keywordCoreTopicV1} from "./keyword-topic-intent-gate-v1";
+import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
 import {
   validateKeywordOpportunityChoiceV2,
+  selectVerifiedKeywordOpportunityV2,
   type KeywordCandidateV2,
   type KeywordCleanupReasonV2,
   type KeywordClusterV2,
@@ -16,6 +19,10 @@ export interface KeywordResearchResultV2 {
   seed: string;
   collectedAt: string;
   observed: number;
+  discoveryBreakdown?: {
+    relatedRows:number;suggestionRows:number;gscRows:number;
+    trendOnlyRows:number;expandedDiscovery:boolean;
+  };
   excludedCount: number;
   excluded: Array<{ keyword: string; reason: KeywordCleanupReasonV2 }>;
   clusters: KeywordClusterV2[];
@@ -32,6 +39,7 @@ export interface KeywordResearchResultV2 {
   selectedKeyword: string | null;
   cacheHit: boolean;
   aiUsed: boolean;
+  requireDeepCompetitorEvidence?: boolean;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -46,7 +54,9 @@ function keywordCluster(value: unknown): value is KeywordClusterV2 {
     typeof v.id === "string" && v.id.length > 0 &&
     typeof v.opportunityScore === "number" && Number.isFinite(v.opportunityScore) &&
     typeof v.intent === "string" &&
-    Array.isArray(v.keywords) &&
+    Array.isArray(v.keywords) && v.keywords.length > 0 &&
+    v.keywords.every(row =>
+      candidate(row) && row.clusterId === v.id) &&
     primary && typeof primary.id === "string" &&
     typeof primary.keyword === "string" && primary.keyword.length > 0 &&
     typeof primary.normalized === "string" &&
@@ -106,6 +116,18 @@ export function parseCachedKeywordResearchV2(
     !Array.isArray(v.serpMetadata) || !v.serpMetadata.every(meta) ||
     !Array.isArray(v.serpResults) || !v.serpResults.every(serp)) return null;
 
+  // Old stored sessions can claim "approved" while containing brand
+  // navigation, support and unrelated topics. Revalidate against the
+  // CURRENT same-page topic/intent authority before trusting ANY selection.
+  // Raw archives remain readable through read-only forensic diagnostics.
+  if ((v.clusters as KeywordClusterV2[]).some(cluster =>
+    !assessKeywordTopicIntentV1({seed:v.seed as string,
+      query:cluster.primary.keyword}).eligibleForArticleSerp ||
+    cluster.keywords.some(row =>
+      !assessKeywordTopicIntentV1({seed:v.seed as string,
+        query:row.keyword}).eligibleForArticleSerp)
+  )) return null;
+
   let decision: KeywordOpportunityChoiceV2;
   try {
     decision = validateKeywordOpportunityChoiceV2(v.decision, v.clusters);
@@ -116,10 +138,30 @@ export function parseCachedKeywordResearchV2(
     ? v.clusters.find(cluster => cluster.id === decision.selectedClusterId)?.primary.keyword ?? null
     : null;
   if (v.selectedKeyword !== winner) return null;
-  if (winner && (!v.aiUsed || !v.serpResults.some(result =>
+  if (winner && !v.serpResults.some(result =>
     result.clusterId === decision.selectedClusterId &&
     result.query === winner && !result.error &&
-    result.organicResults >= 3 && result.uniqueDomains >= 2))) return null;
+    result.organicResults >= 3 && result.uniqueDomains >= 2)) return null;
+  if (winner && v.requireDeepCompetitorEvidence === true &&
+    !v.serpResults.some(row =>
+      row.query===winner && row.clusterId===decision.selectedClusterId &&
+      auditDeepSerpReadinessV1(row,keywordCoreTopicV1(v.seed as string)).status==="DEEP_COMPETITOR_OBSERVED"))
+    return null;
+  if (winner && !v.aiUsed) {
+    // A stored deterministic decision must reproduce EXACTLY from the
+    // recorded clusters/SERP. Otherwise it is not approved authority.
+    const expected = selectVerifiedKeywordOpportunityV2(
+      v.clusters as KeywordClusterV2[],
+      v.requireDeepCompetitorEvidence === true
+        ?(v.serpResults as SerpOpportunityV2[]).filter(row =>
+          auditDeepSerpReadinessV1(row,keywordCoreTopicV1(v.seed as string)).status==="DEEP_COMPETITOR_OBSERVED")
+        :v.serpResults as SerpOpportunityV2[],
+    );
+    if (expected.status !== "SELECTED" ||
+      expected.selectedClusterId !== decision.selectedClusterId ||
+      !decision.reasons.includes("DETERMINISTIC_SERP_VERIFIED_SELECTION_V1"))
+      return null;
+  }
 
   return {
     version: "KEYWORD_INTELLIGENCE_RESEARCH_V2",
@@ -129,6 +171,18 @@ export function parseCachedKeywordResearchV2(
     seed: expected.seed,
     collectedAt: v.collectedAt,
     observed: v.observed,
+    ...(record(v.discoveryBreakdown) && typeof record(v.discoveryBreakdown)?.relatedRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.suggestionRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.gscRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.trendOnlyRows === "number" &&
+      typeof record(v.discoveryBreakdown)?.expandedDiscovery === "boolean"
+      ?{discoveryBreakdown:{
+        relatedRows:Number(record(v.discoveryBreakdown)?.relatedRows),
+        suggestionRows:Number(record(v.discoveryBreakdown)?.suggestionRows),
+        gscRows:Number(record(v.discoveryBreakdown)?.gscRows),
+        trendOnlyRows:Number(record(v.discoveryBreakdown)?.trendOnlyRows),
+        expandedDiscovery:record(v.discoveryBreakdown)?.expandedDiscovery === true,
+      }}:{}),
     excludedCount: v.excludedCount,
     excluded: v.excluded,
     clusters: v.clusters,
@@ -140,6 +194,7 @@ export function parseCachedKeywordResearchV2(
     selectedKeyword: winner,
     cacheHit: true,
     aiUsed: v.aiUsed,
+    requireDeepCompetitorEvidence:v.requireDeepCompetitorEvidence===true,
   };
 }
 
@@ -166,17 +221,43 @@ export function projectApprovedKeywordEvidenceV2(
   const winner = research.candidateSnapshots.find(candidate => normalize(candidate.keyword) === key);
   if (!winner) throw new Error("KEYWORD_V2_WINNER_NOT_OBSERVED");
 
+  // Never trust even the cached cluster labels without checking current
+  // topic/page-intent policy. No raw archive or selected keyword can bypass.
+  const selectedCluster=research.clusters.find(cluster =>
+    cluster.id===research.decision.selectedClusterId);
+  if(!selectedCluster ||
+    !assessKeywordTopicIntentV1({seed:research.seed,query:selected})
+      .eligibleForArticleSerp) {
+    throw new Error("KEYWORD_V2_WINNER_TOPIC_INTENT_NOT_APPROVED");
+  }
+  const normalizeApproved=(candidate:KeywordCandidateV2)=>normalize(candidate.keyword);
+  const allowedByQuery=new Map<string,string>();
+  for(const cluster of research.clusters){
+    if(!assessKeywordTopicIntentV1({seed:research.seed,
+        query:cluster.primary.keyword}).eligibleForArticleSerp)continue;
+    for(const item of cluster.keywords){
+      if(!assessKeywordTopicIntentV1({seed:research.seed,
+          query:item.keyword}).eligibleForArticleSerp)continue;
+      allowedByQuery.set(normalizeApproved(item),cluster.id);
+    }
+  }
+  if(winner.clusterId!==research.decision.selectedClusterId ||
+    allowedByQuery.get(key)!==winner.clusterId) {
+    throw new Error("KEYWORD_V2_WINNER_NOT_APPROVED_CLUSTER");
+  }
   const toRelated = (candidate: KeywordCandidateV2): RelatedKeywordResult => ({
     keyword: candidate.keyword,
     searchVolume: candidate.searchVolume,
     keywordDifficulty: candidate.keywordDifficulty,
     cpc: candidate.cpc,
     competitionLevel: null,
-    monthlySearches: [],
-    trend: null,
+    monthlySearches: candidate.monthlySearches ?? [],
+    trend: candidate.trend ?? null,
   });
   const remaining = research.candidateSnapshots
-    .filter(candidate => normalize(candidate.keyword) !== key);
+    .filter(candidate =>
+      normalize(candidate.keyword) !== key &&
+      allowedByQuery.get(normalize(candidate.keyword))===candidate.clusterId);
   const seen = new Set<string>();
   return [winner, ...remaining].filter(candidate => {
     const normalized = normalize(candidate.keyword);

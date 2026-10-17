@@ -4,10 +4,10 @@ import { projectApprovedKeywordEvidenceV2, type KeywordResearchResultV2 } from "
 
 function sample(): KeywordResearchResultV2 {
   const cleanup = prepareKeywordOpportunitiesV2({
-    seed: "credit monitoring",
+    seed: "what is credit monitoring",
     industry: "credit monitoring",
     observations: Array.from({ length: 120 }, (_, index) => ({
-      keyword: "credit monitoring option " + index,
+      keyword: "how does credit monitoring option " + index + " work",
       source: "DATAFORSEO" as const,
       searchVolume: 120 - index,
       keywordDifficulty: 20,
@@ -21,7 +21,7 @@ function sample(): KeywordResearchResultV2 {
     approvedResearchKey: "research-key",
     websiteId: "site-1",
     market: "US",
-    seed: "credit monitoring",
+    seed: "what is credit monitoring",
     collectedAt: new Date().toISOString(),
     observed: 120,
     excludedCount: 0,
@@ -47,6 +47,102 @@ describe("V2 to Content Writer keyword handoff", () => {
     expect(rows[0]?.keyword).toBe(research.selectedKeyword);
     expect(rows[0]?.searchVolume).toBe(1);
     expect(new Set(rows.map(row => row.keyword)).size).toBe(80);
+  });
+
+  it("does not trust an old cached wrong-intent approved cluster",()=>{
+    const research=sample();
+    const bad={
+      ...research.candidateSnapshots[0]!,
+      keyword:"credit karma phone number hours",
+      normalized:"credit karma phone number hours",
+      clusterId:"old_bad_cluster",
+    };
+    const fraudulentCluster={
+      id:"old_bad_cluster",intent:bad.intent,
+      primary:bad,keywords:[bad],opportunityScore:999,
+    };
+    const output=projectApprovedKeywordEvidenceV2({
+      ...research,
+      clusters:[fraudulentCluster,...research.clusters],
+      candidateSnapshots:[bad,...research.candidateSnapshots],
+    });
+    expect(output.map(row=>row.keyword)).not.toContain(
+      "credit karma phone number hours");
+  });
+
+  it("blocks a legacy selected keyword with support/navigation intent",()=>{
+    const research=sample();
+    const bad={
+      ...research.candidateSnapshots[0]!,
+      keyword:"credit karma phone number hours",
+      normalized:"credit karma phone number hours",
+      clusterId:"bad_old_cluster",
+    };
+    expect(()=>projectApprovedKeywordEvidenceV2({
+      ...research,
+      clusters:[...research.clusters,{
+        id:"bad_old_cluster",intent:bad.intent,
+        primary:bad,keywords:[bad],opportunityScore:999,
+      }],
+      candidateSnapshots:[bad,...research.candidateSnapshots],
+      decision:{...research.decision,selectedClusterId:"bad_old_cluster"},
+      selectedKeyword:bad.keyword,
+    })).toThrow("KEYWORD_V2_WINNER_TOPIC_INTENT_NOT_APPROVED");
+  });
+
+  it("never leaks excluded competitor, login or off-topic keywords into Writer",()=>{
+    const research=sample();
+    const excluded={
+      ...research.candidateSnapshots[0]!,
+      keyword:"credit karma login",
+      normalized:"credit karma login",
+      clusterId:"unapproved_navigation_cluster",
+      searchVolume:250000,keywordDifficulty:5,
+      opportunityScore:9999,
+    };
+    const wrongTopic={
+      ...research.candidateSnapshots[1]!,
+      keyword:"credit monitoring arrangement",
+      normalized:"credit monitoring arrangement",
+      clusterId:"unapproved_banking_concept_cluster",
+      searchVolume:2900,keywordDifficulty:10,
+      opportunityScore:9990,
+    };
+    const candidateSnapshots=[
+      excluded,wrongTopic,...research.candidateSnapshots,
+    ];
+    const output=projectApprovedKeywordEvidenceV2({
+      ...research,candidateSnapshots,
+    });
+    expect(output.map(row=>row.keyword)).not.toContain("credit karma login");
+    expect(output.map(row=>row.keyword)).not.toContain("credit monitoring arrangement");
+    expect(output[0]?.keyword).toBe(research.selectedKeyword);
+  });
+
+  it("preserves observed monthly volume history and provider trend (not invented)",()=>{
+    const research=sample();
+    const selected=research.selectedKeyword!;
+    const actual=research.candidateSnapshots.find(row=>row.keyword===selected)!;
+    const monthlySearches=[{year:2026,month:9,searchVolume:80}];
+    const trend={monthly:8,quarterly:16,yearly:24};
+    const output=projectApprovedKeywordEvidenceV2({
+      ...research,
+      candidateSnapshots:research.candidateSnapshots.map(row=>
+        row.keyword===selected?{...actual,monthlySearches,trend}:row),
+    });
+    expect(output[0]).toMatchObject({
+      keyword:selected,monthlySearches,trend,
+    });
+  });
+
+  it("rejects a winner attached to an unapproved cluster",()=>{
+    const research=sample();
+    const changed=research.candidateSnapshots.map(row=>
+      row.keyword===research.selectedKeyword
+        ?{...row,clusterId:"unapproved_cluster"}:row);
+    expect(()=>projectApprovedKeywordEvidenceV2({
+      ...research,candidateSnapshots:changed,
+    })).toThrow("KEYWORD_V2_WINNER_NOT_APPROVED_CLUSTER");
   });
 
   it("rejects a candidate invented after research", () => {

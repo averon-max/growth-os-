@@ -9,6 +9,11 @@ import {
 } from "@/lib/crawler/security";
 
 import {
+  assessSerpCompetitorPageQualityV1,
+  isSubstantiveSerpHeadingV1,
+} from "./serp-competitor-page-quality-v1";
+
+import {
   classifyPageType,
   type SerpPageType,
 } from "./serp-utils";
@@ -873,6 +878,12 @@ async function fetchHtmlSafely(
         continue;
       }
 
+      // A 403/429/503 HTML error is not the ranked competitor document.
+      // Do not parse its CAPTCHA text as content intelligence.
+      if (!response.ok) {
+        return null;
+      }
+
       const contentType =
         response.headers.get(
           "content-type"
@@ -1256,8 +1267,15 @@ function analyzeHtml(
     ) ||
     null;
 
+  // Prefer article/main content rather than global navigation/footer.
+  // If no sizeable content region exists, keep the document heading list,
+  // but drop known global navigation labels from content signals.
+  const region = $("article, main, [role='main']").toArray()
+    .map(node => $(node))
+    .filter(node => cleanText(node.text()).split(/\s+/).length >= 180)
+    .sort((a,b) => cleanText(b.text()).length - cleanText(a.text()).length)[0];
   const h2 =
-    $("h2")
+    (region ?? $("body")).find("h2")
       .map(
         (
           _,
@@ -1269,14 +1287,14 @@ function analyzeHtml(
           )
       )
       .get()
-      .filter(Boolean)
+      .filter((heading) => Boolean(heading) && isSubstantiveSerpHeadingV1(heading))
       .slice(
         0,
         30
       );
 
   const h3 =
-    $("h3")
+    (region ?? $("body")).find("h3")
       .map(
         (
           _,
@@ -1288,7 +1306,7 @@ function analyzeHtml(
           )
       )
       .get()
-      .filter(Boolean)
+      .filter((heading) => Boolean(heading) && isSubstantiveSerpHeadingV1(heading))
       .slice(
         0,
         50
@@ -1296,7 +1314,7 @@ function analyzeHtml(
 
   const bodyText =
     cleanText(
-      $("body")
+      (region ?? $("body"))
         .text()
     );
 
@@ -1414,12 +1432,26 @@ async function analyzeCompetitor(
       };
     }
 
-    return analyzeHtml(
+    const analyzed = analyzeHtml(
       fetched.html,
       fetched.finalUrl,
       result.rank,
       fetched.status
     );
+    const quality = assessSerpCompetitorPageQualityV1(analyzed);
+    if (!quality.usable) {
+      return {
+        ...analyzed,
+        fetched: false,
+        // Do not let access-denied/error markup pollute word-count
+        // benchmarks or cross-competitor heading clusters.
+        h2: [],
+        h3: [],
+        wordCount: null,
+        error: "UNUSABLE_COMPETITOR_HTML:" + quality.reasons.join(","),
+      };
+    }
+    return analyzed;
   } catch (error) {
     return {
       rank:

@@ -5,6 +5,95 @@ import type {
 import {
   serializeSectionScopedAuthorityContextV1,
 } from "./master-section-context";
+import {
+  ARTICLE_TEMPLATE_POLICIES_V1,
+  type ArticleTemplateIdV1,
+} from "./article-template-policy-v1";
+
+/*
+ * The Stage Planner has already selected an article template.
+ * The Writer must not reconstruct a new outline or claim authority.
+ * This advisory context is only activated for a recognizable persisted
+ * pageType; otherwise the approved section mission remains the authority.
+ */
+const TEMPLATE_SECTION_EDITORIAL_GUIDANCE_V1:
+  Readonly<Record<ArticleTemplateIdV1, string>> = Object.freeze({
+    EXPLAINER_GUIDE:
+      "Explain the assigned concept, mechanism or limitation with a direct answer, source-supported distinctions and concrete practical implications.",
+    HOW_TO:
+      "Make the assigned step actionable: explain prerequisites, sequence, checks, common failure modes or outcomes only when they belong to this section.",
+    LOCAL_SERVICE_GUIDE:
+      "Connect the assigned service question to genuine local context, practical selection criteria and documented business facts; never fabricate local experience.",
+    SERVICE_LANDING:
+      "Address the assigned service benefit, suitability, process or objection with verifiable first-party facts; do not turn every paragraph into promotion.",
+    COMPARISON:
+      "Compare the assigned alternatives using matched decision criteria, meaningful tradeoffs and applicable limitations; never manufacture a winner.",
+    RANKED_LIST:
+      "Explain the assigned selection criteria and individual item differences; never imply testing, ranks or scoring unsupported by real methodology.",
+    CURATED_LIST:
+      "Explain why assigned options belong and how they differ, without inventing personal use, popularity or performance.",
+    PRODUCT_DETAIL_EDUCATION:
+      "Clarify the assigned product use, features, compatibility and limitations using verified product information.",
+    PRODUCT_REVIEW:
+      "Distinguish verified product specifications from actual first-party experience; never claim hands-on testing unless documented.",
+    COMMERCIAL_CATEGORY:
+      "Help the reader choose between the assigned product types with useful criteria and verified differences, not generic sales language.",
+    LOCAL_DIRECTORY:
+      "Describe only verified local businesses, locations or comparison criteria owned by this section; no fabricated listings or local claims.",
+    AUDIENCE_USE_CASE:
+      "Solve the assigned audience-specific situation with concrete, relevant steps and boundaries rather than generic persona filler.",
+    IDEAS_USE_CASES:
+      "Develop the assigned idea into a workable scenario with verified limitations; do not pad with interchangeable list entries.",
+    PROBLEM_SOLUTION:
+      "Connect the assigned symptom or problem to plausible causes, diagnostic steps and source-supported remedies without invented certainty.",
+    BRAND_SHOP_HUB:
+      "Explain the assigned brand or assortment decision using verified offerings and clear navigation; do not invent inventory, reviews or awards.",
+  });
+
+function templateEditorialContextV1(
+  contract: Readonly<SectionGenerationContractV1>
+): string {
+  const pageType = contract.searchBlueprint.pageType;
+  const normalized = typeof pageType === "string"
+    ? pageType.trim().toUpperCase().replace(/[\s-]+/g, "_")
+    : "";
+  // The Stage Plan can persist descriptive page types, such as "explainer"
+  // or "how-to", instead of the matching 15-template identifier.
+  const aliases: Readonly<Record<string, ArticleTemplateIdV1>> = {
+    EXPLAINER: "EXPLAINER_GUIDE",
+    HOW_TO_GUIDE: "HOW_TO",
+    LOCAL_SERVICE: "LOCAL_SERVICE_GUIDE",
+    IDEAS: "IDEAS_USE_CASES",
+    BRAND_SHOP: "BRAND_SHOP_HUB",
+  };
+  const candidate = aliases[normalized] ?? normalized;
+  if (!Object.prototype.hasOwnProperty.call(
+    ARTICLE_TEMPLATE_POLICIES_V1, candidate
+  )) {
+    return [
+      "No confirmed 15-template identifier is available in the saved pageType.",
+      "Follow only the assigned section mission, claims, evidence and structure.",
+      "Do not guess an article template or add unsupported sections.",
+    ].join("\n");
+  }
+  const id = candidate as ArticleTemplateIdV1;
+  const policy = ARTICLE_TEMPLATE_POLICIES_V1[id];
+  return [
+    "Selected article template: " + id,
+    "Template-specific editorial approach: " +
+      TEMPLATE_SECTION_EDITORIAL_GUIDANCE_V1[id],
+    "ARTICLE-LEVEL role vocabulary, NOT extra obligations for this section: " +
+      policy.requiredRoles.join(", "),
+    "Evidence-sensitive roles: " + policy.evidenceSensitiveRoles.join(", "),
+    "This section may cover ONLY its approved blueprint mission, question",
+    "ownership and supported claims. Do not attempt the whole template here.",
+    "Template heading ranges are planning guidance, never H3 or word quotas.",
+    "Use examples and decision criteria only when supported by the approved",
+    "evidence. Do not create new sources, first-party experiences, offers,",
+    "rankings, local claims, prices, or unsupported comparisons.",
+  ].join("\n");
+}
+
 
 
 function authoritativeContext(
@@ -44,7 +133,7 @@ export function buildMasterSectionPrompt(
       "- Reader guidance may explain what a reader should consider without asserting unsupported external facts.",
       "- A direct answer may be concise. Never add unsupported specifics merely to increase length.",
     ].join(
-      "\\n"
+      "\n"
     );
 
 
@@ -70,6 +159,10 @@ export function buildMasterSectionPrompt(
       contract
     ),
     "",
+    "ARTICLE TEMPLATE EDITORIAL CONTEXT (not a second outline authority):",
+    templateEditorialContextV1(contract),
+    "",
+
     "NON-NEGOTIABLE RULES:",
     "1. Write only the body underneath the assigned section H2.",
     "2. Do NOT output an H1.",

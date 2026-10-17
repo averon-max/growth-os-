@@ -200,6 +200,41 @@ describe("real 2026-10-16 Mac query-to-H2 evidence mismatch",()=>{
   });
 });
 
+describe("post-CAS prose hygiene must catch the actual 2026-10-16 saved article defects",()=>{
+  it("detects all eight observed glued words and blocks SEO-ready classification",()=>{
+    const badText=[
+      "Many creditcard companies show scores.",
+      "That keeps thereview focused on the informationyou have.",
+      "Do not make an assumptionto justify the level ofcoverage.",
+      "A service whosecoverage is limited needs toreview an alert.",
+      "Consider which score applies toa particular application.",
+    ].join(" ");
+    const defects=inspectProseJoinAnomaliesV2(badText);
+    expect(defects).toEqual([
+      "assumptionto","creditcard","informationyou","ofcoverage",
+      "thereview","toa","toreview","whosecoverage",
+    ]);
+    const readiness=audit({article:{...article,
+      bodyMarkdown:article.bodyMarkdown+"\n\n"+badText}});
+    expect(readiness.findings.map(x=>x.code))
+      .toContain("PROSE_SPACING_DEFECT");
+    expect(readiness.canClaimSeoReady).toBe(false);
+  });
+});
+describe("context-aware short join does not match a valid brand name",()=>{
+  it("detects both observed toa particular contexts",()=>{
+    expect(inspectProseJoinAnomaliesV2(
+      "The score is relevant toa particular decision."))
+      .toContain("toa");
+    expect(inspectProseJoinAnomaliesV2(
+      "The score applies toa particular application."))
+      .toContain("toa");
+  });
+  it("does not misclassify ordinary Toa usage",()=>{
+    expect(inspectProseJoinAnomaliesV2(
+      "Toa is a proper noun in this sample.")).toEqual([]);
+  });
+});
 describe("real persisted article copyedit failures from free H2 gap audit",()=>{
   it("blocks actual glued words helpyou and thealert in the saved 2078-word article",()=>{
     const bad={

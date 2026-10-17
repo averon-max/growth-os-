@@ -263,6 +263,26 @@ describe(
 
 
     it(
+      "preserves persisted semantic ownership without restarting the whole article",
+      async () => {
+        const original = classifyRejectedRecoveryV1(SEMANTIC_REJECTED);
+        expect(original.failureClass).toBe("SEMANTIC_REQUIRED_FAILURE");
+        expect(original.owner).toBe("SEMANTIC");
+        expect(shouldRunTier2ArticleRecoveryV1(original)).toBe(false);
+
+        const run = vi.fn().mockResolvedValue({
+          status: "REJECTED",
+          publishError: SEMANTIC_REJECTED,
+        });
+        const result = await executeArticleRecoveryOrchestratorV1({run});
+        expect(run).toHaveBeenCalledTimes(1);
+        expect(result.attempts).toBe(1);
+        expect(result.recoveryAttempted).toBe(false);
+        expect(result.article.publishError).toBe(SEMANTIC_REJECTED);
+      }
+    );
+
+    it(
       "keeps automatic whole-article quality recovery disabled",
       () => {
         const cases = [

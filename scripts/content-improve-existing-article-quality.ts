@@ -20,11 +20,17 @@ async function main(){
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
   const execute=args.includes("--execute");
   const authorized=args.includes("--authorize-paid-improvement");
+  const reviewedCitationMode=args.includes("--repair-reviewed-citations");
+  const exactCitationMode=args.includes("--repair-signed-citations");
+  const citationMode=exactCitationMode||reviewedCitationMode;
   if(!articleId||!/^[a-z0-9_-]{5,100}$/i.test(articleId)||
     args.some(a=>a!=="--execute"&&a!=="--authorize-paid-improvement"&&
+      a!=="--repair-signed-citations"&&
+      a!=="--repair-reviewed-citations"&&
       !a.startsWith("--article="))||
-    execute!==authorized)throw new Error(
-      "USAGE: --article=EXISTING_ID [--execute --authorize-paid-improvement]");
+    execute!==authorized||(exactCitationMode&&reviewedCitationMode))
+    throw new Error(
+      "USAGE: --article=EXISTING_ID [--repair-signed-citations | --repair-reviewed-citations] [--execute --authorize-paid-improvement]");
   const {prisma}=await import("../src/lib/prisma");
   try{
     const article=await prisma.contentArticle.findUnique({
@@ -81,6 +87,47 @@ async function main(){
     const {resolve,join}=await import("node:path");
     const inspected=inspectMasterRuntimeSnapshot(snapshot.plan);
     if(!inspected.runtime)throw new Error("SAVED_CURRENT_RUNTIME_NOT_VALID");
+    const signedCitationPreview=citationMode?await (async()=>{
+      const {draftExistingArticleSignedCitationsV1}=await import(
+        "../src/lib/content/existing-article-source-citation-repair-v1");
+      const {verifyExistingArticleCitationScopeV1}=await import(
+        "../src/lib/content/existing-article-citation-authority-v1");
+      const draft=reviewedCitationMode
+        ?await (async()=>{
+          const {loadReviewedSignedCitationDraftV1}=await import(
+            "../src/lib/content/existing-article-reviewed-citation-recovery-v1");
+          return loadReviewedSignedCitationDraftV1({
+            articleId,bodyMarkdown:article.bodyMarkdown,plan,
+            runtime:inspected.runtime!,
+          });
+        })()
+        :draftExistingArticleSignedCitationsV1({
+          bodyMarkdown:article.bodyMarkdown,plan,runtime:inspected.runtime!,
+        });
+      const scope=verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:draft.proposedBodyMarkdown,
+        plan,runtime:inspected.runtime!,
+      });
+      return {
+        proposedCitationCount:draft.totalAddedCitations,
+        candidateSections:draft.sections.map(x=>({
+          index:x.sectionIndex,heading:x.heading,
+          proposedCitations:x.proposedCitationCount,
+          sourceClaimAnchorsNotExact:x.exactClaimAnchorMissing.length,
+        })),
+        scopeStatus:scope.status,
+        sectionsStillWithoutVisibleSources:
+          scope.sections.filter(section=>
+            section.assignedEvidence>0&&section.approvedLinks===0)
+            .map(section=>({index:section.sectionIndex,heading:section.heading})),
+        canBeginSameArticleSignedCitationRepair:
+          draft.totalAddedCitations>0&&
+          scope.status==="REVIEW_SEMANTIC_PROOF_REQUIRED"&&
+          scope.sections.every(section=>
+            section.assignedEvidence===0||section.approvedLinks>0),
+        note:"Lexically anchored verified citations, not final factual publication approval. Any paid run still requires section semantic verification, 9 critics, fresh replay, unchanged-source CAS.",
+      };
+    })():null;
     const contract=bindArticleExecutionPlanToGenerationContractV1({
       plan,contract:buildArticleGenerationContractV1(inspected.runtime),
     });
@@ -276,13 +323,67 @@ async function main(){
     };
 
 
+    /*
+     * READ_ONLY_SEARCH_EDITORIAL_HANDOFF_V1
+     *
+     * Word-target completion != search/editorial readiness.
+     * Keep this separate from the paid depth-only improvement gate:
+     * source citations and signed query ownership require their own
+     * provenance review, not forced model expansion.
+     */
+    const editorialReadiness=!execute?await (async()=>{
+      const {evaluateArticleSearchReadinessV2}=
+        await import("../src/lib/content/article-search-readiness-v2");
+      const replay=await prisma.serpReplayArtifact.findFirst({
+        where:{contentArticleId:articleId},
+        orderBy:[{createdAt:"desc"},{id:"desc"}],
+      });
+      const readiness=evaluateArticleSearchReadinessV2({
+        article:{
+          title:article.title,metaDescription:article.metaDescription,
+          h1:article.h1,bodyMarkdown:article.bodyMarkdown,
+        },
+        primaryKeyword:article.brief.primaryKeyword,
+        secondaryKeywords:article.brief.secondaryKeywords,
+        runtime:inspected.runtime,plan,replay,
+      });
+      return {
+        status:readiness.status,
+        canClaimSeoReady:readiness.canClaimSeoReady,
+        publishRecommendation:readiness.publishRecommendation,
+        findings:readiness.findings.map(f=>({
+          code:f.code,severity:f.severity,
+          action:f.action,...(f.detail?{detail:f.detail}:{}),
+        })),
+        sourceReviewCandidates:readiness.sectionSourceCandidates.map(s=>({
+          sectionIndex:s.sectionIndex,heading:s.heading,
+          availableVerifiedSourceLinks:s.evidenceBackedLinks.length,
+          governmentSourceUrls:s.evidenceBackedLinks
+            .filter(link=>link.sourceType==="PRIMARY_GOVERNMENT")
+            .map(link=>link.url),
+        })),
+        suggestedQueryRebindings:readiness.suggestedQueryRebindings,
+        nextAction:readiness.findings.length>0
+          ?"REVIEW_OWNING_EDITORIAL_STAGES_NO_AUTO_REWRITE"
+          :"NO_EDITORIAL_READINESS_FINDINGS",
+        note:"NO_DEFICIT only means word target met. This report neither alters signed evidence/query ownership nor approves publication.",
+      };
+    })():null;
+
     console.log(JSON.stringify({
-      mode:execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
-        "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW",
+      mode:citationMode
+        ?(execute?"EXPLICIT_PAID_SAME_ID_SIGNED_CITATION_REPAIR":
+          "FREE_SAME_ID_SIGNED_CITATION_REPAIR_PREVIEW")
+        :(execute?"EXPLICIT_PAID_SAME_ID_IMPROVEMENT":
+          "FREE_SAME_ID_QUALITY_IMPROVEMENT_PREVIEW"),
+      reviewSource:reviewedCitationMode?"EXACT_SIGNED_H2_CHECKPOINTS":
+        exactCitationMode?"EXACT_SIGNED_CLAIM_MATCHES":"NONE",
       articleId,status:article.status,updatedAt:article.updatedAt.toISOString(),
       currentWords:countWords(article.bodyMarkdown),requiredWords:minimumWords,
       currentH3:(article.bodyMarkdown.match(/^###\s+/gm)??[]).length,
       improvement,
+      signedCitationPreview,
+      editorialReadiness,
       verifiedCheckpointReady:checkpointReady,
       incrementalQualityProgress,
       checkpointEvidence:{
@@ -297,14 +398,18 @@ async function main(){
       return;
     }
     if(article.status!=="IN_REVIEW"||article.publishedAt!==null||
-      article.publishedUrl!==null||!improvement.eligible)
+      article.publishedUrl!==null||
+      (citationMode?!signedCitationPreview?.canBeginSameArticleSignedCitationRepair:
+        !improvement.eligible))
       throw new Error("PAID_IMPROVEMENT_NOT_ELIGIBLE");
     if(!checkpointReady)throw new Error(
       "PAID_IMPROVEMENT_SAFE_STOP_NO_COMPATIBLE_SIGNED_CHECKPOINT");
     const {improveExistingArticleQualityV1}=
       await import("../src/lib/content/existing-article-quality-improvement-v1");
     const result=await improveExistingArticleQualityV1(
-      articleId,article.updatedAt.toISOString());
+      articleId,article.updatedAt.toISOString(),
+      reviewedCitationMode?"REVIEWED_SIGNED_CITATIONS":
+        exactCitationMode?"EXACT_SIGNED_CITATIONS":"DEPTH");
     console.log(JSON.stringify(result,null,2));
     console.log("SAME_ID_QUALITY_IMPROVEMENT_FINISHED");
   }finally{await prisma.$disconnect();}
