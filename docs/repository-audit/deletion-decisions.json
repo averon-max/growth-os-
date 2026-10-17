@@ -1,5 +1,48 @@
 {
   "version": "GROWTH_OS_DELETION_DECISIONS_V1",
   "policy": "Each deletion requires an individually verified decision for the exact Git blob. Run --inspect, inspect dynamic entry points and persisted state, document test proof and rollback, then commit the change with the deletion.",
-  "decisions": []
+  "decisions": [
+    {
+      "path": "scripts/writer-trace-report.test.mjs",
+      "blobSha": "e36b6e8d23ca871fad6186a6db492ce9ade6855e",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Remove deferred logging-only test before cleaning out its deferred CLI dependency. This code was introduced only on cleanup/category-pass-20261017, after the user established that logging work must occur only after repository cleanup closes. Its removal is deliberate scope correction, not retirement of production telemetry.",
+        "realImportersAndConsumers": "Known static consumers: none. The standalone CLI is not listed in package.json scripts or the CI workflow, and no production entrypoint imports it. Remove its companion test before removing the CLI; check manual operators separately.",
+        "dynamicRuntimeAndExternalCallers": "The CLI is a manual opt-in command not dynamically loaded by production Next.js routes, and no scheduler or CI task invokes it. External copies or personal ad-hoc invocations cannot be exhaustively ruled out, but the CLI was added only in this temporary cleanup branch and has not been merged.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma model, SQL migration, serialized checkpoint contract, article record, evidence ledger or published URL depends on this newly introduced script. Existing production writer-trace-v1.ts implementation is intentionally retained and unmodified.",
+        "testEvidenceAndLiveRisks": "The removal is limited to the new CLI and its dedicated test; check TypeScript, all Vitest tests, production build, and deletion gate on the final head. The CI result must be confirmed after changes; no claim of successful validation or live model testing is made.",
+        "rollbackPlan": "Restore this exact blob e36b6e8d23ca871fad6186a6db492ce9ade6855e with git show from the parent before deletion, or revert the precise removal commit; independently, the initial script addition remains in Git history for a later, intentionally scoped logging phase."
+      }
+    },
+    {
+      "path": "scripts/writer-trace-report.mjs",
+      "blobSha": "d7f61358484b04302c3b3da34649e1c777d582ad",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "scripts/writer-trace-report.test.mjs"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Remove standalone diagnostic script that belongs to the postponed logging phase. This code was introduced only on cleanup/category-pass-20261017, after the user established that logging work must occur only after repository cleanup closes. Its removal is deliberate scope correction, not retirement of production telemetry.",
+        "realImportersAndConsumers": "Known static consumers: scripts/writer-trace-report.test.mjs. The standalone CLI is not listed in package.json scripts or the CI workflow, and no production entrypoint imports it. Remove its companion test before removing the CLI; check manual operators separately.",
+        "dynamicRuntimeAndExternalCallers": "The CLI is a manual opt-in command not dynamically loaded by production Next.js routes, and no scheduler or CI task invokes it. External copies or personal ad-hoc invocations cannot be exhaustively ruled out, but the CLI was added only in this temporary cleanup branch and has not been merged.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma model, SQL migration, serialized checkpoint contract, article record, evidence ledger or published URL depends on this newly introduced script. Existing production writer-trace-v1.ts implementation is intentionally retained and unmodified.",
+        "testEvidenceAndLiveRisks": "The removal is limited to the new CLI and its dedicated test; check TypeScript, all Vitest tests, production build, and deletion gate on the final head. The CI result must be confirmed after changes; no claim of successful validation or live model testing is made.",
+        "rollbackPlan": "Restore this exact blob d7f61358484b04302c3b3da34649e1c777d582ad with git show from the parent before deletion, or revert the precise removal commit; independently, the initial script addition remains in Git history for a later, intentionally scoped logging phase."
+      }
+    }
+  ]
 }
