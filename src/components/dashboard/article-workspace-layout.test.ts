@@ -31,7 +31,7 @@ function jsxContainsClass(
     if (ts.isJsxElement(node) &&
       node.openingElement.attributes.properties.some(
         attr => ts.isJsxAttribute(attr) &&
-          attr.name.text === "className" &&
+          attr.name.getText(tree) === "className" &&
           (attr.initializer?.getText(tree).includes(className) ?? false)
       )
     ) {
