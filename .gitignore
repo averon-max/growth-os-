@@ -53,3 +53,6 @@ next-env.d.ts
 *.bak-*
 *.backup_*
 .ui-backup-*
+
+# Local writer execution traces
+/.growth-os-traces/
