@@ -67,7 +67,7 @@ describe("writer execution tracing", () => {
         throw new TypeError("testing failure");
       })).rejects.toThrow("testing failure");
       const [name] = await readdir(directory);
-      const events = (await readFile(join(directory, name), "utf8")).trim().split("\n").map(JSON.parse);
+      const events = (await readFile(join(directory, name), "utf8")).trim().split("\n").map(line => JSON.parse(line));
       expect(events.at(-1).stage).toBe("run.failed");
       expect(events.at(-1).fields.errorName).toBe("TypeError");
     } finally {
