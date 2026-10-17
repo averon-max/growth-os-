@@ -427,6 +427,12 @@ describe(
           1
         );
 
+        expect(mocks.keywordContext).toHaveBeenCalledWith(
+          "website-1",
+          50,
+          "US"
+        );
+
 
         expect(
           mocks.related
