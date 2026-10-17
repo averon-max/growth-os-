@@ -16,8 +16,11 @@ const arrayOfText=(v:unknown):string[]=>
 async function main(){
   const args=process.argv.slice(2);
   const articleId=args.find(a=>a.startsWith("--article="))?.slice(10);
-  if(args.length!==1||!articleId||!/^[a-z0-9_-]{5,100}$/i.test(articleId))
-    throw new Error("USAGE: --article=EXISTING_ID");
+  const exportDraft=args.includes("--export-editorial-draft");
+  if(!articleId||!/^[a-z0-9_-]{5,100}$/i.test(articleId)||
+     args.length!==(exportDraft?2:1)||
+     args.some(a=>a!=="--export-editorial-draft"&&!a.startsWith("--article=")))
+    throw new Error("USAGE: --article=EXISTING_ID [--export-editorial-draft]");
   const {prisma}=await import("../src/lib/prisma");
   try {
     const article=await prisma.contentArticle.findUnique({
@@ -432,6 +435,22 @@ async function main(){
       paidCalls:0,databaseUnchanged:true,
       nextAction:"REVIEW_COPYEDIT_AND_REAL_REPLAY_WARNINGS_BEFORE_NEW_FINGERPRINT_COMMIT",
     };
+    if(exportDraft){
+      if(!readyForHumanSemanticReview||!editorialBody)
+        throw new Error("EDITORIAL_DRAFT_EXPORT_UNSAFE_OR_NEEDS_MORE_WORK");
+      const {mkdir,writeFile}=await import("node:fs/promises");
+      const {resolve,join}=await import("node:path");
+      const dir=resolve(process.cwd(),".growth-os-tmp");
+      await mkdir(dir,{recursive:true});
+      const candidatePath=join(dir,
+        "existing-article-"+articleId+"-editorial-review.md");
+      await writeFile(candidatePath,
+        "# "+article.h1+"\n\n"+editorialBody+"\n","utf8");
+      Object.assign(result,{
+        exportedEditorialReviewPath:candidatePath,
+        warning:"Local candidate ONLY, not database article, not signed or published.",
+      });
+    }
     console.log(JSON.stringify(result,null,2));
   }finally{await prisma.$disconnect();}
 }
