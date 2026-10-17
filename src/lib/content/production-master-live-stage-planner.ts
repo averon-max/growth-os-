@@ -1600,7 +1600,7 @@ function inspectStagePlanCompleteness(
     };
 
 
-  applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction");
+  applyLocalRequiredQuestionContractionV1("after_required_question_contraction");
 
 
   /*
@@ -2052,7 +2052,7 @@ function inspectStagePlanCompleteness(
    *
    * Contract it locally before terminal failure.
    */
-  applyLocalRequiredQuestionContractionV1();
+  applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction");
 
 
   if (
