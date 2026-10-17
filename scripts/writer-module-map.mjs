@@ -64,8 +64,10 @@ for (const p of code) {
     lines: source.split("\n").length,
     exports: ast.statements
       .filter(s => s.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword))
-      .map(s => s.name?.getText(ast) ?? s.kind === ts.SyntaxKind.ExportDeclaration ?
-        (s.moduleSpecifier?.getText(ast) ?? "reexport") : "unknown")
+      .map(s => s.name?.getText(ast) ??
+        (s.kind === ts.SyntaxKind.ExportDeclaration
+          ? (s.moduleSpecifier?.getText(ast) ?? "reexport")
+          : "anonymous-export"))
       .slice(0, 30),
   });
 }
