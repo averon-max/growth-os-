@@ -17,7 +17,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { geminiGenerator } from "./gemini-generator";
+import { openAiGenerator } from "./openai-generator";
 import { createContentRunBudgetV1, withContentRunBudgetV1 } from "./content-run-budget-v1";
 import { assertSectionEvidenceCapacityV1 } from "./section-evidence-capacity-v1";
 import { assertStoredPublicationEvidenceV1 } from "./stored-publication-evidence-gate-v1";
@@ -199,7 +199,7 @@ export async function improveExistingArticleQualityV1(articleId:string,
     const budget=createContentRunBudgetV1({
       maxModelCalls:36,maxEstimatedInputTokens:200000,maxRepairCalls:8,
     });
-    const generator=withContentRunBudgetV1({generator:geminiGenerator,budget});
+    const generator=withContentRunBudgetV1({generator:openAiGenerator,budget});
     check(supportsMasterSectionRepairGenerator(generator)&&
       supportsMasterSectionSemanticVerifier(generator),
       "SAVED_QUALITY_REPAIR_GENERATOR_UNAVAILABLE");

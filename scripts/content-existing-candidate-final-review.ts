@@ -409,7 +409,7 @@ async function main(): Promise<void> {
       return;
     }
 
-    const { geminiGenerator }=await import("../src/lib/content/gemini-generator");
+    const { openAiGenerator }=await import("../src/lib/content/openai-generator");
     const { createContentRunBudgetV1,withContentRunBudgetV1 }=
       await import("../src/lib/content/content-run-budget-v1");
     const { executeMasterArticleCriticsV1 }=
@@ -419,7 +419,7 @@ async function main(): Promise<void> {
     const budget=createContentRunBudgetV1({
       maxModelCalls:4,maxEstimatedInputTokens:65000,maxRepairCalls:0,
     });
-    const model=withContentRunBudgetV1({generator:geminiGenerator,budget});
+    const model=withContentRunBudgetV1({generator:openAiGenerator,budget});
     const output=join(root,articleId+(resumeV3 ?
       "-SUPPORTED-CANDIDATE-V3-REVIEW-R2.json" :
       v3 ? "-SUPPORTED-CANDIDATE-V3-REVIEW.json" :

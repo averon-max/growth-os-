@@ -18,8 +18,8 @@ import {
 } from "@/lib/content/service";
 
 import {
-  geminiGenerator,
-} from "@/lib/content/gemini-generator";
+  openAiGenerator,
+} from "@/lib/content/openai-generator";
 
 import {
   getOutcomeActionById,
@@ -211,7 +211,7 @@ export async function POST(
 
     const brief =
       await createContentBrief(
-        geminiGenerator,
+        openAiGenerator,
         {
           websiteId,
 

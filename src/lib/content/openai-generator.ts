@@ -791,7 +791,7 @@ function criticInstruction(
   }
 }
 
-export const geminiGenerator:
+export const openAiGenerator:
   ArticleReviewGenerator &
   MasterArticleGenerator &
   MasterArticleShellGenerator

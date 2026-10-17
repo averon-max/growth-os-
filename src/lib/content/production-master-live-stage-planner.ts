@@ -39,7 +39,7 @@ import {
 
 import {
   callContentAiJson,
-} from "./gemini-generator";
+} from "./openai-generator";
 
 import {
   collectProductionMasterLiveSources,

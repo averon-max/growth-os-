@@ -14,7 +14,7 @@
  * Writer or publication. No search, no implicit retries, bounded
  * model calls.
  */
-import {callContentAiJson} from "./gemini-generator";
+import {callContentAiJson} from "./openai-generator";
 import {inspectClaimMaterialQualifiersV1} from "./claim-material-qualifier-v1";
 import type {ProductionMasterArtifactPipelineInput} from "./production-master-artifact-builders";
 

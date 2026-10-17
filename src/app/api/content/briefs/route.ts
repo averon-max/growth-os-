@@ -34,7 +34,7 @@ import { createContentBrief } from "@/lib/content/service";
 import {
   ProductionMasterBriefBlockedError,
 } from "@/lib/content/production-master-brief-required";
-import { geminiGenerator } from "@/lib/content/gemini-generator";
+import { openAiGenerator } from "@/lib/content/openai-generator";
 import { getContentBriefs } from "@/lib/content/repository";
 import { normalizeContentTopicKeyV1 } from "@/lib/content/article-library-grouping-v1";
 import { isLikelyContentTopicTypoV1 } from "@/lib/content/content-topic-typo-guard-v1";
@@ -379,7 +379,7 @@ export async function POST(req: NextRequest) {
     const budgetedGenerator =
       withContentRunBudgetV1({
         generator:
-          geminiGenerator,
+          openAiGenerator,
 
         budget:
           contentRunBudget,

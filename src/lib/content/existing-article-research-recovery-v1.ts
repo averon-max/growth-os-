@@ -33,7 +33,7 @@ import {resolveResearchRecoverySerpMarketV1}
   from "./research-recovery-serp-market-v1";
 import {Prisma} from "@prisma/client";
 import {prisma} from "@/lib/prisma";
-import {callContentAiJson,geminiGenerator} from "./gemini-generator";
+import {callContentAiJson,openAiGenerator} from "./openai-generator";
 import {
   validateResearchExpansionProposalsV1,
   budgetResearchExpansionProposalsV1,
@@ -1160,7 +1160,7 @@ export async function recoverExistingArticleResearchV1({
       maxRepairCalls:8,
     });
     const generator=withContentRunBudgetV1({
-      generator:geminiGenerator,budget,
+      generator:openAiGenerator,budget,
     });
     // Do not spend the same 6-section Writer budget a second time
     // because a later SEO/Critic/SERP gate fails. Resume ONLY the exact

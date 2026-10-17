@@ -25,7 +25,7 @@ import {
   executeArticleRecoveryOrchestratorV1,
 } from "@/lib/content/article-recovery-orchestrator-v1";
 
-import { geminiGenerator } from "@/lib/content/gemini-generator";
+import { openAiGenerator } from "@/lib/content/openai-generator";
 import { describeRejectedArticleV1 } from "@/lib/content/article-failure-diagnostic-v1";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const budgetedGenerator =
       withContentRunBudgetV1({
         generator:
-          geminiGenerator,
+          openAiGenerator,
 
         budget:
           contentRunBudget,
