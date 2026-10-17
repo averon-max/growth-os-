@@ -40,6 +40,8 @@ jobs:
         run: node scripts/repository-audit.mjs
       - name: Map Content Writer modules
         run: node scripts/writer-module-map.mjs
+      - name: Validate Prisma schema (no database connection)
+        run: npx prisma validate
       - name: TypeScript regression
         run: npx tsc --noEmit
       - name: Full unit regression
