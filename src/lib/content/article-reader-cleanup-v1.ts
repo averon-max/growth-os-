@@ -138,8 +138,8 @@ export function draftCreditMonitoringExistingEditorialV1(markdown:string){
       paidCalls:0,autoCommit:false};
   }
   const preciseAnchors=[
-    {start:"The process has three connected stages.",
-     h3:"How monitoring services detect changes and send alerts"},
+    {start:"The process has three basic parts:",
+     h3:"How enrollment, monitoring and alerts fit together"},
     {start:"Score access is related but distinct.",
      h3:"How credit monitoring differs from credit score access"},
   ];
@@ -178,7 +178,7 @@ export function draftCreditMonitoringExistingEditorialV1(markdown:string){
   const originalUrls=sourceUrls(markdown).sort();
   const finalUrls=sourceUrls(rebuilt).sort();
   const canonicalProse=(v:string)=>v
-    .replace(/^### (?:How monitoring services detect changes and send alerts|How credit monitoring differs from credit score access)$/gmu,"")
+    .replace(/^### (?:How enrollment, monitoring and alerts fit together|How credit monitoring differs from credit score access)$/gmu,"")
     .replace(/^\*\*References:\*\*[^\n]*$/gmu,"")
     .replace(/\[\s*Source:\s*[^\]]+\]\(https?:\/\/[^)\s]+\)/giu,"")
     .replace(/\bSource:\s*\[[^\]]+\]\(https?:\/\/[^)\s]+\)/giu,"")
