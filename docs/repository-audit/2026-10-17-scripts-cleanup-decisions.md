@@ -32,3 +32,21 @@ Branch: `cleanup/category-pass-20261017`.
 2. Flag expired, superseded **operational** scripts after preserving input/output provenance and confirming no known operator calls.
 3. Use the existing deletion gate with an explicit blob SHA and rollback for each removed file.
 4. Run full TypeScript, Vitest, Next production build, then verify exact head.
+
+## Second pass — operator and checkpoint entrypoints
+
+Inspected the source entrypoints directly (not just filenames):
+
+| File | Operational effect | Decision |
+|---|---|---|
+| `content-existing-candidate-final-review.ts` | Default read-only; opt-in paid semantic review and critics, writes exclusive local review artifacts, no DB persistence | RETAIN |
+| `content-article-final-closure-preview.ts` | Checks source checkpoint hashes and writes a local preview; no AI/paid search/DB writes | RETAIN |
+| `content-critic-checkpoint-audit.mjs` | Read-only diff of POST_WRITER and POST_MASTER_CRITIC checkpoints and local critic findings | RETAIN |
+| `content-recover-existing-whitespace-rejection.ts` | Optional explicitly gated database mutation and replay invalidation for one rejected article | RETAIN / HIGH RISK; cannot remove before operational ownership review |
+| `content-existing-article-research-recovery-live.ts` | Separate existing-article research recovery CLI, paid branch explicit opt-in, can resume existing Writer | RETAIN / HIGH RISK |
+| `content-improve-existing-article-quality.ts` | Same-ID article revision with guarded write after quality/replay contracts | RETAIN / HIGH RISK |
+| `content-writer-closure.ts` | Brief-based production generation, explicitly gated budgeted model run | RETAIN / HIGH RISK |
+
+These are not interchangeable: they have different persisted artifact states, article ID handling, side effects and validation gates. No safe deletion is established for any of these seven files.
+
+**Cleanup status:** 15 script contracts examined across passes; 0 approved for deletion. This is an intentionally fail-closed result, not a declaration that the Scripts category is completely clean.
