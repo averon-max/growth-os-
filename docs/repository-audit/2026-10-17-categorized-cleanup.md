@@ -39,6 +39,14 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 - Next section: Writer, beginning with the existing static module reachability map and the large Stage Planner / `service.ts` boundary.
 - These numbers reflect committed Git files, not ignored local generated files.
 
+## Section progress as of 2026-10-17
+
+- **Scripts:** all 41 CLI contracts initially examined, 2 premature logging-only additions removed, original 39 kept. The deeper dynamic/operational consumer audit remains a precondition to further deletion.
+- **Content/Writer:** all 411 current tracked paths classified (212 non-test code, 197 test, 2 fixtures), no exact duplicates; major source hotspots inspected; production unchanged. Full architectural consolidation remains outstanding because equivalent behavior has not been established for large orchestrators. See `2026-10-17-writer-entire-section-assessment.md`.
+- **API/UI/other libraries:** NEXT ACTIVE SECTION. Initial 310-file inventory and route-boundary sample completed in `2026-10-17-app-api-cleanup-first-pass.md`.
+- **CI:** latest cleanup branch head must still pass deletion gate, TypeScript, full Vitest and production build. A previously passing head is insufficient.
+- **Logging:** explicitly deferred until completion of all cleanup sections and verification. No runtime instrumentation work in this phase.
+
 ## Protected
 
 The existing Writer backup branch, PostgreSQL data, Prisma migrations, content drafts/articles, credentials, CMS publication and existing API contracts remain unchanged.
