@@ -1031,5 +1031,6 @@ export {
   hasNegation,
   sentenceWindows,
   NEGATIVE_CLAIM_PATTERN_V1,
+  NEGATIVE_CLAIM_NON_TARGET_TOKENS_V1,
   normalizeNegativeTargetTokenV1,
 };
