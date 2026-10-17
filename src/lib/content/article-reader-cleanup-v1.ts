@@ -177,6 +177,16 @@ export function draftCreditMonitoringExistingEditorialV1(markdown:string){
     /\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/gu)].map(x=>x[1]!);
   const originalUrls=sourceUrls(markdown).sort();
   const finalUrls=sourceUrls(rebuilt).sort();
+  const canonicalProse=(v:string)=>v
+    .replace(/^### (?:How monitoring services detect changes and send alerts|How credit monitoring differs from credit score access)$/gmu,"")
+    .replace(/^\*\*References:\*\*[^\n]*$/gmu,"")
+    .replace(/\[\s*Source:\s*[^\]]+\]\(https?:\/\/[^)\s]+\)/giu,"")
+    .replace(/\bSource:\s*\[[^\]]+\]\(https?:\/\/[^)\s]+\)/giu,"")
+    .replace(vague,"")
+    .replace(/[ \t]+([.,;:!?])/gu,"$1")
+    .replace(/\s+/gu," ").trim();
+  const factualProseOtherwiseUnchanged=
+    canonicalProse(markdown)===canonicalProse(rebuilt);
   return {
     eligible:true as const,
     version:"CREDIT_MONITORING_EXISTING_EDITORIAL_DRAFT_V1" as const,
@@ -185,6 +195,7 @@ export function draftCreditMonitoringExistingEditorialV1(markdown:string){
     linkMultisetPreserved:JSON.stringify(originalUrls)===
       JSON.stringify(finalUrls),
     linksStillInOriginalH2:refs.everyH2RetainsItsOwnUrls,
+    factualProseOtherwiseUnchanged,
     h2Count:sections.length,
     addedFactualClaims:0,
     addedNewResearchQueries:0,
