@@ -3815,9 +3815,14 @@ export async function generateArticleFromBrief(
 }
 
 
-export async function approveArticle(
-  articleId:
-    string
+/**
+ * Shared release checklist. Approval and publication previously duplicated
+ * this exact evidence/SEO/editorial/replay sequence; the original order is
+ * retained and no live providers are invoked by this validation helper.
+ */
+async function requireArticleReadyForReleaseV1(
+  articleId: string,
+  phase: "approve" | "publish"
 ) {
   const article =
     await prisma.contentArticle.findUnique({
@@ -3848,13 +3853,12 @@ export async function approveArticle(
     );
   }
 
-  if (
-    article.status !==
-      "IN_REVIEW"
-  ) {
-    throw new Error(
-      `Cannot approve article with status ${article.status}`
-    );
+
+  if (phase === "approve" && article.status !== "IN_REVIEW") {
+    throw new Error(`Cannot approve article with status ${article.status}`);
+  }
+  if (phase === "publish" && article.status !== "APPROVED") {
+    throw new Error("Only approved articles can be published");
   }
 
   /*
@@ -3862,10 +3866,10 @@ export async function approveArticle(
    * coverage. Old IN_REVIEW drafts must NOT escape the new guard simply
    * because they were generated before its introduction.
    */
-  const approvalEditorialFindings =
+  const releaseEditorialFindings =
     detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
-  if (approvalEditorialFindings.length > 0) {
-    throw new EditorialRepetitionGateErrorV1(approvalEditorialFindings);
+  if (releaseEditorialFindings.length > 0) {
+    throw new EditorialRepetitionGateErrorV1(releaseEditorialFindings);
   }
 
   // A saved article may have passed model/SEO gates while still
@@ -4005,7 +4009,7 @@ export async function approveArticle(
   }
 
 
-  const approvalReplayArtifact =
+  const releaseReplayArtifact =
     await prisma.serpReplayArtifact.findFirst({
       where: {
         contentArticleId:
@@ -4026,7 +4030,7 @@ export async function approveArticle(
     });
 
 
-  const approvalPublishGate =
+  const releasePublishGate =
     evaluateExplicitPublishGateV1({
       article: {
         title:
@@ -4043,7 +4047,7 @@ export async function approveArticle(
       },
 
       replayArtifact:
-        approvalReplayArtifact,
+        releaseReplayArtifact,
 
       existingGates: {
         contentGatePassed:
@@ -4056,33 +4060,40 @@ export async function approveArticle(
 
 
   console.info(
-    "[explicit publish gate:approve]",
+    `[explicit publish gate:${phase}]`,
     {
       articleId,
 
       pass:
-        approvalPublishGate.pass,
+        releasePublishGate.pass,
 
       blockers:
-        approvalPublishGate.blockers,
+        releasePublishGate.blockers,
 
       warnings:
-        approvalPublishGate.warnings,
+        releasePublishGate.warnings,
 
       replayArtifactId:
-        approvalPublishGate
+        releasePublishGate
           .replayArtifactId,
 
       replayStatus:
-        approvalPublishGate
+        releasePublishGate
           .replayStatus,
     }
   );
 
 
   assertExplicitPublishGatePassedV1(
-    approvalPublishGate
+    releasePublishGate
   );
+
+
+  return article;
+}
+
+export async function approveArticle(articleId: string) {
+  await requireArticleReadyForReleaseV1(articleId, "approve");
 
   return prisma.contentArticle.update({
     where: {
@@ -4101,274 +4112,8 @@ export async function approveArticle(
 }
 
 
-export async function publishArticle(
-  provider:
-    CMSProvider,
-  articleId:
-    string
-) {
-  const article =
-    await prisma.contentArticle.findUnique({
-      where: {
-        id:
-          articleId,
-      },
-
-      include: {
-        brief: {
-          include: {
-            website: {
-              include: {
-                business:
-                  true,
-              },
-            },
-            evidenceSnapshot:
-              true,
-          },
-        },
-      },
-    });
-
-  if (!article) {
-    throw new Error(
-      "Article not found"
-    );
-  }
-
-  if (
-    article.status !==
-    "APPROVED"
-  ) {
-    throw new Error(
-      "Only approved articles can be published"
-    );
-  }
-
-  // Enforce on publish, too: existing APPROVED records may predate
-  // the current editorial quality policy.
-  const publishEditorialFindings =
-    detectPersistedArticleEditorialRepetitionV1(article.bodyMarkdown);
-  if (publishEditorialFindings.length > 0) {
-    throw new EditorialRepetitionGateErrorV1(publishEditorialFindings);
-  }
-
-  // A saved article may have passed model/SEO gates while still
-  // containing visible text corruption. Never approve or publish that.
-  assertArticleProseHygieneV2(article.bodyMarkdown);
-  assertArticleInformationGainV1(article.bodyMarkdown);
-
-  assertStoredPublicationEvidenceV1(
-    article.brief.evidenceSnapshot?.plan
-  );
-
-  const intelligence =
-    await analyzeStoredContentPlan({
-      briefId:
-        article.briefId,
-
-      title:
-        article.title,
-
-      metaDescription:
-        article.metaDescription,
-
-      h1:
-        article.h1,
-
-      bodyMarkdown:
-        article.bodyMarkdown,
-
-      primaryKeyword:
-        article.brief
-          .primaryKeyword,
-
-      secondaryKeywords:
-        article.brief
-          .secondaryKeywords,
-    });
-
-  logContentIntelligence(
-    article.briefId,
-    intelligence
-  );
-
-  const audit =
-    auditArticle({
-      article: {
-        title:
-          article.title,
-
-        metaDescription:
-          article.metaDescription,
-
-        h1:
-          article.h1,
-
-        bodyMarkdown:
-          article.bodyMarkdown,
-      },
-
-      primaryKeyword:
-        article.brief
-          .primaryKeyword,
-    });
-
-  const registry =
-    await getBusinessFactRegistryForWebsite(
-      article.brief.websiteId
-    );
-
-  const gate =
-    evaluateContentGate({
-      article: {
-        title:
-          article.title,
-
-        metaDescription:
-          article.metaDescription,
-
-        h1:
-          article.h1,
-
-        bodyMarkdown:
-          article.bodyMarkdown,
-      },
-
-      primaryKeyword:
-        article.brief
-          .primaryKeyword,
-
-      audit,
-
-      registry,
-    });
-
-  assertContentGatePassed(
-    gate
-  );
-
-  const publicationPolicy =
-    evaluateArticlePublicationPolicy({
-      article: {
-        title:
-          article.title,
-
-        metaDescription:
-          article.metaDescription,
-
-        h1:
-          article.h1,
-
-        bodyMarkdown:
-          article.bodyMarkdown,
-      },
-
-      intelligence,
-    });
-
-  assertArticlePublicationPolicyPassed(
-    publicationPolicy
-  );
-
-  // Final approval AND publication must honor the same product-level
-  // editorial quality floor as the Writer. A technical score of 100
-  // cannot release a source-rich but shallow comprehensive guide.
-  const editorialPlanRecord=article.brief.evidenceSnapshot?.plan;
-  const editablePlan=editorialPlanRecord&&
-    typeof editorialPlanRecord==="object"&&
-    !Array.isArray(editorialPlanRecord)
-      ? editorialPlanRecord as Record<string,unknown> : null;
-  if(editablePlan?.articleExecutionPlan){
-    const editorialPlan=parsePersistedArticleExecutionPlanV1(
-      editablePlan.articleExecutionPlan);
-    assertComprehensiveEditorialReleaseV1(
-      evaluateComprehensiveEditorialReleaseV1({
-        plan:editorialPlan,
-        bodyMarkdown:article.bodyMarkdown,
-      }));
-  }
-
-
-  const publishReplayArtifact =
-    await prisma.serpReplayArtifact.findFirst({
-      where: {
-        contentArticleId:
-          articleId,
-      },
-
-      orderBy: [
-        {
-          createdAt:
-            "desc",
-        },
-
-        {
-          id:
-            "desc",
-        },
-      ],
-    });
-
-
-  const explicitPublishGate =
-    evaluateExplicitPublishGateV1({
-      article: {
-        title:
-          article.title,
-
-        metaDescription:
-          article.metaDescription,
-
-        h1:
-          article.h1,
-
-        bodyMarkdown:
-          article.bodyMarkdown,
-      },
-
-      replayArtifact:
-        publishReplayArtifact,
-
-      existingGates: {
-        contentGatePassed:
-          gate.pass,
-
-        publicationPolicyPassed:
-          publicationPolicy.pass,
-      },
-    });
-
-
-  console.info(
-    "[explicit publish gate:publish]",
-    {
-      articleId,
-
-      pass:
-        explicitPublishGate.pass,
-
-      blockers:
-        explicitPublishGate.blockers,
-
-      warnings:
-        explicitPublishGate.warnings,
-
-      replayArtifactId:
-        explicitPublishGate
-          .replayArtifactId,
-
-      replayStatus:
-        explicitPublishGate
-          .replayStatus,
-    }
-  );
-
-
-  assertExplicitPublishGatePassedV1(
-    explicitPublishGate
-  );
-
+export async function publishArticle(provider: CMSProvider, articleId: string) {
+  const article = await requireArticleReadyForReleaseV1(articleId, "publish");
 
   const result =
     await provider.publishContent(
@@ -4416,3 +4161,4 @@ export async function publishArticle(
     },
   });
 }
+
