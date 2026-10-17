@@ -111,12 +111,18 @@ describe("single Stage Plan validation collector", () => {
     expect(source.match(/inspectCurrentStagePlanV1\(/g)).toHaveLength(4);
     for (const phase of [
       "initial_model_output",
-      "after_required_question_contraction",
       "after_local_claim_owner_repair",
       "after_full_plan_retry",
     ]) {
       expect(source).toContain('inspectCurrentStagePlanV1("' + phase + '")');
     }
+    expect(source).toContain("inspectCurrentStagePlanV1(validationPhase)");
+    expect(source).toContain(
+      'applyLocalRequiredQuestionContractionV1("after_required_question_contraction")',
+    );
+    expect(source).toContain(
+      'applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction")',
+    );
     expect(source).toContain('recordWriterTraceV1("stage_plan.validation"');
   });
 });
