@@ -42,7 +42,7 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 ## Section progress as of 2026-10-17
 
 - **Scripts:** all 41 CLI contracts initially examined, 2 premature logging-only additions removed, original 39 kept. The deeper dynamic/operational consumer audit remains a precondition to further deletion.
-- **Content/Writer:** ACTIVE, NOT COMPLETE. Initial 411-file inventory finished (212 non-test code, 197 tests, 2 fixtures), but no new production-code deletions or proven architecture consolidation in this branch. Need verified refactoring/parity tests, complete full-suite and build gates, and a real end-to-end Writer acceptance test before section closure. See `2026-10-17-writer-entire-section-assessment.md`.
+- **Content/Writer:** CODE REFACTOR PASS VERIFIED; production integration NOT YET PROVEN. Three large helper extractions and one shared approval/publish release-gate consolidation landed. Exact code head `1e6ef43` passed TypeScript, full Vitest, production build and deletion gate. **Do not call the Writer production-closed until an authorized E2E run passes.** See `2026-10-17-writer-cleanup-execution.md`.
 - **API/UI/other libraries:** PAUSED. The 310-file preliminary inventory is available in `2026-10-17-app-api-cleanup-first-pass.md`; it is not a completed section. Do not resume work until Writer completion has been demonstrated.
 - **CI:** latest cleanup branch head must still pass deletion gate, TypeScript, full Vitest and production build. A previously passing head is insufficient.
 - **Logging:** explicitly deferred until completion of all cleanup sections and verification. No runtime instrumentation work in this phase.
