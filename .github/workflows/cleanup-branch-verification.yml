@@ -17,7 +17,21 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_PASSWORD: runner
+          POSTGRES_DB: growth_os_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U runner -d growth_os_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
     env:
       DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
       NEXTAUTH_SECRET: ci-only-dummy-never-use-in-production
@@ -42,12 +56,50 @@ jobs:
         run: node scripts/writer-module-map.mjs
       - name: Validate Prisma schema (no database connection)
         run: npx prisma validate
+      - name: Replay all migrations on disposable CI PostgreSQL
+        run: |
+          npx prisma migrate deploy
+          npx prisma migrate status
       - name: TypeScript regression
         run: npx tsc --noEmit
       - name: Full unit regression
         run: npx vitest run
       - name: Production build smoke check
         run: npm run build
+      - name: HTTP smoke against disposable CI PostgreSQL
+        env:
+          NEXTAUTH_URL: http://127.0.0.1:3100
+        run: |
+          set -euo pipefail
+          npm run start -- --hostname 127.0.0.1 --port 3100 > "$RUNNER_TEMP/growth-os-server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          base="http://127.0.0.1:3100"
+          ready=0
+          for attempt in $(seq 1 45); do
+            if curl --silent --fail --max-time 3 "$base/" -o "$RUNNER_TEMP/home.html"; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "Next.js server exited before health check" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          test "$ready" -eq 1 || { echo "Next.js did not respond on /" >&2; exit 1; }
+          grep -q "Growth OS" "$RUNNER_TEMP/home.html"
+          for resource in /landing/hero-keywords.png /landing/feature-keywords.png /world-110m.json; do
+            curl --fail --silent --show-error --max-time 15 "$base$resource" -o /dev/null
+            echo "ASSET_HTTP_PASS $resource"
+          done
+          login_status=$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$base/api/websites")
+          test "$login_status" = "401" || {
+            echo "UNAUTHENTICATED_WEBSITES_WRONG_STATUS $login_status" >&2
+            exit 1
+          }
+          echo "UNAUTHENTICATED_API_BLOCKED"
+          echo "NEXT_HTTP_SMOKE_PASS"
       - name: Retain inspection report
         if: always()
         uses: actions/upload-artifact@v4
