@@ -1,7 +1,7 @@
 import { recordWriterTraceV1 } from "./writer-trace-v1";
 import {
-  inspectStagePlanCoverageOwnership,
-} from "./stage-plan-coverage-ownership-v1";
+  collectStagePlanValidationIssuesV1,
+} from "./stage-plan-validation-collector-v1";
 import {
   buildProductionQueryProvenanceRegistryV1,
   resolveProductionQueryIdentityProvenanceV1,
@@ -109,10 +109,7 @@ import type {
   QueryIntent,
 } from "./intent-boundary";
 
-import {
-  inspectStagePlanDistinctInformationJobsV1,
-  inspectStagePlanQuestionIntentBoundaryV1,
-} from "./stage-plan-quality-gates-v1";
+
 
 import {
   contractStagePlanRequiredQuestionsV1,
@@ -1433,35 +1430,27 @@ function inspectStagePlanCompleteness(
   plan.intent =
     mission.missionIntent;
 
-  let missingStagePlanFields =
-    [
-      ...inspectStagePlanCompleteness(
-        plan
-      ),
+  const inspectCurrentStagePlanV1 = (phase: string): string[] => {
+    const issues = collectStagePlanValidationIssuesV1({
+      plan,
+      pageIntent: mission.missionIntent,
+      inspectCompleteness: inspectStagePlanCompleteness,
+      inspectClaimOwnership: inspectStagePlanClaimOwnership,
+    });
+    recordWriterTraceV1("stage_plan.validation", {
+      phase,
+      passed: issues.length === 0,
+      issueCount: issues.length,
+      issues,
+      // Counts describe the exact plan being checked; no mutation.
+      queryCount: Array.isArray(plan.queries) ? plan.queries.length : null,
+      topicCount: Array.isArray(plan.topics) ? plan.topics.length : null,
+      sectionCount: Array.isArray(plan.sections) ? plan.sections.length : null,
+    });
+    return issues;
+  };
 
-      ...inspectStagePlanClaimOwnership(
-        plan
-      ),
-
-      ...inspectStagePlanCoverageOwnership(
-        plan
-      ),
-
-...inspectStagePlanQuestionIntentBoundaryV1({
-  pageIntent:
-    mission.missionIntent,
-
-  queries:
-    plan.queries,
-
-  questions:
-    plan.questions,
-}),
-...inspectStagePlanDistinctInformationJobsV1({
-  sections:
-    plan.sections,
-}),
-    ];
+  let missingStagePlanFields = inspectCurrentStagePlanV1("initial_model_output");
 
 
   /*
@@ -1600,36 +1589,7 @@ function inspectStagePlanCompleteness(
       );
 
 
-      missingStagePlanFields =
-        [
-          ...inspectStagePlanCompleteness(
-            plan
-          ),
-
-          ...inspectStagePlanClaimOwnership(
-            plan
-          ),
-
-          ...inspectStagePlanCoverageOwnership(
-            plan
-          ),
-
-          ...inspectStagePlanQuestionIntentBoundaryV1({
-            pageIntent:
-              mission.missionIntent,
-
-            queries:
-              plan.queries,
-
-            questions:
-              plan.questions,
-          }),
-
-          ...inspectStagePlanDistinctInformationJobsV1({
-            sections:
-              plan.sections,
-          }),
-        ];
+      missingStagePlanFields = inspectCurrentStagePlanV1("after_required_question_contraction");
 
 
       return true;
@@ -1885,35 +1845,7 @@ function inspectStagePlanCompleteness(
         };
 
 
-      missingStagePlanFields =
-        [
-          ...inspectStagePlanCompleteness(
-            plan
-          ),
-
-          ...inspectStagePlanClaimOwnership(
-            plan
-          ),
-
-          ...inspectStagePlanCoverageOwnership(
-            plan
-          ),
-
-...inspectStagePlanQuestionIntentBoundaryV1({
-  pageIntent:
-    mission.missionIntent,
-
-  queries:
-    plan.queries,
-
-  questions:
-    plan.questions,
-}),
-...inspectStagePlanDistinctInformationJobsV1({
-  sections:
-    plan.sections,
-}),
-        ];
+      missingStagePlanFields = inspectCurrentStagePlanV1("after_local_claim_owner_repair");
 
       console.info(
         "[content stage planner] local claim owner repair",
@@ -2104,35 +2036,7 @@ function inspectStagePlanCompleteness(
     plan.intent =
       mission.missionIntent;
 
-    missingStagePlanFields =
-      [
-      ...inspectStagePlanCompleteness(
-        plan
-      ),
-
-      ...inspectStagePlanClaimOwnership(
-        plan
-      ),
-
-      ...inspectStagePlanCoverageOwnership(
-        plan
-      ),
-
-...inspectStagePlanQuestionIntentBoundaryV1({
-  pageIntent:
-    mission.missionIntent,
-
-  queries:
-    plan.queries,
-
-  questions:
-    plan.questions,
-}),
-...inspectStagePlanDistinctInformationJobsV1({
-  sections:
-    plan.sections,
-}),
-    ];
+    missingStagePlanFields = inspectCurrentStagePlanV1("after_full_plan_retry");
   }
 
 
