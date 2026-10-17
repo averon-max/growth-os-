@@ -1,5 +1,9 @@
 import { recordWriterTraceV1 } from "./writer-trace-v1";
 import {
+  buildProductionQueryProvenanceRegistryV1,
+  resolveProductionQueryIdentityProvenanceV1,
+} from "./production-query-identity-provenance-v1";
+import {
   buildCanonicalObservedQueryRegistry,
   resolveCanonicalObservedQueryMetricsV1,
 } from "./production-observed-query-registry";
@@ -2996,6 +3000,11 @@ function inspectStagePlanCompleteness(
     research.dataForSeo,
   ]);
 
+  const queryIdentityProvenance = buildProductionQueryProvenanceRegistryV1({
+    keywordContext: research.keywordContext,
+    dataForSeo: research.dataForSeo,
+  });
+
   const querySignals:
     ProductionMasterArtifactPipelineInput[
       "queryGraph"
@@ -3089,6 +3098,25 @@ function inspectStagePlanCompleteness(
             });
 
 
+          const identityProvenance = resolveProductionQueryIdentityProvenanceV1({
+            query: observedQuery,
+            registry: queryIdentityProvenance,
+          });
+          if (!identityProvenance) {
+            throw new ProductionMasterLiveStagePlanError(
+              "LIVE_STAGE_PLAN_QUERY_IDENTITY_SOURCE_MISSING",
+              `Observed query lacks acquisition identity source: ${observedQuery}`
+            );
+          }
+
+          recordWriterTraceV1("query.signal.provenance", {
+            query: observedQuery,
+            source: identityProvenance.source,
+            observedInDataForSeo: identityProvenance.observedInDataForSeo,
+            observedInGscContext: identityProvenance.observedInGscContext,
+            // Existing numeric metric selection/precedence remains unchanged.
+          });
+
           return {
             query:
               observedQuery,
@@ -3115,8 +3143,10 @@ function inspectStagePlanCompleteness(
             siteCoverage:
               query.siteCoverage,
 
-            source:
-              "DATAFORSEO",
+            // Classify from recorded acquisition identity, not an
+            // unconditional DataForSEO label. Confidence is intentionally
+            // unchanged until calibrated against downstream QueryGraph ranking.
+            source: identityProvenance.source,
 
             sourceConfidence:
               0.9,
