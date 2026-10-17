@@ -2,6 +2,7 @@ import { recordWriterTraceV1 } from "./writer-trace-v1";
 import {
   buildProductionQueryProvenanceRegistryV1,
   resolveProductionQueryIdentityProvenanceV1,
+  resolveProductionMetricLineageV1,
 } from "./production-query-identity-provenance-v1";
 import {
   buildCanonicalObservedQueryRegistry,
@@ -3116,6 +3117,28 @@ function inspectStagePlanCompleteness(
             observedInGscContext: identityProvenance.observedInGscContext,
             // Existing numeric metric selection/precedence remains unchanged.
           });
+
+          // Diagnostic-only lineage. Do not mutate/query-confidence-normalize
+          // the deterministic selected values consumed by QueryGraph.
+          try {
+            const metricLineage = resolveProductionMetricLineageV1({
+              query: observedQuery,
+              registry: queryIdentityProvenance,
+              selectedMetrics: metrics,
+            });
+            recordWriterTraceV1("query.metric.lineage", {
+              query: observedQuery,
+              selectedValues: metrics,
+              perMetric: metricLineage,
+            });
+          } catch (cause) {
+            // A trace inconsistency must be visible but must not change
+            // the previously verified production query signal.
+            recordWriterTraceV1("query.metric.lineage_inconsistent", {
+              query: observedQuery,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+          }
 
           return {
             query:
