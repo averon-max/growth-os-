@@ -436,8 +436,15 @@ async function main(){
       nextAction:"REVIEW_COPYEDIT_AND_REAL_REPLAY_WARNINGS_BEFORE_NEW_FINGERPRINT_COMMIT",
     };
     if(exportDraft){
-      if(!readyForHumanSemanticReview||!editorialBody)
-        throw new Error("EDITORIAL_DRAFT_EXPORT_UNSAFE_OR_NEEDS_MORE_WORK");
+      if(!readyForHumanSemanticReview||!editorialBody){
+        Object.assign(result,{
+          exportedEditorialReviewPath:null,
+          exportUnavailableReason:
+            "EDITORIAL_DRAFT_NOT_SAFE_OR_NEEDS_MORE_WORK",
+        });
+        console.log(JSON.stringify(result,null,2));
+        return;
+      }
       const {mkdir,writeFile}=await import("node:fs/promises");
       const {resolve,join}=await import("node:path");
       const dir=resolve(process.cwd(),".growth-os-tmp");
