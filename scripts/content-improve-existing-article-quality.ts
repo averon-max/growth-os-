@@ -83,7 +83,7 @@ async function main(){
       await import("../src/lib/content/article-execution-plan-binding-v1");
     const {inspectArchivedWriterProgressV1}=
       await import("../src/lib/content/writer-recovery-archived-progress-v1");
-    const {geminiGenerator}=await import("../src/lib/content/gemini-generator");
+    const {openAiGenerator}=await import("../src/lib/content/openai-generator");
     const {resolve,join}=await import("node:path");
     const inspected=inspectMasterRuntimeSnapshot(snapshot.plan);
     if(!inspected.runtime)throw new Error("SAVED_CURRENT_RUNTIME_NOT_VALID");
@@ -145,7 +145,7 @@ async function main(){
         const found=await inspectArchivedWriterProgressV1({
           rootDirectory:join(base,relative),
           articleId,briefId:article.briefId,
-          contract,modelName:geminiGenerator.modelName,
+          contract,modelName:openAiGenerator.modelName,
         });
         searches.push({
           kind:relative,compatible:found.compatible,
@@ -188,13 +188,13 @@ async function main(){
       updatedAt:article.updatedAt.toISOString(),
       article:{title:article.title,metaDescription:article.metaDescription,
         h1:article.h1,bodyMarkdown:article.bodyMarkdown},
-      snapshot:snapshot.plan,contract,modelName:geminiGenerator.modelName,
+      snapshot:snapshot.plan,contract,modelName:openAiGenerator.modelName,
     });
     const progress=await readMasterWriterSectionProgressV1({
       directory:progressDir,articleId,briefId:article.briefId,
       contractHash:fingerprintMasterWriterContractV1(
-        contract,geminiGenerator.modelName),
-      modelName:geminiGenerator.modelName,
+        contract,openAiGenerator.modelName),
+      modelName:openAiGenerator.modelName,
     });
     const verifiedProgress=progress?.accepted.length===
       contract.sectionContracts.length?progress:null;

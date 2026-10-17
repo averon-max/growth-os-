@@ -12,6 +12,8 @@ import {
   withContentRunBudgetV1,
 } from "@/lib/content/content-run-budget-v1";
 
+import { withWriterTraceV1, recordWriterTraceV1, hashTraceTextV1 } from "@/lib/content/writer-trace-v1";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { getContentBriefById } from "@/lib/content/repository";
@@ -23,12 +25,14 @@ import {
   executeArticleRecoveryOrchestratorV1,
 } from "@/lib/content/article-recovery-orchestrator-v1";
 
-import { geminiGenerator } from "@/lib/content/gemini-generator";
+import { openAiGenerator } from "@/lib/content/openai-generator";
 import { describeRejectedArticleV1 } from "@/lib/content/article-failure-diagnostic-v1";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return withWriterTraceV1({ scope: "content.article.generate" }, async () => {
   try {
     const { id } = await params;
+    recordWriterTraceV1("article.brief_selected", { briefIdHash: hashTraceTextV1(id) });
     const user = await requireUser();
 
     const brief = await getContentBriefById(id);
@@ -89,7 +93,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const budgetedGenerator =
       withContentRunBudgetV1({
         generator:
-          geminiGenerator,
+          openAiGenerator,
 
         budget:
           contentRunBudget,
@@ -154,6 +158,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const article =
       recoveryExecution
         .article;
+
+    recordWriterTraceV1("article.generated", {
+      articleIdHash: hashTraceTextV1(article.id),
+      status: article.status,
+      h1: article.h1,
+      markdownChars: article.bodyMarkdown?.length ?? 0,
+      h2Count: (article.bodyMarkdown?.match(/^## /gm) ?? []).length,
+      h3Count: (article.bodyMarkdown?.match(/^### /gm) ?? []).length,
+    });
 
 
     /*
@@ -472,5 +485,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status,
       }
     );
-  }
+  }  });
 }

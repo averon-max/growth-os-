@@ -33,10 +33,10 @@ describe("market-scoped GSC website keyword context",()=>{
     expect(mocks.keywords).toHaveBeenCalledWith(expect.objectContaining({
       where:expect.objectContaining({
         workspaceId:"workspace",
-        snapshots:{some:{pageUrl:{contains:"scanmycreds.com"},country:"us"}},
+        snapshots:{some:{pageUrl:{contains:"scanmycreds.com"},country:"us",source:"GOOGLE_SEARCH_CONSOLE"}},
       }),
       include:{snapshots:expect.objectContaining({
-        where:{pageUrl:{contains:"scanmycreds.com"},country:"us"},
+        where:{pageUrl:{contains:"scanmycreds.com"},country:"us",source:"GOOGLE_SEARCH_CONSOLE"},
       })},
       take:500,
     }));
@@ -44,13 +44,27 @@ describe("market-scoped GSC website keyword context",()=>{
       "credit monitoring","credit monitoring www",
     ]);
   });
+  it("keeps CA country and GSC-only source isolated from US data",async()=>{
+    await getWebsiteKeywordContext("site",50,"CA");
+    const args=mocks.keywords.mock.calls[0][0];
+    expect(args.where.snapshots.some).toEqual({
+      pageUrl:{contains:"scanmycreds.com"},
+      country:"ca",
+      source:"GOOGLE_SEARCH_CONSOLE",
+    });
+    expect(args.include.snapshots.where.country).toBe("ca");
+    expect(args.include.snapshots.where.source).toBe("GOOGLE_SEARCH_CONSOLE");
+  });
   it("keeps unspecified country available to unrelated legacy consumers",async()=>{
     await getWebsiteKeywordContext("site");
     const args=mocks.keywords.mock.calls[0][0];
     expect(args.where.snapshots.some.country).toBeUndefined();
+    expect(args.where.snapshots.some.source).toBe("GOOGLE_SEARCH_CONSOLE");
   });
   it("rejects missing business and invalid context limits",async()=>{
     await expect(getWebsiteKeywordContext("site",501))
       .rejects.toThrow("KEYWORD_CONTEXT_LIMIT_INVALID");
+    await expect(getWebsiteKeywordContext("site",50,"not-a-country"))
+      .rejects.toThrow("KEYWORD_CONTEXT_MARKET_INVALID");
   });
 });

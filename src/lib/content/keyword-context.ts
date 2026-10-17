@@ -32,7 +32,7 @@ function extractHostname(url: string): string {
 export async function getWebsiteKeywordContext(
   websiteId: string,
   limit = 50,
-  market?: "US" | "CA" | "GB" | "AU",
+  market?: string,
 ): Promise<WebsiteKeywordContext | null> {
   const website = await prisma.website.findUnique({
     where: { id: websiteId },
@@ -43,10 +43,13 @@ export async function getWebsiteKeywordContext(
   const hostname = extractHostname(website.url).toLowerCase();
   if (!Number.isInteger(limit) || limit < 1 || limit > 500)
     throw new Error("KEYWORD_CONTEXT_LIMIT_INVALID");
+  if (market !== undefined && !/^[A-Za-z]{2}$/.test(market))
+    throw new Error("KEYWORD_CONTEXT_MARKET_INVALID");
   // Search Console rows have country/device dimensions: never import
   // Canadian average positions into a US keyword ranking decision.
   const scope = {
     pageUrl: { contains: hostname },
+    source: "GOOGLE_SEARCH_CONSOLE",
     ...(market ? { country: market.toLowerCase() } : {}),
   };
   const belongsToWebsite = (pageUrl: string | null): boolean => {

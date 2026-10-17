@@ -1,0 +1,57 @@
+name: Cleanup branch verification
+
+on:
+  push:
+    branches:
+      - audit/full-repository-inventory-20261016
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
+      NEXTAUTH_SECRET: ci-only-dummy-never-use-in-production
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Enforce per-file deletion evidence
+        run: |
+          node scripts/repository-deletion-gate.mjs --self-test
+          node scripts/repository-deletion-gate.mjs --check
+      - name: Inventory imports and references
+        run: node scripts/repository-audit.mjs
+      - name: Map Content Writer modules
+        run: node scripts/writer-module-map.mjs
+      - name: TypeScript regression
+        run: npx tsc --noEmit
+      - name: Full unit regression
+        run: npx vitest run
+      - name: Production build smoke check
+        run: npm run build
+      - name: Retain inspection report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: growth-os-cleanup-audit
+          path: |
+            .growth-os-tmp/repository-audit.json
+            .growth-os-tmp/writer-module-map.json
+          if-no-files-found: ignore
+          retention-days: 14

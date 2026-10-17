@@ -53,3 +53,18 @@ next-env.d.ts
 *.bak-*
 *.backup_*
 .ui-backup-*
+
+# Local writer execution traces
+/.growth-os-traces/
+
+# Local / optional tooling and diagnostic artifacts
+/.agents/
+/.claude/skills/
+/.windsurf/skills/
+/skills-lock.json
+/.article-workspace-backup-*/
+/cookies*.txt
+/cloudflare-audit.txt
+/security-audit-context_*.txt
+/1э=
+/....

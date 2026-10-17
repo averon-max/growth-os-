@@ -3,10 +3,7 @@ import {
 } from "node:async_hooks";
 
 
-export type ContentProviderNameV1 =
-  | "openai"
-  | "gemini"
-  | "groq";
+export type ContentProviderNameV1 = "openai";
 
 
 export interface ContentProviderRequestChargeV1 {
@@ -137,31 +134,6 @@ export function runWithContentProviderDispatchMetaV1<
 }
 
 
-function configuredPrimaryProviderV1():
-ContentProviderNameV1 | null {
-  const value =
-    process.env
-      .CONTENT_AI_PROVIDER
-      ?.trim()
-      .toLowerCase();
-
-
-  if (
-    value ===
-      "openai" ||
-    value ===
-      "gemini" ||
-    value ===
-      "groq"
-  ) {
-    return value;
-  }
-
-
-  return null;
-}
-
-
 export function recordContentProviderRequestV1({
   provider,
   model,
@@ -198,10 +170,6 @@ export function recordContentProviderRequestV1({
   const dispatch =
     dispatchContext
       .getStore();
-
-
-  const primaryProvider =
-    configuredPrimaryProviderV1();
 
 
   const cleanAttempt =
@@ -251,15 +219,8 @@ export function recordContentProviderRequestV1({
             ?.continuation ??
           false,
 
-        /*
-         * This also correctly surfaces forced alternate-provider
-         * recovery as a provider switch.
-         */
-        failover:
-          primaryProvider !==
-            null &&
-          provider !==
-            primaryProvider,
+        // OpenAI is the only supported provider; retries are not failovers.
+        failover: false,
 
         promptChars,
 
@@ -290,4 +251,9 @@ export function recordContentProviderRequestV1({
       charge
     );
   }
+}
+
+/** Current logical AI stage for user-visible execution tracing. */
+export function currentContentProviderStageV1(): string | null {
+  return logicalContext.getStore()?.stage ?? null;
 }

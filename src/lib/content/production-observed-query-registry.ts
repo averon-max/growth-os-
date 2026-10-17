@@ -415,3 +415,46 @@ export function buildCanonicalObservedQueryRegistry(
     queryMetrics,
   });
 }
+
+/**
+ * Deterministically selects the first finite value observed for each metric.
+ *
+ * The registry visits keywordContext before DataForSEO when those are supplied
+ * in that order. Within each observed keyword record the preferred aliases
+ * precede fallbacks (searchVolume before volume, etc). Missing metrics stay
+ * undefined, including for a query seen only as a SERP question.
+ *
+ * This is an observation selector, not an estimator or model inference.
+ */
+export function resolveCanonicalObservedQueryMetricsV1({
+  registry,
+  normalizedQuery,
+}: {
+  registry: Readonly<CanonicalObservedQueryRegistry>;
+  normalizedQuery: string;
+}): Readonly<{
+  searchVolume?: number;
+  cpc?: number;
+  gscImpressions?: number;
+  gscClicks?: number;
+  gscPosition?: number;
+}> {
+  const metrics = registry.queryMetrics.get(
+    normalizeObservedQuery(normalizedQuery)
+  );
+  if (!metrics) return {};
+  const first = (items: ReadonlySet<number>): number | undefined =>
+    items.values().next().value;
+  return {
+    ...(first(metrics.searchVolume) !== undefined
+      ? {searchVolume: first(metrics.searchVolume)} : {}),
+    ...(first(metrics.cpc) !== undefined
+      ? {cpc: first(metrics.cpc)} : {}),
+    ...(first(metrics.gscImpressions) !== undefined
+      ? {gscImpressions: first(metrics.gscImpressions)} : {}),
+    ...(first(metrics.gscClicks) !== undefined
+      ? {gscClicks: first(metrics.gscClicks)} : {}),
+    ...(first(metrics.gscPosition) !== undefined
+      ? {gscPosition: first(metrics.gscPosition)} : {}),
+  };
+}

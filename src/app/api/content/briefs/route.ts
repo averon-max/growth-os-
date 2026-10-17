@@ -25,6 +25,8 @@ import { resolveApprovedKeywordPrimaryV2 } from "@/lib/keywords/keyword-decision
 import { parseCachedKeywordResearchV2, projectApprovedKeywordEvidenceV2 } from "@/lib/keywords/keyword-research-cache-v2";
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 
+import { withWriterTraceV1, recordWriterTraceV1, hashTraceTextV1 } from "@/lib/content/writer-trace-v1";
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +34,7 @@ import { createContentBrief } from "@/lib/content/service";
 import {
   ProductionMasterBriefBlockedError,
 } from "@/lib/content/production-master-brief-required";
-import { geminiGenerator } from "@/lib/content/gemini-generator";
+import { openAiGenerator } from "@/lib/content/openai-generator";
 import { getContentBriefs } from "@/lib/content/repository";
 import { normalizeContentTopicKeyV1 } from "@/lib/content/article-library-grouping-v1";
 import { isLikelyContentTopicTypoV1 } from "@/lib/content/content-topic-typo-guard-v1";
@@ -59,6 +61,7 @@ import {
 } from "@/lib/content/production-master-live-research-assembler";
 
 export async function POST(req: NextRequest) {
+  return withWriterTraceV1({ scope: "content.brief.create" }, async () => {
   try {
     const user = await requireUser();
     const body = await req.json();
@@ -376,7 +379,7 @@ export async function POST(req: NextRequest) {
     const budgetedGenerator =
       withContentRunBudgetV1({
         generator:
-          geminiGenerator,
+          openAiGenerator,
 
         budget:
           contentRunBudget,
@@ -417,6 +420,13 @@ export async function POST(req: NextRequest) {
       relatedKeywordEvidence,
       }
     );
+
+    recordWriterTraceV1("brief.created", {
+      briefIdHash: hashTraceTextV1(brief.id),
+      primaryKeyword: brief.primaryKeyword,
+      searchIntent: brief.searchIntent,
+      secondaryKeywordCount: Array.isArray(brief.secondaryKeywords) ? brief.secondaryKeywords.length : null,
+    });
 
     return NextResponse.json(
       {
@@ -719,6 +729,7 @@ export async function POST(req: NextRequest) {
       }
     );
   }
+  });
 }
 
 export async function GET(req: NextRequest) {

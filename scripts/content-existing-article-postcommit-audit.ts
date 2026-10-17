@@ -244,8 +244,8 @@ async function main(){
         "../src/lib/content/article-execution-plan-binding-v1");
       const {inspectArchivedWriterProgressV1}=await import(
         "../src/lib/content/writer-recovery-archived-progress-v1");
-      const {geminiGenerator}=await import(
-        "../src/lib/content/gemini-generator");
+      const {openAiGenerator}=await import(
+        "../src/lib/content/openai-generator");
       const {resolve,join}=await import("node:path");
       const contract=bindArticleExecutionPlanToGenerationContractV1({
         plan,contract:buildArticleGenerationContractV1(runtime),
@@ -264,7 +264,7 @@ async function main(){
       for(const rootDirectory of roots){
         const inspection=await inspectArchivedWriterProgressV1({
           rootDirectory,articleId,briefId:article.briefId,
-          modelName:geminiGenerator.modelName,contract,
+          modelName:openAiGenerator.modelName,contract,
         });
         if(inspection.compatible&&inspection.candidate){
           checkpointPreflight="VERIFIED_ARCHIVE_FOUND";

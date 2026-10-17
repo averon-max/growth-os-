@@ -1,3 +1,20 @@
+import { recordWriterTraceV1 } from "./writer-trace-v1";
+import {
+  DUPLICATE_STAGE_PLAN_CLAIM_OWNER_PREFIX_V1,
+  selectStagePlanRecoveryRouteV1,
+} from "./stage-plan-recovery-route-v1";
+import {
+  collectStagePlanValidationIssuesV1,
+} from "./stage-plan-validation-collector-v1";
+import {
+  buildProductionQueryProvenanceRegistryV1,
+  resolveProductionQueryIdentityProvenanceV1,
+  resolveProductionMetricLineageV1,
+} from "./production-query-identity-provenance-v1";
+import {
+  buildCanonicalObservedQueryRegistry,
+  resolveCanonicalObservedQueryMetricsV1,
+} from "./production-observed-query-registry";
 import {
   normalizeProductionClaimCategoryV2,
 } from "./production-claim-category-normalization-v2";
@@ -14,13 +31,13 @@ import {inspectComprehensiveStagePlanStructureV1}
   from "./comprehensive-stage-plan-structure-v1";
 
 import {
-
-  ARTICLE_TEMPLATE_POLICIES_V1,
-  selectArticleTemplateV1,
   type ArticleTemplateIdV1,
   type ArticleSectionRoleV1,
-  type ArticleTemplatePolicyV1,
 } from "./article-template-policy-v1";
+import {
+  resolveSelectedTemplatePolicyV1,
+  buildStagePlanPrompt,
+} from "./stage-plan-semantic-prompt-v1";
 
 import {
   assertTemplateCoverageV1,
@@ -32,22 +49,8 @@ import {
 
 
 import {
-  buildRiskProfilePromptV1,
-  deriveContentRiskProfileV1,
-} from "./content-risk-profile-v1";
-
-import {
   callContentAiJson,
-} from "./gemini-generator";
-
-import {
-  DEFAULT_GEMINI_CONTENT_MODEL,
-  GEMINI_RETRYABLE_STATUS_CODES,
-  geminiRetryDelayMs,
-  geminiTransportErrorMessage,
-  isRetryableGeminiTransportError,
-  resolveGeminiContentModel,
-} from "./gemini-reliability";
+} from "./openai-generator";
 
 import {
   collectProductionMasterLiveSources,
@@ -110,10 +113,7 @@ import type {
   QueryIntent,
 } from "./intent-boundary";
 
-import {
-  inspectStagePlanDistinctInformationJobsV1,
-  inspectStagePlanQuestionIntentBoundaryV1,
-} from "./stage-plan-quality-gates-v1";
+
 
 import {
   contractStagePlanRequiredQuestionsV1,
@@ -188,7 +188,8 @@ import {
  * (production-master-live-source-adapter) into semantic Stage 1-8
  * *decisions* (topics, gap observations, claims, section outline).
  *
- * It performs exactly one AI inference call.
+ * It can make an initial AI inference and bounded, conditional
+ * recovery/repair requests; each model call must be accounted for.
  *
  * It does NOT invent numeric metrics. Every searchVolume / cpc /
  * gscImpressions / gscClicks / gscPosition / serpFrequency value
@@ -251,119 +252,8 @@ export interface ProductionMasterLiveStagePlanResult {
 }
 
 
-// ----------------------------------------------------------------
-// Minimal self-contained Gemini call (mirrors gemini-generator.ts
-// callGemini/parseJson pattern; kept local so this module has no
-// dependency on the large ContentGenerator union type).
-// ----------------------------------------------------------------
-
-const GEMINI_API_BASE =
-  "https://generativelanguage.googleapis.com/v1beta";
-
-const GEMINI_TIMEOUT_MS = 60000;
-const MAX_RETRIES = 5;
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_ENV_MISSING",
-      `${name} is not set`
-    );
-  }
-  return value;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function callGeminiForStagePlan(prompt: string): Promise<string> {
-  const apiKey = requireEnv("GEMINI_API_KEY");
-  const model = resolveGeminiContentModel() || DEFAULT_GEMINI_CONTENT_MODEL;
-
-  let lastError: unknown = null;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(
-        `${GEMINI_API_BASE}/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2,
-              responseMimeType: "application/json",
-            },
-          }),
-          signal: controller.signal,
-        }
-      );
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        if (
-          GEMINI_RETRYABLE_STATUS_CODES.has(response.status) &&
-          attempt < MAX_RETRIES - 1
-        ) {
-          const delay = geminiRetryDelayMs({
-            attempt,
-            retryAfterHeader: response.headers.get("retry-after"),
-          });
-          await sleep(delay);
-          continue;
-        }
-
-        throw new ProductionMasterLiveStagePlanError(
-          "LIVE_STAGE_PLAN_GEMINI_HTTP_ERROR",
-          `Gemini stage planning failed: HTTP ${response.status}`
-        );
-      }
-
-      const data = (await response.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!text) {
-        throw new ProductionMasterLiveStagePlanError(
-          "LIVE_STAGE_PLAN_GEMINI_EMPTY_RESPONSE"
-        );
-      }
-
-      return text;
-    } catch (error) {
-      clearTimeout(timeout);
-      lastError = error;
-
-      if (
-        isRetryableGeminiTransportError(error) &&
-        attempt < MAX_RETRIES - 1
-      ) {
-        const delay = geminiRetryDelayMs({ attempt });
-        await sleep(delay);
-        continue;
-      }
-
-      throw new ProductionMasterLiveStagePlanError(
-        "LIVE_STAGE_PLAN_GEMINI_TRANSPORT_ERROR",
-        geminiTransportErrorMessage(error)
-      );
-    }
-  }
-
-  throw new ProductionMasterLiveStagePlanError(
-    "LIVE_STAGE_PLAN_GEMINI_RETRIES_EXHAUSTED",
-    lastError instanceof Error ? lastError.message : String(lastError)
-  );
-}
+// Stage planning uses the shared OpenAI Content transport.
+// No standalone model-specific HTTP client is permitted here.
 
 function parseJson<T>(text: string): T {
   const cleaned = text
@@ -376,8 +266,8 @@ function parseJson<T>(text: string): T {
     return JSON.parse(cleaned) as T;
   } catch {
     throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_GEMINI_JSON_INVALID",
-      "Gemini stage planning response was not valid JSON."
+      "LIVE_STAGE_PLAN_AI_JSON_INVALID",
+      "Stage planning response was not valid JSON."
     );
   }
 }
@@ -433,7 +323,7 @@ interface StagePlanSectionDecision {
   requiredClaimIds: string[];
 }
 
-interface StagePlanModelOutput {
+export interface StagePlanModelOutput {
   primaryQuery: string;
   pageType: string;
   intent: string;
@@ -446,225 +336,8 @@ interface StagePlanModelOutput {
 }
 
 
-function resolveSelectedTemplatePolicyV1({
-  research,
-  mission,
-}: {
-  research:
-    Readonly<ProductionMasterLiveSourceResearch>;
-
-  mission:
-    ProductionMasterLiveStagePlanMissionInput;
-}): Readonly<ArticleTemplatePolicyV1> {
-  return mission.templateOverride
-    ? ARTICLE_TEMPLATE_POLICIES_V1[
-        mission.templateOverride
-      ]
-    : selectArticleTemplateV1({
-        primaryQuery:
-          research.keyword,
-
-        intent:
-          String(
-            mission.missionIntent
-          ),
-
-        hasGeoIntent:
-          String(
-            mission.missionIntent
-          ).toUpperCase() ===
-          "LOCAL",
-
-        /*
-         * Ranking claims remain fail-closed until real
-         * ranking methodology evidence is wired.
-         */
-        rankingEvidenceAvailable:
-          false,
-
-        /*
-         * Review first-party experience is proven later by
-         * Original Value assets, not inferred from the query.
-         */
-        firstPartyExperienceAvailable:
-          false,
-      });
-}
-
-
-function buildStagePlanPrompt({
-  research,
-  mission,
-}: {
-  research: Readonly<ProductionMasterLiveSourceResearch>;
-  mission: ProductionMasterLiveStagePlanMissionInput;
-}): string {
-  const serpLines = research.serpSnapshot.results
-    .slice(0, 10)
-    .map(
-      (result) =>
-        `- rank ${result.rank}: ${result.url} (${result.domain})`
-    )
-    .join("\n");
-
-  const selectedTemplate =
-    resolveSelectedTemplatePolicyV1({
-      research,
-      mission,
-    });
-
-
-  const riskProfile =
-    deriveContentRiskProfileV1({
-      query:
-        research.keyword,
-
-      riskClass:
-        String(
-          mission.riskClass
-        ),
-    });
-
-
-  const articleTemplatePolicyPrompt =
-    [
-      "ARTICLE_TEMPLATE_POLICY_V1:",
-      `templateId=${selectedTemplate.id}`,
-      `requiredSemanticRoles=${JSON.stringify(selectedTemplate.requiredRoles)}`,
-      `optionalSemanticRoles=${JSON.stringify(selectedTemplate.optionalRoles)}`,
-      `evidenceSensitiveRoles=${JSON.stringify(selectedTemplate.evidenceSensitiveRoles)}`,
-      `h2PlanningRange=${selectedTemplate.h2PlanningRange.min}-${selectedTemplate.h2PlanningRange.max}`,
-      `h3PlanningRange=${selectedTemplate.h3PlanningRange.min}-${selectedTemplate.h3PlanningRange.max}`,
-      "",
-      "CRITICAL TEMPLATE RULES:",
-      "- The template is planning guidance, NOT a second outline authority.",
-      "- Create only distinct information jobs justified by search intent, live SERP evidence, questions, topics, and useful coverage.",
-      "ADAPTIVE_INFORMATION_JOB_STRUCTURE_V1:",
-      "- H2 count is adaptive. One H2 should represent one genuinely distinct MAJOR information job, not one keyword variation.",
-      "- For comprehensive informational plans, most H2s must own at least one concrete plan.topics job, observed same-page plan.questions job, or atomic factual claim hypothesis that can be verified before writing. Bare heading plus a generic mission is not adequate coverage.",
-      "- Make each section.expectedOutcome describe a distinct decision, understanding or next step; never generate an extra H2 solely to meet the six-section minimum.",
-      "- When a section owns multiple independent, supported child decisions or observed same-intent questions, assign them explicitly to that SAME section and plan their factual facets. This gives Writer legitimate H3 opportunities without inventing headings, search queries or evidence.",
-      "- Do NOT stop at the minimum planning range when live PAA questions, required topics, supporting queries, competitor gaps, or decision jobs prove additional distinct information needs.",
-      "- If one proposed section owns multiple questions/topics that require materially different answers, split them into separate H2 sections.",
-      "- Keep related variants in one section when they require substantially the same answer.",
-      "- Use H3 only for meaningful child jobs inside one H2; never create H3 merely to increase heading count.",
-      "- Treat live medianH2 and medianH3 only as soft under/over-coverage context, never as quotas.",
-      "- Prefer complete coverage with 5-9 useful H2s over four overloaded sections when the query actually contains enough distinct information jobs; this is editorial planning guidance, not a Google ranking rule.",
-      "- Required semantic roles may be combined into one section when they represent one information job.",
-      "- Every section MUST declare roles: ArticleSectionRoleV1[] using only roles allowed by this selected template.",
-      "- Across all sections, every requiredSemanticRole MUST be covered at least once.",
-      "- roles are semantic annotations only; they MUST NOT create filler sections or become a parallel outline.",
-      "- Do NOT create filler sections merely to hit the planning range.",
-      "- Do NOT create headings merely to repeat keywords.",
-      "- FAQ is allowed only for real unanswered question jobs.",
-      "- A RANKED_LIST may not invent ranking methodology, scores, winners, popularity, or ordinal claims.",
-      "- A PRODUCT_REVIEW may not invent hands-on testing or first-party experience.",
-      "- Local pages require genuine local relevance; do not create doorway-style geographic filler.",
-      "- The resulting validated ArticleExecutionPlan remains the sole structural authority consumed by Writer.",
-    ].join(
-      "\n"
-    );
-
-
-  const riskProfilePrompt =
-    buildRiskProfilePromptV1(
-      riskProfile
-    );
-
-
-  return `You are the production Stage 2-8 research planner for an SEO content system.
-
-You will decide SEMANTICS ONLY. You must NEVER invent numbers (search volume, CPC, impressions, clicks, position, SERP frequency). Those are added by deterministic code from real data after you respond.
-
-Website: ${mission.websiteId}
-Topic: ${mission.topic}
-Audience: ${mission.audience}
-Reader goal: ${mission.readerGoal}
-Language: ${mission.language}
-Location: ${mission.location}
-
-${articleTemplatePolicyPrompt}
-
-${riskProfilePrompt}
-
-Real primary keyword observed live: "${research.keyword}"
-
-Top 10 real live SERP results for this keyword:
-${serpLines}
-
-Real People-Also-Ask questions observed live:
-${research.serpIntelligence.questions.slice(0, 10).map((q) => `- ${q}`).join("\n") || "(none observed)"}
-
-AI Overview present in live SERP: ${research.serpIntelligence.aiOverview.present}
-
-Respond with JSON only, matching exactly this shape:
-{
-  "primaryQuery": "string, must equal the real primary keyword above",
-  "pageType": "string, e.g. explainer, comparison, how-to, tool",
-  "intent": "INFORMATIONAL | COMMERCIAL | TRANSACTIONAL | NAVIGATIONAL | LOCAL",
-  "action": "CREATE" | "UPDATE" | "MERGE" | "SPLIT" | "REPOSITION" | "NO_GO",
-  "questions": ["string", "..."],
-  "queries": [
-    {
-      "query": "string -- MUST exactly equal one query from the allowed observed-query list supplied below; never paraphrase or invent a query identity",
-      "intent": "INFORMATIONAL" | "COMMERCIAL" | "TRANSACTIONAL" | "NAVIGATIONAL" | "LOCAL",
-      "subIntent": "short string",
-      "cluster": "short string grouping label",
-      "siteCoverage": "NONE" | "WEAK" | "STRONG"
-    }
-  ],
-  "topics": [
-    {
-      "topic": "string, distinct information need",
-      "missionRelevance": 0.0-1.0,
-      "evidenceRequirement": "NONE" | "STANDARD" | "VERIFIED_SOURCE" | "PRIMARY_SOURCE",
-      "queries": ["must reference query strings from the queries array above"],
-      "competitorCoverage": "NONE" | "WEAK" | "STRONG" | "UNKNOWN",
-      "competitorClarity": "WEAK" | "STRONG" | "UNKNOWN",
-      "competitorEvidence": "WEAK" | "STRONG" | "UNKNOWN",
-      "competitorAction": "WEAK" | "STRONG" | "NOT_APPLICABLE" | "UNKNOWN",
-      "originalValueOpportunity": true | false
-    }
-  ],
-  "claims": [
-    {
-      "id": "short stable slug, e.g. claim-definition",
-      "text": "the factual claim the article will make",
-      "category": "FACT" | "STATISTIC" | "FINANCIAL" | "LEGAL" | "PRODUCT" | "PRICE" | "COMPARISON",
-      "risk": "LOW" | "MEDIUM" | "HIGH",
-      "supportedByBusinessFact": true | false
-    }
-  ],
-  "sections": [
-    {
-      "heading": "string",
-      "mission": "one distinct information job, must be unique across sections",
-      "expectedOutcome": "what the reader should know/do after this section",
-      "queries": ["query strings this section answers, from the queries array"],
-      "topics": ["exact topic strings from the topics array this section owns"],
-      "questions": ["exact question strings from the questions array this section answers"],
-      "roles": ["semantic roles from ARTICLE_TEMPLATE_POLICY_V1 that this section actually performs"],
-      "requiredClaimIds": ["claim ids from the claims array this section relies on"]
-    }
-  ]
-}
-
-Rules:
-- CLAIM CATEGORY POLICY:
-  - LEGAL is ONLY for actual law, regulation, statutory rights, legal duties, court requirements, or explicit regulatory propositions.
-  - Do NOT label a claim LEGAL merely because its subject is insurance, finance, credit, identity protection, or another regulated industry.
-  - Insurance coverage, reimbursement, plan scope, service capabilities, provider features, and product behavior belong to PRODUCT unless the proposition itself makes an actual legal assertion.
-  - Prices and fees belong to PRICE.
-  - Comparative propositions belong to COMPARISON.
-  - General factual propositions belong to FACT.
-- Do not fabricate statistics, prices, guarantees, or studies. Only use "supportedByBusinessFact": true for claims that are genuinely generic/definitional or would be backed by the business's own verified facts.
-- At least one topic array is required.
-- At least one section is required, and its "mission" values must all be distinct.
-- The "queries" primary entry MUST be "${research.keyword}" exactly.
-- Base competitor quality judgments only on what a reasonable analyst would infer from ranking for this keyword; if uncertain, use "UNKNOWN".
-- Respond with JSON only. No markdown fences, no commentary.`;
-}
-
+// Pure template selection and prompt generation are isolated in
+// stage-plan-semantic-prompt-v1.ts. No numerical metric is LLM-authored.
 
 // ----------------------------------------------------------------
 // Deterministic metric resolution (never trusts the model).
@@ -680,14 +353,6 @@ function normalizeText(value: string): string {
     .trim();
 }
 
-interface ResolvedMetrics {
-  searchVolume?: number;
-  cpc?: number;
-  gscImpressions?: number;
-  gscClicks?: number;
-  gscPosition?: number;
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
@@ -695,68 +360,11 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function finiteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
 /*
- * Walks the same shape of nested objects the anchoring assembler
- * scans (collectObservedQueryEvidence in
- * production-master-live-research-assembler.ts) and returns the
- * first observed metric set for a given normalized query string.
- *
- * This intentionally mirrors that function's traversal so a value
- * resolved here is guaranteed to also be found by the anchoring
- * check.
+ * The canonical observed-query registry owns both acquisition identities
+ * and finite metric provenance. Do not implement a second recursive
+ * scanner in the planner: it can drift from assembler validation.
  */
-function resolveMetricsForQuery({
-  research,
-  normalizedQuery,
-}: {
-  research: Readonly<ProductionMasterLiveSourceResearch>;
-  normalizedQuery: string;
-}): ResolvedMetrics {
-  const result: ResolvedMetrics = {};
-
-  function visit(value: unknown, depth = 0): void {
-    if (depth > 10) return;
-
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item, depth + 1);
-      return;
-    }
-
-    const record = asRecord(value);
-    if (!record) return;
-
-    const keyword =
-      typeof record.keyword === "string" ? record.keyword.trim() : "";
-
-    if (keyword && normalizeText(keyword) === normalizedQuery) {
-      result.searchVolume ??=
-        finiteNumber(record.searchVolume) ?? finiteNumber(record.volume);
-      result.cpc ??= finiteNumber(record.cpc);
-      result.gscImpressions ??=
-        finiteNumber(record.gscImpressions) ??
-        finiteNumber(record.impressions);
-      result.gscClicks ??=
-        finiteNumber(record.gscClicks) ?? finiteNumber(record.clicks);
-      result.gscPosition ??=
-        finiteNumber(record.gscPosition) ?? finiteNumber(record.position);
-    }
-
-    for (const nested of Object.values(record)) {
-      visit(nested, depth + 1);
-    }
-  }
-
-  visit(research.keywordContext);
-  visit(research.dataForSeo);
-
-  return result;
-}
 
 function resolveSerpFrequency({
   research,
@@ -1119,275 +727,8 @@ export function buildEvidenceFromLiveResearch(
 
 
 
-/*
- * STAGE_PLAN_COVERAGE_OWNERSHIP_RECOVERY_V1
- *
- * Detection only.
- *
- * Canonical topic/question identity remains exact-string based.
- * This does NOT fuzzy-match, silently reassign, normalize into a
- * replacement identity, or mutate plan.questions / plan.topics from
- * child section data.
- *
- * Coverage ownership drift is detected early enough to enter the
- * ONE existing bounded full Stage Plan regeneration. The existing
- * deterministic ownership gate remains the final fail-closed authority.
- */
-function inspectStagePlanCoverageOwnership(
-  plan: StagePlanModelOutput
-): string[] {
-  const issues:
-    string[] =
-      [];
-
-  if (
-    !Array.isArray(
-      plan.topics
-    ) ||
-    !Array.isArray(
-      plan.questions
-    ) ||
-    !Array.isArray(
-      plan.sections
-    )
-  ) {
-    return issues;
-  }
-
-  const plannedTopics =
-    [
-      ...new Set(
-        plan.topics
-          .map(
-            (
-              topic
-            ) =>
-              typeof topic?.topic ===
-              "string"
-                ? topic.topic.trim()
-                : ""
-          )
-          .filter(Boolean)
-      ),
-    ];
-
-  const plannedQuestions =
-    [
-      ...new Set(
-        plan.questions
-          .map(
-            (
-              question
-            ) =>
-              typeof question ===
-              "string"
-                ? question.trim()
-                : ""
-          )
-          .filter(Boolean)
-      ),
-    ];
-
-  const knownTopics =
-    new Set(
-      plannedTopics
-    );
-
-  const knownQuestions =
-    new Set(
-      plannedQuestions
-    );
-
-  const topicOwnerCount =
-    new Map<
-      string,
-      number
-    >(
-      plannedTopics.map(
-        (
-          topic
-        ): [
-          string,
-          number
-        ] => [
-          topic,
-          0,
-        ]
-      )
-    );
-
-  const questionOwnerCount =
-    new Map<
-      string,
-      number
-    >(
-      plannedQuestions.map(
-        (
-          question
-        ): [
-          string,
-          number
-        ] => [
-          question,
-          0,
-        ]
-      )
-    );
-
-  for (
-    const section
-    of plan.sections
-  ) {
-    const ownedTopics =
-      Array.isArray(
-        section.topics
-      )
-        ? [
-            ...new Set(
-              section.topics
-                .map(
-                  (
-                    topic
-                  ) =>
-                    typeof topic ===
-                    "string"
-                      ? topic.trim()
-                      : ""
-                )
-                .filter(Boolean)
-            ),
-          ]
-        : [];
-
-    const ownedQuestions =
-      Array.isArray(
-        section.questions
-      )
-        ? [
-            ...new Set(
-              section.questions
-                .map(
-                  (
-                    question
-                  ) =>
-                    typeof question ===
-                    "string"
-                      ? question.trim()
-                      : ""
-                )
-                .filter(Boolean)
-            ),
-          ]
-        : [];
-
-    for (
-      const topic
-      of ownedTopics
-    ) {
-      if (
-        !knownTopics.has(
-          topic
-        )
-      ) {
-        issues.push(
-          `sections[].topics unknown:${topic}`
-        );
-
-        continue;
-      }
-
-      topicOwnerCount.set(
-        topic,
-        (
-          topicOwnerCount.get(
-            topic
-          ) ??
-          0
-        ) +
-          1
-      );
-    }
-
-    for (
-      const question
-      of ownedQuestions
-    ) {
-      if (
-        !knownQuestions.has(
-          question
-        )
-      ) {
-        issues.push(
-          `sections[].questions unknown:${question}`
-        );
-
-        continue;
-      }
-
-      questionOwnerCount.set(
-        question,
-        (
-          questionOwnerCount.get(
-            question
-          ) ??
-          0
-        ) +
-          1
-      );
-    }
-  }
-
-  for (
-    const [
-      topic,
-      owners,
-    ]
-    of topicOwnerCount
-  ) {
-    if (
-      owners ===
-      0
-    ) {
-      issues.push(
-        `plan.topics unowned:${topic}`
-      );
-    } else if (
-      owners >
-      1
-    ) {
-      issues.push(
-        `plan.topics multiple-owners:${topic}`
-      );
-    }
-  }
-
-  for (
-    const [
-      question,
-      owners,
-    ]
-    of questionOwnerCount
-  ) {
-    if (
-      owners ===
-      0
-    ) {
-      issues.push(
-        `plan.questions unowned:${question}`
-      );
-    } else if (
-      owners >
-      1
-    ) {
-      issues.push(
-        `plan.questions multiple-owners:${question}`
-      );
-    }
-  }
-
-  return issues;
-}
-
+// Exact-string ownership inspection lives in
+// stage-plan-coverage-ownership-v1.ts; semantics unchanged.
 
 export async function planProductionMasterArtifactsFromLiveSources({
   liveSourceInput,
@@ -1402,6 +743,17 @@ export async function planProductionMasterArtifactsFromLiveSources({
     buildProductionRankingInputs(
       research
     );
+
+  recordWriterTraceV1("research.collected", {
+    keyword: research.keyword,
+    capturedAt: research.capturedAt,
+    serpResults: research.serpSnapshot.results.length,
+    observedQueries: rankingInputs.observedQueries.length,
+    observedQuestions: research.serpIntelligence.questions.length,
+    medianWordCount: research.serpIntelligence.benchmark.medianWordCount ?? null,
+    medianH2: research.serpIntelligence.benchmark.medianH2 ?? null,
+    medianH3: research.serpIntelligence.benchmark.medianH3 ?? null,
+  });
 
 
   const observedQueryContract =
@@ -2082,35 +1434,27 @@ function inspectStagePlanCompleteness(
   plan.intent =
     mission.missionIntent;
 
-  let missingStagePlanFields =
-    [
-      ...inspectStagePlanCompleteness(
-        plan
-      ),
+  const inspectCurrentStagePlanV1 = (phase: string): string[] => {
+    const issues = collectStagePlanValidationIssuesV1({
+      plan,
+      pageIntent: mission.missionIntent,
+      inspectCompleteness: inspectStagePlanCompleteness,
+      inspectClaimOwnership: inspectStagePlanClaimOwnership,
+    });
+    recordWriterTraceV1("stage_plan.validation", {
+      phase,
+      passed: issues.length === 0,
+      issueCount: issues.length,
+      issues,
+      // Counts describe the exact plan being checked; no mutation.
+      queryCount: Array.isArray(plan.queries) ? plan.queries.length : null,
+      topicCount: Array.isArray(plan.topics) ? plan.topics.length : null,
+      sectionCount: Array.isArray(plan.sections) ? plan.sections.length : null,
+    });
+    return issues;
+  };
 
-      ...inspectStagePlanClaimOwnership(
-        plan
-      ),
-
-      ...inspectStagePlanCoverageOwnership(
-        plan
-      ),
-
-...inspectStagePlanQuestionIntentBoundaryV1({
-  pageIntent:
-    mission.missionIntent,
-
-  queries:
-    plan.queries,
-
-  questions:
-    plan.questions,
-}),
-...inspectStagePlanDistinctInformationJobsV1({
-  sections:
-    plan.sections,
-}),
-    ];
+  let missingStagePlanFields = inspectCurrentStagePlanV1("initial_model_output");
 
 
   /*
@@ -2125,7 +1469,11 @@ function inspectStagePlanCompleteness(
    * The query itself remains in plan.queries for research.
    */
   const applyLocalRequiredQuestionContractionV1 =
-    () => {
+    (
+      validationPhase:
+        | "after_required_question_contraction"
+        | "after_post_retry_question_contraction"
+    ) => {
       /*
        * Structural incompleteness still belongs to the bounded
        * Stage Plan recovery path.
@@ -2249,43 +1597,14 @@ function inspectStagePlanCompleteness(
       );
 
 
-      missingStagePlanFields =
-        [
-          ...inspectStagePlanCompleteness(
-            plan
-          ),
-
-          ...inspectStagePlanClaimOwnership(
-            plan
-          ),
-
-          ...inspectStagePlanCoverageOwnership(
-            plan
-          ),
-
-          ...inspectStagePlanQuestionIntentBoundaryV1({
-            pageIntent:
-              mission.missionIntent,
-
-            queries:
-              plan.queries,
-
-            questions:
-              plan.questions,
-          }),
-
-          ...inspectStagePlanDistinctInformationJobsV1({
-            sections:
-              plan.sections,
-          }),
-        ];
+      missingStagePlanFields = inspectCurrentStagePlanV1(validationPhase);
 
 
       return true;
     };
 
 
-  applyLocalRequiredQuestionContractionV1();
+  applyLocalRequiredQuestionContractionV1("after_required_question_contraction");
 
 
   /*
@@ -2298,25 +1617,25 @@ function inspectStagePlanCompleteness(
    * Deterministic code validates and applies the choice.
    */
   const duplicateClaimOwnerPrefixV1 =
-    "sections[].requiredClaimIds duplicate-owner:";
+    DUPLICATE_STAGE_PLAN_CLAIM_OWNER_PREFIX_V1;
 
-  const onlyDuplicateClaimOwnershipFailureV1 =
-    missingStagePlanFields.length > 0 &&
-    missingStagePlanFields.every(
-      (
-        issue
-      ) =>
-        issue.startsWith(
-          duplicateClaimOwnerPrefixV1
-        )
-    );
+  const initialRecoveryRouteV1 = selectStagePlanRecoveryRouteV1({
+    issues: missingStagePlanFields,
+  });
+  recordWriterTraceV1("stage_plan.recovery.route", {
+    phase: "after_initial_question_contraction",
+    route: initialRecoveryRouteV1,
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: false,
+    fullRegenerationAttempted: false,
+  });
 
   let localClaimOwnerRepairAttemptedV1 =
     false;
 
 
   if (
-    onlyDuplicateClaimOwnershipFailureV1
+    initialRecoveryRouteV1 === "LOCAL_CLAIM_OWNER_REPAIR"
   ) {
     localClaimOwnerRepairAttemptedV1 =
       true;
@@ -2534,35 +1853,7 @@ function inspectStagePlanCompleteness(
         };
 
 
-      missingStagePlanFields =
-        [
-          ...inspectStagePlanCompleteness(
-            plan
-          ),
-
-          ...inspectStagePlanClaimOwnership(
-            plan
-          ),
-
-          ...inspectStagePlanCoverageOwnership(
-            plan
-          ),
-
-...inspectStagePlanQuestionIntentBoundaryV1({
-  pageIntent:
-    mission.missionIntent,
-
-  queries:
-    plan.queries,
-
-  questions:
-    plan.questions,
-}),
-...inspectStagePlanDistinctInformationJobsV1({
-  sections:
-    plan.sections,
-}),
-        ];
+      missingStagePlanFields = inspectCurrentStagePlanV1("after_local_claim_owner_repair");
 
       console.info(
         "[content stage planner] local claim owner repair",
@@ -2612,11 +1903,21 @@ function inspectStagePlanCompleteness(
    *
    * Reserved for NON-local structural Stage Plan failures.
    */
-  if (
-    missingStagePlanFields.length >
-      0 &&
-    !localClaimOwnerRepairAttemptedV1
-  ) {
+  let fullRegenerationAttemptedV1 = false;
+  const preRetryRecoveryRouteV1 = selectStagePlanRecoveryRouteV1({
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+  });
+  recordWriterTraceV1("stage_plan.recovery.route", {
+    phase: "before_full_plan_retry",
+    route: preRetryRecoveryRouteV1,
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+    fullRegenerationAttempted: false,
+  });
+
+  if (preRetryRecoveryRouteV1 === "FULL_REGENERATION") {
+    fullRegenerationAttemptedV1 = true;
     console.warn(
       "[content stage planner] incomplete structured output; regenerating once",
       {
@@ -2753,35 +2054,7 @@ function inspectStagePlanCompleteness(
     plan.intent =
       mission.missionIntent;
 
-    missingStagePlanFields =
-      [
-      ...inspectStagePlanCompleteness(
-        plan
-      ),
-
-      ...inspectStagePlanClaimOwnership(
-        plan
-      ),
-
-      ...inspectStagePlanCoverageOwnership(
-        plan
-      ),
-
-...inspectStagePlanQuestionIntentBoundaryV1({
-  pageIntent:
-    mission.missionIntent,
-
-  queries:
-    plan.queries,
-
-  questions:
-    plan.questions,
-}),
-...inspectStagePlanDistinctInformationJobsV1({
-  sections:
-    plan.sections,
-}),
-    ];
+    missingStagePlanFields = inspectCurrentStagePlanV1("after_full_plan_retry");
   }
 
 
@@ -2793,8 +2066,21 @@ function inspectStagePlanCompleteness(
    *
    * Contract it locally before terminal failure.
    */
-  applyLocalRequiredQuestionContractionV1();
+  applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction");
 
+
+  const finalRecoveryRouteV1 = selectStagePlanRecoveryRouteV1({
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+    fullRegenerationAttempted: fullRegenerationAttemptedV1,
+  });
+  recordWriterTraceV1("stage_plan.recovery.route", {
+    phase: "terminal_stage_plan_boundary",
+    route: finalRecoveryRouteV1,
+    issues: missingStagePlanFields,
+    localClaimOwnerRepairAttempted: localClaimOwnerRepairAttemptedV1,
+    fullRegenerationAttempted: fullRegenerationAttemptedV1,
+  });
 
   if (
     missingStagePlanFields.length >
@@ -3381,6 +2667,16 @@ function inspectStagePlanCompleteness(
     );
 
 
+  const observedMetricRegistry = buildCanonicalObservedQueryRegistry([
+    research.keywordContext,
+    research.dataForSeo,
+  ]);
+
+  const queryIdentityProvenance = buildProductionQueryProvenanceRegistryV1({
+    keywordContext: research.keywordContext,
+    dataForSeo: research.dataForSeo,
+  });
+
   const querySignals:
     ProductionMasterArtifactPipelineInput[
       "queryGraph"
@@ -3411,11 +2707,9 @@ function inspectStagePlanCompleteness(
 
 
           const metrics =
-            resolveMetricsForQuery({
-              research,
-
-              normalizedQuery:
-                normalized,
+            resolveCanonicalObservedQueryMetricsV1({
+              registry: observedMetricRegistry,
+              normalizedQuery: normalized,
             });
 
 
@@ -3476,6 +2770,47 @@ function inspectStagePlanCompleteness(
             });
 
 
+          const identityProvenance = resolveProductionQueryIdentityProvenanceV1({
+            query: observedQuery,
+            registry: queryIdentityProvenance,
+          });
+          if (!identityProvenance) {
+            throw new ProductionMasterLiveStagePlanError(
+              "LIVE_STAGE_PLAN_QUERY_IDENTITY_SOURCE_MISSING",
+              `Observed query lacks acquisition identity source: ${observedQuery}`
+            );
+          }
+
+          recordWriterTraceV1("query.signal.provenance", {
+            query: observedQuery,
+            source: identityProvenance.source,
+            observedInDataForSeo: identityProvenance.observedInDataForSeo,
+            observedInGscContext: identityProvenance.observedInGscContext,
+            // Existing numeric metric selection/precedence remains unchanged.
+          });
+
+          // Diagnostic-only lineage. Do not mutate/query-confidence-normalize
+          // the deterministic selected values consumed by QueryGraph.
+          try {
+            const metricLineage = resolveProductionMetricLineageV1({
+              query: observedQuery,
+              registry: queryIdentityProvenance,
+              selectedMetrics: metrics,
+            });
+            recordWriterTraceV1("query.metric.lineage", {
+              query: observedQuery,
+              selectedValues: metrics,
+              perMetric: metricLineage,
+            });
+          } catch (cause) {
+            // A trace inconsistency must be visible but must not change
+            // the previously verified production query signal.
+            recordWriterTraceV1("query.metric.lineage_inconsistent", {
+              query: observedQuery,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+          }
+
           return {
             query:
               observedQuery,
@@ -3502,8 +2837,10 @@ function inspectStagePlanCompleteness(
             siteCoverage:
               query.siteCoverage,
 
-            source:
-              "DATAFORSEO",
+            // Classify from recorded acquisition identity, not an
+            // unconditional DataForSEO label. Confidence is intentionally
+            // unchanged until calibrated against downstream QueryGraph ranking.
+            source: identityProvenance.source,
 
             sourceConfidence:
               0.9,

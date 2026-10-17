@@ -1607,16 +1607,6 @@ ${article.bodyMarkdown}`
             </button>
           ) : null}
 
-          {substantiveWarnings.length>0 && article.status==="IN_REVIEW" ? (
-         <p role="alert" className={styles.error}>
-           {substantiveWarnings.length} reader-facing editorial issue(s):
-           empty explanatory filler or inline Source labels. Existing
-           signed citations and original article bytes are preserved.
-           First issue: {substantiveWarnings[0]?.code} in H2
-           {" "}{(substantiveWarnings[0]?.sectionIndex??0)+1}.
-           Review the original source-backed section before repair.
-         </p>
-       ):null}
        {qualityNeedsImprovement ? (
             <button type="button" className={styles.secondaryButton}
               disabled={busy!==null}
@@ -1702,6 +1692,17 @@ ${article.bodyMarkdown}`
           ) : null}
         </div>
       </div>
+
+      {substantiveWarnings.length > 0 && article.status === "IN_REVIEW" ? (
+        <p role="alert" className={styles.editorialAlert}>
+          {substantiveWarnings.length} reader-facing editorial issue(s):
+          empty explanatory filler or inline Source labels. Existing signed
+          citations and original article bytes are preserved. First issue:
+          {" "}{substantiveWarnings[0]?.code} in H2
+          {" "}{(substantiveWarnings[0]?.sectionIndex ?? 0) + 1}.
+          Review the original source-backed section before repair.
+        </p>
+      ) : null}
 
       {qualityNeedsImprovement ? (
         <p role="status" className={styles.error}>

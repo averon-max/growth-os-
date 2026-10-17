@@ -53,7 +53,7 @@ const TEMPLATE_SECTION_EDITORIAL_GUIDANCE_V1:
 function templateEditorialContextV1(
   contract: Readonly<SectionGenerationContractV1>
 ): string {
-  const pageType = contract.searchBlueprint.pageType;
+  const pageType = contract.searchBlueprint?.pageType;
   const normalized = typeof pageType === "string"
     ? pageType.trim().toUpperCase().replace(/[\s-]+/g, "_")
     : "";

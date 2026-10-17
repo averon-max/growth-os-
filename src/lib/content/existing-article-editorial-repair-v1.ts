@@ -15,7 +15,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { geminiGenerator } from "./gemini-generator";
+import { openAiGenerator } from "./openai-generator";
 import { createContentRunBudgetV1, withContentRunBudgetV1 } from "./content-run-budget-v1";
 import { assertSectionEvidenceCapacityV1 } from "./section-evidence-capacity-v1";
 import { assertStoredPublicationEvidenceV1 } from "./stored-publication-evidence-gate-v1";
@@ -218,7 +218,7 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       for(const rootDirectory of roots){
         const inspection=await inspectArchivedWriterProgressV1({
           rootDirectory,articleId,briefId:original.briefId,
-          modelName:geminiGenerator.modelName,contract,
+          modelName:openAiGenerator.modelName,contract,
         });
         if(inspection.compatible&&inspection.candidate){
           archived=inspection.candidate.checkpoint;break;
@@ -252,7 +252,7 @@ export async function repairExistingArticleEditorialV1(articleId:string,
       maxRepairCalls:2,
     });
     const generator=withContentRunBudgetV1({
-      generator:geminiGenerator,budget,
+      generator:openAiGenerator,budget,
     });
     if(!run){
       check(archivedProgress!==null,

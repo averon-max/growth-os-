@@ -196,7 +196,7 @@ async function main(): Promise<void> {
       console.log("PRIOR_REJECTED_ARTICLE_BACKED_UP=" + backup);
     }
 
-    const { geminiGenerator } = await import("../src/lib/content/gemini-generator");
+    const { openAiGenerator } = await import("../src/lib/content/openai-generator");
     const { generateArticleFromBrief } = await import("../src/lib/content/service");
     const {
       ARTICLE_GENERATION_BUDGET_V1,
@@ -211,7 +211,7 @@ async function main(): Promise<void> {
       maxEstimatedInputTokens: Math.min(65000, ARTICLE_GENERATION_BUDGET_V1.maxEstimatedInputTokens),
       maxRepairCalls: Math.min(8, ARTICLE_GENERATION_BUDGET_V1.maxRepairCalls),
     });
-    const generator = withContentRunBudgetV1({ generator: geminiGenerator, budget });
+    const generator = withContentRunBudgetV1({ generator: openAiGenerator, budget });
 
     console.log("LIVE_GENERATION_START: one attempt; no approval; no publication");
     try {

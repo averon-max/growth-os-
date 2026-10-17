@@ -199,7 +199,7 @@ async function main(){
         "SEMANTIC_CITATION_PREVIOUSLY_COMPLETED_BUT_CHECKPOINTS_MISSING:"+
         paymentGuard.unresolvedCheckpointIndices.join(","));
     const {callContentAiJson}=await import(
-      "../src/lib/content/gemini-generator");
+      "../src/lib/content/openai-generator");
     await mkdir(reviewCheckpointDir,{recursive:true});
     type Result=Parameters<typeof applyReviewedSignedSemanticCitationsV1>[0]["verdicts"];
     const verdicts:{sectionIndex:number;choices:Array<{
