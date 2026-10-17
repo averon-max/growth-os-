@@ -199,6 +199,62 @@ export default async function ArticlePage({
           Content
         </Link>
 
+        <ArticleWorkspace
+          qualityMinimumWords={qualityMinimumWords}
+          initialArticle={{
+            id:
+              article.id,
+
+            websiteId:
+              article.brief
+                .websiteId,
+
+            title:
+              article.title,
+
+            metaDescription:
+              article.metaDescription,
+
+            h1:
+              article.h1,
+
+            bodyMarkdown:
+              article.bodyMarkdown,
+
+            status:
+              article.status,
+
+            publishedUrl:
+              article.publishedUrl,
+
+            publishedAt:
+              article.publishedAt
+                ?.toISOString() ??
+              null,
+
+            updatedAt:
+              article.updatedAt.toISOString(),
+
+            topic:
+              article.brief
+                .topic,
+
+            primaryKeyword:
+              article.brief
+                .primaryKeyword,
+
+            searchIntent:
+              article.brief
+                .searchIntent,
+          }}
+        />
+
+        <details className={styles.auditDisclosure}>
+          <summary className={styles.auditSummary}>
+            <span>Search evidence & article diagnostics</span>
+            <span className={styles.auditHint}>Expand technical analysis</span>
+          </summary>
+          <div className={styles.auditBody}>
         <section aria-label="Search readiness and market evidence"
           style={{border:"1px solid #2A2E33",borderRadius:12,
             background:"#0F1011",padding:16,marginBottom:18}}>
@@ -301,55 +357,8 @@ export default async function ArticlePage({
             </ol>
           </div>
         </section>
-        <ArticleWorkspace
-          qualityMinimumWords={qualityMinimumWords}
-          initialArticle={{
-            id:
-              article.id,
-
-            websiteId:
-              article.brief
-                .websiteId,
-
-            title:
-              article.title,
-
-            metaDescription:
-              article.metaDescription,
-
-            h1:
-              article.h1,
-
-            bodyMarkdown:
-              article.bodyMarkdown,
-
-            status:
-              article.status,
-
-            publishedUrl:
-              article.publishedUrl,
-
-            publishedAt:
-              article.publishedAt
-                ?.toISOString() ??
-              null,
-
-            updatedAt:
-              article.updatedAt.toISOString(),
-
-            topic:
-              article.brief
-                .topic,
-
-            primaryKeyword:
-              article.brief
-                .primaryKeyword,
-
-            searchIntent:
-              article.brief
-                .searchIntent,
-          }}
-        />
+          </div>
+        </details>
       </div>
     </>
   );
