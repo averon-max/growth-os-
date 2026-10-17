@@ -90,24 +90,9 @@ import type {
 } from "./generator";
 
 import { ContentGenerationError } from "./generator";
-import {
-  GEMINI_RETRYABLE_STATUS_CODES,
-  geminiRetryDelayMs,
-  geminiTransportErrorMessage,
-  isRetryableGeminiTransportError,
-  resolveGeminiContentModel,
-} from "./gemini-reliability";
-
 import type { ContentBriefInput, GeneratedBrief, GeneratedArticle, ContentOutlineSection } from "./types";
 
-const GEMINI_MODEL =
-  resolveGeminiContentModel();
-
-const GEMINI_API_BASE =
-  "https://generativelanguage.googleapis.com/v1beta";
-
-const GEMINI_TIMEOUT_MS =
-  60000;
+const OPENAI_TIMEOUT_MS = 60000;
 
 const MAX_RETRIES =
   5;
@@ -130,20 +115,6 @@ function requireEnv(
   return value;
 }
 
-interface GeminiCandidate {
-  content?: {
-    parts?: {
-      text?:
-        string;
-    }[];
-  };
-}
-
-interface GeminiResponse {
-  candidates?:
-    GeminiCandidate[];
-}
-
 function sleep(
   ms:
     number
@@ -159,9 +130,7 @@ function sleep(
   );
 }
 
-export type ContentAiProvider =
-  | "openai"
-  | "gemini";
+export type ContentAiProvider = "openai";
 
 
 export type OpenAiReasoningEffort =
@@ -247,26 +216,6 @@ export function resolveOpenAiReasoningEffort(
 }
 
 
-export function resolveGroqContentModel(
-  env:
-    Record<string, string | undefined> =
-      process.env
-): string {
-  return (
-    env.GROQ_CONTENT_MODEL
-      ?.trim() ||
-    "openai/gpt-oss-120b"
-  );
-}
-
-
-const GROQ_API_URL =
-  "https://api.groq.com/openai/v1/chat/completions";
-
-const GROQ_MODEL =
-  resolveGroqContentModel();
-
-
 const OPENAI_MODEL =
   resolveOpenAiContentModel();
 
@@ -281,277 +230,6 @@ function selectedContentModelName(): string {
   return resolveOpenAiContentModel();
 }
 
-
-
-const GROQ_SAFE_REQUEST_TOKEN_BUDGET =
-  7800;
-
-const GROQ_MAX_COMPLETION_TOKENS =
-  2200;
-
-const GROQ_MIN_COMPLETION_TOKENS =
-  384;
-
-
-/**
- * Groq free/dev TPM limits count the request
- * token budget, not only generated output.
- *
- * We intentionally over-estimate prompt size.
- * No prompt/evidence truncation is allowed here.
- */
-function estimateGroqPromptTokens(
-  prompt: string
-): number {
-  return Math.ceil(
-    prompt.length / 2.5
-  );
-}
-
-
-function resolveGroqMaxCompletionTokens(
-  prompt: string
-): number {
-  const estimatedPromptTokens =
-    estimateGroqPromptTokens(
-      prompt
-    );
-
-  const available =
-    GROQ_SAFE_REQUEST_TOKEN_BUDGET -
-    estimatedPromptTokens;
-
-  if (
-    available <
-    GROQ_MIN_COMPLETION_TOKENS
-  ) {
-    throw new Error(
-      [
-        "GROQ_PROMPT_BUDGET_EXCEEDED",
-        `estimatedPromptTokens=${estimatedPromptTokens}`,
-        `safeRequestBudget=${GROQ_SAFE_REQUEST_TOKEN_BUDGET}`,
-        "Refusing to truncate grounded context.",
-      ].join(" ")
-    );
-  }
-
-  return Math.min(
-    GROQ_MAX_COMPLETION_TOKENS,
-    available
-  );
-}
-
-
-async function callGroq(
-  prompt:
-    string
-): Promise<string> {
-  const apiKey =
-    requireEnv(
-      "GROQ_API_KEY"
-    );
-
-  let lastError:
-    ContentGenerationError |
-    null =
-      null;
-
-  for (
-    let attempt = 0;
-    attempt <=
-      MAX_RETRIES;
-    attempt++
-  ) {
-    const controller =
-      new AbortController();
-
-    const timeout =
-      setTimeout(
-        () =>
-          controller.abort(),
-        GEMINI_TIMEOUT_MS
-      );
-
-    try {
-      /*
-       * CONTENT_PROVIDER_REQUEST_BUDGET_V1:groq
-       *
-       * One charge per physical outbound HTTP attempt.
-       */
-      recordContentProviderRequestV1({
-        provider:
-          "groq",
-
-        model:
-          GROQ_MODEL,
-
-        attempt:
-          attempt +
-          1,
-
-        prompt,
-      });
-
-
-      const response =
-        await fetch(
-          GROQ_API_URL,
-          {
-            method:
-              "POST",
-
-            signal:
-              controller.signal,
-
-            headers: {
-              Authorization:
-                `Bearer ${apiKey}`,
-
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                model:
-                  GROQ_MODEL,
-
-                messages: [
-                  {
-                    role:
-                      "system",
-
-                    content:
-                      "Return valid JSON only. Follow the requested JSON structure exactly.",
-                  },
-                  {
-                    role:
-                      "user",
-
-                    content:
-                      prompt,
-                  },
-                ],
-
-                response_format: {
-                  type:
-                    "json_object",
-                },
-
-                temperature:
-                  0,
-
-                max_completion_tokens: resolveGroqMaxCompletionTokens(prompt),
-              }),
-          }
-        );
-
-      if (
-        !response.ok
-      ) {
-        const body =
-          await response
-            .text()
-            .catch(
-              () => ""
-            );
-
-        lastError =
-          new ContentGenerationError(
-            `Groq API error ${response.status}: ${body.slice(
-              0,
-              600
-            )}`
-          );
-
-        if (
-          GEMINI_RETRYABLE_STATUS_CODES.has(
-            response.status
-          ) &&
-          attempt <
-            MAX_RETRIES
-        ) {
-          const retryAfterMs =
-            geminiRetryDelayMs({
-              attempt,
-
-              retryAfterHeader:
-                response.headers.get(
-                  "Retry-After"
-                ),
-            });
-
-          console.warn(
-            "[groq] temporary provider failure",
-            {
-              model:
-                GROQ_MODEL,
-
-              status:
-                response.status,
-
-              attempt:
-                attempt +
-                1,
-
-              nextAttempt:
-                attempt +
-                2,
-
-              retryAfterMs,
-            }
-          );
-
-          await sleep(
-            retryAfterMs
-          );
-
-          continue;
-        }
-
-        throw lastError;
-      }
-
-      const data =
-        (
-          await response.json()
-        ) as {
-          choices?: Array<{
-            message?: {
-              content?: string | null;
-            };
-          }>;
-        };
-
-      const text =
-        data
-          .choices?.[0]
-          ?.message
-          ?.content;
-
-      if (
-        !text
-      ) {
-        throw new ContentGenerationError(
-          "Groq returned no content"
-        );
-      }
-
-      return text;
-    } finally {
-      clearTimeout(
-        timeout
-      );
-    }
-  }
-
-  throw (
-    lastError ??
-    new ContentGenerationError(
-      "Groq request failed after retries"
-    )
-  );
-}
 
 
 async function callOpenAiApi(
@@ -585,7 +263,7 @@ async function callOpenAiApi(
         0,
 
       timeout:
-        GEMINI_TIMEOUT_MS,
+        OPENAI_TIMEOUT_MS,
     });
 
   const effort =
@@ -816,80 +494,7 @@ async function callOpenAiApi(
 }
 
 
-async function callGemini(
-  prompt:
-    string
-): Promise<string> {
-  /*
-   * GENERATOR_PROVIDER_FAILOVER_V2
-   *
-   * Every structured generation request goes through the
-   * canonical provider failover layer.
-   *
-   * Groq:
-   *   413 / 429 / 5xx / network
-   *       -> Gemini when configured
-   *
-   * Gemini:
-   *   429 / 5xx / network
-   *       -> Groq when configured
-   *
-   * SEO evidence / claims / rankings are NOT fabricated here.
-   * This function changes transport resilience only.
-   */
-  return callContentAiJson(
-    prompt
-  );
-}
-
-function hasContentAiKey(
-  name:
-    | "OPENAI_API_KEY"
-    | "GEMINI_API_KEY"
-    | "GROQ_API_KEY"
-): boolean {
-  return Boolean(
-    process.env[
-      name
-    ]?.trim()
-  );
-}
-
-
-function isContentAiFailoverEligible(
-  cause:
-    unknown
-): boolean {
-  const message =
-    cause instanceof
-      Error
-      ? cause.message
-      : String(
-          cause
-        );
-
-  return (
-    /(?:API error|HTTP)\s+(?:413|429|500|502|503|504)\b/i.test(
-      message
-    ) ||
-    /timeout|timed out|fetch failed|network|ECONN|ENET|EAI_AGAIN/i.test(
-      message
-    ) ||
-    /Groq API error 400:[\s\S]*(?:json_validate_failed|max completion tokens reached before generating a valid document)/i.test(
-      message
-    )
-  );
-}
-
-
-/*
- * CONTENT_AI_FAILOVER_V1
- *
- * Structured semantic planning uses the configured provider first.
- * A transient transport/provider failure may fail over to the other
- * configured provider. Semantic fallback never creates SEO metrics,
- * SERP observations, evidence, or claims; those remain source-backed.
- */
+/* OpenAI is the only live Content provider. */
 export async function callContentAiJson(
   prompt:
     string,
@@ -949,259 +554,11 @@ export async function callContentAiJson(
 }
 
 
-async function callGeminiApi(
-  prompt:
-    string
-): Promise<string> {
-  const apiKey =
-    requireEnv(
-      "GEMINI_API_KEY"
-    );
-
-  let lastError:
-    ContentGenerationError |
-    null =
-      null;
-
-  for (
-    let attempt = 0;
-    attempt <=
-      MAX_RETRIES;
-    attempt++
-  ) {
-    const controller =
-      new AbortController();
-
-    const timeout =
-      setTimeout(
-        () =>
-          controller.abort(),
-        GEMINI_TIMEOUT_MS
-      );
-
-    try {
-      /*
-       * CONTENT_PROVIDER_REQUEST_BUDGET_V1:gemini
-       *
-       * One charge per physical outbound HTTP attempt.
-       */
-      recordContentProviderRequestV1({
-        provider:
-          "gemini",
-
-        model:
-          GEMINI_MODEL,
-
-        attempt:
-          attempt +
-          1,
-
-        prompt,
-      });
-
-
-      const response =
-        await fetch(
-          `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent`,
-          {
-            method:
-              "POST",
-
-            signal:
-              controller.signal,
-
-            headers: {
-              "Content-Type":
-                "application/json", "x-goog-api-key": apiKey,
-            },
-
-            body:
-              JSON.stringify({
-                contents: [
-                  {
-                    parts: [
-                      {
-                        text:
-                          prompt,
-                      },
-                    ],
-                  },
-                ],
-
-                generationConfig: {
-                  responseMimeType:
-                    "application/json",
-                },
-              }),
-          }
-        );
-
-      if (
-        !response.ok
-      ) {
-        const body =
-          await response
-            .text()
-            .catch(
-              () => ""
-            );
-
-        lastError =
-          new ContentGenerationError(
-            `Gemini API error ${response.status}: ${body.slice(
-              0,
-              300
-            )}`
-          );
-
-        if (
-          GEMINI_RETRYABLE_STATUS_CODES.has(
-            response.status
-          ) &&
-          attempt <
-            MAX_RETRIES
-        ) {
-          const retryAfterMs =
-            geminiRetryDelayMs({
-              attempt,
-
-              retryAfterHeader:
-                response.headers.get(
-                  "Retry-After"
-                ),
-            });
-
-          console.warn(
-            "[gemini] temporary provider failure",
-            {
-              model:
-                GEMINI_MODEL,
-
-              status:
-                response.status,
-
-              attempt:
-                attempt +
-                1,
-
-              nextAttempt:
-                attempt +
-                2,
-
-              retryAfterMs,
-            }
-          );
-
-          await sleep(
-            retryAfterMs
-          );
-
-          continue;
-        }
-
-        throw lastError;
-      }
-
-      const data =
-        (
-          await response.json()
-        ) as GeminiResponse;
-
-      const text =
-        data
-          .candidates?.[0]
-          ?.content
-          ?.parts?.[0]
-          ?.text;
-
-      if (!text) {
-        throw new ContentGenerationError(
-          "Gemini returned no content"
-        );
-      }
-
-      return text;
-    } catch (
-      error
-    ) {
-      if (
-        error instanceof
-        ContentGenerationError
-      ) {
-        throw error;
-      }
-
-      const message =
-        geminiTransportErrorMessage(
-          error
-        );
-
-      lastError =
-        new ContentGenerationError(
-          `Gemini transport error: ${message}`
-        );
-
-      if (
-        isRetryableGeminiTransportError(
-          error
-        ) &&
-        attempt <
-          MAX_RETRIES
-      ) {
-        const retryAfterMs =
-          geminiRetryDelayMs({
-            attempt,
-          });
-
-        console.warn(
-          "[gemini] temporary transport failure",
-          {
-            model:
-              GEMINI_MODEL,
-
-            attempt:
-              attempt +
-              1,
-
-            nextAttempt:
-              attempt +
-              2,
-
-            retryAfterMs,
-
-            error:
-              message,
-          }
-        );
-
-        await sleep(
-          retryAfterMs
-        );
-
-        continue;
-      }
-
-      throw lastError;
-    } finally {
-      clearTimeout(
-        timeout
-      );
-    }
-  }
-
-  throw (
-    lastError ??
-    new ContentGenerationError(
-      "Gemini request failed after retries"
-    )
-  );
-}
-
 function parseJson<T>(text: string): T {
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new ContentGenerationError("Gemini returned malformed JSON");
+    throw new ContentGenerationError("OpenAI returned malformed JSON");
   }
 }
 
@@ -1242,7 +599,7 @@ function sanitizeCritiqueResult(
     )
   ) {
     throw new ContentGenerationError(
-      "Gemini returned malformed critic response"
+      "OpenAI returned malformed critic response"
     );
   }
 
@@ -1481,7 +838,7 @@ Respond with JSON only.`;
     const parsed = parseJson<GeneratedBrief>(text);
 
     if (!parsed.primaryKeyword || !Array.isArray(parsed.outline) || parsed.outline.length === 0) {
-      throw new ContentGenerationError("Gemini returned an incomplete brief");
+      throw new ContentGenerationError("OpenAI returned an incomplete brief");
     }
 
     return parsed;
@@ -1528,7 +885,7 @@ Respond with JSON only.`;
     const parsed = parseJson<GeneratedArticle>(text);
 
     if (!parsed.title || !parsed.bodyMarkdown) {
-      throw new ContentGenerationError("Gemini returned an incomplete article");
+      throw new ContentGenerationError("OpenAI returned an incomplete article");
     }
 
     return parsed;
@@ -1653,8 +1010,7 @@ Respond with JSON only.`;
     /*
      * Reuse the existing production content-AI transport.
      *
-     * This preserves the current Gemini/Groq provider routing,
-     * retry policy, timeout policy and JSON response mode.
+     * Preserve shared OpenAI retry, timeout and JSON response handling.
      */
     const response =
       await callContentAiJson(
@@ -1691,44 +1047,13 @@ Respond with JSON only.`;
       );
 
 
-    if (
-      process.env
-        .CONTENT_SEMANTIC_DEBUG ===
-      "1"
-    ) {
-      const estimatedPromptTokens =
-        estimateGroqPromptTokens(
-          prompt
-        );
-
-
-      console.error(
-        "[repair prompt budget]",
-        {
-          sectionIndex:
-            input.contract
-              .sectionIndex,
-
-          heading:
-            input.contract
-              .blueprint
-              .heading,
-
-          promptChars:
-            prompt.length,
-
-          estimatedPromptTokens,
-
-          safeRequestBudget:
-            GROQ_SAFE_REQUEST_TOKEN_BUDGET,
-
-          estimatedCompletionBudget:
-            GROQ_SAFE_REQUEST_TOKEN_BUDGET -
-            estimatedPromptTokens,
-        }
-      );
+    if (process.env.CONTENT_SEMANTIC_DEBUG === "1") {
+      console.info("[repair prompt size]", {
+        sectionIndex: input.contract.sectionIndex,
+        promptChars: prompt.length,
+        estimatedInputTokens: Math.ceil(prompt.length / 4),
+      });
     }
-
 
     const response =
       await callContentAiJson(
@@ -2635,7 +1960,7 @@ Respond with JSON only.`;
       !parsed.bodyMarkdown
     ) {
       throw new ContentGenerationError(
-        "Gemini returned an incomplete rewritten article"
+        "OpenAI returned an incomplete rewritten article"
       );
     }
 
