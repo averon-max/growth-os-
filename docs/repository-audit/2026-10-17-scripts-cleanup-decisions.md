@@ -50,3 +50,14 @@ Inspected the source entrypoints directly (not just filenames):
 These are not interchangeable: they have different persisted artifact states, article ID handling, side effects and validation gates. No safe deletion is established for any of these seven files.
 
 **Cleanup status:** 15 script contracts examined across passes; 0 approved for deletion. This is an intentionally fail-closed result, not a declaration that the Scripts category is completely clean.
+
+## Third pass — approvals and cached-analysis entrypoints
+
+| File | Directly verified contract | Decision |
+|---|---|---|
+| `content-approve-existing-query-owner.ts` | A human-attested query-owner approval; only the `--execute` path appends review data, not signed article/research snapshots | RETAIN; distinct provenance action |
+| `content-article-quality-audit.ts` | Read-only inspection of existing persisted article, without AI or publication | RETAIN as diagnostic CLI |
+| `content-audit-cached-keyword-topic-fit.ts` | Re-evaluates already paid source snapshots for market/topic-fit without paid API calls | RETAIN; distinct cached-data check |
+| `content-commit-reviewed-candidate-v3.ts` | Explicit opt-in atomic commit of a reviewed candidate and replay provenance, transition to IN_REVIEW | RETAIN; critical persisted-data path |
+
+**Progress:** 19 of 41 scripts checked at source-header and entrypoint level; 22 still pending. No deletion approved. This pass did not run scripts, make AI calls, or alter a database. Header checks do not substitute for full implementation/reference review; all four remain retained by default.
