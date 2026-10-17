@@ -117,6 +117,7 @@ describe("free existing saved credit-monitoring article draft",()=>{
     expect(result.sourceLabelsRelocated).toBe(3);
     expect(result.linkMultisetPreserved).toBe(true);
     expect(result.linksStillInOriginalH2).toBe(true);
+    expect(result.factualProseOtherwiseUnchanged).toBe(true);
     expect(result.draftBodyMarkdown).toContain(
       "### How monitoring services detect changes and send alerts");
     expect(result.draftBodyMarkdown).toContain(
