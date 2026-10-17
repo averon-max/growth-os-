@@ -55,6 +55,7 @@ jobs:
           name: growth-os-cleanup-audit
           path: |
             .growth-os-tmp/repository-audit.json
+            .growth-os-tmp/asset-dependency-inventory.json
             .growth-os-tmp/writer-module-map.json
           if-no-files-found: ignore
           retention-days: 14
