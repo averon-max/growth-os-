@@ -45,6 +45,7 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 - **Content/Writer:** CODE REFACTOR PASS VERIFIED; production integration NOT YET PROVEN. Three large helper extractions and one shared approval/publish release-gate consolidation landed. Exact code head `1e6ef43` passed TypeScript, full Vitest, production build and deletion gate. **Do not call the Writer production-closed until an authorized E2E run passes.** See `2026-10-17-writer-cleanup-execution.md`.
 - **API/UI/other libraries:** VERIFIED SAFE-CLEANUP PASS: identical Audience pagination helpers, three UTC-window calculations and pure formatters/selectors of three dashboard components consolidated with tests. Exact code head `d08ce64e` passed TypeScript, full Vitest, Next production build and deletion gate. No production provider, route or widget was deleted. See `2026-10-17-app-api-cleanup-execution.md`. Live API/browser integrations remain unverified.
 - **CI:** latest cleanup branch head must still pass deletion gate, TypeScript, full Vitest and production build. A previously passing head is insufficient.
+- **Prisma:** read-only Git-level inventory completed (35 files: 33 migrations, one schema, one lock; 36 models, 23 enums), all migration history intentionally retained. `npx prisma validate` added to CI; current-head CI needs confirmation. See `2026-10-17-prisma-cleanup-review.md`.
 - **Logging:** explicitly deferred until completion of all cleanup sections and verification. No runtime instrumentation work in this phase.
 
 ## Protected
