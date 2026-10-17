@@ -43,6 +43,174 @@
         "testEvidenceAndLiveRisks": "The removal is limited to the new CLI and its dedicated test; check TypeScript, all Vitest tests, production build, and deletion gate on the final head. The CI result must be confirmed after changes; no claim of successful validation or live model testing is made.",
         "rollbackPlan": "Restore this exact blob d7f61358484b04302c3b3da34649e1c777d582ad with git show from the parent before deletion, or revert the precise removal commit; independently, the initial script addition remains in Git history for a later, intentionally scoped logging phase."
       }
+    },
+    {
+      "path": "public/file.svg",
+      "blobSha": "004145cddf3f9db91b57b9cb596683c8eb420862",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/file.svg. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/file.svg cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA 004145cddf3f9db91b57b9cb596683c8eb420862 at path public/file.svg from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "public/globe.svg",
+      "blobSha": "567f17b0d7c7fb662c16d4357dd74830caf2dccb",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/globe.svg. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/globe.svg cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA 567f17b0d7c7fb662c16d4357dd74830caf2dccb at path public/globe.svg from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "public/next.svg",
+      "blobSha": "5174b28c565c285e3e312ec5178be64fbeca8398",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/next.svg. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/next.svg cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA 5174b28c565c285e3e312ec5178be64fbeca8398 at path public/next.svg from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "public/vercel.svg",
+      "blobSha": "77053960334e2e34dc584dea8019925c3b4ccca9",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/vercel.svg. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/vercel.svg cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA 77053960334e2e34dc584dea8019925c3b4ccca9 at path public/vercel.svg from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "public/window.svg",
+      "blobSha": "b2b2a44f6ebc70c450043c05a002e7a93ba5d651",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/window.svg. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/window.svg cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA b2b2a44f6ebc70c450043c05a002e7a93ba5d651 at path public/window.svg from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "public/landing/feature-audience.png",
+      "blobSha": "b2bc29fc8e5f94a865e0e557c2480b31c03a79f3",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/landing/feature-audience.png. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/landing/feature-audience.png cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA b2bc29fc8e5f94a865e0e557c2480b31c03a79f3 at path public/landing/feature-audience.png from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "public/landing/hero-audience.png",
+      "blobSha": "7a6a66815f8c60172d07e1e95a92886b1f85f57a",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete an obsolete or default Next.js static asset with no known application reference. The asset is unnecessary to render the current dashboard or landing page.",
+        "realImportersAndConsumers": "All tracked TS, TSX, JS, CSS and MDX files were scanned for this asset name and public URL. No application or script consumers were found for public/landing/hero-audience.png. Other referenced landing images and the world-map URL are retained.",
+        "dynamicRuntimeAndExternalCallers": "Next public static assets are addressable without imports, so unknown off-site links to public/landing/hero-audience.png cannot be ruled out. No known API, UI, CSS or repository consumer references this URL; restoring from Git history is straightforward if needed.",
+        "schemaDataAndHistoricalCompatibility": "This is an asset, not a database schema, migration, article record, provider secret or API contract. Deletion does not rewrite persistent records. Any hypothetical external direct-link consumer can be restored.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA 7a6a66815f8c60172d07e1e95a92886b1f85f57a at path public/landing/hero-audience.png from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
+    },
+    {
+      "path": "src/data/world-110m.json",
+      "blobSha": "055d19ffcf3133435978527737ff8ad37a568c59",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx vitest run",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Delete the redundant bundled world-110m JSON copy, keeping the byte-identical public asset used by the geography map. This removes tracked duplicate data, not the published map endpoint.",
+        "realImportersAndConsumers": "The exact current-branch source reference audit found no import of src/data/world-110m.json by any TS/JS/TSX/CSS code; a textual self-mention in the audit script was excluded. AudienceGeoIntelligence instead requests public URL /world-110m.json which remains unchanged.",
+        "dynamicRuntimeAndExternalCallers": "No static or constructed in-repository consumer for the bundled JSON path is known. Public geography requests always refer to the distinct public file. Dynamic import paths could evade static analysis; no such loader was identified.",
+        "schemaDataAndHistoricalCompatibility": "This is a static data file, not a Prisma schema, article snapshot, serialized checkpoint or migration. No database model, existing article or provider connection changes. The public copy is preserved byte-for-byte.",
+        "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
+        "rollbackPlan": "Restore exact original blob SHA 055d19ffcf3133435978527737ff8ad37a568c59 at path src/data/world-110m.json from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
+      }
     }
   ]
 }

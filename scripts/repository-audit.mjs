@@ -107,7 +107,7 @@ const assetAndDependencyInventory = (() => {
     /\.(?:tsx?|mjs|cjs|js|mts|css|scss|mdx|html)$/.test(p) &&
     !p.startsWith("docs/")
   );
-  const parsedText = new Map(textFiles.map(p =>
+  const parsedText = new Map(textFiles.filter(p => p !== "scripts/repository-audit.mjs").map(p =>
     [p, fs.readFileSync(path.join(root, p), "utf8")]
   ));
   const assetPaths = files.filter(p => p.startsWith("public/") || p === "src/data/world-110m.json");

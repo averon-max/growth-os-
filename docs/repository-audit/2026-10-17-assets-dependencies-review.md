@@ -32,3 +32,13 @@ No package removal is approved from the present evidence. A package can be used 
 3. Final category gate: full TypeScript, Vitest, Prisma validate, production build and manual representative API/UI/browser/Writer run. GitHub CI cannot establish live provider validity on its own.
 
 **Status: reviewed and protected, not claimed fully optimized.** No logging/observability changes.
+
+## Verified reference scan and safe asset removal
+
+Exact CI inventory produced at code head `94b2d2cd`, run [39062546563](https://github.com/averon-max/growth-os-/actions/runs/39062546563) found zero application TS/TSX/JS/CSS references to `file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`, `feature-audience.png`, or `hero-audience.png`. Each appears to be an unused boilerplate or superseded marketing asset. Existing rendered landing images `feature-keywords.png` and `hero-keywords.png` are intentionally protected and retained.
+
+`src/data/world-110m.json` has no direct application or import reference; the only direct text reference was the audit script enumerating that path (self-reference, excluded in updated audit). Its SHA `055d19ffcf3133435978527737ff8ad37a568c59` equals the served copy at `public/world-110m.json`. The public copy is referenced by Audience Geo Intelligence and is **retained**.
+
+Eight redundant files are approved for deletion in one atomic reviewed commit, with exact Git object SHA and rollback instructions in `deletion-decisions.json`. There is residual uncertainty about undocumented external direct URLs to discarded assets, but no known app, CSS, Next server entrypoint, script or data contract references them.
+
+Validation requirements: deletion gate, `npx prisma validate`, `npx tsc --noEmit`, complete `npx vitest run`, Next production build and browser smoke for Audience geo map and homepage. GitHub CI exercises the first five checks; browser smoke remains outstanding.
