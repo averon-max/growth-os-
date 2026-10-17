@@ -53,3 +53,11 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 The existing Writer backup branch, PostgreSQL data, Prisma migrations, content drafts/articles, credentials, CMS publication and existing API contracts remain unchanged.
 
 Every removal requires the existing `scripts/repository-deletion-gate.mjs` evidence record, tests, TypeScript and production build checks. A green GitHub commit by itself is not a full verification of a runtime article-generation flow.
+
+
+## Assets and dependencies — reviewed 2026-10-17
+
+- Both World Atlas JSON files have identical blobs, but the public file is directly used by the Audience geo map (`geography="/world-110m.json"`). It **must remain**. The bundled copy requires further dynamic-import confirmation before any deletion.
+- Landing PNGs, starter SVG URLs and declared dependencies cannot be retired based on names alone. No asset or package deletion authorized.
+- Report: `2026-10-17-assets-dependencies-review.md`.
+- Outstanding for closure: exhaustive asset/dependency reference search, reproducible lockfile/package verification, and exact-head CI plus representative real Writer and UI/provider smoke checks. Logging remains deferred.
