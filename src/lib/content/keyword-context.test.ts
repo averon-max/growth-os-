@@ -44,6 +44,17 @@ describe("market-scoped GSC website keyword context",()=>{
       "credit monitoring","credit monitoring www",
     ]);
   });
+  it("keeps CA country and GSC-only source isolated from US data",async()=>{
+    await getWebsiteKeywordContext("site",50,"CA");
+    const args=mocks.keywords.mock.calls[0][0];
+    expect(args.where.snapshots.some).toEqual({
+      pageUrl:{contains:"scanmycreds.com"},
+      country:"ca",
+      source:"GOOGLE_SEARCH_CONSOLE",
+    });
+    expect(args.include.snapshots.where.country).toBe("ca");
+    expect(args.include.snapshots.where.source).toBe("GOOGLE_SEARCH_CONSOLE");
+  });
   it("keeps unspecified country available to unrelated legacy consumers",async()=>{
     await getWebsiteKeywordContext("site");
     const args=mocks.keywords.mock.calls[0][0];
