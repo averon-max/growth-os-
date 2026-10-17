@@ -181,6 +181,8 @@ async function main(){
       layoutScope.unapprovedLinks===0&&
       layoutOriginalLinks.length===layoutApprovedLinks.length&&
       layoutOriginalLinks.every((n,i)=>n===layoutApprovedLinks[i]);
+    const {evaluateComprehensiveEditorialReleaseV1}=await import(
+      "../src/lib/content/comprehensive-editorial-release-gate-v1");
     const {draftCreditMonitoringExistingEditorialV1}=await import(
       "../src/lib/content/article-reader-cleanup-v1");
     const editorialDraft=draftCreditMonitoringExistingEditorialV1(
@@ -209,8 +211,7 @@ async function main(){
     // Cost-free go/no-go before anyone authorizes a bounded model repair.
     // Old generation checkpoints can be outdated after the 13 citations
     // were saved. The exact article and CURRENT evidence must be validated.
-    const {evaluateComprehensiveEditorialReleaseV1}=await import(
-      "../src/lib/content/comprehensive-editorial-release-gate-v1");
+
     const {detectPersistedArticleEditorialRepetitionV1}=await import(
       "../src/lib/content/editorial-repetition-guard-v1");
     const {assertSectionEvidenceCapacityV1}=await import(
