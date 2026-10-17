@@ -23,12 +23,18 @@ jobs:
       NEXTAUTH_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Enforce per-file deletion evidence
+        run: |
+          node scripts/repository-deletion-gate.mjs --self-test
+          node scripts/repository-deletion-gate.mjs --check
       - name: Inventory imports and references
         run: node scripts/repository-audit.mjs
       - name: Map Content Writer modules
