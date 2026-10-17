@@ -123,6 +123,14 @@ describe("single Stage Plan validation collector", () => {
     expect(source).toContain(
       'applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction")',
     );
+    const preRetry = source.indexOf(
+      'applyLocalRequiredQuestionContractionV1("after_required_question_contraction")',
+    );
+    const postRetry = source.indexOf(
+      'applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction")',
+    );
+    expect(preRetry).toBeLessThan(postRetry);
+    expect(source).not.toContain("applyLocalRequiredQuestionContractionV1();");
     expect(source).toContain('recordWriterTraceV1("stage_plan.validation"');
   });
 });
