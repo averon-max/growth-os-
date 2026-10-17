@@ -111,3 +111,90 @@ export function draftSavedArticleSectionReferenceLayoutV1(markdown:string){
     originalMarkdownUnchanged:true,
   };
 }
+
+
+/**
+ * FREE exact-current-article editorial draft. Add headings ONLY at two
+ * literal existing paragraph boundaries already proved by source-backed
+ * prose, delete ONE known circular justification, and relocate Source
+ * labels inside the SAME signed H2 section. No new facts or keywords.
+ *
+ * Strict failure (no partial edit) if paragraph targets drift. The caller
+ * must independently re-evaluate source ownership, article completeness,
+ * semantic substance, approval fingerprint and Replay before persistence.
+ */
+export function draftCreditMonitoringExistingEditorialV1(markdown:string){
+  const refs=draftSavedArticleSectionReferenceLayoutV1(markdown);
+  const text=refs.proposedBodyMarkdown;
+  const hits=[...text.matchAll(/^##[ \t]+([^\n]+)/gm)];
+  const prefix=text.slice(0,hits[0]?.index??text.length);
+  const sections=hits.map((hit,i)=>
+    text.slice(hit.index??0,hits[i+1]?.index??text.length));
+  if(sections.length!==6||
+    hits[1]?.[1]?.trim()!=="How does credit monitoring work?"||
+    hits[5]?.[1]?.trim()!=="What should you do after a credit monitoring alert?"){
+    return {eligible:false as const,reason:"CANONICAL_SECTION_STRUCTURE_DRIFT",
+      draftBodyMarkdown:null,originalArticleUnchanged:true,
+      paidCalls:0,autoCommit:false};
+  }
+  const preciseAnchors=[
+    {start:"The process has three connected stages.",
+     h3:"How monitoring services detect changes and send alerts"},
+    {start:"Score access is related but distinct.",
+     h3:"How credit monitoring differs from credit score access"},
+  ];
+  let expanded=sections[1]!;
+  let added=0;
+  for(const target of preciseAnchors){
+    const literal="\n\n"+target.start;
+    const found=expanded.split(literal).length-1;
+    if(found!==1){
+      return {eligible:false as const,
+        reason:"EVIDENCE_BACKED_PARAGRAPH_ANCHOR_MISSING_OR_AMBIGUOUS",
+        draftBodyMarkdown:null,originalArticleUnchanged:true,
+        paidCalls:0,autoCommit:false};
+    }
+    expanded=expanded.replace(literal,
+      "\n\n### "+target.h3+"\n\n"+target.start);
+    added+=1;
+  }
+  const final=sections[5]!;
+  const vague=/That creates a clear basis for describing the issue to both parties and for distinguishing the disputed information from details that are correct or still unclear\./giu;
+  const found=[...final.matchAll(vague)].length;
+  if(found!==1){
+    return {eligible:false as const,
+      reason:"KNOWN_CIRCULAR_JUSTIFICATION_CHANGED",
+      draftBodyMarkdown:null,originalArticleUnchanged:true,
+      paidCalls:0,autoCommit:false};
+  }
+  const cleaned=final.replace(vague,"")
+    .replace(/[ \t]{2,}/gu," ").replace(/[ \t]+\n/gu,"\n");
+  const rebuilt=prefix+sections.map((part,i)=>
+    i===1?expanded:i===5?cleaned:part).join("");
+  const h3Before=(markdown.match(/^###\s+\S/gm)??[]).length;
+  const h3After=(rebuilt.match(/^###\s+\S/gm)??[]).length;
+  const sourceUrls=(v:string)=>[...v.matchAll(
+    /\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/gu)].map(x=>x[1]!);
+  const originalUrls=sourceUrls(markdown).sort();
+  const finalUrls=sourceUrls(rebuilt).sort();
+  return {
+    eligible:true as const,
+    version:"CREDIT_MONITORING_EXISTING_EDITORIAL_DRAFT_V1" as const,
+    draftBodyMarkdown:rebuilt,
+    sourceLabelsRelocated:refs.movedSourceLabels,
+    linkMultisetPreserved:JSON.stringify(originalUrls)===
+      JSON.stringify(finalUrls),
+    linksStillInOriginalH2:refs.everyH2RetainsItsOwnUrls,
+    h2Count:sections.length,
+    addedFactualClaims:0,
+    addedNewResearchQueries:0,
+    addedMeaningfulH3:added,
+    h3Before,h3After,
+    removedKnownCircularSentence:found,
+    originalArticleUnchanged:true,
+    requiresNewFingerprintAndReplay:true,
+    requiresSemanticAndHumanReview:true,
+    paidCalls:0,
+    autoCommit:false,
+  };
+}
