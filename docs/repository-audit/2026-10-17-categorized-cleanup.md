@@ -25,12 +25,19 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 ## Decision queue — execute in this order
 
 1. **Clean, low risk:** Normalize redundant ignore entries and verify generated outputs remain untracked. No user data or runtime changes. [Started.]
-2. **Scripts:** For each script, check references from `package.json`, CI, other scripts, imports, documentation, and manual operational runbooks. Delete only with explicit per-file evidence and deletion-gate record.
-3. **Writer trace:** Add a local read-only summary of per-run JSONL traces (stage timings, errors, attempts, token totals and missing stages). Do not expose prompt bodies or API keys. No paid model calls.
-4. **Writer consolidation:** Isolate runtime orchestrator boundaries and canonical recovery ownership; move pure code after parity tests. Do not delete tests or merge different recovery semantics based on filename similarity.
-5. **Other app:** Check routes, components, integrations against Next.js route and dynamic import graph before removing anything.
-6. **Assets:** Check URL consumers before deduplicating `world-110m.json` copies.
-7. **Prisma:** Preserve complete migration history and schema unless an independently validated baseline/squash procedure exists for deployed and fresh DBs.
+2. **Scripts:** Initial contract-level inventory completed for all 41 files observed in the working branch; removed two prematurely added trace-report files. The 39 original scripts remain until deeper per-file evidence justifies removal. [INITIAL PASS COMPLETE; CI PENDING].
+3. **Writer consolidation:** Isolate runtime orchestrator boundaries and canonical recovery ownership; move pure code after parity tests. Do not delete tests or merge different recovery semantics based on filename similarity.
+4. **Other app:** Check routes, components, integrations against Next.js route and dynamic import graph before removing anything.
+5. **Assets:** Check URL consumers before deduplicating `world-110m.json` copies.
+6. **Prisma:** Preserve complete migration history and schema unless an independently validated baseline/squash procedure exists for deployed and fresh DBs.
+
+
+## Current cleanup-branch snapshot
+
+- At commit `4e0f260`: 838 tracked files, 39 scripts, 411 `src/lib/content` entries, 310 other application files, 35 Prisma files and 19 documentation files. Two premature logging-specific script files were removed, with exact-blob deletion decisions recorded.
+- **Logging intentionally deferred until all cleanup sections and validation are complete**. Previously existing opt-in Writer runtime tracing is out of scope for now; it must not be expanded during cleanup.
+- Next section: Writer, beginning with the existing static module reachability map and the large Stage Planner / `service.ts` boundary.
+- These numbers reflect committed Git files, not ignored local generated files.
 
 ## Protected
 
