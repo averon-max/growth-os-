@@ -26,7 +26,7 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 
 1. **Clean, low risk:** Normalize redundant ignore entries and verify generated outputs remain untracked. No user data or runtime changes. [Started.]
 2. **Scripts:** Initial contract-level inventory completed for all 41 files observed in the working branch; removed two prematurely added trace-report files. The 39 original scripts remain until deeper per-file evidence justifies removal. [INITIAL PASS COMPLETE; CI PENDING].
-3. **Writer consolidation:** Isolate runtime orchestrator boundaries and canonical recovery ownership; move pure code after parity tests. Do not delete tests or merge different recovery semantics based on filename similarity.
+3. **Writer consolidation — ACTIVE, closure requires implementation + verified tests:** Isolate runtime orchestrator boundaries and canonical recovery ownership; move pure code after parity tests. Do not delete tests or merge different recovery semantics based on filename similarity.
 4. **Other app:** Check routes, components, integrations against Next.js route and dynamic import graph before removing anything.
 5. **Assets:** Check URL consumers before deduplicating `world-110m.json` copies.
 6. **Prisma:** Preserve complete migration history and schema unless an independently validated baseline/squash procedure exists for deployed and fresh DBs.
@@ -42,8 +42,8 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 ## Section progress as of 2026-10-17
 
 - **Scripts:** all 41 CLI contracts initially examined, 2 premature logging-only additions removed, original 39 kept. The deeper dynamic/operational consumer audit remains a precondition to further deletion.
-- **Content/Writer:** all 411 current tracked paths classified (212 non-test code, 197 test, 2 fixtures), no exact duplicates; major source hotspots inspected; production unchanged. Full architectural consolidation remains outstanding because equivalent behavior has not been established for large orchestrators. See `2026-10-17-writer-entire-section-assessment.md`.
-- **API/UI/other libraries:** NEXT ACTIVE SECTION. Initial 310-file inventory and route-boundary sample completed in `2026-10-17-app-api-cleanup-first-pass.md`.
+- **Content/Writer:** ACTIVE, NOT COMPLETE. Initial 411-file inventory finished (212 non-test code, 197 tests, 2 fixtures), but no new production-code deletions or proven architecture consolidation in this branch. Need verified refactoring/parity tests, complete full-suite and build gates, and a real end-to-end Writer acceptance test before section closure. See `2026-10-17-writer-entire-section-assessment.md`.
+- **API/UI/other libraries:** PAUSED. The 310-file preliminary inventory is available in `2026-10-17-app-api-cleanup-first-pass.md`; it is not a completed section. Do not resume work until Writer completion has been demonstrated.
 - **CI:** latest cleanup branch head must still pass deletion gate, TypeScript, full Vitest and production build. A previously passing head is insufficient.
 - **Logging:** explicitly deferred until completion of all cleanup sections and verification. No runtime instrumentation work in this phase.
 
