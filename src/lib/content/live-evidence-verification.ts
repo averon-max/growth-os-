@@ -1,6 +1,7 @@
 import {
   fetchSinglePage,
 } from "../crawler/crawler";
+import { inspectClaimMaterialQualifiersV1 } from "./claim-material-qualifier-v1";
 
 import {
   defaultAuthorityTier,
@@ -974,6 +975,11 @@ export function findVerifiedExcerptCandidateV1({
     }
 
 
+
+    /* MATERIAL_CLAIM_SCOPE_AND_ORDER_VERIFICATION_V1 */
+    if(!inspectClaimMaterialQualifiersV1({
+      claimText,excerpt,
+    }).passed)continue;
 
     /*
      * VERIFIED_EXCERPT_NEGATIVE_TARGET_GATE_V1

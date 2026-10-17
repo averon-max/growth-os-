@@ -1,6 +1,17 @@
 import {
+  nextEvidenceRecoveryStagnantWavesV1,
+} from "./evidence-recovery-stagnation-v1";
+
+import {
   normalizeProductionClaimCategoryV2,
 } from "./production-claim-category-normalization-v2";
+
+import {reviewAndConstrainVerifiedEvidenceV1} from "./semantic-evidence-review-v1";
+
+import {
+  inspectStagePlanInformationGainV1,
+  INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
+} from "./stage-plan-information-gain-v1";
 
 import {
 
@@ -98,6 +109,8 @@ import {
 import type {
   QueryIntent,
 } from "./intent-boundary";
+
+import { classifySearchIntent } from "./seo-strategy";
 
 import {
   inspectStagePlanDistinctInformationJobsV1,
@@ -1544,6 +1557,8 @@ export async function planProductionMasterArtifactsFromLiveSources({
 
       atomicClaimContract,
 
+      INFORMATION_GAIN_ATOMIC_CLAIM_PLANNING_RULES_V1,
+
       sectionClaimOwnershipContract,
 
       seoContentTargetPolicy,
@@ -1812,6 +1827,14 @@ function inspectStagePlanCompleteness(
         );
       }
 
+      /* STAGE_PLAN_INFORMATION_GAIN_CLAIM_BREADTH_V1 */
+      const informationGain=inspectStagePlanInformationGainV1(
+        candidate.sections
+      );
+      if(informationGain.issueCode){
+        missing.push(informationGain.issueCode);
+      }
+
       /*
        * TEMPLATE_H2_PLANNING_GUIDANCE_ONLY_V2
        *
@@ -2031,6 +2054,82 @@ function inspectStagePlanCompleteness(
    */
   plan.intent =
     mission.missionIntent;
+
+  // STAGE_PLAN_SAFE_RECONCILIATION_20261010
+  const reconcileStagePlanV1 = () => {
+    if (!Array.isArray(plan.queries) ||
+        !Array.isArray(plan.questions) ||
+        !Array.isArray(plan.sections)) return;
+
+    const primary = normalizeText(research.keyword);
+    const intent = mission.missionIntent;
+
+    if (classifySearchIntent(research.keyword) === intent) {
+      for (const query of plan.queries) {
+        if (typeof query.query === "string" &&
+            normalizeText(query.query) === primary) {
+          query.intent = intent;
+        }
+      }
+    }
+
+    const excluded = new Set(
+      plan.questions.filter((question) => {
+        const identity = normalizeText(question);
+        if (identity === primary) return false;
+        const observed = plan.queries.filter(
+          (query) => normalizeText(query.query) === identity
+        );
+        return observed.length > 0 &&
+          observed.every((query) => query.intent !== intent) &&
+          classifySearchIntent(question) !== intent;
+      })
+    );
+
+    if (excluded.size) {
+      plan.questions.splice(
+        0, plan.questions.length,
+        ...plan.questions.filter((q) => !excluded.has(q))
+      );
+      for (const section of plan.sections) {
+        if (Array.isArray(section.questions)) {
+          section.questions = section.questions.filter(
+            (q) => !excluded.has(q)
+          );
+        }
+      }
+    }
+
+    const template = resolveSelectedTemplatePolicyV1({
+      research, mission,
+    });
+
+    for (const section of plan.sections) {
+      if (!Array.isArray(section.roles) ||
+          !Array.isArray(section.requiredClaimIds) ||
+          section.requiredClaimIds.length > 0) continue;
+
+      section.roles = section.roles.filter((role) => {
+        if (!template.evidenceSensitiveRoles.includes(role)) return true;
+        if (template.optionalRoles.includes(role) &&
+            !template.requiredRoles.includes(role)) return false;
+
+        return !plan.sections.some((other) =>
+          other !== section &&
+          Array.isArray(other.roles) &&
+          other.roles.includes(role) &&
+          Array.isArray(other.requiredClaimIds) &&
+          other.requiredClaimIds.length > 0
+        );
+      });
+    }
+
+    console.info("[stage plan safe reconciliation]", {
+      excludedQuestions: [...excluded],
+    });
+  };
+
+  reconcileStagePlanV1();
 
   let missingStagePlanFields =
     [
@@ -2676,6 +2775,8 @@ function inspectStagePlanCompleteness(
 
     plan.intent =
       mission.missionIntent;
+
+    reconcileStagePlanV1();
 
     missingStagePlanFields =
       [
@@ -4030,6 +4131,8 @@ function inspectStagePlanCompleteness(
       [];
 
 
+  let consecutiveStagnantEvidenceWaves = 0;
+
   const recoveryQuerySuffixes =
     [
       "",
@@ -4060,6 +4163,9 @@ function inspectStagePlanCompleteness(
           claim.id
       );
 
+
+    const verifiedBeforeWave =
+      verifiedClaimIdsFromGraph(evidenceGraphInput);
 
     const recoveryPrimaryQuery =
       `${research.keyword}${recoveryQuerySuffixes[
@@ -4183,6 +4289,27 @@ function inspectStagePlanCompleteness(
           1
       ]
     );
+
+    consecutiveStagnantEvidenceWaves =
+      nextEvidenceRecoveryStagnantWavesV1({
+        before: verifiedBeforeWave,
+        after: verifiedAfterWave,
+        consecutive: consecutiveStagnantEvidenceWaves,
+      });
+
+    if (consecutiveStagnantEvidenceWaves >= 2) {
+      console.info(
+        "[content evidence recovery stopped: no verification progress]",
+        {
+          consecutiveStagnantEvidenceWaves,
+          unresolvedClaims: unresolvedEvidenceClaims.map(
+            (claim) => claim.id
+          ),
+          nextStage: "EVIDENCE_GROUNDED_CLAIM_RECONCILIATION",
+        }
+      );
+      break;
+    }
   }
 
 
@@ -6108,6 +6235,19 @@ function inspectStagePlanCompleteness(
     }
   );
 
+
+  /* FINAL_EVIDENCE_SEMANTIC_ENTAILMENT_V1 */
+  const semanticEvidenceReview=await reviewAndConstrainVerifiedEvidenceV1({
+    claims:claimsInput,
+    graph:evidenceGraphInput,
+  });
+  evidenceGraphInput=semanticEvidenceReview.graph;
+  console.info("[content semantic evidence review]",{
+    reviewed:semanticEvidenceReview.reviewedPairs,
+    approved:semanticEvidenceReview.approvedPairs,
+    demoted:semanticEvidenceReview.demotedEvidenceIds.length,
+    logicalAiCalls:semanticEvidenceReview.calls,
+  });
 
   // ---- Stage 8A/8B ----
   const questions = [...new Set(plan.questions.map((q) => q.trim()).filter(Boolean))];

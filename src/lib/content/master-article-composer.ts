@@ -14,6 +14,10 @@ import {
   ContentGenerationError,
 } from "./generator";
 
+import {
+  normalizeMasterArticleProseSpacesV1,
+} from "./article-prose-whitespace-v1";
+
 
 export interface ArticleShellV1 {
   version:
@@ -423,8 +427,9 @@ export function composeMasterArticleV1({
         ) => [
           `## ${section.heading}`,
           "",
-          section.bodyMarkdown
-            .trim(),
+          normalizeMasterArticleProseSpacesV1(
+            section.bodyMarkdown.trim()
+          ),
         ].join(
           "\n"
         )

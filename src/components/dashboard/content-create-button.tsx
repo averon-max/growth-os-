@@ -460,6 +460,30 @@ export function ContentCreateButton({
 
       const briefJson =
         await briefResponse.json();
+      // CONTENT_DUPLICATE_REUSE_CLIENT_V1
+      if (
+        !briefResponse.ok &&
+        briefResponse.status===409 &&
+        briefJson?.code==="CONTENT_TOPIC_ALREADY_EXISTS"
+      ) {
+        const existingArticle=briefJson.existingArticleId;
+        const existingBrief=briefJson.existingBriefId;
+        if(typeof existingArticle==="string"&&existingArticle.length>0){
+          window.location.assign(
+            "/dashboard/content/articles/"+encodeURIComponent(existingArticle)
+          );
+          return;
+        }
+        if(typeof existingBrief==="string"&&existingBrief.length>0){
+          window.location.assign(
+            "/dashboard/content?websiteId="+encodeURIComponent(websiteId)+
+            "#brief-"+encodeURIComponent(existingBrief)
+          );
+          return;
+        }
+        throw new Error("An article or brief already exists for this topic.");
+      }
+
 
       if (
         !briefResponse.ok

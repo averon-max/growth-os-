@@ -1,3 +1,4 @@
+import { EditorialRepetitionGateErrorV1 } from "@/lib/content/editorial-repetition-guard-v1";
 import {
   ContentGateError,
 } from "@/lib/content/content-gate";
@@ -37,6 +38,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const updated = await approveArticle(id);
     return NextResponse.json({ article: updated });
   } catch (err) {
+    if (err instanceof EditorialRepetitionGateErrorV1) {
+      return NextResponse.json({
+        error:err.message,code:err.code,
+        sections:err.findings.map(f=>({
+          sectionIndex:f.sectionIndex,issue:f.code,
+          affectedSections:f.affectedSections,
+        })),
+      },{status:409});
+    }
+
     if (
       err instanceof
       ArticlePublicationPolicyError

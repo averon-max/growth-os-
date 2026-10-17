@@ -619,3 +619,46 @@ describe(
     );
   }
 );
+
+describe("bounded automatic secondary-keyword recovery", () => {
+  it("repairs a planned missing secondary phrase with a one-section task", () => {
+    const result = buildMasterArticleCriticRepairPlanV1({
+      contract: contract(),
+      suite: suite([sectionFinding({
+        criticId:"COVERAGE",
+        code:"RANK_READY_PLANNED_KEYWORD_MISSING",
+        severity:"WARN",
+      })]),
+    });
+    expect(result.disposition).toBe("REPAIR_REQUIRED");
+    expect(result.repairTasks).toHaveLength(1);
+    expect(result.repairTasks[0].sectionIndex).toBe(0);
+    expect(result.repairTasks[0].findings[0].severity).toBe("WARN");
+  });
+
+  it("does not turn unrelated editorial warnings into authoring work", () => {
+    const result = buildMasterArticleCriticRepairPlanV1({
+      contract: contract(),
+      suite: suite([sectionFinding({
+        criticId:"EDITORIAL",code:"STYLE_PREFERENCE",severity:"WARN",
+      })]),
+    });
+    expect(result.disposition).toBe("NO_REPAIR_NEEDED");
+    expect(result.repairTasks).toHaveLength(0);
+  });
+
+  it("never schedules more than two optional keyword warnings per repair pass", () => {
+    const missing = sectionFinding({
+      criticId:"COVERAGE",
+      code:"RANK_READY_PLANNED_KEYWORD_MISSING",
+      severity:"WARN",
+    });
+    const result = buildMasterArticleCriticRepairPlanV1({
+      contract: contract(),
+      suite: suite([missing,
+        {...missing,message:"missing phrase B"},
+        {...missing,message:"missing phrase C"}]),
+    });
+    expect(result.provenance.repairableFindingCount).toBeLessThanOrEqual(2);
+  });
+});

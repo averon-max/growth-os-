@@ -43,6 +43,21 @@
   font-weight: 600;
 }
 
+
+.editorialWarning {
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(245, 158, 11, .25);
+  background: rgba(245, 158, 11, .07);
+  color: #fcd34d;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.editorialWarning strong {
+  color: #fde68a;
+  font-weight: 650;
+}
+
 .metrics {
   display: grid;
   grid-template-columns:
