@@ -1,5 +1,9 @@
 import { recordWriterTraceV1 } from "./writer-trace-v1";
 import {
+  buildCanonicalObservedQueryRegistry,
+  resolveCanonicalObservedQueryMetricsV1,
+} from "./production-observed-query-registry";
+import {
   normalizeProductionClaimCategoryV2,
 } from "./production-claim-category-normalization-v2";
 
@@ -340,14 +344,6 @@ function normalizeText(value: string): string {
     .trim();
 }
 
-interface ResolvedMetrics {
-  searchVolume?: number;
-  cpc?: number;
-  gscImpressions?: number;
-  gscClicks?: number;
-  gscPosition?: number;
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
@@ -355,68 +351,11 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function finiteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
 /*
- * Walks the same shape of nested objects the anchoring assembler
- * scans (collectObservedQueryEvidence in
- * production-master-live-research-assembler.ts) and returns the
- * first observed metric set for a given normalized query string.
- *
- * This intentionally mirrors that function's traversal so a value
- * resolved here is guaranteed to also be found by the anchoring
- * check.
+ * The canonical observed-query registry owns both acquisition identities
+ * and finite metric provenance. Do not implement a second recursive
+ * scanner in the planner: it can drift from assembler validation.
  */
-function resolveMetricsForQuery({
-  research,
-  normalizedQuery,
-}: {
-  research: Readonly<ProductionMasterLiveSourceResearch>;
-  normalizedQuery: string;
-}): ResolvedMetrics {
-  const result: ResolvedMetrics = {};
-
-  function visit(value: unknown, depth = 0): void {
-    if (depth > 10) return;
-
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item, depth + 1);
-      return;
-    }
-
-    const record = asRecord(value);
-    if (!record) return;
-
-    const keyword =
-      typeof record.keyword === "string" ? record.keyword.trim() : "";
-
-    if (keyword && normalizeText(keyword) === normalizedQuery) {
-      result.searchVolume ??=
-        finiteNumber(record.searchVolume) ?? finiteNumber(record.volume);
-      result.cpc ??= finiteNumber(record.cpc);
-      result.gscImpressions ??=
-        finiteNumber(record.gscImpressions) ??
-        finiteNumber(record.impressions);
-      result.gscClicks ??=
-        finiteNumber(record.gscClicks) ?? finiteNumber(record.clicks);
-      result.gscPosition ??=
-        finiteNumber(record.gscPosition) ?? finiteNumber(record.position);
-    }
-
-    for (const nested of Object.values(record)) {
-      visit(nested, depth + 1);
-    }
-  }
-
-  visit(research.keywordContext);
-  visit(research.dataForSeo);
-
-  return result;
-}
 
 function resolveSerpFrequency({
   research,
@@ -3052,6 +2991,11 @@ function inspectStagePlanCompleteness(
     );
 
 
+  const observedMetricRegistry = buildCanonicalObservedQueryRegistry([
+    research.keywordContext,
+    research.dataForSeo,
+  ]);
+
   const querySignals:
     ProductionMasterArtifactPipelineInput[
       "queryGraph"
@@ -3082,11 +3026,9 @@ function inspectStagePlanCompleteness(
 
 
           const metrics =
-            resolveMetricsForQuery({
-              research,
-
-              normalizedQuery:
-                normalized,
+            resolveCanonicalObservedQueryMetricsV1({
+              registry: observedMetricRegistry,
+              normalizedQuery: normalized,
             });
 
 
