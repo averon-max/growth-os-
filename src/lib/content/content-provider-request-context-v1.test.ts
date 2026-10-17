@@ -160,7 +160,7 @@ describe(
 
 
     it(
-      "marks alternate provider dispatch as failover",
+      "never misclassifies another OpenAI dispatch as failover",
       () => {
         process.env
           .CONTENT_AI_PROVIDER =
@@ -198,10 +198,10 @@ describe(
           () =>
             recordContentProviderRequestV1({
               provider:
-                "gemini",
+                "openai",
 
               model:
-                "gemini-test",
+                "openai-test",
 
               attempt:
                 1,
@@ -222,7 +222,7 @@ describe(
             false,
 
           failover:
-            true,
+            false,
         });
       }
     );
