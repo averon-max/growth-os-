@@ -1465,7 +1465,11 @@ function inspectStagePlanCompleteness(
    * The query itself remains in plan.queries for research.
    */
   const applyLocalRequiredQuestionContractionV1 =
-    () => {
+    (
+      validationPhase:
+        | "after_required_question_contraction"
+        | "after_post_retry_question_contraction"
+    ) => {
       /*
        * Structural incompleteness still belongs to the bounded
        * Stage Plan recovery path.
@@ -1589,14 +1593,14 @@ function inspectStagePlanCompleteness(
       );
 
 
-      missingStagePlanFields = inspectCurrentStagePlanV1("after_required_question_contraction");
+      missingStagePlanFields = inspectCurrentStagePlanV1(validationPhase);
 
 
       return true;
     };
 
 
-  applyLocalRequiredQuestionContractionV1();
+  applyLocalRequiredQuestionContractionV1("after_post_retry_question_contraction");
 
 
   /*
