@@ -8,12 +8,14 @@ const content=(relative:string)=>
   readFileSync(new URL(relative,import.meta.url),"utf8");
 const plan=content("./production-master-live-stage-planner.ts");
 const verifier=content("./live-evidence-verification.ts");
+const lexical=content("./evidence-lexical-matcher-v1.ts");
 const publisher=content("./stored-publication-evidence-gate-v1.ts");
 const semantic=content("./semantic-evidence-review-v1.ts");
 
 describe("source support must be established before Writer",()=>{
   it("uses strict scope qualifiers inside the canonical verifier and stored publication gate",()=>{
-    expect(verifier).toContain("inspectClaimMaterialQualifiersV1({");
+    expect(lexical).toContain("inspectClaimMaterialQualifiersV1({");
+    expect(verifier).toContain('from "./evidence-lexical-matcher-v1"');
     expect(publisher).toContain("findVerifiedExcerptCandidateV1({");
   });
   it("reviews evidence after live recovery but before assigning section evidence",()=>{
