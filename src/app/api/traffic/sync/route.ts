@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCompletedUtcDayRange } from "@/lib/audience/completed-day-range";
 import {
   requireUser,
   requireWebsiteAccess,
@@ -66,29 +67,9 @@ export async function POST(
       );
     }
 
-    const now = new Date();
-
-    const until = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate()
-      )
-    );
-
-    // Sync only complete days.
-    until.setUTCDate(
-      until.getUTCDate() - 1
-    );
-
-    const since = new Date(until);
-
-    since.setUTCDate(
-      since.getUTCDate() -
-        (
-          CLOUDFLARE_SYNC_WINDOW_DAYS -
-          1
-        )
+    const { since, until } = getCompletedUtcDayRange(
+      CLOUDFLARE_SYNC_WINDOW_DAYS,
+      new Date()
     );
 
     const result =

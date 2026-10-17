@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCompletedUtcDayRange, ALLOWED_AUDIENCE_DAYS } from "@/lib/audience/completed-day-range";
 import {
   requireUser,
   requireWebsiteAccess,
@@ -11,9 +12,6 @@ import {
   SitePermissionError,
 } from "@/lib/keywords/gsc-provider";
 import type { KeywordProvenance } from "@/lib/keywords/types";
-
-const ALLOWED_DAYS =
-  new Set([7, 15, 30]);
 
 const MAX_RESULTS = 50;
 
@@ -72,7 +70,7 @@ export async function GET(
       );
     }
 
-    if (!ALLOWED_DAYS.has(days)) {
+    if (!ALLOWED_AUDIENCE_DAYS.has(days)) {
       return NextResponse.json(
         {
           error:
@@ -145,26 +143,9 @@ export async function GET(
       });
     }
 
-    const now = new Date();
-
-    const endDate = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate()
-      )
-    );
-
-    endDate.setUTCDate(
-      endDate.getUTCDate() - 1
-    );
-
-    const startDate =
-      new Date(endDate);
-
-    startDate.setUTCDate(
-      startDate.getUTCDate() -
-        (days - 1)
+    const { since: startDate, until: endDate } = getCompletedUtcDayRange(
+      days,
+      new Date()
     );
 
     const performanceResult =

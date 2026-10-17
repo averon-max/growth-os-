@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCompletedUtcDayRange, ALLOWED_AUDIENCE_DAYS } from "@/lib/audience/completed-day-range";
 import {
   requireUser,
   requireWebsiteAccess,
   authErrorResponse,
 } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-
-const ALLOWED_DAYS = new Set([7, 15, 30]);
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_DAYS.has(days)) {
+    if (!ALLOWED_AUDIENCE_DAYS.has(days)) {
       return NextResponse.json(
         { error: "days must be 7, 15, or 30" },
         { status: 400 }
@@ -71,26 +70,7 @@ export async function GET(req: NextRequest) {
      * failures when the user selects a longer period.
      */
 
-    const todayUtc = new Date();
-
-    const until = new Date(
-      Date.UTC(
-        todayUtc.getUTCFullYear(),
-        todayUtc.getUTCMonth(),
-        todayUtc.getUTCDate()
-      )
-    );
-
-    // Only complete days.
-    until.setUTCDate(
-      until.getUTCDate() - 1
-    );
-
-    const since = new Date(until);
-
-    since.setUTCDate(
-      since.getUTCDate() - (days - 1)
-    );
+    const { since, until } = getCompletedUtcDayRange(days, new Date());
 
     const snapshots =
       await prisma.trafficSnapshot.findMany({
