@@ -61,3 +61,12 @@ Every removal requires the existing `scripts/repository-deletion-gate.mjs` evide
 - Landing PNGs, starter SVG URLs and declared dependencies cannot be retired based on names alone. No asset or package deletion authorized.
 - Report: `2026-10-17-assets-dependencies-review.md`.
 - Outstanding for closure: exhaustive asset/dependency reference search, reproducible lockfile/package verification, and exact-head CI plus representative real Writer and UI/provider smoke checks. Logging remains deferred.
+
+## Final repository cleanup checkpoint
+
+- **Code head:** `41d355584e57c360d0d91ed79fcf1b2f09bc12f4`.
+- **CI:** [run 39062942549](https://github.com/averon-max/growth-os-/actions/runs/39062942549) — **SUCCESS**, clean npm install, deletion gate, static audits, Prisma validate, TypeScript, complete Vitest and production Next build.
+- **Measured:** 853 tracked files, no exact duplicate blobs, no tracked audit-flagged backups; two statically unreferenced test-mock support files retained.
+- **Assets:** removed eight explicitly reviewed and unreferenced assets (450,590 bytes); preserved all three proven active public assets.
+- **Dependencies:** removed five unused direct declarations and eleven orphan lockfile package entries, confirmed by reproducible `npm ci`.
+- **Limit:** production-connected browser/Writer/CMS/PostgreSQL smoke tests not run. Avoid merging or beginning logging based solely on CI. Detailed closure: `2026-10-17-final-cleanup-status.md`.
