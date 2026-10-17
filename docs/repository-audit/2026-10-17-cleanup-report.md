@@ -12,9 +12,9 @@
 
 | Measure | Before | After |
 |---|---:|---:|
-| Tracked files | 1,281 | 810 |
+| Tracked files | 1,281 | 811 |
 | Original files excluded from audit branch | 0 | 477 |
-| New audit/trace files | 0 | 6 |
+| New audit/trace files | 0 | 7 |
 | Historical backups in current tree | 280 | 0 |
 | Tracked temporary run files | 23 | 0 |
 | Claude/Windsurf/agent skill files and lockfile | 103 | 0 |
