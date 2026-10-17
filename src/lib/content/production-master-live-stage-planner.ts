@@ -41,15 +41,6 @@ import {
 } from "./gemini-generator";
 
 import {
-  DEFAULT_GEMINI_CONTENT_MODEL,
-  GEMINI_RETRYABLE_STATUS_CODES,
-  geminiRetryDelayMs,
-  geminiTransportErrorMessage,
-  isRetryableGeminiTransportError,
-  resolveGeminiContentModel,
-} from "./gemini-reliability";
-
-import {
   collectProductionMasterLiveSources,
   type ProductionMasterLiveSourceResearch,
   type ProductionMasterLiveSourceInput,
@@ -251,119 +242,8 @@ export interface ProductionMasterLiveStagePlanResult {
 }
 
 
-// ----------------------------------------------------------------
-// Minimal self-contained Gemini call (mirrors gemini-generator.ts
-// callGemini/parseJson pattern; kept local so this module has no
-// dependency on the large ContentGenerator union type).
-// ----------------------------------------------------------------
-
-const GEMINI_API_BASE =
-  "https://generativelanguage.googleapis.com/v1beta";
-
-const GEMINI_TIMEOUT_MS = 60000;
-const MAX_RETRIES = 5;
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_ENV_MISSING",
-      `${name} is not set`
-    );
-  }
-  return value;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function callGeminiForStagePlan(prompt: string): Promise<string> {
-  const apiKey = requireEnv("GEMINI_API_KEY");
-  const model = resolveGeminiContentModel() || DEFAULT_GEMINI_CONTENT_MODEL;
-
-  let lastError: unknown = null;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(
-        `${GEMINI_API_BASE}/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2,
-              responseMimeType: "application/json",
-            },
-          }),
-          signal: controller.signal,
-        }
-      );
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        if (
-          GEMINI_RETRYABLE_STATUS_CODES.has(response.status) &&
-          attempt < MAX_RETRIES - 1
-        ) {
-          const delay = geminiRetryDelayMs({
-            attempt,
-            retryAfterHeader: response.headers.get("retry-after"),
-          });
-          await sleep(delay);
-          continue;
-        }
-
-        throw new ProductionMasterLiveStagePlanError(
-          "LIVE_STAGE_PLAN_GEMINI_HTTP_ERROR",
-          `Gemini stage planning failed: HTTP ${response.status}`
-        );
-      }
-
-      const data = (await response.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!text) {
-        throw new ProductionMasterLiveStagePlanError(
-          "LIVE_STAGE_PLAN_GEMINI_EMPTY_RESPONSE"
-        );
-      }
-
-      return text;
-    } catch (error) {
-      clearTimeout(timeout);
-      lastError = error;
-
-      if (
-        isRetryableGeminiTransportError(error) &&
-        attempt < MAX_RETRIES - 1
-      ) {
-        const delay = geminiRetryDelayMs({ attempt });
-        await sleep(delay);
-        continue;
-      }
-
-      throw new ProductionMasterLiveStagePlanError(
-        "LIVE_STAGE_PLAN_GEMINI_TRANSPORT_ERROR",
-        geminiTransportErrorMessage(error)
-      );
-    }
-  }
-
-  throw new ProductionMasterLiveStagePlanError(
-    "LIVE_STAGE_PLAN_GEMINI_RETRIES_EXHAUSTED",
-    lastError instanceof Error ? lastError.message : String(lastError)
-  );
-}
+// Stage planning uses the shared OpenAI Content transport.
+// No standalone model-specific HTTP client is permitted here.
 
 function parseJson<T>(text: string): T {
   const cleaned = text
@@ -376,8 +256,8 @@ function parseJson<T>(text: string): T {
     return JSON.parse(cleaned) as T;
   } catch {
     throw new ProductionMasterLiveStagePlanError(
-      "LIVE_STAGE_PLAN_GEMINI_JSON_INVALID",
-      "Gemini stage planning response was not valid JSON."
+      "LIVE_STAGE_PLAN_AI_JSON_INVALID",
+      "Stage planning response was not valid JSON."
     );
   }
 }
