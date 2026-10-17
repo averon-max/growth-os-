@@ -42,3 +42,19 @@ Exact CI inventory produced at code head `94b2d2cd`, run [39062546563](https://g
 Eight redundant files are approved for deletion in one atomic reviewed commit, with exact Git object SHA and rollback instructions in `deletion-decisions.json`. There is residual uncertainty about undocumented external direct URLs to discarded assets, but no known app, CSS, Next server entrypoint, script or data contract references them.
 
 Validation requirements: deletion gate, `npx prisma validate`, `npx tsc --noEmit`, complete `npx vitest run`, Next production build and browser smoke for Audience geo map and homepage. GitHub CI exercises the first five checks; browser smoke remains outstanding.
+
+## Direct dependency removal and lockfile graph preservation
+
+The [reference inventory CI run 39062546563](https://github.com/averon-max/growth-os-/actions/runs/39062546563) found **zero source import, textual source mention or npm-script command** for these direct production dependencies:
+
+- `@auth/prisma-adapter`: the application uses NextAuth v4 Credentials/JWT without this independent adapter package.
+- `clsx`: not imported by the app; the installed package may remain as a transitive requirement.
+- `framer-motion`: not imported by the current component code.
+- `node-html-parser`: no application parser import; the crawler/content parsers use their other existing parsing capabilities.
+- `world-atlas`: no import; the geo map fetches the retained `/world-110m.json` static URL instead.
+
+These five *direct declarations* have been removed from `package.json` and the lockfile root. The lockfile reachable dependency graph was recomputed, including prod, dev, peer and optional dependency edges, retaining package nodes transitively needed by remaining direct packages. Eleven now-unreachable package entries were pruned. Core framework and Prisma dependency nodes and type definitions were preserved.
+
+**Do not remove** `react-dom`, `@types/react`, `@types/node`, or `@vitest/coverage-v8` solely because they have no literal import: they are runtime peers, compiler types or diagnostic tooling.
+
+Gate: a **new exact-head** `npm ci` plus schema validation, TypeScript, complete Vitest and production build is required to confirm the lockfile is reproducible. Until that passes the dependency cleanup is provisional.
