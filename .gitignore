@@ -51,7 +51,6 @@ next-env.d.ts
 .ui-backup-*/
 
 *.bak-*
-*.backup_*
 .ui-backup-*
 
 # Local writer execution traces
