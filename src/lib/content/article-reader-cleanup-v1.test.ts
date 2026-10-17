@@ -76,7 +76,7 @@ describe("free existing saved credit-monitoring article draft",()=>{
     "",
     "## How does credit monitoring work?",
     "",
-    "The process has three connected stages. First, you register, then reports are checked and notifications are sent.",
+    "The process has three basic parts: Enrollment, monitoring and notification.",
     "",
     "Score access is related but distinct. Scores and report alerts do not show the same information.",
     "[Source: experian.com](https://www.experian.com/info)",
@@ -119,7 +119,7 @@ describe("free existing saved credit-monitoring article draft",()=>{
     expect(result.linksStillInOriginalH2).toBe(true);
     expect(result.factualProseOtherwiseUnchanged).toBe(true);
     expect(result.draftBodyMarkdown).toContain(
-      "### How monitoring services detect changes and send alerts");
+      "### How enrollment, monitoring and alerts fit together");
     expect(result.draftBodyMarkdown).toContain(
       "### How credit monitoring differs from credit score access");
     expect(result.draftBodyMarkdown).toContain("Score access is related but distinct.");
