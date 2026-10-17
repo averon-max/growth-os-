@@ -181,6 +181,31 @@ async function main(){
       layoutScope.unapprovedLinks===0&&
       layoutOriginalLinks.length===layoutApprovedLinks.length&&
       layoutOriginalLinks.every((n,i)=>n===layoutApprovedLinks[i]);
+    const {draftCreditMonitoringExistingEditorialV1}=await import(
+      "../src/lib/content/article-reader-cleanup-v1");
+    const editorialDraft=draftCreditMonitoringExistingEditorialV1(
+      article.bodyMarkdown);
+    const editorialBody=editorialDraft.draftBodyMarkdown;
+    const editorialCitationScope=editorialBody&&runtime&&plan?
+      verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:editorialBody,plan,runtime,
+      }):null;
+    const editorialRelease=editorialBody&&plan?
+      evaluateComprehensiveEditorialReleaseV1({
+        plan,bodyMarkdown:editorialBody,
+      }):null;
+    const editorialRemaining=editorialBody?
+      detectArticleInformationGainDefectsV1(editorialBody):[];
+    const sourcePreservedForDraft=!!editorialCitationScope&&
+      editorialCitationScope.unapprovedLinks===0&&
+      editorialCitationScope.totalLinks===sourceScope?.totalLinks&&
+      editorialCitationScope.sections.every((section,index)=>
+        section.approvedLinks===(sourceScope?.sections[index]?.approvedLinks??-1));
+    const readyForHumanSemanticReview=editorialDraft.eligible &&
+      !!editorialBody&&editorialDraft.linkMultisetPreserved&&
+      editorialDraft.factualProseOtherwiseUnchanged&&
+      sourcePreservedForDraft&&!!editorialRelease?.pass&&
+      editorialRemaining.length===0;
     // Cost-free go/no-go before anyone authorizes a bounded model repair.
     // Old generation checkpoints can be outdated after the 13 citations
     // were saved. The exact article and CURRENT evidence must be validated.
@@ -302,6 +327,47 @@ async function main(){
         noModelCalls:true,
       },
       repairPreflight,
+      deterministicEditorialCandidate:{
+        version:editorialDraft.eligible?editorialDraft.version:null,
+        eligible:editorialDraft.eligible,
+        reason:editorialDraft.eligible?null:editorialDraft.reason,
+        originalArticleFingerprint:oldFingerprint,
+        candidateFingerprint:editorialBody?
+          buildSerpReplayArticleFingerprintV1({
+            ...original,bodyMarkdown:editorialBody,
+          }):null,
+        sourceLabelsRelocated:editorialDraft.eligible?
+          editorialDraft.sourceLabelsRelocated:0,
+        currentH3:(article.bodyMarkdown.match(/^###\s+\S/gm)??[]).length,
+        candidateH3:editorialDraft.eligible?editorialDraft.h3After:null,
+        proposedSubheadingCount:editorialDraft.eligible?
+          editorialDraft.addedMeaningfulH3:0,
+        removedCircularJustificationCount:editorialDraft.eligible?
+          editorialDraft.removedKnownCircularSentence:0,
+        independentFactualProseComparisonPassed:
+          editorialDraft.eligible?
+            editorialDraft.factualProseOtherwiseUnchanged:false,
+        signedSameSectionCitationScopePreserved:
+          sourcePreservedForDraft,
+        editorialRelease:editorialRelease?{
+          pass:editorialRelease.pass,
+          blockers:editorialRelease.blockers,
+          h2:editorialRelease.h2Count,
+          h3:editorialRelease.h3Count,
+          h3OwnerSections:editorialRelease.h3OwnerSections,
+          words:editorialRelease.wordCount,
+        }:null,
+        informationDefectsRemaining:editorialRemaining.map(x=>({
+          code:x.code,sectionIndex:x.sectionIndex,
+        })),
+        readyForHumanSemanticReview,
+        seoReady:false,
+        canReuseOldReplay:false,
+        canReuseOriginalQueryOwnerApproval:false,
+        articleStillUnchanged:true,
+        paidCalls:0,
+        automaticDatabaseCommitForbidden:true,
+      },
       sourceLayoutCandidate:{
         mode:"FREE_ONLY_DOES_NOT_UPDATE_ARTICLE",
         totalMovedSourceLabels:sourceLayout.movedSourceLabels,
