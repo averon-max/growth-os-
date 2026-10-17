@@ -66,7 +66,7 @@ describe("writer execution tracing", () => {
       const response = await withWriterTraceV1({scope: "http.test"}, async () => ({status: 422}));
       expect(response.status).toBe(422);
       const [name] = await readdir(directory);
-      const events = (await readFile(join(directory, name), "utf8")).trim().split("\\n").map(line => JSON.parse(line));
+      const events = (await readFile(join(directory, name), "utf8")).trim().split("\n").map(line => JSON.parse(line));
       expect(events.at(-1).stage).toBe("run.http_error");
       expect(events.at(-1).fields.httpStatus).toBe(422);
     } finally {
