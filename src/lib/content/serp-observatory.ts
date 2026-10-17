@@ -23,6 +23,7 @@ export type SerpObservedPageType =
   | "ARTICLE"
   | "GUIDE"
   | "COMPARISON"
+  | "LISTICLE"
   | "PRODUCT"
   | "CATEGORY"
   | "TOOL"
