@@ -252,3 +252,8 @@ export function recordContentProviderRequestV1({
     );
   }
 }
+
+/** Current logical AI stage for user-visible execution tracing. */
+export function currentContentProviderStageV1(): string | null {
+  return logicalContext.getStore()?.stage ?? null;
+}
