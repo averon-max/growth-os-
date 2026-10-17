@@ -17,15 +17,18 @@ interface TraceContextV1 {
 
 const context = new AsyncLocalStorage<TraceContextV1>();
 const MAX_TEXT = 1600;
+const MAX_OPT_IN_TEXT = 2_000_000;
 
 export function hashTraceTextV1(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
-function sanitize(value: unknown, depth = 0): unknown {
+function sanitize(value: unknown, depth = 0, keyHint = ""): unknown {
   if (depth >= 5) return "[depth limit]";
   if (typeof value === "string") {
-    return value.length > MAX_TEXT ? value.slice(0, MAX_TEXT) + "…[truncated]" : value;
+    const max = (keyHint === "promptText" || keyHint === "outputText") &&
+      process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT === "1" ? MAX_OPT_IN_TEXT : MAX_TEXT;
+    return value.length > max ? value.slice(0, max) + "…[truncated]" : value;
   }
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "boolean" || value === null) return value;
@@ -34,10 +37,10 @@ function sanitize(value: unknown, depth = 0): unknown {
 
   const output: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value).slice(0, 60)) {
-    if (/key|secret|token|authorization|cookie|password|credential|email|private/i.test(key)) {
+    if (/api[_-]?key|secret|authorization|cookie|password|credential|email|private[_-]?key|(?:access|refresh|session|bearer|auth|id)[_-]?token/i.test(key)) {
       output[key] = "[redacted]";
     } else {
-      output[key] = sanitize(item, depth + 1);
+      output[key] = sanitize(item, depth + 1, key);
     }
   }
   return output;
@@ -82,7 +85,7 @@ export function recordWriterModelExchangeV1(input: {
     promptSha256: hashTraceTextV1(input.prompt),
     outputSha256: hashTraceTextV1(input.output),
     ...(includeText ? { promptText: input.prompt, outputText: input.output } : {}),
-    textMode: includeText ? "OPT_IN_FULL_TEXT_TRUNCATED" : "HASHES_ONLY",
+    textMode: includeText ? "OPT_IN_TEXT_UP_TO_2MB" : "HASHES_ONLY",
   });
 }
 
