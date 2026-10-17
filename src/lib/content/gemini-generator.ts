@@ -3,9 +3,15 @@ import {
 } from "./section-candidate-normalization-v1";
 
 import {
+  currentContentProviderStageV1,
   recordContentProviderRequestV1,
   runWithContentProviderDispatchMetaV1,
 } from "./content-provider-request-context-v1";
+
+import {
+  recordWriterModelExchangeV1,
+  recordWriterTraceV1,
+} from "./writer-trace-v1";
 
 import OpenAI from "openai";
 import { ContentRunBudgetExceededErrorV1 } from "./content-run-budget-v1";
@@ -372,10 +378,16 @@ async function callOpenAiApi(
           ?.trim();
 
       if (!output) {
-        throw new ContentGenerationError(
-          "OpenAI returned no content"
-        );
+        throw new ContentGenerationError("OpenAI returned no content");
       }
+
+      recordWriterTraceV1("model.usage", {
+        model: OPENAI_MODEL,
+        reasoningEffort: effort,
+        inputTokens: response.usage?.input_tokens ?? null,
+        outputTokens: response.usage?.output_tokens ?? null,
+        totalTokens: response.usage?.total_tokens ?? null,
+      });
 
       return output;
     } catch (
@@ -544,13 +556,14 @@ export async function callContentAiJson(
     );
   }
 
-  return callOpenAiApi(
+  const output = await callOpenAiApi(prompt, { reasoningEffort: effort });
+  recordWriterModelExchangeV1({
+    stage: currentContentProviderStageV1() ?? "content.ai.json",
+    model: OPENAI_MODEL,
     prompt,
-    {
-      reasoningEffort:
-        effort,
-    }
-  );
+    output,
+  });
+  return output;
 }
 
 
