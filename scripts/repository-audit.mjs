@@ -100,3 +100,90 @@ console.log("STATIC_UNREFERENCED_CANDIDATES", JSON.stringify(candidates.slice(0,
 console.log("PROVIDER_REFERENCE_FILES", JSON.stringify(aiReferences.slice(0,50)));
 console.log("DUPLICATE_GROUPS", JSON.stringify(duplicates.slice(0,20)));
 console.log("AUDIT_OUTPUT .growth-os-tmp/repository-audit.json");
+
+
+const assetAndDependencyInventory = (() => {
+  const textFiles = files.filter(p =>
+    /\.(?:tsx?|mjs|cjs|js|mts|css|scss|mdx|html)$/.test(p) &&
+    !p.startsWith("docs/")
+  );
+  const parsedText = new Map(textFiles.map(p =>
+    [p, fs.readFileSync(path.join(root, p), "utf8")]
+  ));
+  const assetPaths = files.filter(p => p.startsWith("public/") || p === "src/data/world-110m.json");
+  const assets = assetPaths.map(file => {
+    const suffix = file.startsWith("public/") ? file.slice("public/".length) : file;
+    const publicUrl = file.startsWith("public/") ? "/" + suffix : null;
+    const references = [];
+    for (const [source, content] of parsedText) {
+      const direct = file.startsWith("public/")
+        ? content.includes(publicUrl)
+        : /(?:@\/data\/world-110m\.json|src\/data\/world-110m\.json|(?:^|[.\/])data\/world-110m\.json)/.test(content);
+      const filenameMention = content.includes(suffix.split("/").at(-1));
+      if (direct || filenameMention) {
+        references.push({ file: source, direct, filenameMention });
+      }
+    }
+    return {
+      path: file, size: fs.statSync(path.join(root,file)).size, publicUrl,
+      references, noObservedRuntimeReference: references.length === 0,
+    };
+  });
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"),"utf8"));
+  const allSpecs = [];
+  for (const [source, content] of parsedText) {
+    if (!/\.(?:tsx?|mjs|cjs|js|mts)$/.test(source)) continue;
+    const kind = source.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+    const ast = ts.createSourceFile(source,content,ts.ScriptTarget.Latest,true,kind);
+    const specs = [];
+    function visit(node) {
+      if ((ts.isImportDeclaration(node)||ts.isExportDeclaration(node)) &&
+           node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) {
+        specs.push(node.moduleSpecifier.text);
+      }
+      if (ts.isCallExpression(node) && node.arguments.length > 0 &&
+          ts.isStringLiteralLike(node.arguments[0]) &&
+          (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+            ["require","require.resolve","import.meta.resolve"].includes(node.expression.getText(ast)))) {
+        specs.push(node.arguments[0].text);
+      }
+      ts.forEachChild(node,visit);
+    }
+    visit(ast);
+    for (const spec of specs) allSpecs.push({source,spec});
+  }
+  const declarations = {...packageJson.dependencies,...packageJson.devDependencies};
+  const packageName = spec => spec.startsWith("@")
+    ? spec.split("/").slice(0,2).join("/") : spec.split("/")[0];
+  const dependencies = Object.keys(declarations).sort().map(name => {
+    const imports = allSpecs.filter(x=>packageName(x.spec)===name);
+    const mentions = [...parsedText].filter(([file,body]) =>
+      (file !== "scripts/repository-audit.mjs") && body.includes(name)).map(([file])=>file);
+    const scripts = Object.entries(packageJson.scripts||{}).filter(([,v]) =>
+      v.includes(name) || (name==="typescript" && /\btsc\b/.test(v)) ||
+      (name==="next" && /\bnext\b/.test(v)) ||
+      (name==="vitest" && /\bvitest\b/.test(v)) ||
+      (name==="prisma" && /\bprisma\b/.test(v)) ||
+      (name==="eslint" && /\beslint\b/.test(v))
+    ).map(([k])=>k);
+    return {
+      package: name,
+      devOnly: Object.hasOwn(packageJson.devDependencies||{},name),
+      astImportFiles:[...new Set(imports.map(x=>x.source))].sort(),
+      textualMentions:[...new Set(mentions)].sort(),
+      npmScriptUsers:scripts,
+      candidateOnly:imports.length===0 && mentions.length===0 && scripts.length===0,
+    };
+  });
+  return {assets, dependencies,
+    limits: "Static literal string/AST analysis only; not proof against dynamic imports, plugin activation, public external URLs, or transitive package dependencies."};
+})();
+fs.writeFileSync(path.join(root, ".growth-os-tmp/asset-dependency-inventory.json"),
+  JSON.stringify({gitHead:report.gitHead,...assetAndDependencyInventory},null,2)+"\n",{mode:0o600});
+console.log("ASSET_REFERENCES", JSON.stringify(
+  assetAndDependencyInventory.assets.map(a=>({file:a.path,
+    directReferences:a.references.filter(x=>x.direct).map(x=>x.file),
+    mentions:a.references.map(x=>x.file)}))));
+console.log("DEPENDENCY_CANDIDATES_NO_STATIC_USE", JSON.stringify(
+  assetAndDependencyInventory.dependencies.filter(d=>d.candidateOnly).map(d=>d.package)));
+console.log("ASSET_DEPENDENCY_AUDIT_OUTPUT .growth-os-tmp/asset-dependency-inventory.json");
