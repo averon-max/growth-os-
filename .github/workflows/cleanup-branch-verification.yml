@@ -31,6 +31,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Inventory imports and references
         run: node scripts/repository-audit.mjs
+      - name: Map Content Writer modules
+        run: node scripts/writer-module-map.mjs
       - name: TypeScript regression
         run: npx tsc --noEmit
       - name: Full unit regression
@@ -42,6 +44,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: growth-os-cleanup-audit
-          path: .growth-os-tmp/repository-audit.json
+          path: |
+            .growth-os-tmp/repository-audit.json
+            .growth-os-tmp/writer-module-map.json
           if-no-files-found: ignore
           retention-days: 14
