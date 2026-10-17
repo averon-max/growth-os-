@@ -238,7 +238,10 @@ export function evaluateArticleSearchReadinessV2({
     const warnings=Array.isArray(replay.warnings)?
       replay.warnings.filter((x):x is string=>typeof x==="string"):[];
     const missing=warnings.filter(x=>x.startsWith("SERP_REPLAY_MISSING_DATA:"));
-    const other=warnings.filter(x=>!x.startsWith("SERP_REPLAY_MISSING_DATA:"));
+    const other=warnings.filter(x=>
+      !x.startsWith("SERP_REPLAY_MISSING_DATA:") &&
+      !x.startsWith("SERP_REPLAY_PAIR_INSUFFICIENT:")
+    );
     const replayBlockers=Array.isArray(replay.blockers)?replay.blockers:[];
     if(missing.length>0&&other.length===0&&replayBlockers.length===0)
       add("SERP_REPLAY_EVIDENCE_INCOMPLETE","REVIEW",

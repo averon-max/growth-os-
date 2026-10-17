@@ -187,6 +187,19 @@ describe("real 2026-10-16 Mac query-to-H2 evidence mismatch",()=>{
     expect(result.replay.status).toBe("WARN");
     expect(result.replay.articleFingerprintMatches).toBe(true);
   });
+  it("keeps a partially evidenced pair under the specific missing-data review",()=>{
+    const result=audit({
+      article:savedArticle,
+      runtime:savedRuntime,
+      replay:{...replayMissing,warnings:[
+        ...replayMissing.warnings,
+        "SERP_REPLAY_PAIR_INSUFFICIENT:https://money.com/best-credit-monitoring-services",
+      ]},
+    });
+    expect(result.findings.map(x=>x.code)).toContain("SERP_REPLAY_EVIDENCE_INCOMPLETE");
+    expect(result.findings.map(x=>x.code)).not.toContain("SERP_REPLAY_WARN");
+    expect(result.canClaimSeoReady).toBe(false);
+  });
   it("does not invent an evidence-backed heading match when source proof is absent",()=>{
     const noEvidence={
       ...savedRuntime,evidenceGraph:{sources:[],claimEvidence:[]},

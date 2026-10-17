@@ -2100,10 +2100,12 @@ function pairVerdict(
     );
 
 
-  if (
-    available.length ===
-    0
-  ) {
+  /*
+   * Never call a pair STRONGER/WEAKER with unresolved dimensions.
+   * Preserve known dimension wins; replayStatus still warns when
+   * at least one dimension is supported and the others are missing.
+   */
+  if (available.length !== dimensions.length) {
     return "INSUFFICIENT_EVIDENCE";
   }
 
@@ -2233,8 +2235,10 @@ function replayStatus(
   const anyAvailable =
     comparisons.some(
       (comparison) =>
-        comparison.verdict !==
-        "INSUFFICIENT_EVIDENCE"
+        comparison.dimensions.some(
+          (dimension) =>
+            dimension.verdict !== "INSUFFICIENT_EVIDENCE"
+        )
     );
 
 

@@ -1019,6 +1019,37 @@ describe(
 
 
     it(
+      "does not claim a stronger pair with four unsupported competitor dimensions",
+      async () => {
+        const result = await executeSerpReplayV1({
+          runtime: runtime(),
+          run: run(),
+          generator: {
+            modelName: "pairwise-model",
+            async compareSerpReplayPair() {
+              return judgment("ARTICLE_STRONGER", {
+                ANSWER_COMPLETENESS: "INSUFFICIENT_EVIDENCE",
+                EVIDENCE_STRENGTH: "INSUFFICIENT_EVIDENCE",
+                ORIGINAL_VALUE: "INSUFFICIENT_EVIDENCE",
+                STRUCTURAL_USEFULNESS: "INSUFFICIENT_EVIDENCE",
+              });
+            },
+          },
+        });
+        expect(result.status).toBe("WARN");
+        expect(result.comparisons[0]?.verdict).toBe("INSUFFICIENT_EVIDENCE");
+        expect(result.comparisons[0]?.dimensions.filter(
+          d => d.verdict === "ARTICLE_STRONGER"
+        )).toHaveLength(2);
+        expect(result.warnings).toContain(
+          "SERP_REPLAY_MISSING_DATA:https://competitor.example/guide"
+        );
+        expect(result.blockers).toHaveLength(0);
+      }
+    );
+
+
+    it(
       "blocks on a concrete competitor advantage in intent fulfillment",
       async () => {
         const result =
