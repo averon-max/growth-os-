@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Growth OS
 
-## Getting Started
+SEO intelligence and content operations SaaS built with Next.js App Router, React, TypeScript, Prisma/PostgreSQL and an OpenAI-powered Content Writer.
 
-First, run the development server:
+## Development
+
+Run from the repository root, with your own environment variables configured locally:
 
 ```bash
+npm ci
+npx prisma generate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Do not commit secrets or production database credentials. Schema migrations in `prisma/migrations` are historical and must not be deleted as “unused files.”
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npx tsc --noEmit
+npx vitest run
+```
 
-## Learn More
+The cleanup audit also provides a read-only dependency/reachability report:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+node scripts/repository-audit.mjs
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The report is written to the Git-ignored `.growth-os-tmp/repository-audit.json`. Static “unreferenced” results need human review; test setup, framework routes and dynamic imports can be legitimate.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Writer execution trace (opt-in)
 
-## Deploy on Vercel
+An append-only **per-run JSONL file** can capture observable execution, from brief research and keyword selection to model exchanges and article generation:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+GROWTH_OS_WRITER_TRACE_DIR="$PWD/.growth-os-traces" npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each request creates a separate `.jsonl` file. It records run stages, factual research summaries, keyword decisions, prompt/response SHA-256 hashes, characters, model identity, reported token usage and article structure.
+
+Raw model prompts and generated outputs are **off by default**. To include them explicitly for local debugging:
+
+```bash
+GROWTH_OS_WRITER_TRACE_DIR="$PWD/.growth-os-traces" GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT=1 npm run dev
+```
+
+**Sensitive-data warning:** full prompts and responses can contain private business information. Trace files are Git-ignored, created with restricted permissions and should remain local, with access and retention controlled by the operator. Full-text capture is bounded to 2 million characters per field; oversized payloads are marked truncated.
+
+This captures **observable inputs, outputs and deterministic decisions**, not private model reasoning or hidden internal tokens. Provider usage counts reflect OpenAI's reported token accounting; the trace does not reveal hidden reasoning content.
+
+## Source of truth
+
+Runtime code is in `src/`, database definitions in `prisma/`, and supported operational commands in `scripts/`. Old backups and agent-specific tooling were untracked from the cleanup branch; Git history preserves their earlier versions.
