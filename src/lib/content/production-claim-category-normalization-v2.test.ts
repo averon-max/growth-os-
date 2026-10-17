@@ -146,14 +146,23 @@ describe(
           "normalizeProductionClaimCategoryV2({"
         );
 
+        expect(source).toContain(
+          'from "./stage-plan-semantic-prompt-v1"'
+        );
+
+        const promptSource = readFileSync(
+          join(process.cwd(), "src/lib/content/stage-plan-semantic-prompt-v1.ts"),
+          "utf8"
+        );
+
         expect(
-          source
+          promptSource
         ).toContain(
           "LEGAL is ONLY for actual law, regulation"
         );
 
         expect(
-          source
+          promptSource
         ).toContain(
           "Insurance coverage, reimbursement, plan scope"
         );
