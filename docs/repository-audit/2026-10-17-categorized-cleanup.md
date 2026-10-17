@@ -43,7 +43,7 @@ Baseline: `audit/full-repository-inventory-20261016` at `da8a1485d99d1b88abdd897
 
 - **Scripts:** all 41 CLI contracts initially examined, 2 premature logging-only additions removed, original 39 kept. The deeper dynamic/operational consumer audit remains a precondition to further deletion.
 - **Content/Writer:** CODE REFACTOR PASS VERIFIED; production integration NOT YET PROVEN. Three large helper extractions and one shared approval/publish release-gate consolidation landed. Exact code head `1e6ef43` passed TypeScript, full Vitest, production build and deletion gate. **Do not call the Writer production-closed until an authorized E2E run passes.** See `2026-10-17-writer-cleanup-execution.md`.
-- **API/UI/other libraries:** PAUSED. The 310-file preliminary inventory is available in `2026-10-17-app-api-cleanup-first-pass.md`; it is not a completed section. Do not resume work until Writer completion has been demonstrated.
+- **API/UI/other libraries:** VERIFIED SAFE-CLEANUP PASS: identical Audience pagination helpers, three UTC-window calculations and pure formatters/selectors of three dashboard components consolidated with tests. Exact code head `d08ce64e` passed TypeScript, full Vitest, Next production build and deletion gate. No production provider, route or widget was deleted. See `2026-10-17-app-api-cleanup-execution.md`. Live API/browser integrations remain unverified.
 - **CI:** latest cleanup branch head must still pass deletion gate, TypeScript, full Vitest and production build. A previously passing head is insufficient.
 - **Logging:** explicitly deferred until completion of all cleanup sections and verification. No runtime instrumentation work in this phase.
 
