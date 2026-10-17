@@ -1,0 +1,39 @@
+name: Cleanup branch verification
+
+on:
+  push:
+    branches:
+      - audit/full-repository-inventory-20261016
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Inventory imports and references
+        run: node scripts/repository-audit.mjs
+      - name: TypeScript regression
+        run: npx tsc --noEmit
+      - name: Full unit regression
+        run: npx vitest run
+      - name: Retain inspection report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: growth-os-cleanup-audit
+          path: .growth-os-tmp/repository-audit.json
+          if-no-files-found: ignore
+          retention-days: 14
