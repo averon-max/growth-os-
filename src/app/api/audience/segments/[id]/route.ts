@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parsePositiveInt } from "@/lib/audience/pagination";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { getSegmentById, getAudienceSnapshots } from "@/lib/audience/repository";
-
-function parsePositiveInt(value: string | null): number | undefined {
-  if (!value) return undefined;
-  const n = Number.parseInt(value, 10);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-}
 
 export async function GET(
   req: NextRequest,
