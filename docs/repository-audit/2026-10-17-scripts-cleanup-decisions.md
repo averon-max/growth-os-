@@ -61,3 +61,42 @@ These are not interchangeable: they have different persisted artifact states, ar
 | `content-commit-reviewed-candidate-v3.ts` | Explicit opt-in atomic commit of a reviewed candidate and replay provenance, transition to IN_REVIEW | RETAIN; critical persisted-data path |
 
 **Progress:** 19 of 41 scripts checked at source-header and entrypoint level; 22 still pending. No deletion approved. This pass did not run scripts, make AI calls, or alter a database. Header checks do not substitute for full implementation/reference review; all four remain retained by default.
+
+## Final first-pass inventory — remaining 22 scripts
+
+The following were checked for their advertised invocation, argument guards, imported capability and side-effect boundaries by reading the entrypoint source. This is **not** proof that all downstream dynamic code was exhaustively inspected.
+
+| Script | Observed purpose / boundary | Decision |
+|---|---|---|
+| `content-existing-article-citation-draft.ts` | Signed evidence-to-H2 citation draft; requires original article SHA; writes a local draft, never publishes | RETAIN |
+| `content-existing-article-evidence-alignment-audit.ts` | Saved VERIFIED_EXCERPT lexical alignment, expressly not semantic entailment | RETAIN |
+| `content-existing-article-evidence-rescue-audit.ts` | One article-specific credit monitoring source-rescue diagnosis; fetches two public source pages | RETAIN pending confirmed retirement of that recovery workflow |
+| `content-existing-article-fact-coverage-audit.ts` | Claim-by-claim/section evidence coverage from locked stored research | RETAIN |
+| `content-existing-article-official-response-facts-audit.ts` | Official US source fact review for saved `section-6`, public fetches permitted | RETAIN; tightly scoped |
+| `content-existing-article-postcommit-audit.ts` | Verifies after CAS commit, latest replay, QueryGraph and optional local draft export | RETAIN |
+| `content-existing-article-question-gap-audit.ts` | Match cached question research against article H2/verified sources | RETAIN |
+| `content-existing-article-research-evidence-diagnose.ts` | Saved claim hypotheses and observed sources, SSRF-safe public refetch | RETAIN |
+| `content-existing-article-search-readiness.ts` | Stored-article search-readiness evaluation, no paid provider calls | RETAIN |
+| `content-existing-article-semantic-citation-review.ts` | Human-initiated, optionally paid OpenAI sentence/citation review; no DB writes | RETAIN |
+| `content-existing-article-seo-depth-audit.ts` | Same-ID article depth, keyword and headings from persisted execution plan | RETAIN |
+| `content-existing-article-writer-checkpoint-audit.ts` | Local research-recovery section progress checkpoint audit, no DB calls | RETAIN |
+| `content-export-existing-article-review.ts` | Exact saved article Markdown output to stdout, fingerprint metadata to stderr | RETAIN |
+| `content-review-candidate-audit.ts` | Check locally saved preview + manifest + POST_WRITER checkpoint gates | RETAIN |
+| `content-review-existing-markdown-evidence.ts` | Diff externally edited Markdown with original and signed evidence scope | RETAIN |
+| `content-section-authority-audit.ts` | Inspect one section's saved claim/evidence authority, no generation | RETAIN |
+| `keyword-existing-article-paid-serp-reuse.ts` | Re-assess previously purchased SERP rows for existing article, no provider calls | RETAIN |
+| `keyword-research-v2-cached-audit.ts` | Validate stored Keyword V2 caches and reuse eligibility, no network purchase | RETAIN |
+| `keyword-research-v2-live.ts` | Distinct one-seed research CLI, paid provider calls and cache writes only with `--execute` | RETAIN |
+| `rebind-approved-direct-answer-v1.ts` | Re-export required by temporary staging utility; earlier deletion broke TypeScript | RETAIN |
+| `writer-trace-report.mjs` | **Newly introduced** local trace report intended for a later phase | REMOVED on cleanup branch |
+| `writer-trace-report.test.mjs` | **Newly introduced** test only for postponed trace report | REMOVED on cleanup branch |
+
+## Scripts phase disposition
+
+- **41/41 examined at CLI-contract level** (39 original + 2 premature logging files).
+- **2 intentionally removed**: deferred logging files added earlier in this cleanup branch. Exact blob SHA and rationale were placed in `deletion-decisions.json` prior to removal.
+- **39 retained**: no other file has enough evidence for deletion. Some are historically specialized; prove lack of operational consumers *before* retiring them.
+- **No production Writer or Prisma file deleted** and no article state/database operation executed in this Scripts pass.
+- **Safety qualification:** this closes the initial Scripts inventory and low-risk cleanup, **not** a deep static+dynamic callsite audit for every operational CLI, nor proof of zero latent duplicates.
+- **Next section:** `src/lib/content` architecture and policy duplication. Begin with existing Writer module map and the Stage Planner/Service ownership boundaries; preserve the Writer backup and all stored contracts.
+- **Merge gate remains open:** exact-head TypeScript, Vitest, production build, and deletion guard results must be confirmed before merging.
