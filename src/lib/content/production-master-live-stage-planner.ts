@@ -1,3 +1,4 @@
+import { recordWriterTraceV1 } from "./writer-trace-v1";
 import {
   normalizeProductionClaimCategoryV2,
 } from "./production-claim-category-normalization-v2";
@@ -1282,6 +1283,17 @@ export async function planProductionMasterArtifactsFromLiveSources({
     buildProductionRankingInputs(
       research
     );
+
+  recordWriterTraceV1("research.collected", {
+    keyword: research.keyword,
+    capturedAt: research.capturedAt,
+    serpResults: research.serpSnapshot.results.length,
+    observedQueries: rankingInputs.observedQueries.length,
+    observedQuestions: research.serpIntelligence.questions.length,
+    medianWordCount: research.serpIntelligence.benchmark.medianWordCount ?? null,
+    medianH2: research.serpIntelligence.benchmark.medianH2 ?? null,
+    medianH3: research.serpIntelligence.benchmark.medianH3 ?? null,
+  });
 
 
   const observedQueryContract =
