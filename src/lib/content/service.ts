@@ -1,3 +1,4 @@
+import { recordWriterTraceV1, hashTraceTextV1 } from "./writer-trace-v1";
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 import { buildResearchDecisionV2 } from "./research-decision-v2";
 import {
@@ -559,6 +560,15 @@ export async function createContentBrief(
 
   const strategy =
     finalPlan.strategy;
+
+  recordWriterTraceV1("keyword.selected", {
+    keyword: strategy.primary.keyword,
+    searchVolume: strategy.primary.searchVolume ?? null,
+    difficulty: strategy.primary.difficulty ?? null,
+    secondaryQueries: strategy.secondary.map(k => k.keyword),
+    supportingQueries: strategy.supporting.map(k => k.keyword),
+    generationMode: input.generationMode ?? "EXACT_KEYWORD",
+  });
 
   if (
     input.requiredPrimaryKeyword
@@ -2433,6 +2443,14 @@ export async function generateArticleFromBrief(
      * Status stays GENERATING until final readiness authorizes
      * IN_REVIEW.
      */
+    recordWriterTraceV1("writer.draft_generated", {
+      articleIdHash: hashTraceTextV1(pendingArticle.id),
+      h1: masterWriterRun.article.h1,
+      markdownChars: masterWriterRun.article.bodyMarkdown.length,
+      h2Count: (masterWriterRun.article.bodyMarkdown.match(/^## /gm) ?? []).length,
+      h3Count: (masterWriterRun.article.bodyMarkdown.match(/^### /gm) ?? []).length,
+    });
+
     await prisma.contentArticle.update({
       where: {
         id:
