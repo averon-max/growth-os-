@@ -74,10 +74,13 @@ export function recordWriterTraceV1(
   };
   const line = JSON.stringify(event) + "\n";
   run.pending = run.pending.then(async () => {
-    await mkdir(resolve(run.filePath, ".."), { recursive: true, mode: 0o700 });
     await appendFile(run.filePath, line, { encoding: "utf8", mode: 0o600 });
-  }).catch(() => {
-    // Telemetry must never change generation results or expose private data.
+  }).catch((error: unknown) => {
+    run.writeFailures++;
+    // Do not print the exception's message: it can include confidential paths/data.
+    const code = error && typeof error === "object" && "code" in error
+      ? String(error.code).slice(0, 32) : "UNKNOWN";
+    console.error("[writer trace] event write failed:", code);
   });
 }
 
@@ -88,7 +91,9 @@ export function recordWriterModelExchangeV1(input: {
   output: string;
 }): void {
   if (!context.getStore()) return;
-  const includeText = process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT === "1";
+  const includePrivateText =
+    process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS === "1" &&
+    process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT === "1";
   recordWriterTraceV1("model.exchange", {
     stage: input.stage,
     model: input.model,
@@ -96,9 +101,14 @@ export function recordWriterModelExchangeV1(input: {
     outputChars: input.output.length,
     promptSha256: hashTraceTextV1(input.prompt),
     outputSha256: hashTraceTextV1(input.output),
-    ...(includeText ? { promptText: input.prompt, outputText: input.output } : {}),
-    textMode: includeText ? "OPT_IN_TEXT_UP_TO_2MB" : "HASHES_ONLY",
+    textMode: includePrivateText ? "PRIVATE_ARTIFACT" : "HASHES_ONLY",
   });
+  if (includePrivateText) {
+    recordWriterForensicArtifactV1("model.exchange_text", {
+      stage: input.stage, model: input.model,
+      promptText: input.prompt, outputText: input.output,
+    });
+  }
 }
 
 export async function withWriterTraceV1<T>(
@@ -107,9 +117,27 @@ export async function withWriterTraceV1<T>(
 ): Promise<T> {
   const directory = process.env.GROWTH_OS_WRITER_TRACE_DIR?.trim();
   if (!directory) return action();
+  if (context.getStore()) return action(); // nested calls share one run
+  const traceDirectory = resolve(directory);
+  if (traceDirectory.split(/[\\/]/).includes("public")) {
+    throw new Error("WRITER_TRACE_DIRECTORY_MUST_NOT_BE_PUBLIC");
+  }
+  // Fail before a paid run if diagnostics cannot create a private log file.
+  await mkdir(traceDirectory, { recursive: true, mode: 0o700 });
+  const directoryInfo = await lstat(traceDirectory);
+  if (directoryInfo.isSymbolicLink() || !directoryInfo.isDirectory()) {
+    throw new Error("WRITER_TRACE_DIRECTORY_INVALID");
+  }
+  await chmod(traceDirectory, 0o700);
   const runId = `${Date.now()}-${randomUUID()}`;
-  const filePath = join(resolve(directory), `${runId}.jsonl`);
-  const trace: TraceContextV1 = { runId, filePath, sequence: 0, pending: Promise.resolve() };
+  const filePath = join(traceDirectory, `${runId}.jsonl`);
+  const artifactDirectory = join(traceDirectory, `${runId}.artifacts`);
+  const handle = await open(filePath, "wx", 0o600);
+  await handle.close();
+  const trace: TraceContextV1 = {
+    runId, filePath, artifactDirectory, sequence: 0,
+    pending: Promise.resolve(), writeFailures: 0,
+  };
   return context.run(trace, async () => {
     recordWriterTraceV1("run.started", {
       scope: input.scope,
@@ -139,6 +167,9 @@ export async function withWriterTraceV1<T>(
       throw error;
     } finally {
       await trace.pending;
+      if (trace.writeFailures > 0) {
+        console.error("[writer trace] incomplete log, failed writes:", trace.writeFailures);
+      }
     }
   });
 }
