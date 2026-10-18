@@ -75,6 +75,10 @@ jobs:
           must(service.includes('withWriterTraceV1'),'trace scope disconnected');
           console.log('SINGLE_MASTER_WRITER_WITH_PREFLIGHT_AND_TRACE_PASS');
           JS
+      - name: No secondary strategy prompt
+        run: |
+          test ! -e src/lib/content/content-strategy-prompt-v1.ts
+          test ! -e src/lib/content/content-strategy-prompt-v1.test.ts
       - name: TypeScript strict
         run: npx tsc --noEmit
       - name: All Content and Keyword regressions
