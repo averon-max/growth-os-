@@ -832,3 +832,30 @@ export function buildArticleExecutionPlanV1(
       }),
   });
 }
+
+/**
+ * Canonical projection of the post-evidence, immutable Writer plan.
+ * Only actual WRITABLE jobs are persisted to the UI brief outline.
+ * No model, DB operation, or mutable extra planning authority.
+ */
+export function deriveBriefOutlineFromExecutionPlanV1(
+  plan: Readonly<ArticleExecutionPlanV1>,
+): ReadonlyArray<{ heading: string; level: 2 | 3; summary: string }> {
+  const selected = plan.sections
+    .filter(section => section.state === "WRITABLE")
+    .map(section => ({
+      heading: section.heading.trim(),
+      level: section.level,
+      summary: section.mission.trim(),
+    }));
+  if (!selected.length || selected.some(section =>
+    !section.heading || !section.summary)) {
+    throw new ArticleExecutionPlanErrorV1("BRIEF_OUTLINE_MASTER_SECTION_INVALID");
+  }
+  const headings = new Set(selected.map(section =>
+    section.heading.toLowerCase().replace(/\s+/g, " ")));
+  if (headings.size !== selected.length) {
+    throw new ArticleExecutionPlanErrorV1("BRIEF_OUTLINE_DUPLICATE_HEADING");
+  }
+  return Object.freeze(selected.map(section => Object.freeze(section)));
+}

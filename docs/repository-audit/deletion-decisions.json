@@ -522,6 +522,49 @@
         "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
         "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob 276b0af834afefb171d189fe1fcd3621180c4371 at src/lib/content/quality-improvement-progress-scope-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
       }
+    },
+    {
+      "path": "src/lib/content/content-strategy-prompt-v1.ts",
+      "blobSha": "2a299fdcba477315f98c5eed28e819d7183916e9",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/service.ts (removed on this branch)",
+        "src/lib/content/content-strategy-prompt-v1.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Retire second, model-only SEO strategy prompt. Research now deterministically persists the same verified Master Execution Plan's writable section headings, and no longer calls generateBrief. This is truly unused source code.",
+        "realImportersAndConsumers": "The prior production direct importer was service.ts; it was removed in commit 3d2e667 when a second paid model outline was eliminated. The only remaining direct import was the dedicated content-strategy-prompt-v1.test.ts, removed in this atomic change.",
+        "dynamicRuntimeAndExternalCallers": "No production route, active script, Next framework discovery path or literal dynamic import uses this deprecated prompt after the canonical cutover; external untracked consumers cannot be disproved. The exact blob is recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma schema, CMS contract, persisted brief, research snapshot, article or verification state is modified. Production Research and Writer still consume the immutable master plan and provider trace.",
+        "testEvidenceAndLiveRisks": "Run exact blob deletion gate with fetch-depth 2, TypeScript strict, full Content+Keyword tests including canonical outline regression, and Next build. No DB mutations, model calls, SERP purchases or publication allowed.",
+        "rollbackPlan": "Restore src/lib/content/content-strategy-prompt-v1.ts from exact Git blob 2a299fdcba477315f98c5eed28e819d7183916e9 or revert the atomic deletion commit. Existing saved data requires no migration."
+      }
+    },
+    {
+      "path": "src/lib/content/content-strategy-prompt-v1.test.ts",
+      "blobSha": "e33a39a038adff3b830e0853252c314518107e60",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Retire two obsolete tests that solely exercised the removed independent model-only prompt function. Canonical Research->brief outline has a new focused regression test in existing article-execution-plan-v1.test.ts.",
+        "realImportersAndConsumers": "No other module imports the test; it only imports the retired source.",
+        "dynamicRuntimeAndExternalCallers": "No production route, active script, Next framework discovery path or literal dynamic import uses this deprecated prompt after the canonical cutover; external untracked consumers cannot be disproved. The exact blob is recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma schema, CMS contract, persisted brief, research snapshot, article or verification state is modified. Production Research and Writer still consume the immutable master plan and provider trace.",
+        "testEvidenceAndLiveRisks": "Run exact blob deletion gate with fetch-depth 2, TypeScript strict, full Content+Keyword tests including canonical outline regression, and Next build. No DB mutations, model calls, SERP purchases or publication allowed.",
+        "rollbackPlan": "Restore src/lib/content/content-strategy-prompt-v1.test.ts from exact Git blob e33a39a038adff3b830e0853252c314518107e60 or revert the atomic deletion commit. Existing saved data requires no migration."
+      }
     }
   ]
 }
