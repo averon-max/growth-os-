@@ -55,6 +55,7 @@ export function assertCanonicalWriterPreflightV1(
         index,
         reasonCode: diagnosed.reasonCode,
         failureClass: diagnosed.failureClass,
+        recommendedAction: diagnosed.recommendedAction,
       });
       // Preserve original error identity, semantics and source diagnostics.
       throw error;
