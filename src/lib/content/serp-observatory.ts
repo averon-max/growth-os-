@@ -1,6 +1,7 @@
 import type {
   QueryIntent,
 } from "./intent-boundary";
+import type { ObservedCompetitorDocumentDepthV1 } from "./competitor-document-depth-v1";
 
 
 export const SERP_HISTORY_TARGET_DAYS =
@@ -124,6 +125,9 @@ export interface SerpObservedResult {
 
   wordCount?:
     number | null;
+
+  /** Only provided when the source HTML was actually readable. */
+  contentDepth?: Readonly<ObservedCompetitorDocumentDepthV1>;
 
   internalLinks?:
     number | null;

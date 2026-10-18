@@ -84,6 +84,10 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
       commonTerms:(serp.commonTerms??[]).slice(0,35).map(item=>({
         term:item.term,pages:item.pages,coveragePct:item.coveragePct,
       })),
+      commonBodyTerms:(serp.commonBodyTerms??[]).slice(0,40).map(item=>({
+        term:item.term,pages:item.pages,coveragePct:item.coveragePct,
+        totalOccurrences:item.totalOccurrences,
+      })),
       benchmark:{
         medianWordCount:serp.benchmark.medianWordCount,
         medianH2:serp.benchmark.medianH2,
@@ -96,6 +100,8 @@ function summarizeSerp(keyword: string, clusterId: string, serp:
         title:item.title,h1:item.h1,
         h2:item.h2.slice(0,30),h3:item.h3.slice(0,35),
         wordCount:item.wordCount,
+        ...(assessSerpCompetitorPageQualityV1(item).usable && item.contentDepth
+          ? {contentDepth:item.contentDepth} : {}),
         schemaTypes:(item.schemaTypes??[]).slice(0,15),
         tableCount:item.tableCount??0,
         authorSignal:item.authorSignal===true,
@@ -130,7 +136,8 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (!website) throw new Error("KEYWORD_V2_WEBSITE_NOT_FOUND");
   if (!input.authorizePaidResearch) throw new Error("KEYWORD_V2_PAID_RESEARCH_NOT_AUTHORIZED");
 
-  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), Boolean(input.authorizeExpandedDiscovery), Boolean(input.requireDeepCompetitorEvidence), "topic-and-page-intent-v5-depth-gated"].join(":");
+  const cacheKey = [website.id, market, seed.trim().toLowerCase(), limit, deepSerpLimit, Boolean(input.useGptDecision), Boolean(input.authorizeExpandedDiscovery), Boolean(input.requireDeepCompetitorEvidence), input.requireDeepCompetitorEvidence
+    ? "deep-main-article-profile-v2" : "topic-and-page-intent-v5-depth-gated"].join(":");
   const cache = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: "KEYWORD_INTELLIGENCE_V2" } },
   });
@@ -291,7 +298,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
       const serpSummary = await withKeywordResearchCheckpointV2({
         stage: "SERP",
         key: [website.id, market, cluster.id, cluster.primary.keyword,
-          input.requireDeepCompetitorEvidence?"deep-v1":"standard"].join(":"),
+          input.requireDeepCompetitorEvidence?"deep-v2":"standard"].join(":"),
         isValid: (value): value is SerpOpportunityV2 => {
           if (!value || typeof value !== "object" || Array.isArray(value)) return false;
           const row = value as Record<string, unknown>;

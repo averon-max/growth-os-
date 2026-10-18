@@ -12,6 +12,11 @@ import {
   assessSerpCompetitorPageQualityV1,
   isSubstantiveSerpHeadingV1,
 } from "./serp-competitor-page-quality-v1";
+import {
+  analyzeCompetitorDocumentDepthV1,
+  aggregateObservedBodyTermsV1,
+  type ObservedCompetitorDocumentDepthV1,
+} from "./competitor-document-depth-v1";
 
 import {
   classifyPageType,
@@ -125,6 +130,9 @@ export interface CompetitorPageAnalysis {
 
   wordCount:
     number | null;
+
+  /** Literal article-body observations, never ranking-factor targets. */
+  contentDepth?: ObservedCompetitorDocumentDepthV1;
 
   /*
    * SERP_COMPETITOR_OBSERVABILITY_V1
@@ -265,6 +273,9 @@ export interface SerpIntelligence {
       pages: number;
       coveragePct: number;
     }>;
+
+  /** Actual repeated phrases in readable competitor main content. */
+  commonBodyTerms?: ReturnType<typeof aggregateObservedBodyTermsV1>;
 }
 
 
@@ -964,7 +975,8 @@ function analyzeHtml(
   rank:
     number,
   statusCode:
-    number
+    number,
+  keyword: string
 ): CompetitorPageAnalysis {
   const $ =
     load(
@@ -1317,6 +1329,7 @@ function analyzeHtml(
       (region ?? $("body"))
         .text()
     );
+  const contentDepth = analyzeCompetitorDocumentDepthV1(html, keyword);
 
   const words =
     bodyText
@@ -1356,6 +1369,7 @@ function analyzeHtml(
 
     wordCount:
       words,
+    contentDepth,
 
     schemaTypes:
       [
@@ -1384,7 +1398,8 @@ function analyzeHtml(
 
 async function analyzeCompetitor(
   result:
-    SerpOrganicResult
+    SerpOrganicResult,
+  keyword: string
 ): Promise<CompetitorPageAnalysis> {
   try {
     const fetched =
@@ -1436,7 +1451,8 @@ async function analyzeCompetitor(
       fetched.html,
       fetched.finalUrl,
       result.rank,
-      fetched.status
+      fetched.status,
+      keyword
     );
     const quality = assessSerpCompetitorPageQualityV1(analyzed);
     if (!quality.usable) {
@@ -2262,7 +2278,7 @@ export async function buildSerpIntelligence({
     await mapConcurrent(
       organic,
       PAGE_CONCURRENCY,
-      analyzeCompetitor
+      (result) => analyzeCompetitor(result, cleanKeyword)
     );
 
   return {
@@ -2335,6 +2351,11 @@ export async function buildSerpIntelligence({
     commonTerms:
       commonTerms(
         competitors
+      ),
+    commonBodyTerms:
+      aggregateObservedBodyTermsV1(
+        competitors.filter(page => assessSerpCompetitorPageQualityV1(page).usable)
+          .map(page => ({fetched:true,bodyTerms:page.contentDepth?.bodyTerms}))
       ),
   };
 }

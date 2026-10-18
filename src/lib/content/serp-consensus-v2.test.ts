@@ -188,6 +188,25 @@ describe(
     );
 
 
+    it("preserves observed article-body terms only when multiple real pages corroborate them",()=>{
+      const contentDepth={
+        version:"OBSERVED_COMPETITOR_DOCUMENT_DEPTH_V1",
+        extraction:"MAIN_ARTICLE",
+        bodyTerms:[{term:"credit monitoring",occurrences:8},
+          {term:"fraud alerts",occurrences:4}],
+      };
+      const consensus=buildSerpConsensusV2({results:[
+        {rank:1,contentDepth},
+        {rank:2,contentDepth},
+        {rank:3,contentDepth:{...contentDepth,extraction:"BODY_FALLBACK"}},
+      ]});
+      expect(consensus.bodyTermThemes?.map(x=>x.value)).toContain("credit monitoring");
+      expect(consensus.bodyTermThemes?.[0]?.supportCount).toBe(2);
+      expect(consensus.rules).toContain("NO_COMPETITOR_WORD_COUNT_TARGET");
+      const absent=buildSerpConsensusV2({results:[{rank:1,contentDepth}]});
+      expect(absent.bodyTermThemes).toEqual([]);
+    });
+
     it(
       "does not invent consensus from a single result",
       () => {

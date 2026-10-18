@@ -347,6 +347,10 @@ function snapshotResults(
         h2: page.h2,
         h3: page.h3,
         wordCount: page.wordCount,
+        ...(page.contentDepth ? {
+          contentDepth: page.contentDepth,
+          questions: page.contentDepth.headingQuestions,
+        } : {}),
         tables: page.tableCount ?? null,
         images: page.imageCount ?? null,
         videos: page.videoCount ?? null,
@@ -705,7 +709,7 @@ export async function collectProductionMasterLiveSources(
   recordWriterTraceV1("research.acquisition_finished", {
     keyword,
     organicResults: serpIntelligence.organic.length,
-    competitorPages: serpIntelligence.competitors.length,
+    competitorPages: (serpIntelligence.competitors ?? []).length,
     capturedAt: capturedAt.toISOString(),
   });
   recordWriterForensicArtifactV1("research.raw_provider_results", {

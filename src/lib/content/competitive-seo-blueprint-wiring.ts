@@ -193,6 +193,12 @@ export function applyCompetitiveSeoToMasterBlueprintV2<
           ) =>
             `SERP_RECURRING_ENTITY:${entity}`
         ),
+      // Review-only observations: NEVER convert repeated competitor
+      // vocabulary into unsupported claims or mandatory keyword quotas.
+      ...(consensus.bodyTermThemes ?? [])
+        .filter(term => term.supportCount >= 3)
+        .slice(0, 10)
+        .map(term => `SERP_BODY_TERM_REVIEW:${term.value}`),
     ]);
 
 

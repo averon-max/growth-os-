@@ -2,6 +2,16 @@ import {describe,expect,it} from "vitest";
 import {auditDeepSerpReadinessV1} from "./keyword-deep-serp-readiness-v1";
 import type {SerpOpportunityV2} from "./keyword-intelligence-v2";
 
+const depth={
+  version:"OBSERVED_COMPETITOR_DOCUMENT_DEPTH_V1" as const,
+  extraction:"MAIN_ARTICLE" as const,
+  wordCount:1500,
+  sections:[{heading:"How credit monitoring works",level:2 as const,
+    wordCount:500,exactQueryMentions:3}],
+  headingQuestions:[],
+  bodyTerms:[{term:"credit monitoring",occurrences:12}],
+  keywordUsage:{query:"credit monitoring",title:1,h1:1,headings:1,mainContent:12},
+};
 const base:SerpOpportunityV2={
   query:"what is credit monitoring",clusterId:"cl_a",
   organicResults:10,uniqueDomains:9,
@@ -36,7 +46,7 @@ describe("deep competitor research coverage",()=>{
       rank:i+1,domain:"site"+i+".com",url:"https://site"+i+".com",
       fetched:true,pageType:"blog",title:"Credit monitoring guide",
       h1:"Credit monitoring guide",h2:["Monitoring basics"],h3:[],
-      wordCount:1500,schemaTypes:[],tableCount:0,
+      wordCount:1500,contentDepth:depth,schemaTypes:[],tableCount:0,
       authorSignal:false,dateSignal:false,error:null,
     }));
     pages[5]={...pages[5]!,title:"Attention Required! | Cloudflare",
@@ -91,7 +101,7 @@ describe("deep competitor research coverage",()=>{
       competitorPages:Array.from({length:7},(_,i)=>({
         rank:i+1,domain:"example.org",url:"https://example.org/page-"+i,
         fetched:true,pageType:"blog",title:"Monitoring",h1:"Monitoring",
-        h2:["How it works"],h3:[],wordCount:2400,
+        h2:["How it works"],h3:[],wordCount:2400,contentDepth:depth,
         schemaTypes:[],tableCount:0,authorSignal:true,dateSignal:false,
         error:null,
       })),
@@ -100,5 +110,24 @@ describe("deep competitor research coverage",()=>{
     expect(result.publisherReady).toBe(false);
     expect(result.canGuaranteeRankOne).toBe(false);
     expect(result.competitorMedianH2).toBe(1); // recomputed from qualified article headings, not stale raw benchmark
+    expect(result.analyzedMainArticleProfiles).toBe(7);
+  });
+  it("rejects legacy shallow fetched markers even when 5 URLs returned 200",()=>{
+    const pages=Array.from({length:5},(_,i)=>({
+      rank:i+1,domain:"site"+i+".com",url:"https://site"+i+".com",
+      fetched:true,pageType:"blog",title:"Credit monitoring guide",
+      h1:"Credit monitoring guide",h2:["What is credit monitoring?"],h3:[],
+      wordCount:950,schemaTypes:[],tableCount:0,
+      authorSignal:true,dateSignal:true,error:null,
+    }));
+    const result=auditDeepSerpReadinessV1({...base,competitiveResearch:{
+      fetchedCompetitorPages:5,fetchFailures:0,observedQuestions:[],
+      aiOverviewPresent:false,commonSections:[{topic:"Credit monitoring",pages:5,coveragePct:100}],
+      commonTerms:[],benchmark:{medianWordCount:950,medianH2:1,medianH3:0},
+      competitorPages:pages,
+    }});
+    expect(result.blockers).toContain("FEWER_THAN_FIVE_DETAILED_ARTICLE_PROFILES");
+    expect(result.blockers).toContain("TOP_ONE_DOCUMENT_PROFILE_MISSING");
+    expect(result.status).toBe("DEEP_COMPETITOR_INCOMPLETE");
   });
 });
