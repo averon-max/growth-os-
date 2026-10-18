@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/writer-post-evidence-scope-20261018
+      - cleanup/remove-unwired-content-20261018
   workflow_dispatch:
 
 permissions:
@@ -25,6 +26,8 @@ jobs:
           cache: npm
       - name: Install dependencies and generate Prisma client
         run: npm ci --no-audit --no-fund
+      - name: Reviewed deletion gate
+        run: node scripts/repository-deletion-gate.mjs --check
       - name: TypeScript strict
         run: npx tsc --noEmit
       - name: All Content and Keyword regressions
