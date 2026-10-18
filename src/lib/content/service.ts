@@ -6,20 +6,7 @@ import {
   assertFinalArticleVersionIntegrityV1,
 } from "./final-article-version-integrity-v1";
 
-import {
-  assertSectionEvidenceCapacityV1,
-} from "./section-evidence-capacity-v1";
-
-import {
-  assertArticlePreWriterAnswerSupportV2,
-  assertArticlePreWriterRequiredCoverageV1,
-} from "./article-prewriter-evidence-gate-v1";
-import {
-  assertArticlePreWriterEvidenceReadyV1,
-} from "./article-prewriter-evidence-gate-v1";
-import {
-  assertPreWriterMissionAuthorityV1,
-} from "./article-prewriter-mission-authority-gate-v1";
+import { assertCanonicalWriterPreflightV1 } from "./canonical-writer-preflight-v1";
 
 import {
   classifyRejectedRecoveryV1,
@@ -1413,9 +1400,7 @@ export async function generateArticleFromBrief(
    * evidence is an upstream planning/evidence blocker.
    * Never spend a Writer call trying to compensate for it.
    */
-  assertArticlePreWriterEvidenceReadyV1(
-    persistedArticleExecutionPlan
-  );
+
 
   /*
    * ARTICLE_PREWRITER_REQUIRED_COVERAGE_PRODUCTION_WIRING_V1
@@ -1425,9 +1410,7 @@ export async function generateArticleFromBrief(
    *
    * Fail BEFORE ArticleGenerationContract / Writer creation.
    */
-  assertArticlePreWriterRequiredCoverageV1(
-    persistedArticleExecutionPlan
-  );
+
 
   /*
    * ARTICLE_PREWRITER_ANSWER_SUPPORT_PRODUCTION_WIRING_V2
@@ -1438,9 +1421,7 @@ export async function generateArticleFromBrief(
    * its required claim/evidence authority is routed as a typed
    * upstream evidence defect before any Writer tokens are spent.
    */
-  assertArticlePreWriterAnswerSupportV2(
-    persistedArticleExecutionPlan
-  );
+
 
   /*
    * EVIDENCE_BEFORE_EDITORIAL_VOLUME_V1
@@ -1450,12 +1431,12 @@ export async function generateArticleFromBrief(
    * a soft word budget exists. Route it back to Research/Scope
    * BEFORE paying the full Writer and SERP pipeline.
    */
-  assertSectionEvidenceCapacityV1(
-    persistedArticleExecutionPlan.sections
-  );
 
-  assertPreWriterMissionAuthorityV1({
-    sections: persistedArticleExecutionPlan.sections,
+
+  // One canonical ordering for service and operator preflight:
+  // exactly the existing five fail-closed evidence/mission checks.
+  assertCanonicalWriterPreflightV1({
+    plan: persistedArticleExecutionPlan,
     blueprints: masterRuntimeInspection.runtime.sectionBlueprints.sections,
   });
 /*
