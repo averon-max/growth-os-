@@ -709,7 +709,7 @@ export async function collectProductionMasterLiveSources(
   recordWriterTraceV1("research.acquisition_finished", {
     keyword,
     organicResults: serpIntelligence.organic.length,
-    competitorPages: serpIntelligence.competitors.length,
+    competitorPages: (serpIntelligence.competitors ?? []).length,
     capturedAt: capturedAt.toISOString(),
   });
   recordWriterForensicArtifactV1("research.raw_provider_results", {
