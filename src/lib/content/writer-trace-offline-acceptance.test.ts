@@ -143,6 +143,10 @@ describe("offline Writer trace acceptance / cross-run lineage", () => {
       expect(report.readOnly).toBe(true);
       expect(report.containsPrivateData).toBe(false);
       expect(report.reportCount).toBe(2);
+      expect(report.relatedRuns).toHaveLength(1);
+      expect(report.relatedRuns[0].briefIdSha256).toBe(briefHash);
+      expect(report.relatedRuns[0].briefRunId).toBe(briefEvents[0].runId);
+      expect(report.relatedRuns[0].articleRunId).toBe(articleEvents[0].runId);
       for (const run of report.reports) {
         expect(run.parseErrorLines).toEqual([]);
         expect(run.warnings).not.toContain("MALFORMED_JSONL");
