@@ -27,12 +27,16 @@ describe("writer trace reliability, without generating an article", () => {
     process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS = "1";
     try {
       await withWriterTraceV1({ scope: "test" }, async () => {
-        recordWriterTraceV1("stage/" + secret, { stage: "safe" });
+        recordWriterTraceV1("stage/" + secret, {
+          stage: "safe",
+          source: "https://private.example.internal/secret-location",
+        });
         recordWriterForensicArtifactV1("stage/" + secret, { keyword: "private source" });
       });
       const [name] = (await readdir(directory)).filter(value => value.endsWith(".jsonl"));
       const contents = await readFile(join(directory, name!), "utf8");
       expect(contents).not.toContain(secret);
+      expect(contents).not.toContain("private.example.internal");
       const events = contents.trim().split("\n").map(line => JSON.parse(line));
       expect(events.some(e => e.stage === "trace.invalid_stage")).toBe(true);
       expect(events.some(e => e.stage === "forensic.invalid_stage")).toBe(true);
