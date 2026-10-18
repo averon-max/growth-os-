@@ -6,6 +6,7 @@ on:
       - fix/writer-post-evidence-scope-20261018
       - cleanup/remove-unwired-content-20261018
       - refactor/content-runtime-consolidation-20261018
+      - refactor/content-single-writer-only-20261018
   workflow_dispatch:
 
 permissions:
