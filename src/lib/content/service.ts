@@ -1,4 +1,4 @@
-import { recordWriterTraceV1, hashTraceTextV1 } from "./writer-trace-v1";
+import { recordWriterTraceV1, hashTraceTextV1, withWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
 import { strategyPrompt } from "./content-strategy-prompt-v1";
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 import { buildResearchDecisionV2 } from "./research-decision-v2";
@@ -513,6 +513,10 @@ export async function createContentBrief(
 
   const strategy =
     finalPlan.strategy;
+
+  recordWriterForensicArtifactV1("keywords.full_strategy", {
+    input, finalPlan, keywordContext: context,
+  });
 
   recordWriterTraceV1("keyword.selected", {
     keyword: strategy.primary.keyword,
@@ -1239,7 +1243,11 @@ export async function createContentBrief(
     });
   }
 
-return createdBrief;
+recordWriterForensicArtifactV1("brief.final", {
+    createdBriefId: createdBrief.id, primaryKeyword: createdBrief.primaryKeyword,
+    finalPlan,
+  });
+  return createdBrief;
 }
 
 
@@ -1249,6 +1257,11 @@ export async function generateArticleFromBrief(
   briefId:
     string
 ) {
+  return withWriterTraceV1({
+    scope: "content.article",
+    correlationId: briefId,
+  }, async () => {
+  recordWriterTraceV1("article.entrypoint", {model: generator.modelName});
   const brief =
     await prisma.contentBrief.findUnique({
       where: {
@@ -2396,6 +2409,9 @@ export async function generateArticleFromBrief(
      * Status stays GENERATING until final readiness authorizes
      * IN_REVIEW.
      */
+    recordWriterForensicArtifactV1("writer.draft_and_contract", {
+      articleGenerationContract, masterWriterRun,
+    });
     recordWriterTraceV1("writer.draft_generated", {
       articleIdHash: hashTraceTextV1(pendingArticle.id),
       h1: masterWriterRun.article.h1,
@@ -3330,6 +3346,9 @@ export async function generateArticleFromBrief(
      */
     const repaired =
       reviewedArticle;
+    recordWriterForensicArtifactV1("writer.repaired_article", {
+      briefId: brief.id, articleId: pendingArticle.id, repaired,
+    });
 
     const intelligence =
       await analyzeStoredContentPlan({
@@ -3776,6 +3795,12 @@ export async function generateArticleFromBrief(
       });
 
 
+    recordWriterTraceV1("article.recovery_classification", {
+      failureClass: recovery.failureClass,
+      owner: recovery.owner,
+      autoRetryAllowed: recovery.autoRetryAllowed,
+      persistedStatus: rejectedArticle.status,
+    });
     /*
      * Only genuine temporary infrastructure failures bubble to the
      * HTTP layer for retry behavior.
@@ -3812,6 +3837,7 @@ export async function generateArticleFromBrief(
 
     return rejectedArticle;
   }
+  });
 }
 
 
