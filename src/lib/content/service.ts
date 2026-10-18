@@ -1251,7 +1251,11 @@ export async function createContentBrief(
     });
   }
 
-recordWriterForensicArtifactV1("brief.final", {
+recordWriterTraceV1("brief.correlation", {
+    briefIdSha256: hashTraceTextV1(createdBrief.id),
+    websiteIdSha256: hashTraceTextV1(input.websiteId),
+  });
+  recordWriterForensicArtifactV1("brief.final", {
     createdBriefId: createdBrief.id, primaryKeyword: createdBrief.primaryKeyword,
     finalPlan,
   });
@@ -1270,7 +1274,10 @@ export async function generateArticleFromBrief(
     scope: "content.article",
     correlationId: briefId,
   }, async () => {
-  recordWriterTraceV1("article.entrypoint", {model: generator.modelName});
+  recordWriterTraceV1("article.entrypoint", {
+    model: generator.modelName,
+    briefIdSha256: hashTraceTextV1(briefId),
+  });
   const brief =
     await prisma.contentBrief.findUnique({
       where: {
