@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import { appendFile, chmod, lstat, mkdir, open, realpath, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { diagnoseWriterFailureV1 } from "./writer-failure-diagnosis-v1";
 
 /**
  * Execution evidence, NOT model chain-of-thought.
@@ -178,9 +179,13 @@ export async function withWriterTraceV1<T>(
       );
       return result;
     } catch (error) {
+      const diagnostic = diagnoseWriterFailureV1(error);
       recordWriterTraceV1("run.failed", {
         scope: input.scope,
         errorName: error instanceof Error ? error.name : "unknown",
+        reasonCode: diagnostic.reasonCode,
+        failureClass: diagnostic.failureClass,
+        owner: diagnostic.failureClass,
         errorMessage: error instanceof Error ? error.message : String(error),
       });
       throw error;
