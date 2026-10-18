@@ -2053,6 +2053,17 @@ function inspectStagePlanCompleteness(
       mission,
     });
 
+  // Stable structural identity for debugging. No raw query, prompt or
+  // unverified claims go into SAFE trace metadata.
+  recordWriterTraceV1("template.selected", {
+    templateId: selectedTemplatePolicy.id,
+    requiredRoles: selectedTemplatePolicy.requiredRoles.length,
+    optionalRoles: selectedTemplatePolicy.optionalRoles.length,
+    evidenceSensitiveRoles: selectedTemplatePolicy.evidenceSensitiveRoles.length,
+    h2Min: selectedTemplatePolicy.h2PlanningRange.min,
+    h2Max: selectedTemplatePolicy.h2PlanningRange.max,
+  });
+
 
   const allowedTemplateRoles =
     new Set<ArticleSectionRoleV1>([

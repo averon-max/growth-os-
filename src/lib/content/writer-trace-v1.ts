@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import { appendFile, chmod, lstat, mkdir, open, realpath, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { diagnoseWriterFailureV1 } from "./writer-failure-diagnosis-v1";
 
 /**
  * Execution evidence, NOT model chain-of-thought.
@@ -25,7 +26,8 @@ const SAFE_METADATA_STRING_KEYS = new Set([
   "failureClass", "code", "responseStatus", "omittedReason",
   "promptSha256", "outputSha256", "artifactSha256",
   "correlationSha256", "briefIdSha256", "websiteIdSha256",
-  "requestId", "responseId", "articleIdHash",
+  "requestId", "responseId", "articleIdHash", "templateId",
+  "recommendedAction",
 ]);
 // Stage labels must be constants, never untrusted model or provider prose.
 // Reject unexpected labels rather than leaking their raw values in JSONL.
@@ -178,9 +180,14 @@ export async function withWriterTraceV1<T>(
       );
       return result;
     } catch (error) {
+      const diagnostic = diagnoseWriterFailureV1(error);
       recordWriterTraceV1("run.failed", {
         scope: input.scope,
         errorName: error instanceof Error ? error.name : "unknown",
+        reasonCode: diagnostic.reasonCode,
+        failureClass: diagnostic.failureClass,
+        owner: diagnostic.failureClass,
+        recommendedAction: diagnostic.recommendedAction,
         errorMessage: error instanceof Error ? error.message : String(error),
       });
       throw error;
