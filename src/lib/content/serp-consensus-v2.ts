@@ -64,7 +64,7 @@ export interface SerpConsensusV2 {
     >[];
 
   /** Repeated factual DOM phrases; never a keyword-density prescription. */
-  bodyTermThemes:
+  bodyTermThemes?:
     readonly Readonly<SerpConsensusSignalV2>[];
 
   wordCountObservation:
