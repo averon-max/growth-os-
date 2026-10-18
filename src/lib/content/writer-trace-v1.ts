@@ -187,6 +187,7 @@ export async function withWriterTraceV1<T>(
         reasonCode: diagnostic.reasonCode,
         failureClass: diagnostic.failureClass,
         owner: diagnostic.failureClass,
+        recommendedAction: diagnostic.recommendedAction,
         errorMessage: error instanceof Error ? error.message : String(error),
       });
       throw error;
