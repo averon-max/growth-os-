@@ -1,5 +1,4 @@
 import { recordWriterTraceV1, hashTraceTextV1, withWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
-import { strategyPrompt } from "./content-strategy-prompt-v1";
 import type { RelatedKeywordResult } from "@/lib/keywords/dataforseo-provider";
 import { buildResearchDecisionV2 } from "./research-decision-v2";
 import {
@@ -7,6 +6,7 @@ import {
 } from "./final-article-version-integrity-v1";
 
 import { assertCanonicalWriterPreflightV1 } from "./canonical-writer-preflight-v1";
+import { deriveBriefOutlineFromExecutionPlanV1 } from "./article-execution-plan-v1";
 
 import {
   classifyRejectedRecoveryV1,
@@ -147,9 +147,6 @@ import {
   buildSearchBlueprint,
 } from "./search-blueprint";
 
-import {
-  businessFactPrompt,
-} from "./business-facts";
 
 import {
   getBusinessFactRegistryForWebsite,
@@ -191,9 +188,6 @@ import {
   EditorialRepetitionGateErrorV1,
 } from "./editorial-repetition-guard-v1";
 
-import type {
-  ContentBriefInput,
-} from "./types";
 
 import type {
   ExplicitSearchMissionInput,
@@ -204,13 +198,9 @@ import {
   getWebsiteKeywordContext,
 } from "./keyword-context";
 
-import {
-  normalizeOutline,
-} from "./seo-strategy";
 
 import {
   buildFinalContentPlan,
-  finalPlanPrompt,
 } from "./final-content-plan";
 
 import {
@@ -557,38 +547,6 @@ export async function createContentBrief(
     await getBusinessFactRegistryForWebsite(
       input.websiteId
     );
-
-  const relatedKeywords:
-    ContentBriefInput["relatedKeywords"] =
-      /*
-       * SECONDARY_CLUSTER_PRODUCTION_PROJECTION_V2
-       *
-       * Research context: canonical primary and eligible secondary
-       * queries, plus same-page supporting observations. Supporting
-       * queries are NOT promoted into persisted secondaryKeywords or
-       * required exact-match usage; they inform subtopic decisions only.
-       */
-      [
-        strategy.primary,
-        ...strategy.secondary,
-        ...strategy.supporting,
-      ]
-        .slice(0, 20)
-        .map(
-          (keyword) => ({
-            keyword:
-              keyword.keyword,
-
-            searchVolume:
-              keyword.searchVolume,
-
-            cpc:
-              keyword.cpc,
-
-            keywordDifficulty:
-              keyword.difficulty,
-          })
-        );
 
   const searchBlueprintShadow =
     buildSearchBlueprint({
@@ -1012,56 +970,16 @@ export async function createContentBrief(
     blueprints: briefRuntime.sectionBlueprints.sections,
   });
 
-  const briefInput:
-    ContentBriefInput = {
-      topic:
-        input.topic,
-
-      reason:
-        input.reason,
-
-      recommendation:
-        [
-          input.recommendation,
-          strategyPrompt(
-            strategy
-          ),
-
-          finalPlanPrompt(
-            finalPlan
-          ),
-
-          businessFactPrompt(
-            factRegistry
-          ),
-        ].join(
-          "\n\n"
-        ),
-
-      businessName:
-        input.businessName,
-
-      websiteUrl:
-        input.websiteUrl,
-
-      topKeywords:
-        context?.topKeywords,
-
-      relatedKeywords,
-
-      strategy,
-    };
-
-  const generated =
-    await generator.generateBrief(
-      briefInput
-    );
-
-  const outline =
-    normalizeOutline(
-      generated.outline,
-      strategy
-    );
+  // No second paid model outline: the verified plan is the sole authority.
+  const outline = deriveBriefOutlineFromExecutionPlanV1(
+    liveMaster.articleExecutionPlan
+  );
+  recordWriterTraceV1("brief.outline_from_master", {
+    sectionCount: outline.length,
+    deferredSectionCount:
+      liveMaster.articleExecutionPlan.sections.length - outline.length,
+    modelCalls: 0,
+  });
 
   const createdBrief =
     await prisma.contentBrief.create({

@@ -65,6 +65,9 @@ jobs:
           const must=(yes,msg)=>{if(!yes)throw new Error(msg);};
           must(!/async (?:generateArticle|rewriteArticle|critiqueArticle)\s*\(/.test(provider),'legacy full-article model method survived');
           must(!/generateArticle\s*\(/.test(api),'old generateArticle generator contract survived');
+          must(!/async generateBrief\s*\(/.test(provider),'legacy duplicate brief generator survived');
+          must(!/generator\.generateBrief\s*\(/.test(service),'legacy extra brief model call survived');
+          must(service.includes('deriveBriefOutlineFromExecutionPlanV1'),'Master-driven brief outline missing');
           must(/generateArticleShell\s*\(/.test(provider),'Master shell generator missing');
           must(/generateSection\s*\(/.test(provider),'Master section generator missing');
           must(/executeMasterWriterV1\s*\(/.test(service),'real Master Writer disconnected');

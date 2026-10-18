@@ -1,8 +1,6 @@
 import type {
-  ContentBriefInput,
   ContentOutlineSection,
   GeneratedArticle,
-  GeneratedBrief,
 } from "./types";
 
 export class ContentGenerationError
@@ -104,12 +102,6 @@ export interface ArticleRewriteInput {
 export interface ContentGenerator {
   readonly modelName:
     string;
-
-  generateBrief(
-    input:
-      ContentBriefInput
-  ):
-    Promise<GeneratedBrief>;
 
 }
 

@@ -91,7 +91,6 @@ import {
 
 import { ContentGenerationError } from "./generator";
 import type { ContentGenerator } from "./generator";
-import type { ContentBriefInput, GeneratedBrief } from "./types";
 
 const OPENAI_TIMEOUT_MS = 60000;
 
@@ -652,61 +651,6 @@ export const openAiGenerator:
   & SerpReplayPairwiseGeneratorV1 = {
   modelName:
     selectedContentModelName(),
-
-  async generateBrief(input: ContentBriefInput): Promise<GeneratedBrief> {
-    const topKeywordsBlock = input.topKeywords && input.topKeywords.length > 0
-      ? `\n\nReal keyword performance already observed on this website (from Search Console):\n${input.topKeywords
-          .map((k) => `- "${k.keyword}" -- position ${k.position ?? "unranked"}, ${k.clicks} clicks, ${k.impressions} impressions/mo, volume ${k.volume ?? "unknown"}`)
-          .join("\n")}`
-      : "";
-
-    const relatedKeywordsBlock = input.relatedKeywords && input.relatedKeywords.length > 0
-      ? `\n\nObserved related queries (primary, approved secondary, and supporting research; metrics are unknown when not observed):\n${input.relatedKeywords
-          .map((k) => `- "${k.keyword}" -- volume ${k.searchVolume ?? "unknown"}, difficulty ${k.keywordDifficulty ?? "unknown"}, CPC ${k.cpc ?? "unknown"}`)
-          .join("\n")}`
-      : "";
-
-    const prompt = `You are an SEO content strategist for the business "${input.businessName}" (website: ${input.websiteUrl}).
-
-An SEO opportunity was detected:
-Topic: ${input.topic}
-Reason: ${input.reason}
-Recommended action: ${input.recommendation}
-${topKeywordsBlock}${relatedKeywordsBlock}
-
-Ground your primaryKeyword and secondaryKeywords choices in the real data above when it is present -- prefer keywords with actual observed clicks/impressions or real search volume over invented ones. If no real data is provided above, reason from the topic as before.
-
-Produce a content brief as JSON with this exact shape:
-{
-  "searchIntent": "informational" | "commercial" | "transactional" | "navigational",
-  "primaryKeyword": "string",
-  "secondaryKeywords": ["string", "..."],
-  "outline": [{ "heading": "string", "level": 2, "summary": "string" }]
-}
-
-The outline must assume exactly one page-level H1 represented by the article title and not included in the outline.
-
-There is no required or ideal number of H2 or H3 headings.
-
-Create an H2 only when there is a genuinely distinct major sub-intent, user question, process stage, comparison, concept, or topic required to satisfy the search intent.
-
-Create an H3 only when a specific H2 genuinely requires meaningful subdivision.
-
-Do not add headings to hit a numerical target, increase article length, repeat keywords, or imitate competitor heading counts.
-
-Every heading must earn its place by improving the information architecture.
-
-Respond with JSON only.`;
-
-    const text = await callContentAiJson(prompt);
-    const parsed = parseJson<GeneratedBrief>(text);
-
-    if (!parsed.primaryKeyword || !Array.isArray(parsed.outline) || parsed.outline.length === 0) {
-      throw new ContentGenerationError("OpenAI returned an incomplete brief");
-    }
-
-    return parsed;
-  },
 
   async generateArticleShell(
     input

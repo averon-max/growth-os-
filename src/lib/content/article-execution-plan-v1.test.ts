@@ -11,6 +11,7 @@ import {
 import {
   ArticleExecutionPlanErrorV1,
   buildArticleExecutionPlanV1,
+  deriveBriefOutlineFromExecutionPlanV1,
 } from "./article-execution-plan-v1";
 
 
@@ -578,3 +579,25 @@ describe(
     );
   }
 );
+
+describe("canonical brief projection from Master Research", () => {
+  it("uses only writable planned H2s and never resurrects an unsupported section", () => {
+    const plan = buildArticleExecutionPlanV1({
+      websiteId: "site", topic: "a topic", primaryQuery: "observed query",
+      intent: "INFORMATIONAL", pageType: "EXPLAINER",
+      riskClass: "STANDARD", pageAction: "CREATE_NEW",
+      requiredTopics: [], requiredQuestions: [],
+      sections: [
+        { id: "section-1", heading: "How It Works", level: 2,
+          mission: "Explain verified mechanism.", state: "WRITABLE" },
+        { id: "section-2", heading: "Unsupported Ranking", level: 2,
+          mission: "Rank providers.", state: "DEFERRED_NO_EVIDENCE" },
+      ],
+    });
+    expect(deriveBriefOutlineFromExecutionPlanV1(plan)).toEqual([
+      { heading: "How It Works", level: 2,
+        summary: "Explain verified mechanism." },
+    ]);
+    expect(plan.sections).toHaveLength(2);
+  });
+});
