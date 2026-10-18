@@ -63,18 +63,21 @@ export function reconcilePostEvidenceScopeV1(input: {
     let action: PostEvidenceSectionDecisionV1["action"]="KEEP";
     let reasonCode:PostEvidenceSectionDecisionV1["reasonCode"]="VERIFIED_AUTHORITY_PRESENT";
 
+    const primary=index===0;
+    const requiredRole=protectedRoles.has(section.id);
+    const ownsMust=section.requiredTopicIds.some(id=>mustTopics.has(id)) ||
+      section.requiredQuestionIds.some(id=>mustQuestions.has(id)) ||
+      section.requiredEntityIds.some(id=>mustEntities.has(id));
     if(section.state!=="WRITABLE"){
-      reasonCode="ALREADY_DEFERRED";
+      if(primary) {action="BLOCK";reasonCode="PRIMARY_SECTION_HAS_NO_AUTHORITY";}
+      else if(requiredRole){action="BLOCK";reasonCode="REQUIRED_TEMPLATE_ROLE_HAS_NO_AUTHORITY";}
+      else if(ownsMust){action="BLOCK";reasonCode="MUST_COVERAGE_HAS_NO_AUTHORITY";}
+      else reasonCode="ALREADY_DEFERRED";
     } else if(!evidenceVerified) {
       action="BLOCK";reasonCode="EVIDENCE_NOT_VERIFIED";
     } else if(hasClaims!==hasEvidence){
       action="BLOCK";reasonCode="PARTIAL_SECTION_AUTHORITY";
     } else if(!hasClaims) {
-      const primary=index===0;
-      const requiredRole=protectedRoles.has(section.id);
-      const ownsMust=section.requiredTopicIds.some(id=>mustTopics.has(id)) ||
-        section.requiredQuestionIds.some(id=>mustQuestions.has(id)) ||
-        section.requiredEntityIds.some(id=>mustEntities.has(id));
       if(primary){action="BLOCK";reasonCode="PRIMARY_SECTION_HAS_NO_AUTHORITY";}
       else if(requiredRole){action="BLOCK";reasonCode="REQUIRED_TEMPLATE_ROLE_HAS_NO_AUTHORITY";}
       else if(ownsMust){action="BLOCK";reasonCode="MUST_COVERAGE_HAS_NO_AUTHORITY";}
