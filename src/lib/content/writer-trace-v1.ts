@@ -239,6 +239,7 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
     const sizeBytes = Buffer.byteLength(serialized, "utf8");
     const tooLarge = sizeBytes > FORENSIC_ARTIFACT_BYTES_MAX_V1;
     const eventId = ++run.sequence;
+    const timestamp = new Date().toISOString();
     const name = `${String(eventId).padStart(6, "0")}-${randomUUID()}.json`;
     const targetFile = join(run.artifactDirectory, name);
     run.pending = run.pending.then(async () => {
@@ -265,7 +266,7 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
       const event = {
         version: "GROWTH_OS_WRITER_TRACE_V1",
         eventId,
-        timestamp: new Date().toISOString(),
+        timestamp,
         runId: run.runId,
         stage: `forensic.${stage}`,
         fields: {
