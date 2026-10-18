@@ -129,6 +129,12 @@ for (const file of files) {
   const end = Date.parse(events.at(-1)?.timestamp || "");
   const report = {
     file, runId: events[0]?.runId ?? null,
+    scope: events.find(e => e.stage === "run.started")?.fields?.scope ?? null,
+    briefIdSha256: (() => {
+      const value = events.find(e => e.stage === "brief.correlation" || e.stage === "article.entrypoint")
+        ?.fields?.briefIdSha256;
+      return typeof value === "string" && /^[0-9a-f]{64}$/.test(value) ? value : null;
+    })(),
     startedAt: events[0]?.timestamp ?? null,
     lastEventAt: events.at(-1)?.timestamp ?? null,
     elapsedMs: Number.isFinite(start) && Number.isFinite(end) ? end-start : null,
@@ -167,5 +173,19 @@ for (const file of files) {
   };
   reports.push(report);
 }
+// Link recorded brief/article traces without guessing from filenames or article content.
+const relatedRuns = [];
+for (const brief of reports) {
+  if (brief.scope !== "content.brief" || !brief.briefIdSha256) continue;
+  for (const article of reports) {
+    if (article.scope !== "content.article" || article.briefIdSha256 !== brief.briefIdSha256)
+      continue;
+    relatedRuns.push({
+      briefRunId: brief.runId,
+      articleRunId: article.runId,
+      briefIdSha256: brief.briefIdSha256,
+    });
+  }
+}
 console.log(JSON.stringify({version:"GROWTH_OS_TRACE_REPORT_V2",readOnly:true,
-  containsPrivateData:raw,reportCount:reports.length,reports},null,2));
+  containsPrivateData:raw,reportCount:reports.length,relatedRuns,reports},null,2));
