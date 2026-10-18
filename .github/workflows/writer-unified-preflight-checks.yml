@@ -29,6 +29,8 @@ jobs:
         run: npx tsc --noEmit
       - name: Canonical Writer, template, research, and trace regression
         run: npx vitest run src/lib/content src/lib/keywords
+      - name: Trace report privacy and diagnosis checks
+        run: node --test scripts/writer-trace-report.test.mjs
       - name: Production build smoke
         run: npm run build
       - name: Confirm no paid or DB mutations
