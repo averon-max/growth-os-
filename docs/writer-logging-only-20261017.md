@@ -57,6 +57,18 @@ The report checks detached artifact SHA-256 and size, malformed JSONL and missin
 
 ## Deferred deliberately
 
-No real article generation, paid provider requests, Writer fixes, publishing or test execution in this stage. Existing forensic unit tests refer to the earlier **inline** artifact format and will need migration to the separated-file format **at the validation stage**. Neither the present worktree nor this document claims that TypeScript, tests or end-to-end recording are passing on this branch.
+No real article generation, paid provider requests, Writer fixes, publishing or test execution in this stage. Forensic and report unit tests have been migrated to the separated-file format and expanded with isolation, corruption, tampering, disabled-mode and privacy scenarios, but **have not been executed on this new commit**. Neither the present worktree nor this document claims that TypeScript, tests or end-to-end recording are passing on this branch.
 
 Next step after logging implementation is frozen: check static compatibility and run isolated unit/integration tests, then exactly one budget-limited diagnostic run, then analyze the logs BEFORE modifying the Writer.
+
+## Immediate offline validation command
+
+Use a clean local worktree, then run:
+
+```bash
+./node_modules/.bin/tsc --noEmit
+./node_modules/.bin/vitest run src/lib/content/writer-trace-v1.test.ts src/lib/content/writer-forensic-trace-v1.test.ts
+node --test scripts/writer-trace-report.test.mjs
+```
+
+No article generation or provider calls are invoked by these targeted tests. Do not promote or run the Writer until all checks pass and any logging-specific failure is addressed.
