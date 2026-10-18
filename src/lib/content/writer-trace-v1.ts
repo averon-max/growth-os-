@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import { appendFile, chmod, lstat, mkdir, open, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 /**
  * Execution evidence, NOT model chain-of-thought.
@@ -234,26 +234,47 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
       return;
     }
     const sizeBytes = Buffer.byteLength(serialized, "utf8");
-    const truncated = sizeBytes > FORENSIC_ARTIFACT_BYTES_MAX_V1;
-    const event = {
-      version: "GROWTH_OS_WRITER_TRACE_V1",
-      eventId: ++run.sequence,
-      timestamp: new Date().toISOString(),
-      runId: run.runId,
-      stage: `forensic.${stage}`,
-      fields: {
-        fullArtifact: !truncated,
-        artifactBytes: sizeBytes,
-        artifactSha256: hashTraceTextV1(serialized),
-        ...(truncated ? { omittedReason: "ARTIFACT_EXCEEDS_16_MIB" } : { artifact: JSON.parse(serialized) }),
-      },
-    };
-    const line = JSON.stringify(event) + "\n";
+    const tooLarge = sizeBytes > FORENSIC_ARTIFACT_BYTES_MAX_V1;
+    const eventId = ++run.sequence;
+    const name = `${String(eventId).padStart(6, "0")}-${randomUUID()}.json`;
+    const targetFile = join(run.artifactDirectory, name);
     run.pending = run.pending.then(async () => {
-      await mkdir(resolve(run.filePath, ".."), { recursive: true, mode: 0o700 });
-      await appendFile(run.filePath, line, { encoding: "utf8", mode: 0o600 });
-    }).catch(() => {
-      // Forensic logging must never mutate or fail production.
+      let stored = false;
+      let omittedReason: string | null = tooLarge ? "ARTIFACT_EXCEEDS_16_MIB" : null;
+      if (!tooLarge) {
+        try {
+          await mkdir(run.artifactDirectory, { recursive: true, mode: 0o700 });
+          await writeFile(targetFile, serialized, { encoding: "utf8", mode: 0o600, flag: "wx" });
+          stored = true;
+        } catch (error) {
+          omittedReason = "ARTIFACT_WRITE_FAILED";
+          run.writeFailures++;
+          const code = error && typeof error === "object" && "code" in error
+            ? String(error.code).slice(0, 32) : "UNKNOWN";
+          console.error("[writer trace] private artifact write failed:", code);
+        }
+      }
+      const event = {
+        version: "GROWTH_OS_WRITER_TRACE_V1",
+        eventId,
+        timestamp: new Date().toISOString(),
+        runId: run.runId,
+        stage: `forensic.${stage}`,
+        fields: {
+          fullArtifact: stored,
+          artifactBytes: sizeBytes,
+          artifactSha256: hashTraceTextV1(serialized),
+          ...(stored ? { artifactFile: name } : { omittedReason }),
+        },
+      };
+      await appendFile(run.filePath, JSON.stringify(event) + "\n", {
+        encoding: "utf8", mode: 0o600,
+      });
+    }).catch((error: unknown) => {
+      run.writeFailures++;
+      const code = error && typeof error === "object" && "code" in error
+        ? String(error.code).slice(0, 32) : "UNKNOWN";
+      console.error("[writer trace] forensic event write failed:", code);
     });
   } catch {
     recordWriterTraceV1(`forensic.${stage}.capture_failed`, { reason: "SNAPSHOT_SERIALIZATION_FAILED" });
