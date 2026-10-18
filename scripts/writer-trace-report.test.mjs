@@ -97,3 +97,39 @@ test("identifies mixed run IDs, wrong first event and terminal not last", () => 
     rmSync(directory,{recursive:true,force:true});
   }
 });
+
+test("shows stable template and error owner without leaking private section details", () => {
+  const directory=mkdtempSync(join(tmpdir(),"writer-trace-actionable-"));
+  try {
+    const now="2026-10-18T12:00:00Z";
+    const events=[
+      {eventId:1,runId:"run-1",timestamp:now,stage:"run.started",
+        fields:{scope:"content.article"}},
+      {eventId:2,runId:"run-1",timestamp:now,stage:"template.selected",
+        fields:{templateId:"EXPLAINER_GUIDE"}},
+      {eventId:3,runId:"run-1",timestamp:now,stage:"writer.preflight.blocked",
+        fields:{stage:"section_capacity",
+          reasonCode:"SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT",
+          failureClass:"RESEARCH_PLANNING",
+          recommendedAction:"REPAIR_VERIFIED_RESEARCH_OR_PLAN",
+          errorMessage:"PRIVATE_CLIENT_CLAIM"}},
+      {eventId:4,runId:"run-1",timestamp:now,stage:"run.failed",
+        fields:{reasonCode:"SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT",
+          failureClass:"RESEARCH_PLANNING"}},
+    ];
+    writeFileSync(join(directory,"run-1.jsonl"),
+      events.map(e=>JSON.stringify(e)).join("\n")+"\n",{mode:0o600});
+    const report=execute(directory);
+    assert.equal(report.reports[0].selectedTemplateId,"EXPLAINER_GUIDE");
+    assert.deepEqual(report.reports[0].failureDiagnosis,{
+      reasonCode:"SECTION_EDITORIAL_EVIDENCE_CAPACITY_INSUFFICIENT",
+      failureClass:"RESEARCH_PLANNING",
+      responsibleStage:"section_capacity",
+      recommendedAction:"REPAIR_VERIFIED_RESEARCH_OR_PLAN",
+      automaticRetry:false,
+    });
+    assert.equal(JSON.stringify(report).includes("PRIVATE_CLIENT_CLAIM"),false);
+  } finally {
+    rmSync(directory,{recursive:true,force:true});
+  }
+});
