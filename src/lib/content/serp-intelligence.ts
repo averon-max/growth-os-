@@ -275,7 +275,7 @@ export interface SerpIntelligence {
     }>;
 
   /** Actual repeated phrases in readable competitor main content. */
-  commonBodyTerms: ReturnType<typeof aggregateObservedBodyTermsV1>;
+  commonBodyTerms?: ReturnType<typeof aggregateObservedBodyTermsV1>;
 }
 
 
