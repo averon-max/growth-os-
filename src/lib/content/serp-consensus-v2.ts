@@ -63,6 +63,10 @@ export interface SerpConsensusV2 {
       SerpConsensusSignalV2
     >[];
 
+  /** Repeated factual DOM phrases; never a keyword-density prescription. */
+  bodyTermThemes:
+    readonly Readonly<SerpConsensusSignalV2>[];
+
   wordCountObservation:
     Readonly<{
       observedCount:
@@ -531,6 +535,7 @@ export function buildSerpConsensusV2(
       string,
       Accumulator
     >();
+  const bodyTermThemes = new Map<string,Accumulator>();
 
   const wordCounts:
     number[] =
@@ -674,6 +679,19 @@ export function buildSerpConsensusV2(
     });
 
 
+    // Only observed, usable main article profiles can vote on body terms.
+    const depth = record(result.contentDepth);
+    if(depth?.version === "OBSERVED_COMPETITOR_DOCUMENT_DEPTH_V1" &&
+       depth.extraction === "MAIN_ARTICLE" && Array.isArray(depth.bodyTerms)){
+      const values = depth.bodyTerms.flatMap(item => {
+        const row = record(item);
+        const term = clean(row?.term);
+        const count = finitePositiveInteger(row?.occurrences);
+        return term && count !== null && count >= 2 ? [term] : [];
+      });
+      addSignals({accumulator:bodyTermThemes,values,rank,weight});
+    }
+
     const wordCount =
       finitePositiveInteger(
         result.wordCount
@@ -759,6 +777,13 @@ export function buildSerpConsensusV2(
 
         analyzedResultCount,
 
+        totalWeight,
+      }),
+
+    bodyTermThemes:
+      consensusSignals({
+        accumulator:bodyTermThemes,
+        analyzedResultCount,
         totalWeight,
       }),
 
