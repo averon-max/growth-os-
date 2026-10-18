@@ -66,6 +66,7 @@ export function recordWriterTraceV1(
 ): void {
   const run = context.getStore();
   if (!run) return;
+  try {
   const event = {
     version: "GROWTH_OS_WRITER_TRACE_V1",
     eventId: ++run.sequence,
@@ -84,6 +85,10 @@ export function recordWriterTraceV1(
       ? String(error.code).slice(0, 32) : "UNKNOWN";
     console.error("[writer trace] event write failed:", code);
   });
+  } catch {
+    run.writeFailures++;
+    console.error("[writer trace] failed to encode metadata event");
+  }
 }
 
 export function recordWriterModelExchangeV1(input: {
