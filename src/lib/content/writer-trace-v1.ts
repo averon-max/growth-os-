@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
-import { appendFile, chmod, lstat, mkdir, open, writeFile } from "node:fs/promises";
+import { appendFile, chmod, lstat, mkdir, open, realpath, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 /**
@@ -134,6 +134,10 @@ export async function withWriterTraceV1<T>(
   const directoryInfo = await lstat(traceDirectory);
   if (directoryInfo.isSymbolicLink() || !directoryInfo.isDirectory()) {
     throw new Error("WRITER_TRACE_DIRECTORY_INVALID");
+  }
+  const actualDirectory = await realpath(traceDirectory);
+  if (actualDirectory.split(/[\\/]/).includes("public")) {
+    throw new Error("WRITER_TRACE_DIRECTORY_RESOLVES_TO_PUBLIC");
   }
   await chmod(traceDirectory, 0o700);
   const runId = `${Date.now()}-${randomUUID()}`;
