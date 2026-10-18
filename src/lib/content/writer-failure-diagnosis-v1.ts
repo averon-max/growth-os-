@@ -46,7 +46,7 @@ export function diagnoseWriterFailureV1(error: unknown): WriterFailureDiagnosisV
   let failureClass: WriterFailureOwnerV1 = "UNKNOWN";
   let recommendedAction: WriterFailureDiagnosisV1["recommendedAction"] =
     "INSPECT_TRACE_BEFORE_RETRY";
-  if (/^(?:ARTICLE_PREWRITER_|SECTION_EDITORIAL_|PRODUCTION_MASTER_RUNTIME_|STAGE_PLAN_|CONTENT_EVIDENCE_|ARTICLE_EXECUTION_PLAN_|LIVE_SOURCE_|SERP_)/.test(code)) {
+  if (/^(?:RESEARCH_POST_EVIDENCE_|ARTICLE_PREWRITER_|SECTION_EDITORIAL_|PRODUCTION_MASTER_RUNTIME_|STAGE_PLAN_|CONTENT_EVIDENCE_|ARTICLE_EXECUTION_PLAN_|LIVE_SOURCE_|SERP_)/.test(code)) {
     failureClass = "RESEARCH_PLANNING";
     recommendedAction = "REPAIR_VERIFIED_RESEARCH_OR_PLAN";
   } else if (/^(?:OPENAI_|MODEL_|DATAFORSEO_|PROVIDER_|CONTENT_RUN_BUDGET_)/.test(code)) {

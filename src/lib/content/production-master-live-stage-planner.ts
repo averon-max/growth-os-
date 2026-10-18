@@ -1,4 +1,8 @@
 import { recordWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
+import {
+  reconcilePostEvidenceScopeV1,
+  assertReconciledPostEvidenceScopeV1,
+} from "./post-evidence-scope-reconciliation-v1";
 import { buildEvidenceFromLiveResearch } from "./production-live-evidence-source-registry-v1";
 export { buildEvidenceFromLiveResearch };
 import {
@@ -6464,11 +6468,47 @@ function inspectStagePlanCompleteness(
    *
    * ArticleExecutionPlan remains the sole post-lock authority.
    */
+  /*
+   * POST_VERIFICATION_OPTIONAL_SCOPE_RECONCILIATION_V1
+   *
+   * Run exactly ONCE, after the evidence assignments and all section
+   * priorities are known. The earlier contraction only detected lost
+   * *planned* claims; an originally claimless optional question used
+   * to remain WRITABLE and fail much later. This reconciler defers that
+   * optional zero-authority section, but never weakens a required template
+   * role or a MUST question/topic and never invents source authority.
+   */
+  const postEvidenceScope = reconcilePostEvidenceScopeV1({
+    plan: articleExecutionPlanBase,
+    requiredTemplateRoleSectionIds: plan.sections.flatMap((section, index) =>
+      section.roles.some(role => requiredTemplateRoleIds.has(role))
+        ? [`section-${index + 1}`] : []),
+  });
+  for (const decision of postEvidenceScope.decisions) {
+    recordWriterTraceV1("research.post_evidence_scope.section", {
+      index: decision.index,
+      status: decision.action,
+      reasonCode: decision.reasonCode,
+    });
+  }
+  recordWriterTraceV1("research.post_evidence_scope.summary", {
+    status: postEvidenceScope.status,
+    deferredCount: postEvidenceScope.decisions.filter(d=>
+      d.action==="DEFER_OPTIONAL").length,
+    blockerCount: postEvidenceScope.decisions.filter(d=>
+      d.action==="BLOCK").length,
+    modelCalls: 0,
+  });
+  recordWriterForensicArtifactV1("planner.post_evidence_scope", {
+    decisions: postEvidenceScope.decisions,
+    priorPlan: articleExecutionPlanBase,
+    effectivePlan: postEvidenceScope.plan,
+  });
+  const reconciledPlan = assertReconciledPostEvidenceScopeV1(postEvidenceScope);
   const articleExecutionPlan:
     Readonly<ArticleExecutionPlanV1> =
       Object.freeze({
-        ...articleExecutionPlanBase,
-
+        ...reconciledPlan,
         mediaRequirements:
           Object.freeze([
             ...mediaRequirements,
