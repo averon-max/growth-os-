@@ -1,5 +1,6 @@
 import { classifySearchIntent } from "../content/seo-strategy";
 import type { RelatedKeywordResult } from "./dataforseo-provider";
+import type { ObservedCompetitorDocumentDepthV1 } from "@/lib/content/competitor-document-depth-v1";
 
 /** One real observed query, never model-invented. */
 export interface KeywordObservationV2 {
@@ -238,6 +239,8 @@ export interface SerpOpportunityV2 {
     aiOverviewPresent: boolean;
     commonSections: Array<{topic:string;pages:number;coveragePct:number}>;
     commonTerms: Array<{term:string;pages:number;coveragePct:number}>;
+    /** Observed phrases across usable article bodies, not search volume. */
+    commonBodyTerms?: Array<{term:string;pages:number;coveragePct:number;totalOccurrences:number}>;
     benchmark: {
       medianWordCount: number|null;
       medianH2: number|null;
@@ -248,6 +251,7 @@ export interface SerpOpportunityV2 {
       statusCode?:number|null;
       pageType:string;title:string|null;h1:string|null;
       h2:string[];h3:string[];wordCount:number|null;
+      contentDepth?: ObservedCompetitorDocumentDepthV1;
       schemaTypes:string[];tableCount:number;authorSignal:boolean;
       dateSignal:boolean;error:string|null;
     }>;
