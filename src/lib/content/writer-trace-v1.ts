@@ -27,6 +27,10 @@ const SAFE_METADATA_STRING_KEYS = new Set([
   "correlationSha256", "briefIdSha256", "websiteIdSha256",
   "requestId", "responseId", "articleIdHash",
 ]);
+// Stage labels must be constants, never untrusted model or provider prose.
+// Reject unexpected labels rather than leaking their raw values in JSONL.
+const TRACE_STAGE_LABEL_PATTERN_V1 = /^[A-Za-z][A-Za-z0-9._-]{0,119}$/;
+
 const SECRET_KEY_PATTERN =
   /api[_-]?key|secret|authorization|cookie|password|credential|email|private[_-]?key|(?:access|refresh|session|bearer|auth|id)[_-]?token/i;
 
@@ -67,13 +71,17 @@ export function recordWriterTraceV1(
   const run = context.getStore();
   if (!run) return;
   try {
+  const validStage = TRACE_STAGE_LABEL_PATTERN_V1.test(stage);
   const event = {
     version: "GROWTH_OS_WRITER_TRACE_V1",
     eventId: ++run.sequence,
     timestamp: new Date().toISOString(),
     runId: run.runId,
-    stage,
-    fields: sanitize(fields),
+    stage: validStage ? stage : "trace.invalid_stage",
+    fields: {
+      ...sanitize(fields) as Record<string, unknown>,
+      ...(validStage ? {} : { invalidStageSha256: hashTraceTextV1(stage) }),
+    },
   };
   const line = JSON.stringify(event) + "\n";
   run.pending = run.pending.then(async () => {
@@ -246,6 +254,8 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
       return;
     }
     const sizeBytes = Buffer.byteLength(serialized, "utf8");
+    const safeStage = TRACE_STAGE_LABEL_PATTERN_V1.test(stage)
+      ? stage : "invalid_stage";
     const tooLarge = sizeBytes > FORENSIC_ARTIFACT_BYTES_MAX_V1;
     const eventId = ++run.sequence;
     const timestamp = new Date().toISOString();
@@ -277,7 +287,7 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
         eventId,
         timestamp,
         runId: run.runId,
-        stage: `forensic.${stage}`,
+        stage: `forensic.${safeStage}`,
         fields: {
           fullArtifact: stored,
           artifactBytes: sizeBytes,
