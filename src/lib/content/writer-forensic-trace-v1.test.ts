@@ -147,4 +147,47 @@ describe("writer forensic logging-only storage", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("keeps two simultaneous writer runs isolated", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "growth-os-concurrent-"));
+    process.env.GROWTH_OS_WRITER_TRACE_DIR = dir;
+    try {
+      await Promise.all(["first", "second"].map(label =>
+        withWriterTraceV1({ scope: "parallel.test" }, async () => {
+          recordWriterTraceV1("parallel.begin", { label });
+          await Promise.resolve();
+          recordWriterTraceV1("parallel.end", { label });
+        })
+      ));
+      const files = (await readdir(dir)).filter(name => name.endsWith(".jsonl"));
+      expect(files).toHaveLength(2);
+      const runs = await Promise.all(files.map(async name =>
+        (await readFile(join(dir, name), "utf8")).trim().split("\n").map(JSON.parse)
+      ));
+      expect(new Set(runs.map(run => run[0].runId)).size).toBe(2);
+      for (const run of runs) {
+        expect(run.map(event => event.stage)).toEqual([
+          "run.started", "parallel.begin", "parallel.end", "run.succeeded",
+        ]);
+        expect(new Set(run.map(event => event.runId)).size).toBe(1);
+        expect(run[1].fields.label.sha256).toEqual(run[2].fields.label.sha256);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("runs without touching disk when tracing is disabled", async () => {
+    delete process.env.GROWTH_OS_WRITER_TRACE_DIR;
+    let executions = 0;
+    const result = await withWriterTraceV1({ scope: "disabled.test" }, async () => {
+      executions++;
+      recordWriterTraceV1("unused");
+      recordWriterForensicArtifactV1("unused", { privateText: "value" });
+      return "writer-result";
+    });
+    expect(result).toBe("writer-result");
+    expect(executions).toBe(1);
+  });
+
 });
