@@ -1,0 +1,37 @@
+name: Post-evidence scope reconciliation checks
+
+on:
+  push:
+    branches:
+      - fix/writer-post-evidence-scope-20261018
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
+      NEXTAUTH_SECRET: offline-ci-secret-do-not-deploy
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies and generate Prisma client
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript strict
+        run: npx tsc --noEmit
+      - name: All Content and Keyword regressions
+        run: npx vitest run src/lib/content src/lib/keywords
+      - name: Read-only trace report tests
+        run: node --test scripts/writer-trace-report.test.mjs
+      - name: Next.js production build
+        run: npm run build
+      - name: Safety assertion
+        run: echo "NO_PAID_MODEL_NO_SERP_API_NO_DATABASE_MUTATION_NO_PUBLICATION"
