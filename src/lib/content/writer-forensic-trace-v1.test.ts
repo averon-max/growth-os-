@@ -162,7 +162,7 @@ describe("writer forensic logging-only storage", () => {
       const files = (await readdir(dir)).filter(name => name.endsWith(".jsonl"));
       expect(files).toHaveLength(2);
       const runs = await Promise.all(files.map(async name =>
-        (await readFile(join(dir, name), "utf8")).trim().split("\n").map(JSON.parse)
+        (await readFile(join(dir, name), "utf8")).trim().split("\n").map(line => JSON.parse(line))
       ));
       expect(new Set(runs.map(run => run[0].runId)).size).toBe(2);
       for (const run of runs) {
