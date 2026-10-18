@@ -89,3 +89,19 @@ node --test scripts/writer-trace-report.test.mjs scripts/writer-trace-coverage.t
 ```
 
 **Validation status:** these extended checks were committed to the diagnostic branch but have **not yet been executed** on the user's Mac. Do not claim they passed before seeing actual test output. The original clean branch remains untouched.
+
+## Offline acceptance — two linked runs (no PostgreSQL or paid calls)
+
+`src/lib/content/writer-trace-offline-acceptance.test.ts` is a **synthetic replay using the real tracing runtime**. It produces a fixture brief trace and a fixture article trace with keyword decisions, SERP snapshot, plan, synthetic prompt and draft, critic result, repair and final audit. It validates ordering, confidential JSONL, detached artifacts, exact SHA-256, read-only reporting and the explicit `relatedRuns` link between the brief and article through `briefIdSha256`.
+
+The reporter now includes `relatedRuns` only when both traces are present in the inspected directory and a matching brief hash was **actually recorded**. It never invents missing associations.
+
+**Limit:** this acceptance check does not call `createContentBrief` or `generateArticleFromBrief`. Those require actual database/provider dependencies. It is not proof the entire real Writer pipeline fired every instrumentation hook. Stage-hook source contracts remain a separate static check.
+
+```bash
+./node_modules/.bin/tsc --noEmit
+./node_modules/.bin/vitest run src/lib/content/writer-trace-v1.test.ts src/lib/content/writer-forensic-trace-v1.test.ts src/lib/content/writer-trace-resilience-v1.test.ts src/lib/content/writer-trace-offline-acceptance.test.ts
+node --test scripts/writer-trace-report.test.mjs scripts/writer-trace-coverage.test.mjs
+```
+
+**Validation status:** additional offline acceptance code is committed, but awaits execution in the user's local worktree. No database service action, provider call, live Writer execution, or publishing is authorized by these commands.
