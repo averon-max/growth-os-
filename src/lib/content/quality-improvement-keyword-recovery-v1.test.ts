@@ -1,7 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {inspectQualityKeywordRegressionV1,
   selectQualityKeywordRepairSectionV1}
-  from "./quality-improvement-keyword-recovery-v1";
+  from "./same-article-quality-improvement-v1";
 const original={
   title:"What is credit monitoring?",h1:"What is credit monitoring?",
   metaDescription:"Guide to credit monitoring",

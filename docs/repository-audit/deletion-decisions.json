@@ -381,6 +381,147 @@
         "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
         "rollbackPlan": "Restore this exact file at src/lib/content/winnability.test.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob dab1dc0d98e9bdd8e41c1f2a3866e190a2a30e49 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
       }
+    },
+    {
+      "path": "src/lib/content/quality-improvement-editorial-recovery-v1.ts",
+      "blobSha": "4f91bc0f484948bf0cb30c2eceda131aa76a22a5",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/existing-article-quality-improvement-v1.ts",
+        "src/lib/content/quality-improvement-editorial-recovery-v1.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Actually reduce tracked Content source files by merging this quality-improvement-editorial-recovery-v1 single-article-quality rule family into the EXISTING same-article-quality-improvement-v1.ts. Preserve all exported functions and their original individual tests, do not build another Writer.",
+        "realImportersAndConsumers": "Identified source/CLI/test consumers src/lib/content/existing-article-quality-improvement-v1.ts, src/lib/content/quality-improvement-editorial-recovery-v1.test.ts are migrated by literal import-path rewrite in the same atomic commit. Public function signatures and all original test files survive. No production route directly invokes this old helper.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports were inspected using the installed AST writer-module-map report. The manual quality-improvement CLI's dynamic imports are updated in this commit. No untrusted model text, external paid integrations or CMS actions are involved. Unknown off-repository imports remain possible and are recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No persistence codec or checkpoint format changed. No Prisma schema, database content, CMS connection, previously saved article, approval state, source authority, signed evidence or public runtime API was modified; only the location of identical helper functions is consolidated.",
+        "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
+        "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob 4f91bc0f484948bf0cb30c2eceda131aa76a22a5 at src/lib/content/quality-improvement-editorial-recovery-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
+      }
+    },
+    {
+      "path": "src/lib/content/quality-improvement-h3-v1.ts",
+      "blobSha": "744594213363752bc5708875775391353256d43f",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/existing-article-quality-improvement-v1.ts",
+        "src/lib/content/quality-improvement-h3-v1.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Actually reduce tracked Content source files by merging this quality-improvement-h3-v1 single-article-quality rule family into the EXISTING same-article-quality-improvement-v1.ts. Preserve all exported functions and their original individual tests, do not build another Writer.",
+        "realImportersAndConsumers": "Identified source/CLI/test consumers src/lib/content/existing-article-quality-improvement-v1.ts, src/lib/content/quality-improvement-h3-v1.test.ts are migrated by literal import-path rewrite in the same atomic commit. Public function signatures and all original test files survive. No production route directly invokes this old helper.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports were inspected using the installed AST writer-module-map report. The manual quality-improvement CLI's dynamic imports are updated in this commit. No untrusted model text, external paid integrations or CMS actions are involved. Unknown off-repository imports remain possible and are recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No persistence codec or checkpoint format changed. No Prisma schema, database content, CMS connection, previously saved article, approval state, source authority, signed evidence or public runtime API was modified; only the location of identical helper functions is consolidated.",
+        "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
+        "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob 744594213363752bc5708875775391353256d43f at src/lib/content/quality-improvement-h3-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
+      }
+    },
+    {
+      "path": "src/lib/content/quality-improvement-keyword-original-sentence-v1.ts",
+      "blobSha": "95d2f40be553969db4067ce8118ce86d7786c041",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/existing-article-quality-improvement-v1.ts",
+        "src/lib/content/quality-improvement-keyword-original-sentence-v1.test.ts",
+        "scripts/content-improve-existing-article-quality.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Actually reduce tracked Content source files by merging this quality-improvement-keyword-original-sentence-v1 single-article-quality rule family into the EXISTING same-article-quality-improvement-v1.ts. Preserve all exported functions and their original individual tests, do not build another Writer.",
+        "realImportersAndConsumers": "Identified source/CLI/test consumers src/lib/content/existing-article-quality-improvement-v1.ts, src/lib/content/quality-improvement-keyword-original-sentence-v1.test.ts, scripts/content-improve-existing-article-quality.ts are migrated by literal import-path rewrite in the same atomic commit. Public function signatures and all original test files survive. No production route directly invokes this old helper.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports were inspected using the installed AST writer-module-map report. The manual quality-improvement CLI's dynamic imports are updated in this commit. No untrusted model text, external paid integrations or CMS actions are involved. Unknown off-repository imports remain possible and are recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No persistence codec or checkpoint format changed. No Prisma schema, database content, CMS connection, previously saved article, approval state, source authority, signed evidence or public runtime API was modified; only the location of identical helper functions is consolidated.",
+        "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
+        "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob 95d2f40be553969db4067ce8118ce86d7786c041 at src/lib/content/quality-improvement-keyword-original-sentence-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
+      }
+    },
+    {
+      "path": "src/lib/content/quality-improvement-keyword-recovery-v1.ts",
+      "blobSha": "247633bbad29fff5fb7cae0c724d66942f1b93a6",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/existing-article-quality-improvement-v1.ts",
+        "src/lib/content/quality-improvement-keyword-recovery-v1.test.ts",
+        "scripts/content-improve-existing-article-quality.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Actually reduce tracked Content source files by merging this quality-improvement-keyword-recovery-v1 single-article-quality rule family into the EXISTING same-article-quality-improvement-v1.ts. Preserve all exported functions and their original individual tests, do not build another Writer.",
+        "realImportersAndConsumers": "Identified source/CLI/test consumers src/lib/content/existing-article-quality-improvement-v1.ts, src/lib/content/quality-improvement-keyword-recovery-v1.test.ts, scripts/content-improve-existing-article-quality.ts are migrated by literal import-path rewrite in the same atomic commit. Public function signatures and all original test files survive. No production route directly invokes this old helper.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports were inspected using the installed AST writer-module-map report. The manual quality-improvement CLI's dynamic imports are updated in this commit. No untrusted model text, external paid integrations or CMS actions are involved. Unknown off-repository imports remain possible and are recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No persistence codec or checkpoint format changed. No Prisma schema, database content, CMS connection, previously saved article, approval state, source authority, signed evidence or public runtime API was modified; only the location of identical helper functions is consolidated.",
+        "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
+        "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob 247633bbad29fff5fb7cae0c724d66942f1b93a6 at src/lib/content/quality-improvement-keyword-recovery-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
+      }
+    },
+    {
+      "path": "src/lib/content/quality-improvement-post-editorial-depth-v1.ts",
+      "blobSha": "d6bde5e24bf91ffffb04bb484b27d2c0a05feb49",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/existing-article-quality-improvement-v1.ts",
+        "src/lib/content/quality-improvement-post-editorial-depth-v1.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Actually reduce tracked Content source files by merging this quality-improvement-post-editorial-depth-v1 single-article-quality rule family into the EXISTING same-article-quality-improvement-v1.ts. Preserve all exported functions and their original individual tests, do not build another Writer.",
+        "realImportersAndConsumers": "Identified source/CLI/test consumers src/lib/content/existing-article-quality-improvement-v1.ts, src/lib/content/quality-improvement-post-editorial-depth-v1.test.ts are migrated by literal import-path rewrite in the same atomic commit. Public function signatures and all original test files survive. No production route directly invokes this old helper.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports were inspected using the installed AST writer-module-map report. The manual quality-improvement CLI's dynamic imports are updated in this commit. No untrusted model text, external paid integrations or CMS actions are involved. Unknown off-repository imports remain possible and are recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No persistence codec or checkpoint format changed. No Prisma schema, database content, CMS connection, previously saved article, approval state, source authority, signed evidence or public runtime API was modified; only the location of identical helper functions is consolidated.",
+        "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
+        "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob d6bde5e24bf91ffffb04bb484b27d2c0a05feb49 at src/lib/content/quality-improvement-post-editorial-depth-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
+      }
+    },
+    {
+      "path": "src/lib/content/quality-improvement-progress-scope-v1.ts",
+      "blobSha": "276b0af834afefb171d189fe1fcd3621180c4371",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/existing-article-quality-improvement-v1.ts",
+        "src/lib/content/quality-improvement-progress-scope-v1.test.ts",
+        "scripts/content-improve-existing-article-quality.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Actually reduce tracked Content source files by merging this quality-improvement-progress-scope-v1 single-article-quality rule family into the EXISTING same-article-quality-improvement-v1.ts. Preserve all exported functions and their original individual tests, do not build another Writer.",
+        "realImportersAndConsumers": "Identified source/CLI/test consumers src/lib/content/existing-article-quality-improvement-v1.ts, src/lib/content/quality-improvement-progress-scope-v1.test.ts, scripts/content-improve-existing-article-quality.ts are migrated by literal import-path rewrite in the same atomic commit. Public function signatures and all original test files survive. No production route directly invokes this old helper.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports were inspected using the installed AST writer-module-map report. The manual quality-improvement CLI's dynamic imports are updated in this commit. No untrusted model text, external paid integrations or CMS actions are involved. Unknown off-repository imports remain possible and are recoverable from Git history.",
+        "schemaDataAndHistoricalCompatibility": "No persistence codec or checkpoint format changed. No Prisma schema, database content, CMS connection, previously saved article, approval state, source authority, signed evidence or public runtime API was modified; only the location of identical helper functions is consolidated.",
+        "testEvidenceAndLiveRisks": "Require deletion gate with full parent fetch, TypeScript, all Content/Keywords Vitest including ALL retained dedicated quality helpers' tests and Next.js build. Offline only; no paid models, keyword/SERP APIs or mutations. A separate authorized real Writer dry-run would be needed before claiming full end-to-end stability.",
+        "rollbackPlan": "Revert this precise atomic consolidation commit or restore original blob 276b0af834afefb171d189fe1fcd3621180c4371 at src/lib/content/quality-improvement-progress-scope-v1.ts via git show from parent. Original signatures and tests are still in Git history; rollback requires no persisted data migration."
+      }
     }
   ]
 }

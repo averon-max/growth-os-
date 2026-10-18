@@ -4,7 +4,7 @@ import {detectHighConfidenceEditorialRepetitionV1,
   from "./editorial-repetition-guard-v1";
 import {selectQualityEditorialRepairSectionsV1,
   isQualityEditorialFindingResolvedV1}
-  from "./quality-improvement-editorial-recovery-v1";
+  from "./same-article-quality-improvement-v1";
 const finding:EditorialRepetitionFindingV1={
   code:"EDITORIAL_REPHRASED_BOILERPLATE_ACROSS_SECTIONS",
   sectionIndex:4,

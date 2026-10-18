@@ -1,6 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {countQualityArticleH3V1,eligibleForEvidenceBackedH3V1}
-  from "./quality-improvement-h3-v1";
+  from "./same-article-quality-improvement-v1";
 describe("Quality Writer true H3 structure detection",()=>{
   it("detects real nested Markdown headings after a zero-H3 initial article",()=>{
     const body="## Definition\n\n"+
