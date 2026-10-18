@@ -72,3 +72,20 @@ node --test scripts/writer-trace-report.test.mjs
 ```
 
 No article generation or provider calls are invoked by these targeted tests. Do not promote or run the Writer until all checks pass and any logging-specific failure is addressed.
+
+## Additional regression coverage (no provider requests)
+
+- `src/lib/content/writer-trace-resilience-v1.test.ts`: rejects private stage text in SAFE JSONL, rejects an invalid trace directory before invoking its callback, and verifies that errors while writing events are surfaced while preserving the callback's result.
+- `scripts/writer-trace-coverage.test.mjs`: static contract for all major source, strategy, planner, model, Writer, repair and audit log boundaries. **Static existence is not proof that a live stage ran.**
+- `scripts/writer-trace-report.test.mjs`: also checks mixed run identifiers, a missing first sequence, and terminal events followed by unexpected records.
+- `writer-trace-v1.ts`: stage names are restricted to short ASCII identifiers; unexpected names are recorded with a hash. URL-like values in metadata fields are hashed instead of copied as plain text.
+
+### Extended offline checks
+
+```bash
+./node_modules/.bin/tsc --noEmit
+./node_modules/.bin/vitest run src/lib/content/writer-trace-v1.test.ts src/lib/content/writer-forensic-trace-v1.test.ts src/lib/content/writer-trace-resilience-v1.test.ts
+node --test scripts/writer-trace-report.test.mjs scripts/writer-trace-coverage.test.mjs
+```
+
+**Validation status:** these extended checks were committed to the diagnostic branch but have **not yet been executed** on the user's Mac. Do not claim they passed before seeing actual test output. The original clean branch remains untouched.
