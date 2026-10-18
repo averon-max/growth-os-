@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
-import { appendFile, mkdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { appendFile, chmod, lstat, mkdir, open, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 /**
  * Execution evidence, NOT model chain-of-thought.
@@ -13,35 +13,47 @@ interface TraceContextV1 {
   readonly filePath: string;
   sequence: number;
   pending: Promise<void>;
+  writeFailures: number;
+  readonly artifactDirectory: string;
 }
 
 const context = new AsyncLocalStorage<TraceContextV1>();
-const MAX_TEXT = 1600;
-const MAX_OPT_IN_TEXT = 2_000_000;
+const SAFE_METADATA_STRING_KEYS = new Set([
+  "stage", "scope", "phase", "model", "status", "articleStatus",
+  "errorName", "version", "route", "reasonCode", "severity",
+  "source", "textMode", "owner", "generationMode", "readiness",
+  "failureClass", "code", "responseStatus", "omittedReason",
+  "promptSha256", "outputSha256", "artifactSha256",
+]);
+const SECRET_KEY_PATTERN =
+  /api[_-]?key|secret|authorization|cookie|password|credential|email|private[_-]?key|(?:access|refresh|session|bearer|auth|id)[_-]?token/i;
 
 export function hashTraceTextV1(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
+/**
+ * SAFE JSONL stores non-sensitive classifications and hashes, not arbitrary prose.
+ * Exact keyword strings, model prompts, article text, and evidence live ONLY
+ * in explicitly opted-in private forensic artifacts.
+ */
 function sanitize(value: unknown, depth = 0, keyHint = ""): unknown {
-  if (depth >= 5) return "[depth limit]";
+  if (depth >= 12) return "[depth limit]";
   if (typeof value === "string") {
-    const max = (keyHint === "promptText" || keyHint === "outputText") &&
-      process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT === "1" ? MAX_OPT_IN_TEXT : MAX_TEXT;
-    return value.length > max ? value.slice(0, max) + "…[truncated]" : value;
+    if (SAFE_METADATA_STRING_KEYS.has(keyHint) &&
+        value.length <= 160 && /^[A-Za-z0-9_.:\/-]+$/.test(value)) {
+      return value;
+    }
+    return { sha256: hashTraceTextV1(value), chars: value.length };
   }
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "boolean" || value === null) return value;
-  if (Array.isArray(value)) return value.slice(0, 50).map(v => sanitize(v, depth + 1));
-  if (!value || typeof value !== "object") return undefined;
-
+  if (Array.isArray(value)) return value.slice(0, 100).map(item => sanitize(item, depth + 1));
+  if (value instanceof Date) return value.toISOString();
+  if (!value || typeof value !== "object") return null;
   const output: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value).slice(0, 60)) {
-    if (/api[_-]?key|secret|authorization|cookie|password|credential|email|private[_-]?key|(?:access|refresh|session|bearer|auth|id)[_-]?token/i.test(key)) {
-      output[key] = "[redacted]";
-    } else {
-      output[key] = sanitize(item, depth + 1, key);
-    }
+  for (const [key, item] of Object.entries(value).slice(0, 100)) {
+    output[key] = SECRET_KEY_PATTERN.test(key) ? "[redacted]" : sanitize(item, depth + 1, key);
   }
   return output;
 }
