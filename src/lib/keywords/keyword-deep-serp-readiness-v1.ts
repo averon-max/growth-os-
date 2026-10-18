@@ -17,6 +17,10 @@ export function auditDeepSerpReadinessV1(
   const valid=pages.filter(page=>
     assessSerpCompetitorPageQualityV1(page).usable);
   const fetched=valid.length;
+  const deepProfiles=valid.filter(p=>
+    p.contentDepth?.version==="OBSERVED_COMPETITOR_DOCUMENT_DEPTH_V1" &&
+    p.contentDepth.extraction==="MAIN_ARTICLE" &&
+    p.contentDepth.sections.length>0);
   const topOne=valid.find(p=>p.rank===1)??null;
   const normalize=(x:string)=>x.toLocaleLowerCase("en-US")
     .replace(/[^\p{L}\p{N}]+/gu," ").trim();
@@ -47,7 +51,10 @@ export function auditDeepSerpReadinessV1(
   if(!evidence)blockers.push("DEEP_COMPETITOR_SNAPSHOT_MISSING");
   else {
     if(fetched<5)blockers.push("FEWER_THAN_FIVE_USABLE_COMPETITORS");
+    if(deepProfiles.length<5)blockers.push("FEWER_THAN_FIVE_DETAILED_ARTICLE_PROFILES");
     if(!topOne)blockers.push("TOP_ONE_PAGE_NOT_USABLE");
+    else if(!deepProfiles.includes(topOne))
+      blockers.push("TOP_ONE_DOCUMENT_PROFILE_MISSING");
     if(topical&&!topOneTopical)blockers.push("TOP_ONE_PAGE_DIFFERENT_TASK");
     if(topical&&topicalPages.length<Math.ceil(valid.length*0.5))
       blockers.push("SERP_DOMINATED_BY_DIFFERENT_TOPIC");
@@ -62,6 +69,7 @@ export function auditDeepSerpReadinessV1(
     organicResults:row.organicResults,
     uniqueDomains:row.uniqueDomains,
     fetchedCompetitorPages:fetched,
+    analyzedMainArticleProfiles:deepProfiles.length,
     falselyFetchedOrUnusablePages:pages.filter(page=>
       page.fetched&&!assessSerpCompetitorPageQualityV1(page).usable)
       .map(page=>({rank:page.rank,url:page.url,reasons:
