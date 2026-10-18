@@ -211,6 +211,176 @@
         "testEvidenceAndLiveRisks": "Source reference inventory passed on head 94b2d2cd and the CI run confirmed Prisma validate, TypeScript, full Vitest and Next build. The post-deletion commit must rerun all checks. Manual browser/map/landing smoke and monitoring of external asset URLs are separately required.",
         "rollbackPlan": "Restore exact original blob SHA 055d19ffcf3133435978527737ff8ad37a568c59 at path src/data/world-110m.json from Git history, or revert the reviewed asset-removal commit. Keep all current production data, migrations and unrelated assets unchanged."
       }
+    },
+    {
+      "path": "src/lib/content/article-review.ts",
+      "blobSha": "e083052bcba3fffc7dcca60a350d7390173b74ee",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/article-review.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "This old ArticleCritiqueSummary / shouldRewriteArticle implementation is only executed by its own test and is not connected to any production route, service.ts, current master critics, or operator script. Retire its dormant alternate review decision path rather than maintain competing review governance.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/article-review.ts are src/lib/content/article-review.test.ts; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/article-review.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob e083052bcba3fffc7dcca60a350d7390173b74ee is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/article-review.test.ts",
+      "blobSha": "6a2348424d26334a3bd15c6932227d7a5943d358",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Dedicated tests exclusively exercise the unused older article-review.ts implementation. They are not evidence of actual production review; the active master critic and Writer tests remain. Remove this retired test as part of the same atomic deletion.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/article-review.test.ts are none; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/article-review.test.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob 6a2348424d26334a3bd15c6932227d7a5943d358 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/master-writer-database-progress-v1.ts",
+      "blobSha": "e8cd86af528e26307e2b000bfe084004a3231004",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/master-writer-database-progress-v1.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Standalone JSONB checkpoint encode/decode experiment has no production, script or database consumer. The active local section-progress checkpoint module and persisted content state continue unchanged; unused codec is retired.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/master-writer-database-progress-v1.ts are src/lib/content/master-writer-database-progress-v1.test.ts; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/master-writer-database-progress-v1.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob e8cd86af528e26307e2b000bfe084004a3231004 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/master-writer-database-progress-v1.test.ts",
+      "blobSha": "82a3b2018f9fe920ed3ffc2ce02963a1f1244453",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "These tests exercise only the dormant JSONB codec that no runtime code invokes. Preserve active master-writer-section-progress-v1.ts tests; remove obsolete experimental codec tests with the codec.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/master-writer-database-progress-v1.test.ts are none; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/master-writer-database-progress-v1.test.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob 82a3b2018f9fe920ed3ffc2ce02963a1f1244453 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/serp-stability.ts",
+      "blobSha": "245f2092d7636e0fdbc67664d5095cd05e70a17b",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/serp-stability.test.ts",
+        "src/lib/content/winnability.ts",
+        "src/lib/content/winnability.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Historical 0/3/7/14/28-day SERP stability diagnostic is not wired to current Research, live Deep SERP, Stage Plan, CMS, UI or scripts. All recorded consumer paths are the paired dormant winnability feature and their dedicated tests. Preserve live SERP intelligence and snapshot contracts.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/serp-stability.ts are src/lib/content/serp-stability.test.ts, src/lib/content/winnability.ts, src/lib/content/winnability.test.ts; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/serp-stability.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob 245f2092d7636e0fdbc67664d5095cd05e70a17b is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/serp-stability.test.ts",
+      "blobSha": "1b6c0261ca1ff5066f4db1425d7d5a162080bcf3",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Dedicated test suite exclusively exercises the uncalled historical stability diagnostic. The live SERP observatory and deep SERP research tests are preserved, making this archival test unnecessary once its dormant source is removed.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/serp-stability.test.ts are none; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/serp-stability.test.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob 1b6c0261ca1ff5066f4db1425d7d5a162080bcf3 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/winnability.ts",
+      "blobSha": "7816cabd808b3f38c3e47c67e79c02b20c574652",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/winnability.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Large legacy winnability scoring/diagnostic module is never reached from current app routes, production Content Writer, keyword ingestion, active SEO scoring or scripts; its only caller is the dedicated test. Remove unused alternative scoring branch, keeping live winnability/competitive strategy logic in connected modules.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/winnability.ts are src/lib/content/winnability.test.ts; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/winnability.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob 7816cabd808b3f38c3e47c67e79c02b20c574652 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
+    },
+    {
+      "path": "src/lib/content/winnability.test.ts",
+      "blobSha": "dab1dc0d98e9bdd8e41c1f2a3866e190a2a30e49",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Standalone regression suite applies only to the dormant winnability.ts scoring implementation, not the live ranking decision system. Do not confuse it with coverage for production competitiveness; remove together with the retired source.",
+        "realImportersAndConsumers": "Verified static module graph and upstream function exports on the current parent commit: directly importing consumers of src/lib/content/winnability.test.ts are none; there is no reachable production root or CLI entrypoint. This removal is coordinated with the paired dormant sources and tests, not with active module implementations.",
+        "dynamicRuntimeAndExternalCallers": "The AST import graph searches static ESM, require, and literal dynamic imports from Next routes, Writer service, scripts and all tracked tests. No runtime or CLI reachability exists. Unknown reflective imports or off-repo consumers cannot be disproved; Git history provides an exact rollback if any are discovered.",
+        "schemaDataAndHistoricalCompatibility": "No Prisma migration, schema, currently persisted brief/article record, signed evidence artifact, CMS API contract or public Next route is changed by this retirement. Preserve active production Writer, source verification, Deep SERP profiles, local progress checkpoint implementation, templates, and all currently invoked critics.",
+        "testEvidenceAndLiveRisks": "Do not rely on static reachability alone. The deletion commit must pass the exact-blob deletion gate, TypeScript strict, all Content and Keywords Vitest suites, and Next.js production build. No paid model or provider call, CMS publish, data mutation or full live E2E is authorized for this cleanup.",
+        "rollbackPlan": "Restore this exact file at src/lib/content/winnability.test.ts with git show from the cleanup parent or revert the atomic cleanup commit; blob dab1dc0d98e9bdd8e41c1f2a3866e190a2a30e49 is preserved in Git history. Reintroduce only after establishing an actual production integration and corresponding regression tests."
+      }
     }
   ]
 }
