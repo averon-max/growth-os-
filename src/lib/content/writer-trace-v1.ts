@@ -125,3 +125,85 @@ export async function withWriterTraceV1<T>(
     }
   });
 }
+
+
+/**
+ * Maximum OBSERVABLE (not private chain-of-thought) artifact snapshots.
+ * Completely optional. This emits to the same local per-run JSONL file.
+ * Never changes model inputs, selection rules, or generation outcomes.
+ *
+ * Opt-in: GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS=1
+ * Maximum event: 16 MiB. Oversized artifacts are hashed, not silently cut.
+ * Local traces may contain sensitive drafts/research: never upload them.
+ */
+const FORENSIC_ARTIFACT_BYTES_MAX_V1 = 16 * 1024 * 1024;
+const FORENSIC_REDACT_KEYS_V1 =
+  /api[_-]?key|secret|authorization|cookie|password|credential|email|private[_-]?key|(?:access|refresh|session|bearer|auth|id)[_-]?token/i;
+
+function sanitizeForensicArtifactV1(
+  value: unknown,
+  seen: WeakSet<object> = new WeakSet<object>(),
+  depth = 0
+): unknown {
+  if (depth > 32) return "[max depth]";
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "bigint") return value.toString();
+  if (typeof value !== "object") return "[non-serializable]";
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (seen.has(value)) return "[circular reference]";
+  seen.add(value);
+  let output: unknown;
+  if (Array.isArray(value)) {
+    output = value.map(item => sanitizeForensicArtifactV1(item, seen, depth + 1));
+  } else if (value instanceof Error) {
+    output = { name: value.name, message: value.message };
+  } else {
+    const result: Record<string, unknown> = Object.create(null);
+    for (const [key, item] of Object.entries(value)) {
+      result[key] = FORENSIC_REDACT_KEYS_V1.test(key)
+        ? "[redacted]"
+        : sanitizeForensicArtifactV1(item, seen, depth + 1);
+    }
+    output = result;
+  }
+  seen.delete(value);
+  return output;
+}
+
+export function recordWriterForensicArtifactV1(stage: string, artifact: unknown): void {
+  const run = context.getStore();
+  if (!run) return;
+  if (process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS !== "1") {
+    recordWriterTraceV1(`forensic.${stage}`, { fullArtifact: false, reason: "NOT_OPTED_IN" });
+    return;
+  }
+  // Tracing must remain a non-blocking, non-fatal observer.
+  try {
+    const serialized = JSON.stringify(sanitizeForensicArtifactV1(artifact));
+    const sizeBytes = Buffer.byteLength(serialized, "utf8");
+    const truncated = sizeBytes > FORENSIC_ARTIFACT_BYTES_MAX_V1;
+    const event = {
+      version: "GROWTH_OS_WRITER_TRACE_V1",
+      eventId: ++run.sequence,
+      timestamp: new Date().toISOString(),
+      runId: run.runId,
+      stage: `forensic.${stage}`,
+      fields: {
+        fullArtifact: !truncated,
+        artifactBytes: sizeBytes,
+        artifactSha256: hashTraceTextV1(serialized),
+        ...(truncated ? { omittedReason: "ARTIFACT_EXCEEDS_16_MIB" } : { artifact: JSON.parse(serialized) }),
+      },
+    };
+    const line = JSON.stringify(event) + "\n";
+    run.pending = run.pending.then(async () => {
+      await mkdir(resolve(run.filePath, ".."), { recursive: true, mode: 0o700 });
+      await appendFile(run.filePath, line, { encoding: "utf8", mode: 0o600 });
+    }).catch(() => {
+      // Forensic logging must never mutate or fail production.
+    });
+  } catch {
+    recordWriterTraceV1(`forensic.${stage}.capture_failed`, { reason: "SNAPSHOT_SERIALIZATION_FAILED" });
+  }
+}
