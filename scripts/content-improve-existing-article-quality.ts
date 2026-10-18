@@ -177,7 +177,7 @@ async function main(){
     // Inspecting the actual verified partial article prevents a needless
     // paid redo when its H3 headings were simply counted by a broken regex.
     const {qualityImprovementProgressDirectoryV1}=
-      await import("../src/lib/content/quality-improvement-progress-scope-v1");
+      await import("../src/lib/content/same-article-quality-improvement-v1");
     const {fingerprintMasterWriterContractV1,
       readMasterWriterSectionProgressV1}=
       await import("../src/lib/content/master-writer-section-progress-v1");
@@ -212,7 +212,7 @@ async function main(){
     const actualCachedArticleWords=signedPartialArticle?
       countWords(signedPartialArticle.bodyMarkdown):null;
     const {inspectQualityKeywordRegressionV1}=
-      await import("../src/lib/content/quality-improvement-keyword-recovery-v1");
+      await import("../src/lib/content/same-article-quality-improvement-v1");
     const {splitPersistedArticleByCanonicalH2V1}=
       await import("../src/lib/content/existing-article-section-rebind-v1");
     const keywordCheck=signedPartialArticle?
@@ -230,7 +230,7 @@ async function main(){
     const {detectHighConfidenceEditorialRepetitionV1}=
       await import("../src/lib/content/editorial-repetition-guard-v1");
     const {proposeOriginalSectionKeywordSentenceV1}=
-      await import("../src/lib/content/quality-improvement-keyword-original-sentence-v1");
+      await import("../src/lib/content/same-article-quality-improvement-v1");
     const originalBodies=splitPersistedArticleByCanonicalH2V1(
       article.bodyMarkdown,contract.sectionContracts.map(x=>x.blueprint.heading));
     const sentenceRecoveryCandidates=verifiedProgress&&keywordCheck?

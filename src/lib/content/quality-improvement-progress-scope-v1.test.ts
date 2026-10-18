@@ -1,7 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {qualityImprovementProgressDirectoryV1,
   classifyVerifiedQualitySectionsV1}
-  from "./quality-improvement-progress-scope-v1";
+  from "./same-article-quality-improvement-v1";
 const scope={
   root:"/tmp/quality-checkpoints",
   articleId:"cmv606xg60006siqlir66uq23",

@@ -1,6 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {planPostEditorialDepthRecoveryV1}
-  from "./quality-improvement-post-editorial-depth-v1";
+  from "./same-article-quality-improvement-v1";
 const sections=[
   {index:0,sectionWords:380,verifiedClaims:3,assignedEvidence:4},
   {index:1,sectionWords:310,verifiedClaims:3,assignedEvidence:5},

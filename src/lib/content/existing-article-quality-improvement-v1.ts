@@ -29,27 +29,34 @@ import { buildCrawlCannibalizationCandidatesV1 } from "./crawl-cannibalization-c
 import { detectPersistedArticleEditorialRepetitionV1 } from "./editorial-repetition-guard-v1";
 import {detectHighConfidenceEditorialRepetitionV1}
   from "./editorial-repetition-guard-v1";
-import {selectQualityEditorialRepairSectionsV1,
-  isQualityEditorialFindingResolvedV1}
-  from "./quality-improvement-editorial-recovery-v1";
-import {planPostEditorialDepthRecoveryV1}
-  from "./quality-improvement-post-editorial-depth-v1";
-import {inspectQualityKeywordRegressionV1,
-  selectQualityKeywordRepairSectionV1}
-  from "./quality-improvement-keyword-recovery-v1";
-import {proposeOriginalSectionKeywordSentenceV1}
-  from "./quality-improvement-keyword-original-sentence-v1";
+
+
+
+
+import {
+  selectQualityEditorialRepairSectionsV1,
+  isQualityEditorialFindingResolvedV1,
+  planPostEditorialDepthRecoveryV1,
+  inspectQualityKeywordRegressionV1,
+  selectQualityKeywordRepairSectionV1,
+  proposeOriginalSectionKeywordSentenceV1,
+  planSameArticleQualityImprovementV1,
+  evaluateWholeArticleQualityWordRangeV1,
+  countQualityArticleH3V1,
+  eligibleForEvidenceBackedH3V1,
+  qualityImprovementProgressDirectoryV1,
+  classifyVerifiedQualitySectionsV1
+} from "./same-article-quality-improvement-v1";
 import { countWords } from "./article-analyzer";
 import { resolveArticleLengthContractV1 } from "./article-length-contract-v1";
-import { planSameArticleQualityImprovementV1, evaluateWholeArticleQualityWordRangeV1 } from "./same-article-quality-improvement-v1";
+
 import { countSectionWordsV1,verifyGeneratedSectionOnlyV1,
   supportsMasterSectionRepairGenerator } from "./master-section-repair";
 import { supportsMasterSectionSemanticVerifier }
   from "./master-section-semantic-verifier";
 import { rebuildWriterRunV1 } from "./master-article-critic-repair-execution";
 import { createMasterArticleCriticFindingV1 } from "./master-article-critic";
-import {countQualityArticleH3V1,eligibleForEvidenceBackedH3V1}
-  from "./quality-improvement-h3-v1";
+
 import {inspectArchivedWriterProgressV1}
   from "./writer-recovery-archived-progress-v1";
 import {rebindSignedArchivedWriterRunV1}
@@ -69,10 +76,7 @@ import {loadReviewedSignedCitationDraftV1}
   from "./existing-article-reviewed-citation-recovery-v1";
 import {verifyExistingArticleCitationScopeV1}
   from "./existing-article-citation-authority-v1";
-import {
-  qualityImprovementProgressDirectoryV1,
-  classifyVerifiedQualitySectionsV1,
-} from "./quality-improvement-progress-scope-v1";
+
 import { normalizeMasterArticleProseSpacesV1 } from "./article-prose-whitespace-v1";
 import {assertArticleProseHygieneV2}
   from "./article-search-readiness-v2";

@@ -1,7 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {countExactPhrase} from "./article-analyzer";
 import {proposeOriginalSectionKeywordSentenceV1 as suggest}
-  from "./quality-improvement-keyword-original-sentence-v1";
+  from "./same-article-quality-improvement-v1";
 
 const original=[
   "Many services provide alerts when an account changes, but a notification does not prevent fraud.",
