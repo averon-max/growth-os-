@@ -2432,6 +2432,8 @@ export async function generateArticleFromBrief(
       articleIdHash: hashTraceTextV1(pendingArticle.id),
       h1: masterWriterRun.article.h1,
       markdownChars: masterWriterRun.article.bodyMarkdown.length,
+      approxWordCount: masterWriterRun.article.bodyMarkdown.trim()
+        ? masterWriterRun.article.bodyMarkdown.trim().split(/\s+/).length : 0,
       h2Count: (masterWriterRun.article.bodyMarkdown.match(/^## /gm) ?? []).length,
       h3Count: (masterWriterRun.article.bodyMarkdown.match(/^### /gm) ?? []).length,
     });
@@ -3371,6 +3373,15 @@ export async function generateArticleFromBrief(
      */
     const repaired =
       reviewedArticle;
+    recordWriterTraceV1("writer.before_after_content_fingerprints", {
+      originalSha256: hashTraceTextV1(masterWriterRun.article.bodyMarkdown),
+      finalSha256: hashTraceTextV1(repaired.bodyMarkdown),
+      exactTextChanged: masterWriterRun.article.bodyMarkdown !== repaired.bodyMarkdown,
+      initialH2Count: (masterWriterRun.article.bodyMarkdown.match(/^## /gm) ?? []).length,
+      finalH2Count: (repaired.bodyMarkdown.match(/^## /gm) ?? []).length,
+      initialH3Count: (masterWriterRun.article.bodyMarkdown.match(/^### /gm) ?? []).length,
+      finalH3Count: (repaired.bodyMarkdown.match(/^### /gm) ?? []).length,
+    });
     recordWriterForensicArtifactV1("writer.repaired_article", {
       briefId: brief.id, articleId: pendingArticle.id, repaired,
     });
