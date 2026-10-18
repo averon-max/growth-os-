@@ -5,6 +5,7 @@ on:
     branches:
       - fix/writer-post-evidence-scope-20261018
       - cleanup/remove-unwired-content-20261018
+      - refactor/content-runtime-consolidation-20261018
   workflow_dispatch:
 
 permissions:
@@ -26,6 +27,21 @@ jobs:
           cache: npm
       - name: Install dependencies and generate Prisma client
         run: npm ci --no-audit --no-fund
+      - name: Audit production versus script-only Content modules
+        run: |
+          node scripts/writer-module-map.mjs > /dev/null
+          node - <<'JS'
+          const fs=require('fs');
+          const a=JSON.parse(fs.readFileSync('.growth-os-tmp/writer-module-map.json','utf8'));
+          const xs=a.contentProduction;
+          const scriptOnly=xs.filter(x=>!x.inRuntimeGraph&&x.inScriptGraph);
+          console.log('SCRIPT_ONLY_CONTENT_MODULES',JSON.stringify(scriptOnly.map(x=>({
+            path:x.path,lines:x.lines,script:x.directOtherImporters,
+            test:x.directTestImporters,dependencies:x.internalContentDependencies,
+          })),null,2));
+          console.log('REACHABLE_WRITER_ONLY',xs.filter(x=>x.inWriterGraph).length);
+          console.log('RUNTIME_NOT_WRITER',xs.filter(x=>x.inRuntimeGraph&&!x.inWriterGraph).length);
+          JS
       - name: Reviewed deletion gate
         run: node scripts/repository-deletion-gate.mjs --check
       - name: TypeScript strict
