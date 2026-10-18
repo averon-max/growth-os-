@@ -11,6 +11,7 @@ import {
 import {
   recordWriterModelExchangeV1,
   recordWriterTraceV1,
+  recordWriterForensicArtifactV1,
 } from "./writer-trace-v1";
 
 import OpenAI from "openai";
@@ -295,6 +296,18 @@ async function callOpenAiApi(
         )
       : 5000;
 
+  recordWriterTraceV1("model.request_configuration", {
+    model: OPENAI_MODEL, reasoningEffort: effort,
+    maxOutputTokens, providerRetries: MAX_RETRIES,
+    storeResponse: false, format: "json_object", verbosity: "low",
+  });
+  recordWriterForensicArtifactV1("model.request_input", {
+    model: OPENAI_MODEL, reasoningEffort: effort, maxOutputTokens,
+    developerMessage: "Return valid JSON only. Follow the requested contract exactly. Never invent evidence, rankings, metrics, claims, search observations, or business facts.",
+    prompt,
+    storeResponse: false,
+  });
+
   let lastError:
     ContentGenerationError |
     null =
@@ -381,6 +394,16 @@ async function callOpenAiApi(
         throw new ContentGenerationError("OpenAI returned no content");
       }
 
+      recordWriterTraceV1("model.response_metadata", {
+        model: OPENAI_MODEL,
+        requestAttempt: attempt + 1,
+        responseId: response.id ?? null,
+        responseStatus: response.status ?? null,
+      });
+      recordWriterForensicArtifactV1("model.response_envelope", {
+        response,
+        requestAttempt: attempt + 1,
+      });
       recordWriterTraceV1("model.usage", {
         model: OPENAI_MODEL,
         reasoningEffort: effort,
@@ -425,6 +448,13 @@ async function callOpenAiApi(
               cause
             );
 
+      recordWriterTraceV1("model.request_failed_attempt", {
+        model: OPENAI_MODEL,
+        requestAttempt: attempt + 1,
+        status,
+        errorName: cause instanceof Error ? cause.name : "unknown",
+        // The full error may contain provider data, do not log unsanitized details.
+      });
       lastError =
         new ContentGenerationError(
           `OpenAI API error ${
