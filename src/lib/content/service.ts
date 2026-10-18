@@ -1001,18 +1001,15 @@ export async function createContentBrief(
   if (!liveMaster?.articleExecutionPlan) {
     throw new Error("BRIEF_ARTICLE_EXECUTION_PLAN_MISSING");
   }
-  assertArticlePreWriterEvidenceReadyV1(
-    liveMaster.articleExecutionPlan
-  );
-  assertArticlePreWriterRequiredCoverageV1(
-    liveMaster.articleExecutionPlan
-  );
-  assertArticlePreWriterAnswerSupportV2(
-    liveMaster.articleExecutionPlan
-  );
-  assertPreWriterMissionAuthorityV1({
-    sections: liveMaster.articleExecutionPlan.sections,
-    blueprints: inspectMasterRuntimeSnapshot({ masterRuntime: productionMaster.masterRuntime }).runtime!.sectionBlueprints.sections,
+  const briefRuntime = inspectMasterRuntimeSnapshot({
+    masterRuntime: productionMaster.masterRuntime,
+  }).runtime;
+  if (!briefRuntime) throw new Error("BRIEF_MASTER_RUNTIME_INVALID");
+  // The exact same five authority checks now protect brief persistence,
+  // the diagnostic CLI, and the paid production generation entrypoint.
+  assertCanonicalWriterPreflightV1({
+    plan: liveMaster.articleExecutionPlan,
+    blueprints: briefRuntime.sectionBlueprints.sections,
   });
 
   const briefInput:
