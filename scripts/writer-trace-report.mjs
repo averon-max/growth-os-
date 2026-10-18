@@ -7,7 +7,8 @@
  *   node scripts/writer-trace-report.mjs .growth-os-traces --run RUN_ID --stage forensic. --raw
  * --raw exposes locally recorded drafts, prompts and research. Keep output private.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { lstat, readdir, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 const argv = process.argv.slice(2);
@@ -68,18 +69,50 @@ for (const file of files) {
       warnings.push("NONCONTIGUOUS_SEQUENCE"); break;
     }
   }
-  if (modelExchanges.some(e => e.fields?.textMode !== "OPT_IN_TEXT_UP_TO_2MB"))
+  if (modelExchanges.some(e => e.fields?.textMode !== "PRIVATE_ARTIFACT" && e.fields?.textMode !== "OPT_IN_TEXT_UP_TO_2MB"))
     warnings.push("MODEL_TEXT_HASHES_ONLY");
   if (artifacts.some(e => e.fields?.fullArtifact === false))
     warnings.push("ARTIFACT_MISSING_OR_NOT_OPTED_IN");
   if (artifacts.some(e => e.fields?.omittedReason))
-    warnings.push("ARTIFACT_SIZE_LIMIT_REACHED");
+    warnings.push("ARTIFACT_OMITTED");
   if (!events.some(e => e.stage.includes("keyword")))
     warnings.push("KEYWORD_SELECTION_NOT_OBSERVED");
   if (!events.some(e => e.stage.includes("serp") || e.stage.includes("research")))
     warnings.push("SERP_RESEARCH_NOT_OBSERVED");
   if (!events.some(e => e.stage.includes("critic") || e.stage.includes("audit")))
     warnings.push("EDITORIAL_REVIEW_NOT_OBSERVED");
+  // Verify all detached snapshots before presenting an apparently complete run.
+  const detached = new Map();
+  const artifactChecks = [];
+  for (const event of artifacts.filter(e => e.fields?.fullArtifact)) {
+    const name = event.fields?.artifactFile;
+    if (!name) {
+      artifactChecks.push({eventId:event.eventId,valid:false,reason:"LEGACY_INLINE_ARTIFACT"});
+      continue;
+    }
+    if (typeof name !== "string" || !/^\\d{6}-[0-9a-f-]+\\.json$/.test(name)) {
+      artifactChecks.push({eventId:event.eventId,valid:false,reason:"INVALID_ARTIFACT_REFERENCE"});
+      continue;
+    }
+    const location = join(directory, file.slice(0, -6) + ".artifacts", name);
+    try {
+      const stats = await lstat(location);
+      if (!stats.isFile() || (stats.mode & 0o077) !== 0) {
+        artifactChecks.push({eventId:event.eventId,valid:false,reason:"ARTIFACT_PERMISSIONS_INVALID"});
+        continue;
+      }
+      const bytes = await readFile(location);
+      const digest = createHash("sha256").update(bytes).digest("hex");
+      const valid = digest === event.fields.artifactSha256 &&
+        bytes.length === event.fields.artifactBytes;
+      artifactChecks.push({eventId:event.eventId,valid,reason:valid?null:"ARTIFACT_HASH_OR_SIZE_MISMATCH"});
+      if (valid && raw) detached.set(event.eventId, JSON.parse(bytes.toString("utf8")));
+    } catch {
+      artifactChecks.push({eventId:event.eventId,valid:false,reason:"ARTIFACT_MISSING_OR_UNREADABLE"});
+    }
+  }
+  if (artifactChecks.some(check => !check.valid && check.reason !== "LEGACY_INLINE_ARTIFACT"))
+    warnings.push("ARTIFACT_INTEGRITY_FAILURE");
   const important = events.filter(e => /error|failed|reject|block|warn|validation|repair|recovery/i.test(e.stage));
   const selected = events.filter(e => !stageFilter || e.stage.startsWith(stageFilter));
   const start = Date.parse(events[0]?.timestamp || "");
@@ -100,6 +133,7 @@ for (const file of files) {
     artifactCount: artifacts.length,
     fullArtifacts: artifacts.filter(e=>e.fields?.fullArtifact===true).length,
     parseErrorLines: parseErrors,
+    artifactChecks,
     diagnostics: important.map(e=>({
       eventId:e.eventId,stage:e.stage,
       issueCount:e.fields?.issueCount??null,
@@ -109,7 +143,10 @@ for (const file of files) {
     })),
     warnings: [...new Set(warnings)],
     // Missing telemetry is NEVER proof an execution stage was skipped.
-    ...(raw ? { rawEvents:selected } : {
+    ...(raw ? { rawEvents:selected.map(event => ({
+      ...event,
+      ...(detached.has(event.eventId) ? { privateArtifact: detached.get(event.eventId) } : {}),
+    })) } : {
       selectedEvents:selected.map(e=>({eventId:e.eventId,stage:e.stage,timestamp:e.timestamp,
         artifactBytes:e.fields?.artifactBytes??null,
         artifactSha256:e.fields?.artifactSha256??null,
