@@ -90,7 +90,7 @@ for (const file of files) {
       artifactChecks.push({eventId:event.eventId,valid:false,reason:"LEGACY_INLINE_ARTIFACT"});
       continue;
     }
-    if (typeof name !== "string" || !/^\\d{6}-[0-9a-f-]+\\.json$/.test(name)) {
+    if (typeof name !== "string" || !/^\d{6}-[0-9a-f-]+\.json$/.test(name)) {
       artifactChecks.push({eventId:event.eventId,valid:false,reason:"INVALID_ARTIFACT_REFERENCE"});
       continue;
     }
