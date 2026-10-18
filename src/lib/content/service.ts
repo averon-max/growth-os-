@@ -476,6 +476,14 @@ export async function createContentBrief(
         Readonly<ContentGenerationPolicyV1>;
     }
 ) {
+  return withWriterTraceV1({
+    scope: "content.brief",
+    correlationId: input.websiteId,
+  }, async () => {
+  recordWriterTraceV1("brief.entrypoint", {
+    generationMode: input.generationMode ?? "EXACT_KEYWORD",
+    model: generator.modelName,
+  });
   const [
     finalPlan,
     context,
@@ -1248,6 +1256,7 @@ recordWriterForensicArtifactV1("brief.final", {
     finalPlan,
   });
   return createdBrief;
+  });
 }
 
 
