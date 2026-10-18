@@ -24,6 +24,8 @@ const SAFE_METADATA_STRING_KEYS = new Set([
   "source", "textMode", "owner", "generationMode", "readiness",
   "failureClass", "code", "responseStatus", "omittedReason",
   "promptSha256", "outputSha256", "artifactSha256",
+  "correlationSha256", "briefIdSha256", "websiteIdSha256",
+  "requestId", "responseId", "articleIdHash",
 ]);
 const SECRET_KEY_PATTERN =
   /api[_-]?key|secret|authorization|cookie|password|credential|email|private[_-]?key|(?:access|refresh|session|bearer|auth|id)[_-]?token/i;
@@ -177,11 +179,12 @@ export async function withWriterTraceV1<T>(
 
 /**
  * Maximum OBSERVABLE (not private chain-of-thought) artifact snapshots.
- * Completely optional. This emits to the same local per-run JSONL file.
+ * Completely optional. Sensitive artifacts use separate private files.
+ * JSONL contains only artifact filenames, hashes, and status metadata.
  * Never changes model inputs, selection rules, or generation outcomes.
  *
  * Opt-in: GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS=1
- * Maximum event: 16 MiB. Oversized artifacts are hashed, not silently cut.
+ * Maximum artifact: 16 MiB. Oversized artifacts are hashed, not silently cut.
  * Local traces may contain sensitive drafts/research: never upload them.
  */
 const FORENSIC_ARTIFACT_BYTES_MAX_V1 = 16 * 1024 * 1024;
@@ -244,6 +247,11 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
       if (!tooLarge) {
         try {
           await mkdir(run.artifactDirectory, { recursive: true, mode: 0o700 });
+          const artifactDirInfo = await lstat(run.artifactDirectory);
+          if (!artifactDirInfo.isDirectory() || artifactDirInfo.isSymbolicLink()) {
+            throw new Error("ARTIFACT_DIRECTORY_INVALID");
+          }
+          await chmod(run.artifactDirectory, 0o700);
           await writeFile(targetFile, serialized, { encoding: "utf8", mode: 0o600, flag: "wx" });
           stored = true;
         } catch (error) {
