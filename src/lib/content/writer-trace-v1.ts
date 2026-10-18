@@ -108,9 +108,14 @@ export async function withWriterTraceV1<T>(
       const httpStatus = result && typeof result === "object" &&
         "status" in result && typeof result.status === "number"
         ? result.status : null;
+      const articleStatus = result && typeof result === "object" &&
+        "status" in result && typeof result.status === "string"
+        ? result.status : null;
       recordWriterTraceV1(
-        httpStatus !== null && httpStatus >= 400 ? "run.http_error" : "run.succeeded",
-        { scope: input.scope, httpStatus }
+        httpStatus !== null && httpStatus >= 400 ? "run.http_error"
+          : articleStatus === "REJECTED" || articleStatus === "BLOCKED_EXTERNAL"
+            ? "run.article_rejected" : "run.succeeded",
+        { scope: input.scope, httpStatus, articleStatus }
       );
       return result;
     } catch (error) {
