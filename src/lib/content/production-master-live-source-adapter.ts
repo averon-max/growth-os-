@@ -347,6 +347,7 @@ function snapshotResults(
         h2: page.h2,
         h3: page.h3,
         wordCount: page.wordCount,
+        ...(page.contentDepth ? {contentDepth: page.contentDepth} : {}),
         tables: page.tableCount ?? null,
         images: page.imageCount ?? null,
         videos: page.videoCount ?? null,
