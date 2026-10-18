@@ -565,6 +565,48 @@
         "testEvidenceAndLiveRisks": "Run exact blob deletion gate with fetch-depth 2, TypeScript strict, full Content+Keyword tests including canonical outline regression, and Next build. No DB mutations, model calls, SERP purchases or publication allowed.",
         "rollbackPlan": "Restore src/lib/content/content-strategy-prompt-v1.test.ts from exact Git blob e33a39a038adff3b830e0853252c314518107e60 or revert the atomic deletion commit. Existing saved data requires no migration."
       }
+    },
+    {
+      "path": "src/lib/content/evidence-deferred-master-scope.ts",
+      "blobSha": "d6909e3ca8e58205c70ff24d6195e386811c42e1",
+      "approvedRemoval": true,
+      "baselineImporters": [
+        "src/lib/content/evidence-deferred-master-scope.test.ts"
+      ],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Retire an obsolete lexical heading-affinity matcher that only existed to compare a second outline with live sections. The locked verified ArticleExecutionPlan now exclusively governs section deferment, and the upstream Research/Publication Evidence guards remain unchanged.",
+        "realImportersAndConsumers": "Validated directly in GitHub CI run 39178534123 on the immediately preceding branch head: productionImporters=[], scriptImporters=[] for evidence-deferred-master-scope.ts, and its single remaining consumer is evidence-deferred-master-scope.test.ts. Both are removed in the same atomic commit.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports, Next routes, Writer entrypoints and manually invoked tracked scripts are covered by the writer-module-map.mjs AST graph; unknown off-repo references cannot be ruled out. These names were not persisted as API endpoints.",
+        "schemaDataAndHistoricalCompatibility": "Does not change schema, DB content, serialized briefs/articles, model prompts, live SERP research, claim/evidence validation, template selection, CMS or signed checkpoint format. The active evidence-aware-planning.ts is retained because research-pack.ts still imports it.",
+        "testEvidenceAndLiveRisks": "Pre-deletion proof: GitHub Actions 39178534123 passed TypeScript, all 1,559 tests and Next.js production build after the legacy scope call was removed. Post-deletion must rerun exact-blob deletion gate, full Content+Keywords regression, TypeScript and Next production build before application to Mac. No paid AI calls or DB actions.",
+        "rollbackPlan": "Revert exact removal commit or restore src/lib/content/evidence-deferred-master-scope.ts from original Git blob d6909e3ca8e58205c70ff24d6195e386811c42e1; no DB migration or article content changes required."
+      }
+    },
+    {
+      "path": "src/lib/content/evidence-deferred-master-scope.test.ts",
+      "blobSha": "464bd1edd37db5005910de9fc9f87284522d8e84",
+      "approvedRemoval": true,
+      "baselineImporters": [],
+      "validationCommands": [
+        "node scripts/repository-deletion-gate.mjs --check",
+        "npx tsc --noEmit",
+        "npx vitest run src/lib/content src/lib/keywords",
+        "npm run build"
+      ],
+      "evidence": {
+        "purposeAndReason": "Remove 242 lines of tests that exclusively validate the retired lexical heading-affinity mechanism; preserve all tests of canonical ExecutionPlan, Research, Evidence verification and Writer preflight.",
+        "realImportersAndConsumers": "Validated directly in GitHub CI run 39178534123 on the immediately preceding branch head: productionImporters=[], scriptImporters=[] for evidence-deferred-master-scope.ts, and its single remaining consumer is evidence-deferred-master-scope.test.ts. Both are removed in the same atomic commit.",
+        "dynamicRuntimeAndExternalCallers": "Static and literal dynamic imports, Next routes, Writer entrypoints and manually invoked tracked scripts are covered by the writer-module-map.mjs AST graph; unknown off-repo references cannot be ruled out. These names were not persisted as API endpoints.",
+        "schemaDataAndHistoricalCompatibility": "Does not change schema, DB content, serialized briefs/articles, model prompts, live SERP research, claim/evidence validation, template selection, CMS or signed checkpoint format. The active evidence-aware-planning.ts is retained because research-pack.ts still imports it.",
+        "testEvidenceAndLiveRisks": "Pre-deletion proof: GitHub Actions 39178534123 passed TypeScript, all 1,559 tests and Next.js production build after the legacy scope call was removed. Post-deletion must rerun exact-blob deletion gate, full Content+Keywords regression, TypeScript and Next production build before application to Mac. No paid AI calls or DB actions.",
+        "rollbackPlan": "Revert exact removal commit or restore src/lib/content/evidence-deferred-master-scope.test.ts from original Git blob 464bd1edd37db5005910de9fc9f87284522d8e84; no DB migration or article content changes required."
+      }
     }
   ]
 }
