@@ -1,3 +1,4 @@
+import { recordWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
 import {
   primaryOwnershipCandidates,
   selectProductionPrimaryCandidate,
@@ -1532,6 +1533,14 @@ export async function buildContentStrategy({
       candidates.values()
     );
 
+  recordWriterTraceV1("keywords.candidate_pool", {
+    topic, candidateCount: values.length, existingQueryCount: existing.length,
+    relatedQueryCount: related.length,
+  });
+  recordWriterForensicArtifactV1("keywords.candidate_sources", {
+    topic, existing, related, trends, priorBriefs: briefs,
+    candidates: values.map(value => ({ ...value, sources: Array.from(value.sources) })),
+  });
   const maxVolume =
     Math.max(
       1,
@@ -1603,6 +1612,9 @@ export async function buildContentStrategy({
         scored,
     });
 
+  recordWriterForensicArtifactV1("keywords.scored_and_primary_ownership", {
+    topic, scored, productionPrimaryCandidate, primaryOwnershipPool,
+  });
   console.info(
     "[content strategy] query ownership",
     {
@@ -1807,6 +1819,9 @@ export async function buildContentStrategy({
         ),
     });
 
+  recordWriterForensicArtifactV1("keywords.all_ranked_decisions", {
+    topic, authorityShadow, keywordDecisionShadow,
+  });
   console.info(
     "[content strategy shadow] keyword decision",
     {
