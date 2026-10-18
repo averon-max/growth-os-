@@ -71,15 +71,10 @@ async function main(): Promise<void> {
       await import("../src/lib/content/master-runtime-adapter");
     const { parsePersistedArticleExecutionPlanV1 } =
       await import("../src/lib/content/article-execution-plan-binding-v1");
-    const {
-      assertArticlePreWriterEvidenceReadyV1,
-      assertArticlePreWriterRequiredCoverageV1,
-      assertArticlePreWriterAnswerSupportV2,
-    } = await import("../src/lib/content/article-prewriter-evidence-gate-v1");
-    const { assertSectionEvidenceCapacityV1 } =
-      await import("../src/lib/content/section-evidence-capacity-v1");
-    const { assertPreWriterMissionAuthorityV1 } =
-      await import("../src/lib/content/article-prewriter-mission-authority-gate-v1");
+    const { assertCanonicalWriterPreflightV1 } =
+      await import("../src/lib/content/canonical-writer-preflight-v1");
+    const { diagnoseWriterFailureV1 } =
+      await import("../src/lib/content/writer-failure-diagnosis-v1");
 
     const persisted = brief.evidenceSnapshot?.plan ?? null;
     const runtime = inspectProductionMasterRuntimePlan(persisted);
@@ -96,20 +91,19 @@ async function main(): Promise<void> {
     let plan: ReturnType<typeof parsePersistedArticleExecutionPlanV1> | null = null;
     try {
       plan = parsePersistedArticleExecutionPlanV1(record?.articleExecutionPlan);
-      assertArticlePreWriterEvidenceReadyV1(plan);
-      assertArticlePreWriterRequiredCoverageV1(plan);
-      assertArticlePreWriterAnswerSupportV2(plan);
-      // Match production's remaining pre-model gates. No paid attempt should
-      // pass CLI preflight only to fail on the same saved plan in service.ts.
-      assertSectionEvidenceCapacityV1(plan.sections);
       if (inspected.runtime) {
-        assertPreWriterMissionAuthorityV1({
-          sections: plan.sections,
+        // Same exact pre-model checks and ordering as service.ts, no drift.
+        assertCanonicalWriterPreflightV1({
+          plan,
           blueprints: inspected.runtime.sectionBlueprints.sections,
         });
+      } else {
+        blockers.push("PRODUCTION_MASTER_RUNTIME_INVALID");
       }
     } catch (error) {
       blockers.push(errorMessage(error));
+      const failure = diagnoseWriterFailureV1(error);
+      console.log("PREFLIGHT_DIAGNOSIS=" + JSON.stringify(failure));
     }
 
     const existing = await prisma.contentArticle.findMany({
