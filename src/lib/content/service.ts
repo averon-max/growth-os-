@@ -2612,6 +2612,9 @@ export async function generateArticleFromBrief(
         context:
           masterCriticContext,
       });
+    recordWriterForensicArtifactV1("critic.initial_suite", {
+      masterCriticExecution, masterCriticContext,
+    });
 
 
     /*
@@ -2712,6 +2715,9 @@ export async function generateArticleFromBrief(
      * This is now the ONLY master-article version allowed to
      * enter downstream deterministic gates or persistence.
      */
+    recordWriterForensicArtifactV1("critic.repair_execution", {
+      masterCriticRepairExecution,
+    });
     let acceptedMasterWriterRun =
       masterCriticRepairExecution
         .run;
@@ -2993,6 +2999,9 @@ export async function generateArticleFromBrief(
       masterSerpReplay =
         competitiveReplayExecution
           .finalReplay;
+      recordWriterForensicArtifactV1("serp.replay_and_repair", {
+        competitiveReplayExecution,
+      });
 
 
       console.info(
@@ -3510,6 +3519,9 @@ export async function generateArticleFromBrief(
         intelligence,
       });
 
+    recordWriterForensicArtifactV1("audit.publication_policy", {
+      publicationPolicy, intelligence,
+    });
     console.info(
       "[content publication policy]",
       {
@@ -3668,6 +3680,11 @@ export async function generateArticleFromBrief(
           masterSerpReplayWarning,
       });
 
+    recordWriterForensicArtifactV1("audit.final_readiness", {
+      finalArticleReadiness,
+      finalMasterCriticExecution,
+      masterSerpReplay,
+    });
     console.info(
       "[content final article readiness]",
       {
