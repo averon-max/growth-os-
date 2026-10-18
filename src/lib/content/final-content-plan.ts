@@ -1,3 +1,4 @@
+import { recordWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
 import {
   buildContentStrategy,
   keywordSimilarity,
@@ -1088,6 +1089,15 @@ export async function buildFinalContentPlan({
     );
   }
 
+  recordWriterTraceV1("serp.initial_research", {
+    primaryKeyword: strategy.primary.keyword,
+    captured: Boolean(serp),
+    organicResults: serp?.organic.length ?? null,
+    competitors: serp?.competitors.length ?? null,
+  });
+  recordWriterForensicArtifactV1("serp.initial_full_results", {
+    keyword: strategy.primary.keyword, serp,
+  });
   const plan =
     compileFinalContentPlan(
       strategy,
@@ -1137,5 +1147,8 @@ export async function buildFinalContentPlan({
     }
   );
 
+  recordWriterForensicArtifactV1("serp.plan_and_feasibility", {
+    strategy, serpFeasibilityShadow, plan,
+  });
   return plan;
 }
