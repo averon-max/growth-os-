@@ -47,7 +47,7 @@ function sanitize(value: unknown, depth = 0, keyHint = ""): unknown {
   if (depth >= 12) return "[depth limit]";
   if (typeof value === "string") {
     if (SAFE_METADATA_STRING_KEYS.has(keyHint) &&
-        value.length <= 160 && /^[A-Za-z0-9_.:\/-]+$/.test(value)) {
+        value.length <= 120 && /^[A-Za-z0-9_.-]+$/.test(value)) {
       return value;
     }
     return { sha256: hashTraceTextV1(value), chars: value.length };
@@ -79,7 +79,7 @@ export function recordWriterTraceV1(
     runId: run.runId,
     stage: validStage ? stage : "trace.invalid_stage",
     fields: {
-      ...sanitize(fields) as Record<string, unknown>,
+      ...(sanitize(fields) as Record<string, unknown>),
       ...(validStage ? {} : { invalidStageSha256: hashTraceTextV1(stage) }),
     },
   };
