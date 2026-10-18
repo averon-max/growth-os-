@@ -296,10 +296,15 @@ async function callOpenAiApi(
         )
       : 5000;
 
+  // Explicit opt-in only: reasoning summaries are not private chain-of-thought.
+  // When off, the provider request is byte-for-byte logically unchanged.
+  const diagnosticReasoningSummaryV1 =
+    process.env.GROWTH_OS_WRITER_TRACE_REASONING_SUMMARY === "1" && effort !== "none";
   recordWriterTraceV1("model.request_configuration", {
     model: OPENAI_MODEL, reasoningEffort: effort,
     maxOutputTokens, providerRetries: MAX_RETRIES,
     storeResponse: false, format: "json_object", verbosity: "low",
+    reasoningSummaryRequested: diagnosticReasoningSummaryV1,
   });
   recordWriterForensicArtifactV1("model.request_input", {
     model: OPENAI_MODEL, reasoningEffort: effort, maxOutputTokens,
@@ -348,6 +353,7 @@ async function callOpenAiApi(
 
           reasoning: {
             effort,
+            ...(diagnosticReasoningSummaryV1 ? { summary: "auto" as const } : {}),
           },
 
           input: [
@@ -394,6 +400,20 @@ async function callOpenAiApi(
         throw new ContentGenerationError("OpenAI returned no content");
       }
 
+      const availableReasoningSummariesV1 = response.output.flatMap(item =>
+        item.type === "reasoning" && Array.isArray(item.summary)
+          ? item.summary.map(summary => summary.text)
+          : []
+      );
+      recordWriterTraceV1("model.reasoning_summary_availability", {
+        requested: diagnosticReasoningSummaryV1,
+        returnedSummaries: availableReasoningSummariesV1.length,
+      });
+      if (availableReasoningSummariesV1.length > 0) {
+        recordWriterForensicArtifactV1("model.available_reasoning_summaries", {
+          summaries: availableReasoningSummariesV1,
+        });
+      }
       recordWriterTraceV1("model.response_metadata", {
         model: OPENAI_MODEL,
         requestAttempt: attempt + 1,
