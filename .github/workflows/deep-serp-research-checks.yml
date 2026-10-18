@@ -1,0 +1,40 @@
+name: Deep SERP research checks
+
+on:
+  push:
+    branches:
+      - feat/deep-serp-content-analysis-20261018
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      DATABASE_URL: postgresql://runner:runner@127.0.0.1:5432/growth_os_ci
+      NEXTAUTH_SECRET: ci-only-do-not-deploy
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install and generate Prisma client
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript contract
+        run: npx tsc --noEmit
+      - name: Deep competitor and pipeline regressions
+        run: |
+          npx vitest run \
+            src/lib/content/competitor-document-depth-v1.test.ts \
+            src/lib/content/serp-consensus-v2.test.ts \
+            src/lib/content/competitive-seo-blueprint-wiring.test.ts \
+            src/lib/keywords/keyword-deep-serp-readiness-v1.test.ts \
+            src/lib/keywords/keyword-research-v2.test.ts \
+            src/lib/content/production-master-live-source-adapter.test.ts
+      - name: Safety boundary
+        run: echo "NO_LIVE_SERP_NO_WRITER_NO_DB_MUTATION"
