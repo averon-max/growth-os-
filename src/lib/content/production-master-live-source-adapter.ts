@@ -1,3 +1,4 @@
+import { recordWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
 import {
   getWebsiteKeywordContext,
 } from "./keyword-context";
@@ -620,6 +621,12 @@ export async function collectProductionMasterLiveSources(
   }
 
 
+  recordWriterTraceV1("research.acquisition_started", {
+    keyword, locationName, countryCode, languageName, languageCode,
+    relatedKeywordLimit,
+    capturedAt: capturedAt.toISOString(),
+  });
+
   /*
    * All six operations are independent source reads.
    *
@@ -695,6 +702,16 @@ export async function collectProductionMasterLiveSources(
           ),
     ]);
 
+  recordWriterTraceV1("research.acquisition_finished", {
+    keyword,
+    organicResults: serpIntelligence.organic.length,
+    competitorPages: serpIntelligence.competitors.length,
+    capturedAt: capturedAt.toISOString(),
+  });
+  recordWriterForensicArtifactV1("research.raw_provider_results", {
+    keywordContext, relatedKeywords, searchVolume, keywordDifficulty,
+    serpIntelligence, businessFacts, internalLinkCandidates,
+  });
 
   if (
     serpIntelligence
@@ -751,6 +768,9 @@ export async function collectProductionMasterLiveSources(
       businessFacts,
     });
 
+  recordWriterForensicArtifactV1("research.snapshot_and_provenance", {
+    serpSnapshot, provenance,
+  });
 
   return Object.freeze({
     version:
