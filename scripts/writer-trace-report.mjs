@@ -63,7 +63,15 @@ for (const file of files) {
   const warnings = [];
   if (parseErrors.length) warnings.push("MALFORMED_JSONL");
   if (!events.some(e => e.stage === "run.started")) warnings.push("MISSING_START_EVENT");
-  if (!events.some(e => terminal.includes(e.stage))) warnings.push("MISSING_TERMINAL_EVENT");
+  const terminalEvents = events.filter(event => terminal.includes(event.stage));
+  if (!terminalEvents.length) warnings.push("MISSING_TERMINAL_EVENT");
+  if (terminalEvents.length > 1) warnings.push("MULTIPLE_TERMINAL_EVENTS");
+  if (terminalEvents.length && !terminal.includes(events.at(-1)?.stage))
+    warnings.push("TERMINAL_EVENT_NOT_LAST");
+  if (events.length && events[0].eventId !== 1)
+    warnings.push("FIRST_EVENT_ID_INVALID");
+  if (new Set(events.map(event => event.runId)).size > 1)
+    warnings.push("MIXED_RUN_IDS");
   for (let i = 1; i < events.length; i++) {
     if (events[i].eventId !== events[i-1].eventId + 1) {
       warnings.push("NONCONTIGUOUS_SEQUENCE"); break;
@@ -111,6 +119,8 @@ for (const file of files) {
       artifactChecks.push({eventId:event.eventId,valid:false,reason:"ARTIFACT_MISSING_OR_UNREADABLE"});
     }
   }
+  if (artifactChecks.some(check => check.reason === "LEGACY_INLINE_ARTIFACT"))
+    warnings.push("LEGACY_INLINE_PRIVATE_ARTIFACT");
   if (artifactChecks.some(check => !check.valid && check.reason !== "LEGACY_INLINE_ARTIFACT"))
     warnings.push("ARTIFACT_INTEGRITY_FAILURE");
   const important = events.filter(e => /error|failed|reject|block|warn|validation|repair|recovery/i.test(e.stage));
