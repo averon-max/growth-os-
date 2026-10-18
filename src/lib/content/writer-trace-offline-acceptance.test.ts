@@ -159,9 +159,21 @@ describe("offline Writer trace acceptance / cross-run lineage", () => {
       const raw = JSON.parse(execFileSync(process.execPath,
         [reportScript,directory,"--stage","forensic.","--raw"],{encoding:"utf8"}));
       expect(raw.containsPrivateData).toBe(true);
-      const rawText = JSON.stringify(raw);
-      expect(rawText).toContain(privateKeyword);
-      expect(rawText).toContain(repairedDraft);
+      // JSON.stringify escapes newlines. Compare decoded artifact fields, not serialized JSON.
+      const rawBrief = raw.reports.find((run: {scope: string}) => run.scope === "content.brief");
+      const rawArticle = raw.reports.find((run: {scope: string}) => run.scope === "content.article");
+      const keywords = rawBrief.rawEvents.find(
+        (event: {stage: string}) => event.stage === "forensic.keywords.full_strategy"
+      );
+      const repair = rawArticle.rawEvents.find(
+        (event: {stage: string}) => event.stage === "forensic.critic.repair_execution"
+      );
+      const readiness = rawArticle.rawEvents.find(
+        (event: {stage: string}) => event.stage === "forensic.audit.final_readiness"
+      );
+      expect(keywords.privateArtifact.queries[0].query).toBe(privateKeyword);
+      expect(repair.privateArtifact.after).toBe(repairedDraft);
+      expect(readiness.privateArtifact.bodyMarkdown).toBe(repairedDraft);
       expect(allJsonl).not.toContain(repairedDraft);
       // Hash references should identify exact persisted source bytes.
       const expected = createHash("sha256").update(briefId).digest("hex");
