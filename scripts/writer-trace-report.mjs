@@ -125,6 +125,25 @@ for (const file of files) {
     warnings.push("ARTIFACT_INTEGRITY_FAILURE");
   const important = events.filter(e => /error|failed|reject|block|warn|validation|repair|recovery/i.test(e.stage));
   const selected = events.filter(e => !stageFilter || e.stage.startsWith(stageFilter));
+  // Safe operator triage: only the bounded code, responsible subsystem and
+  // canonical template ID. Never surface exception prose or private drafts.
+  const failureEvent = [...events].reverse().find(e => e.stage === "run.failed") ?? null;
+  const preflightBlocked = [...events].reverse()
+    .find(e => e.stage === "writer.preflight.blocked") ?? null;
+  const templateEvent = [...events].reverse()
+    .find(e => e.stage === "template.selected") ?? null;
+  const safeToken = v => typeof v === "string" &&
+    /^[A-Za-z0-9_.-]{1,120}$/.test(v) ? v : null;
+  const failureDiagnosis = failureEvent || preflightBlocked ? {
+    reasonCode:safeToken(preflightBlocked?.fields?.reasonCode) ??
+      safeToken(failureEvent?.fields?.reasonCode),
+    failureClass:safeToken(preflightBlocked?.fields?.failureClass) ??
+      safeToken(failureEvent?.fields?.failureClass),
+    responsibleStage:safeToken(preflightBlocked?.fields?.stage),
+    recommendedAction:safeToken(preflightBlocked?.fields?.recommendedAction) ??
+      safeToken(failureEvent?.fields?.recommendedAction),
+    automaticRetry:false,
+  } : null;
   const start = Date.parse(events[0]?.timestamp || "");
   const end = Date.parse(events.at(-1)?.timestamp || "");
   const report = {
@@ -139,6 +158,8 @@ for (const file of files) {
     lastEventAt: events.at(-1)?.timestamp ?? null,
     elapsedMs: Number.isFinite(start) && Number.isFinite(end) ? end-start : null,
     terminalStage: events.at(-1)?.stage ?? null,
+    selectedTemplateId: safeToken(templateEvent?.fields?.templateId),
+    failureDiagnosis,
     eventCount: events.length,
     stageCounts, modelExchangeCount: modelExchanges.length,
     usage: {
