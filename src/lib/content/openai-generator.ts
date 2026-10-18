@@ -12,6 +12,7 @@ import {
   recordWriterModelExchangeV1,
   recordWriterTraceV1,
   recordWriterForensicArtifactV1,
+  hashTraceTextV1,
 } from "./writer-trace-v1";
 
 import OpenAI from "openai";
@@ -296,17 +297,22 @@ async function callOpenAiApi(
         )
       : 5000;
 
+  const forensicStageV1 = currentContentProviderStageV1() ?? "content.ai.json";
+  const forensicPromptHashV1 = hashTraceTextV1(prompt);
+
   // Explicit opt-in only: reasoning summaries are not private chain-of-thought.
   // When off, the provider request is byte-for-byte logically unchanged.
   const diagnosticReasoningSummaryV1 =
     process.env.GROWTH_OS_WRITER_TRACE_REASONING_SUMMARY === "1" && effort !== "none";
   recordWriterTraceV1("model.request_configuration", {
+    stage: forensicStageV1, promptSha256: forensicPromptHashV1,
     model: OPENAI_MODEL, reasoningEffort: effort,
     maxOutputTokens, providerRetries: MAX_RETRIES,
     storeResponse: false, format: "json_object", verbosity: "low",
     reasoningSummaryRequested: diagnosticReasoningSummaryV1,
   });
   recordWriterForensicArtifactV1("model.request_input", {
+    stage: forensicStageV1, promptSha256: forensicPromptHashV1,
     model: OPENAI_MODEL, reasoningEffort: effort, maxOutputTokens,
     developerMessage: "Return valid JSON only. Follow the requested contract exactly. Never invent evidence, rankings, metrics, claims, search observations, or business facts.",
     prompt,
@@ -406,6 +412,7 @@ async function callOpenAiApi(
           : []
       );
       recordWriterTraceV1("model.reasoning_summary_availability", {
+        stage: forensicStageV1, promptSha256: forensicPromptHashV1,
         requested: diagnosticReasoningSummaryV1,
         returnedSummaries: availableReasoningSummariesV1.length,
       });
@@ -415,16 +422,19 @@ async function callOpenAiApi(
         });
       }
       recordWriterTraceV1("model.response_metadata", {
+        stage: forensicStageV1, promptSha256: forensicPromptHashV1,
         model: OPENAI_MODEL,
         requestAttempt: attempt + 1,
         responseId: response.id ?? null,
         responseStatus: response.status ?? null,
       });
       recordWriterForensicArtifactV1("model.response_envelope", {
+        stage: forensicStageV1, promptSha256: forensicPromptHashV1,
         response,
         requestAttempt: attempt + 1,
       });
       recordWriterTraceV1("model.usage", {
+        stage: forensicStageV1, promptSha256: forensicPromptHashV1,
         model: OPENAI_MODEL,
         reasoningEffort: effort,
         inputTokens: response.usage?.input_tokens ?? null,
@@ -469,6 +479,7 @@ async function callOpenAiApi(
             );
 
       recordWriterTraceV1("model.request_failed_attempt", {
+        stage: forensicStageV1, promptSha256: forensicPromptHashV1,
         model: OPENAI_MODEL,
         requestAttempt: attempt + 1,
         status,
