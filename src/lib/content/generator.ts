@@ -111,54 +111,5 @@ export interface ContentGenerator {
   ):
     Promise<GeneratedBrief>;
 
-  generateArticle(
-    input:
-      ContentBriefInput & {
-        searchIntent:
-          string;
-
-        primaryKeyword:
-          string;
-
-        secondaryKeywords:
-          string[];
-
-        outline:
-          ContentOutlineSection[];
-      }
-  ):
-    Promise<GeneratedArticle>;
 }
 
-export interface ArticleReviewGenerator
-  extends ContentGenerator {
-  critiqueArticle(
-    input:
-      ArticleCritiqueInput
-  ):
-    Promise<ArticleCritiqueResult>;
-
-  rewriteArticle(
-    input:
-      ArticleRewriteInput
-  ):
-    Promise<GeneratedArticle>;
-}
-
-export function supportsArticleReviewGenerator(
-  generator:
-    ContentGenerator
-): generator is ArticleReviewGenerator {
-  const candidate =
-    generator as
-      Partial<ArticleReviewGenerator>;
-
-  return (
-    typeof candidate
-      .critiqueArticle ===
-      "function" &&
-    typeof candidate
-      .rewriteArticle ===
-      "function"
-  );
-}

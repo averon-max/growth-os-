@@ -54,6 +54,23 @@ jobs:
           test ! -e src/lib/content/quality-improvement-keyword-recovery-v1.ts
           test ! -e src/lib/content/quality-improvement-post-editorial-depth-v1.ts
           test ! -e src/lib/content/quality-improvement-progress-scope-v1.ts
+      - name: Require one Master Writer and forbid full-article fallback
+        run: |
+          node - <<'JS'
+          const fs=require('fs');
+          const provider=fs.readFileSync('src/lib/content/openai-generator.ts','utf8');
+          const api=fs.readFileSync('src/lib/content/generator.ts','utf8');
+          const service=fs.readFileSync('src/lib/content/service.ts','utf8');
+          const must=(yes,msg)=>{if(!yes)throw new Error(msg);};
+          must(!/async (?:generateArticle|rewriteArticle|critiqueArticle)\s*\(/.test(provider),'legacy full-article model method survived');
+          must(!/generateArticle\s*\(/.test(api),'old generateArticle generator contract survived');
+          must(/generateArticleShell\s*\(/.test(provider),'Master shell generator missing');
+          must(/generateSection\s*\(/.test(provider),'Master section generator missing');
+          must(/executeMasterWriterV1\s*\(/.test(service),'real Master Writer disconnected');
+          must(service.includes('assertCanonicalWriterPreflightV1'),'canonical evidence preflight disconnected');
+          must(service.includes('withWriterTraceV1'),'trace scope disconnected');
+          console.log('SINGLE_MASTER_WRITER_WITH_PREFLIGHT_AND_TRACE_PASS');
+          JS
       - name: TypeScript strict
         run: npx tsc --noEmit
       - name: All Content and Keyword regressions
