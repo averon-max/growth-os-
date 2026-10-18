@@ -77,3 +77,23 @@ test("reports malformed JSONL, missing terminal event and broken sequences", () 
     rmSync(directory,{recursive:true,force:true});
   }
 });
+
+test("identifies mixed run IDs, wrong first event and terminal not last", () => {
+  const directory=mkdtempSync(join(tmpdir(),"writer-trace-report-integrity-"));
+  try {
+    const now="2026-10-17T12:00:00Z";
+    const events=[
+      {eventId:2,runId:"run-1",timestamp:now,stage:"run.started",fields:{}},
+      {eventId:3,runId:"other-run",timestamp:now,stage:"run.succeeded",fields:{}},
+      {eventId:4,runId:"run-1",timestamp:now,stage:"late.event",fields:{}},
+    ];
+    writeFileSync(join(directory,"run-1.jsonl"),
+      events.map(event=>JSON.stringify(event)).join("\n")+"\n");
+    const warnings=execute(directory).reports[0].warnings;
+    assert.ok(warnings.includes("FIRST_EVENT_ID_INVALID"));
+    assert.ok(warnings.includes("MIXED_RUN_IDS"));
+    assert.ok(warnings.includes("TERMINAL_EVENT_NOT_LAST"));
+  } finally {
+    rmSync(directory,{recursive:true,force:true});
+  }
+});
