@@ -330,6 +330,7 @@ async function callOpenAiApi(
       MAX_RETRIES;
     attempt++
   ) {
+    const attemptStartedAt = Date.now();
     try {
       /*
        * CONTENT_PROVIDER_REQUEST_BUDGET_V1:openai
@@ -402,10 +403,6 @@ async function callOpenAiApi(
           .output_text
           ?.trim();
 
-      if (!output) {
-        throw new ContentGenerationError("OpenAI returned no content");
-      }
-
       const availableReasoningSummariesV1 = response.output.flatMap(item =>
         item.type === "reasoning" && Array.isArray(item.summary)
           ? item.summary.map(summary => summary.text)
@@ -426,7 +423,10 @@ async function callOpenAiApi(
         model: OPENAI_MODEL,
         requestAttempt: attempt + 1,
         responseId: response.id ?? null,
+        requestId: response._request_id ?? null,
         responseStatus: response.status ?? null,
+        incompleteReason: response.incomplete_details?.reason ?? null,
+        durationMs: Date.now() - attemptStartedAt,
       });
       recordWriterForensicArtifactV1("model.response_envelope", {
         stage: forensicStageV1, promptSha256: forensicPromptHashV1,
@@ -440,7 +440,12 @@ async function callOpenAiApi(
         inputTokens: response.usage?.input_tokens ?? null,
         outputTokens: response.usage?.output_tokens ?? null,
         totalTokens: response.usage?.total_tokens ?? null,
+        reasoningTokens: response.usage?.output_tokens_details?.reasoning_tokens ?? null,
       });
+
+      if (!output) {
+        throw new ContentGenerationError("OpenAI returned no content");
+      }
 
       return output;
     } catch (
@@ -483,6 +488,9 @@ async function callOpenAiApi(
         model: OPENAI_MODEL,
         requestAttempt: attempt + 1,
         status,
+        durationMs: Date.now() - attemptStartedAt,
+        requestId: cause && typeof cause === "object" && "requestID" in cause &&
+          typeof cause.requestID === "string" ? cause.requestID : null,
         errorName: cause instanceof Error ? cause.name : "unknown",
         // The full error may contain provider data, do not log unsanitized details.
       });
