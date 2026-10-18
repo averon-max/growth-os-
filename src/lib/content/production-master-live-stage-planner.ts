@@ -1,4 +1,4 @@
-import { recordWriterTraceV1 } from "./writer-trace-v1";
+import { recordWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
 import { buildEvidenceFromLiveResearch } from "./production-live-evidence-source-registry-v1";
 export { buildEvidenceFromLiveResearch };
 import {
@@ -402,6 +402,10 @@ export async function planProductionMasterArtifactsFromLiveSources({
       research
     );
 
+  recordWriterForensicArtifactV1("planner.research_and_mission", {
+    liveSourceInput, mission, research, rankingInputs,
+  });
+
   recordWriterTraceV1("research.collected", {
     keyword: research.keyword,
     capturedAt: research.capturedAt,
@@ -616,6 +620,11 @@ export async function planProductionMasterArtifactsFromLiveSources({
       await callContentAiJson(
         prompt
       );
+
+    recordWriterForensicArtifactV1("planner.model_initial_response", {
+      rawResponse,
+      // Prompt is separately captured by model.exchange when FULL_TEXT is enabled.
+    });
   } catch (
     cause
   ) {
@@ -1098,6 +1107,9 @@ function inspectStagePlanCompleteness(
       pageIntent: mission.missionIntent,
       inspectCompleteness: inspectStagePlanCompleteness,
       inspectClaimOwnership: inspectStagePlanClaimOwnership,
+    });
+    recordWriterForensicArtifactV1("planner.validation_and_current_plan", {
+      phase, issues, plan,
     });
     recordWriterTraceV1("stage_plan.validation", {
       phase,
@@ -6611,6 +6623,11 @@ function inspectStagePlanCompleteness(
     riskClass: mission.riskClass,
   };
 
+  recordWriterForensicArtifactV1("planner.final_artifacts", {
+    masterArtifacts: bundle.input,
+    searchMissionInput,
+    articleExecutionPlan,
+  });
   return Object.freeze({
     masterArtifacts: bundle.input,
     searchMissionInput,
