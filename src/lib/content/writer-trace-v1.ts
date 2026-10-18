@@ -186,6 +186,10 @@ export function recordWriterForensicArtifactV1(stage: string, artifact: unknown)
   // Tracing must remain a non-blocking, non-fatal observer.
   try {
     const serialized = JSON.stringify(sanitizeForensicArtifactV1(artifact));
+    if (typeof serialized !== "string") {
+      recordWriterTraceV1(`forensic.${stage}.capture_failed`, { reason: "ARTIFACT_NOT_SERIALIZABLE" });
+      return;
+    }
     const sizeBytes = Buffer.byteLength(serialized, "utf8");
     const truncated = sizeBytes > FORENSIC_ARTIFACT_BYTES_MAX_V1;
     const event = {
