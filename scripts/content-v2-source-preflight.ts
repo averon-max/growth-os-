@@ -18,6 +18,7 @@ type Navigation={url:string;ownerSectionIndexes:number[];
 type Mapping={articleId:string;candidateMarkdownSha256:string;
   factualEvidence:SourceEntry[];navigationLinks:Navigation[];};
 
+async function main(): Promise<void> {
 const args=process.argv.slice(2);
 if(args.length>1 || (args.length===1 && args[0]!=="--fetch-official")){
   throw new Error("USAGE: content-v2-source-preflight.ts [--fetch-official]");
@@ -109,3 +110,10 @@ await writeFile(join(dest,"official-source-preflight.json"),JSON.stringify(repor
   {encoding:"utf8",mode:0o600});
 console.log(JSON.stringify(report,null,2));
 if(!h2Passed || (fetchOfficial&&!sourcePassed))process.exitCode=2;
+}
+
+main().catch((error: unknown) => {
+  console.error("V2_SOURCE_PREFLIGHT_FAILED:",
+    error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});
