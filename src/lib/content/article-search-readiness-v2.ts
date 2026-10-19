@@ -54,6 +54,69 @@ export function inspectProseJoinAnomaliesV2(body:string):string[]{
   if(/\b(?:relevant|applies) toa particular\b/iu.test(text))out.add("toa");
   return [...out].sort().slice(0,20);
 }
+
+/**
+ * Bounded, REVIEW-ONLY word-join suspicions based on syntax and words
+ * already present in the article. This is not a dictionary, language model
+ * or a safe autocorrect rule. Never mutate publication bytes or reject
+ * an article solely on these uncertain observations.
+ */
+export type ProseJoinSuspicionV2={
+  token:string; suggestedSpacing:string;
+  evidence:"GRAMMATICAL_SUFFIX"|"LOCAL_VOCABULARY";
+};
+export function inspectPossibleProseWordJoinsV2(body:string):ProseJoinSuspicionV2[]{
+  // Search only reader-visible prose. URLs, Markdown links, code and H headings
+  // contain legitimate joined identifiers and must not contribute findings.
+  const prose=body
+    .replace(/(?:\x60{3,}|~{3,})[\s\S]*?(?:\x60{3,}|~{3,})/gu," ")
+    .replace(/\x60[^\x60\n]*\x60/gu," ")
+    .replace(/!?\[[^\]]*\]\([^)]+\)/gu," ")
+    .replace(/https?:\/\/[^\s)]+/gu," ")
+    .replace(/^\s{0,3}#{1,6}\s+.*$/gmu," ")
+    .replace(/<[^>]+>/gu," ");
+  const words=[...prose.matchAll(/\b[a-zA-Z]{2,40}\b/gu)]
+    .map(x=>x[0]);
+  const known=new Set(words.map(x=>x.toLowerCase()));
+  const found=new Map<string,ProseJoinSuspicionV2>();
+  const emit=(token:string,suggestedSpacing:string,
+    evidence:ProseJoinSuspicionV2["evidence"])=>{
+    if(!found.has(token))found.set(token,{token,suggestedSpacing,evidence});
+  };
+  for(const original of words){
+    // Names and title-case identifiers are too ambiguous to split.
+    if(original!==original.toLowerCase()||
+      original.length<8||original.length>40)continue;
+    const word=original.toLowerCase();
+    // Short grammatical endings are evidence of a probable lost boundary.
+    // The comparative + "to" pattern also catches "easierto" when the
+    // isolated "easier" is absent from the same article.
+    for(const suffix of ["whether","you","to"]){
+      if(!word.endsWith(suffix))continue;
+      const stem=word.slice(0,-suffix.length);
+      if(stem.length<5)continue;
+      if(suffix==="to"&&!known.has(stem)&&!stem.endsWith("er"))continue;
+      emit(word,stem+" "+suffix,"GRAMMATICAL_SUFFIX");
+      break;
+    }
+    if(found.has(word)||word.length<14)continue;
+    // Require all three components to be attested independently in the
+    // article. Do not fabricate splits based on unknown English words.
+    outer:for(let i=4;i<=word.length-8;i++){
+      const first=word.slice(0,i);
+      if(!known.has(first))continue;
+      for(let j=i+3;j<=word.length-4;j++){
+        const middle=word.slice(i,j),last=word.slice(j);
+        if(known.has(middle)&&known.has(last)){
+          emit(word,first+" "+middle+" "+last,"LOCAL_VOCABULARY");
+          break outer;
+        }
+      }
+    }
+  }
+  return [...found.values()].slice(0,20);
+}
+
 export function evaluateArticleSearchReadinessV2({
   article,runtime,plan,primaryKeyword,secondaryKeywords,replay,
 }:{
@@ -77,10 +140,16 @@ export function evaluateArticleSearchReadinessV2({
   const headings=[...body.matchAll(/^##\s+([^\n]+)/gm)].map(m=>m[1]);
   const nestedHeadings=[...body.matchAll(/^###\s+([^\n]+)/gm)].map(m=>m[1]);
   const anomalies=inspectProseJoinAnomaliesV2(body);
+  const possibleWordJoins=inspectPossibleProseWordJoinsV2(body)
+    .filter(x=>!anomalies.includes(x.token));
   if(anomalies.length)add("PROSE_SPACING_DEFECT","BLOCK",
     "Visible text has likely missing spaces or punctuation spacing.",
     "Copyedit the affected sentences, then reverify and regenerate SERP Replay.",
     anomalies.join(" | "));
+  if(possibleWordJoins.length)add("PROSE_WORD_JOIN_REVIEW_REQUIRED","REVIEW",
+    "Possible glued words were inferred from nearby article vocabulary or grammatical endings.",
+    "Inspect the suggested spacing in context. Do not autocorrect or block publication solely on this heuristic.",
+    possibleWordJoins.map(x=>x.token+" → "+x.suggestedSpacing).join(" | "));
   const linkCount=(body.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/\S+/gu)??[]).length;
   if(runtime?.mission.riskClass.startsWith("YMYL_")&&linkCount===0)
     add("YMYL_VISIBLE_SOURCES_MISSING","REVIEW",
@@ -284,7 +353,7 @@ export function evaluateArticleSearchReadinessV2({
     }:null,
     article:{words:countWords(body),h1:1,h2:headings.length,
       h3:nestedHeadings.length,visibleExternalLinks:linkCount,
-      probableSpacingIssues:anomalies},
+      probableSpacingIssues:anomalies,possibleWordJoins},
     briefLexicalCoverage:usedBriefKeywords,
     observedSupportingQueries:observed.length,
     assignedSupportingQueries:observed.filter(q=>q.ownerSectionIndex!==null).length,
