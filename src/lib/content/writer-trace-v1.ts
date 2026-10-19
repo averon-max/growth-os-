@@ -132,7 +132,10 @@ export async function withWriterTraceV1<T>(
   input: { scope: string; correlationId?: string },
   action: () => Promise<T>
 ): Promise<T> {
-  const directory = process.env.GROWTH_OS_WRITER_TRACE_DIR?.trim();
+  // Local development always has SAFE metadata traces for debugging.
+  // Production remains opt-in; full drafts/prompts remain a separate opt-in.
+  const directory = process.env.GROWTH_OS_WRITER_TRACE_DIR?.trim() ||
+    (process.env.NODE_ENV === "development" ? ".growth-os-traces" : "");
   if (!directory) return action();
   if (context.getStore()) return action(); // nested calls share one run
   const traceDirectory = resolve(directory);
