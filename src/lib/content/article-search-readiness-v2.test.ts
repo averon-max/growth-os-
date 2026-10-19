@@ -1,5 +1,6 @@
 import {describe,expect,it} from "vitest";
-import {evaluateArticleSearchReadinessV2,inspectProseJoinAnomaliesV2}
+import {evaluateArticleSearchReadinessV2,inspectProseJoinAnomaliesV2,
+  inspectPossibleProseWordJoinsV2,assertArticleProseHygieneV2}
   from "./article-search-readiness-v2";
 import {buildSerpReplayArticleFingerprintV1} from "./serp-replay-fingerprint";
 import type {MasterRuntimeSnapshotV1} from "./master-runtime-adapter";
@@ -269,5 +270,52 @@ describe("real persisted article copyedit failures from free H2 gap audit",()=>{
     const text="These details help you decide whether the service works. "+
       "Begin with the alert and check the credit report.";
     expect(inspectProseJoinAnomaliesV2(text)).toEqual([]);
+  });
+});
+
+
+describe("review-only contextual word-join diagnostics (no autocorrect)",()=>{
+  const sample=[
+    "The service may notify you and people decide whether alerts are easier to read.",
+    "Credit card companies may send notices.",
+    "An alert could notifyyou before you decidewhether the change matters.",
+    "It is easierto review creditcardcompanies in the report.",
+  ].join(" ");
+  it("finds observed joins without adding them to the hard-coded blocker list",()=>{
+    const found=inspectPossibleProseWordJoinsV2(sample);
+    expect(found.map(x=>[x.token,x.suggestedSpacing])).toEqual([
+      ["notifyyou","notify you"],
+      ["decidewhether","decide whether"],
+      ["easierto","easier to"],
+      ["creditcardcompanies","credit card companies"],
+    ]);
+    expect(inspectProseJoinAnomaliesV2(sample)).toEqual([]);
+    // Suspected joins are deliberately REVIEW-only; no unsound hard stop.
+    expect(()=>assertArticleProseHygieneV2(sample)).not.toThrow();
+  });
+  it("reports a separate editorial concern without editing saved text",()=>{
+    const saved=article.bodyMarkdown+"\n\n"+sample;
+    const verdict=audit({article:{...article,bodyMarkdown:saved}});
+    const warning=verdict.findings.find(x=>
+      x.code==="PROSE_WORD_JOIN_REVIEW_REQUIRED");
+    expect(warning?.severity).toBe("REVIEW");
+    expect(warning?.detail).toContain("notifyyou → notify you");
+    expect(verdict.article.possibleWordJoins.map(x=>x.token))
+      .toContain("creditcardcompanies");
+    expect(verdict.canClaimSeoReady).toBe(false);
+    expect(saved).toContain("decidewhether");
+  });
+  it("does not inspect Markdown links, URLs, headings, code or normal compounds",()=>{
+    const protectedText=[
+      "Photo, tomato and portfolio are normal words.",
+      "## decidewhether creditcardcompanies",
+      "[notifyyou](https://example.com/easierto/creditcardcompanies)",
+      "Use \x60notifyyou\x60 as an example identifier.",
+      "\x60\x60\x60json",
+      "easierto creditcardcompanies decidewhether",
+      "\x60\x60\x60",
+      "The government provides credit reports.",
+    ].join("\n");
+    expect(inspectPossibleProseWordJoinsV2(protectedText)).toEqual([]);
   });
 });
