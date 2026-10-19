@@ -1,0 +1,108 @@
+{
+  "version": "EDITORIAL_V2_FACT_TO_SOURCE_REVIEW_V1",
+  "articleId": "cmv606xg60006siqlir66uq23",
+  "articleSha256": "41a3925afe4a671077ac4e377e7ecfd1329c87ee46f14fb1c0d5b7b7b7a5f442",
+  "sourceReviewDate": "2026-10-19",
+  "reviewMode": "AI_ASSISTED_EDITORIAL_FACT_CHECK_WITH_LOCAL_SOURCE_FETCH_PROOF",
+  "inputProof": ".growth-os-tmp/v2-review/official-source-preflight.json",
+  "sourceProof": "3 FTC pages fetched HTTP 200; required snippet text and navigation authority anchors present",
+  "verdict": "FACTUAL_SUPPORT_PRESENT_NOT_SIGNED",
+  "mappings": [
+    {
+      "claimKey": "monitoring-not-bank-or-tax",
+      "h2Indexes": [
+        2
+      ],
+      "candidateExcerpt": "credit monitoring may not alert you if someone withdraws money from a bank account or uses your Social Security number to file a fraudulent tax return",
+      "sourceUrl": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+      "sourceExactFragments": [
+        "someone withdraws money from your bank account",
+        "someone uses your Social Security number to file a tax return"
+      ],
+      "semanticReview": "SUPPORTED",
+      "limitation": "Retrieve the full separate source lines for a persisted VERIFIED_EXCERPT, not this shortened fragment"
+    },
+    {
+      "claimKey": "weekly-free-three-bureau-reports",
+      "h2Indexes": [
+        2,
+        4
+      ],
+      "candidateExcerpt": "request a free online credit report from each of Equifax, Experian and TransUnion once a week through AnnualCreditReport.com",
+      "sourceUrl": "https://consumer.ftc.gov/articles/free-credit-reports",
+      "sourceExactFragments": [
+        "once a week for free at AnnualCreditReport.com"
+      ],
+      "semanticReview": "SUPPORTED",
+      "limitation": "The source page contains the named three nationwide bureaus; full source passage still needs claim-to-evidence attestation"
+    },
+    {
+      "claimKey": "freeze-each-bureau",
+      "h2Indexes": [
+        5
+      ],
+      "candidateExcerpt": "consider a free credit freeze with each of the three nationwide bureaus",
+      "sourceUrl": "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+      "sourceExactFragments": [
+        "Place a credit freeze by contacting each of the three national credit bureaus"
+      ],
+      "semanticReview": "SUPPORTED",
+      "limitation": "The source states freeze is free; distinguish identity theft mitigation from fixing an existing account"
+    },
+    {
+      "claimKey": "fraud-alert-one-bureau",
+      "h2Indexes": [
+        5
+      ],
+      "candidateExcerpt": "an initial fraud alert can be placed by contacting one bureau, which then notifies the other two",
+      "sourceUrl": "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+      "sourceExactFragments": [
+        "That one must notify the other two."
+      ],
+      "semanticReview": "SUPPORTED",
+      "limitation": "Use the source sentence together with its preceding paragraph to avoid context loss"
+    },
+    {
+      "claimKey": "identity-theft-recovery",
+      "h2Indexes": [
+        5
+      ],
+      "candidateExcerpt": "report it through IdentityTheft.gov to obtain a recovery plan",
+      "sourceUrl": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+      "sourceExactFragments": [
+        "get a personal recovery plan"
+      ],
+      "semanticReview": "SUPPORTED",
+      "limitation": "The service destination is a navigation link; evidence is the FTC information page"
+    }
+  ],
+  "navigation": [
+    {
+      "url": "https://www.annualcreditreport.com/index.action",
+      "h2Indexes": [
+        2,
+        4
+      ],
+      "trustedVia": "https://consumer.ftc.gov/articles/free-credit-reports",
+      "role": "OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT"
+    },
+    {
+      "url": "https://www.identitytheft.gov/",
+      "h2Indexes": [
+        5
+      ],
+      "trustedVia": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+      "role": "OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT"
+    }
+  ],
+  "boundaries": {
+    "productSignedEvidenceSnapshot": false,
+    "liveClaimLedgerUpdated": false,
+    "currentArticleChanged": false,
+    "finalCriticsExecuted": false,
+    "currentSerpReplayExecuted": false,
+    "humanQueryOwnerApproved": false,
+    "publicationAuthorized": false
+  },
+  "nextImplementationStep": "Create versioned Section Contract evidence entries for these 5 mappings (using fetched full exact FTC sentences and the actual immutable source ledger), record 2 navigation links as separately verified outbound actions, validate the whole staged snapshot and only then execute the existing bounded critic/replay + explicit human approve flow"
+}
