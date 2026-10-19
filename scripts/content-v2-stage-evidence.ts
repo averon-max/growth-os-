@@ -174,14 +174,18 @@ async function main():Promise<void>{
       if(existingIds.has(claimId)||evidenceIds.has(evidenceId))
         throw Error("EVIDENCE_ID_COLLISION:"+row.claimKey);
       const sources=runtime.evidenceGraph.sources as Array<Record<string,any>>;
-      let source=sources.find(s=>str(s.url).replace(/\/$/,"")===row.sourceUrl.replace(/\/$/,""));
-      if(!source){
-        const sourceId="source-v2-official-"+sha(row.sourceUrl).slice(0,18);
-        source={id:sourceId,url:row.sourceUrl,publisher:"Federal Trade Commission",
-          sourceType:"PRIMARY_GOVERNMENT",authorityTier:"A",jurisdiction:"United States",
-          retrievedAt};
-        sources.push(source);
-      }
+      // Historical ledger entries for a URL may be REFERENCE_ONLY,
+      // incorrectly classified, or have old fetch metadata. Preserve every
+      // historical source unchanged; this new, real FTC fetch gets a
+      // distinct source identity so the freshness and primary-source gates
+      // evaluate the evidence actually fetched for this candidate.
+      const sourceId="source-v2-official-"+sha(row.sourceUrl).slice(0,18);
+      if(sources.some(s=>s.id===sourceId))
+        throw Error("STAGED_SOURCE_ID_COLLISION:"+sourceId);
+      const source={id:sourceId,url:row.sourceUrl,
+        publisher:"Federal Trade Commission",sourceType:"PRIMARY_GOVERNMENT",
+        authorityTier:"A",jurisdiction:"United States",retrievedAt};
+      sources.push(source);
       newClaims.push({id:claimId,text:quote,category:"FACT",risk:"MEDIUM",
         jurisdiction:"United States"});
       (runtime.evidenceGraph.claimEvidence as Array<any>).push({
@@ -230,7 +234,13 @@ async function main():Promise<void>{
     for(const fresh of newClaims){
       const entry=rebuilt.claims.find(c=>c.id===fresh.id);
       if(entry?.status!=="VERIFIED")
-        throw Error("NEW_FTC_CLAIM_UNVERIFIED:"+fresh.id);
+        throw Error("NEW_FTC_CLAIM_UNVERIFIED:"+fresh.id+
+          ":STATUS="+(entry?.status??"MISSING")+
+          ":SOURCE_TYPE="+runtime.evidenceGraph.sources.find(
+            (src:Record<string,any>)=>
+              runtime.evidenceGraph.claimEvidence.some(
+                (e:Record<string,any>)=>e.claimId===fresh.id&&
+                  e.sourceId===src.id))?.sourceType);
     }
     runtime.claimLedger=rebuilt;
 
