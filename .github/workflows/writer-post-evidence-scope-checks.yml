@@ -44,6 +44,12 @@ jobs:
             path:x.path,lines:x.lines,script:x.directOtherImporters,
             test:x.directTestImporters,dependencies:x.internalContentDependencies,
           })),null,2));
+          const testOnly = xs.filter(x => !x.inRuntimeGraph && !x.inScriptGraph);
+          console.log('TEST_ONLY_CONTENT_MODULES', JSON.stringify(testOnly.map(x => ({
+            path: x.path, lines: x.lines,
+            productionImporters: x.directProductionImporters,
+            testImporters: x.directTestImporters,
+          }))));
           console.log('REACHABLE_WRITER_ONLY',xs.filter(x=>x.inWriterGraph).length);
           console.log('RUNTIME_NOT_WRITER',xs.filter(x=>x.inRuntimeGraph&&!x.inWriterGraph).length);
           JS
