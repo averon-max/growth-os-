@@ -9,6 +9,7 @@ on:
       - refactor/content-single-writer-only-20261018
       - refactor/content-remove-legacy-outline-scope-20261018
       - refactor/content-evidence-recovery-observability-20261018
+      - cleanup/content-retire-oneoff-article-rescues-20261019
   workflow_dispatch:
 
 permissions:
@@ -113,6 +114,28 @@ jobs:
             throw new Error('UNBOUNDED_EVIDENCE_QUERY_EXPANSION');
           }
           console.log('EVIDENCE_RECOVERY_BOUNDED_TRACE_PASS');
+          JS
+      - name: No one-off credit-article code in Content runtime
+        run: |
+          node - <<'JS'
+          const fs=require("node:fs");
+          const retired=[
+            "src/lib/content/score-impact-closure-preview-v1.ts",
+            "src/lib/content/score-impact-closure-preview-v1.test.ts",
+            "scripts/content-article-final-closure-preview.ts",
+            "src/lib/content/article-question-gap-audit-v1.ts",
+            "src/lib/content/article-question-gap-audit-v1.test.ts",
+            "scripts/content-existing-article-question-gap-audit.ts",
+            "src/lib/content/rebind-approved-direct-answer-v1.ts",
+            "src/lib/content/rebind-approved-direct-answer-v1.test.ts",
+            "scripts/rebind-approved-direct-answer-v1.ts",
+          ];
+          for (const file of retired) if(fs.existsSync(file)) throw Error("RETIRED_FILE_PRESENT:"+file);
+          const c=fs.readFileSync("src/lib/content/service.ts","utf8");
+          const p=fs.readFileSync("src/lib/content/production-master-live-stage-planner.ts","utf8");
+          if(!c.includes("assertCanonicalWriterPreflightV1") || !c.includes("executeMasterWriterV1") || !c.includes("withWriterTraceV1"))throw Error("CORE_WRITER_MISSING");
+          if(!p.includes("research.evidence_recovery.wave") || !p.includes("resolveSelectedTemplatePolicyV1"))throw Error("CORE_RESEARCH_OR_TEMPLATES_MISSING");
+          console.log("NO_ARTICLE_SPECIFIC_CONTENT_REWRITE_CLEANUP_PASS");
           JS
       - name: TypeScript strict
         run: npx tsc --noEmit
