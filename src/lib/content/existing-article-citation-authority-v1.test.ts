@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {verifyExistingArticleCitationScopeV1} from "./existing-article-citation-authority-v1";
+import {verifyExistingArticleCitationScopeV1, assertReleaseArticleCitationScopeV1, ReleaseArticleCitationScopeErrorV1} from "./existing-article-citation-authority-v1";
 import type {ArticleExecutionPlanV1} from "./article-execution-plan-v1";
 import type {MasterRuntimeSnapshotV1} from "./master-runtime-adapter";
 const plan={
@@ -64,5 +64,44 @@ describe("same-ID candidate citation section ownership",()=>{
     ]);
     expect(r.commitAllowed).toBe(false);
     expect(r.fullySemanticallyVerified).toBe(false);
+  });
+});
+
+describe("approval and publication: section-signed sources are mandatory",()=>{
+  const valid=base
+    .replace("Credit monitoring alerts consumers when account activity changes appear in credit records.",
+      "Credit monitoring alerts consumers when account activity changes appear in credit records. [FTC](https://consumer.ftc.gov/source)")
+    .replace("Monitoring cannot automatically prevent identity theft.",
+      "Monitoring cannot automatically prevent identity theft. [CFPB](https://consumerfinance.gov/source)");
+  it("passes provenance check only with both section-owned VERIFIED_EXCERPT sources",()=>{
+    const result=assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:valid,plan,runtime,
+    });
+    expect(result.totalLinks).toBe(2);
+    expect(result.unapprovedLinks).toBe(0);
+    expect(result.completeSectionCitationCoverage).toBe(true);
+    expect(result.fullySemanticallyVerified).toBe(false);
+  });
+  it("blocks an external URL absent from signed claims even with correct original sources",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:valid.replace(
+        " [FTC](https://consumer.ftc.gov/source)",
+        " [FTC](https://consumer.ftc.gov/source) [extra](https://identitytheft.gov/)"
+      ),plan,runtime,
+    })).toThrow(ReleaseArticleCitationScopeErrorV1);
+  });
+  it("blocks an otherwise verified source when moved to another H2",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:valid.replace(
+        "[FTC](https://consumer.ftc.gov/source)",
+        "[CFPB](https://consumerfinance.gov/source)"
+      ),plan,runtime,
+    })).toThrow("UNSIGNED_OR_WRONG_SECTION_LINKS");
+  });
+  it("blocks missing citations for one evidence-rich H2",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:valid.replace(" [CFPB](https://consumerfinance.gov/source)",""),
+      plan,runtime,
+    })).toThrow("EVIDENCED_H2_UNCITED");
   });
 });
