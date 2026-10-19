@@ -69,7 +69,7 @@ export function verifyExistingArticleCitationScopeV1(input:{
 export class ReleaseArticleCitationScopeErrorV1 extends Error {
   readonly code = "ARTICLE_RELEASE_CITATION_SCOPE_INVALID" as const;
   constructor(readonly details: ReturnType<typeof verifyExistingArticleCitationScopeV1>) {
-    super(this.code + ":" + [
+    super("ARTICLE_RELEASE_CITATION_SCOPE_INVALID:" + [
       ...(details.unapprovedLinks ? ["UNSIGNED_OR_WRONG_SECTION_LINKS"] : []),
       ...(details.totalLinks === 0 ? ["VISIBLE_CITATIONS_MISSING"] : []),
       ...(!details.completeSectionCitationCoverage ? ["EVIDENCED_H2_UNCITED"] : []),
