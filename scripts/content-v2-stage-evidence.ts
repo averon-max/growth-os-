@@ -26,7 +26,6 @@ type Proof={mode:string;candidateSha256:string;sourceLinkScope:string;
     navigationAuthorityAnchors:Array<{url:string;present:boolean}>}>;
 };
 const sha=(value:string)=>createHash("sha256").update(value,"utf8").digest("hex");
-const str=(value:unknown)=>typeof value==="string"?value:"";
 const unique=(items:string[])=>[...new Set(items)];
 const norm=(value:string)=>value.normalize("NFKC").replace(/[’‘]/g,"'")
   .replace(/\s+/gu," ").trim().toLowerCase();
@@ -149,6 +148,7 @@ async function main():Promise<void>{
       exactSourceText:string;semanticModelApproved:false}>=[];
     const newClaims:Array<{id:string;text:string;category:"FACT";risk:"MEDIUM";
       jurisdiction:string}>=[];
+    const stagedSources=new Map<string,Record<string,any>>();
     const oldClaims=runtime.claimLedger.claims as Array<Record<string,any>>;
     const existingIds=new Set(oldClaims.map(c=>String(c.id)));
     const evidenceIds=new Set((runtime.evidenceGraph.claimEvidence as Array<any>).map(e=>String(e.id)));
@@ -179,13 +179,17 @@ async function main():Promise<void>{
       // historical source unchanged; this new, real FTC fetch gets a
       // distinct source identity so the freshness and primary-source gates
       // evaluate the evidence actually fetched for this candidate.
-      const sourceId="source-v2-official-"+sha(row.sourceUrl).slice(0,18);
-      if(sources.some(s=>s.id===sourceId))
-        throw Error("STAGED_SOURCE_ID_COLLISION:"+sourceId);
-      const source={id:sourceId,url:row.sourceUrl,
-        publisher:"Federal Trade Commission",sourceType:"PRIMARY_GOVERNMENT",
-        authorityTier:"A",jurisdiction:"United States",retrievedAt};
-      sources.push(source);
+      let source=stagedSources.get(row.sourceUrl);
+      if(!source){
+        const sourceId="source-v2-official-"+sha(row.sourceUrl).slice(0,18);
+        if(sources.some(s=>s.id===sourceId))
+          throw Error("STAGED_SOURCE_ID_COLLISION:"+sourceId);
+        source={id:sourceId,url:row.sourceUrl,
+          publisher:"Federal Trade Commission",sourceType:"PRIMARY_GOVERNMENT",
+          authorityTier:"A",jurisdiction:"United States",retrievedAt};
+        sources.push(source);
+        stagedSources.set(row.sourceUrl,source);
+      }
       newClaims.push({id:claimId,text:quote,category:"FACT",risk:"MEDIUM",
         jurisdiction:"United States"});
       (runtime.evidenceGraph.claimEvidence as Array<any>).push({
