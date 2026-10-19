@@ -2768,6 +2768,14 @@ export async function generateArticleFromBrief(
         finalMasterCriticExecution =
           competitiveReplayExecution
             .postRepairCritics;
+        // Supersede the pre-replay verdict if a competitive section
+        // repair caused a new complete critic pass.
+        recordWriterTraceV1("critic.final.completed", {
+          status: finalMasterCriticExecution.suite.status,
+          criticCount: finalMasterCriticExecution.provenance.finalCriticCount,
+          repairedSectionCount: masterCriticRepairExecution.provenance.repairedSectionCount +
+            competitiveReplayExecution.provenance.repairedSectionCount,
+        });
       }
 
 
