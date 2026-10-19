@@ -1,5 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {evaluateApprovedExistingArticleQueryOwnerV1,
+  resolveApprovedExistingArticleQueryOwnerV1,
   HUMAN_OWNER_APPROVAL_ATTESTATION_V1}
   from "./existing-article-approved-query-owner-v1";
 import {proposeExistingArticleQueryOwnerRebindV1}
@@ -105,5 +106,32 @@ describe("approved owner overlay cannot alter signed research",()=>{
     expect(evaluateApprovedExistingArticleQueryOwnerV1({
       ...props,review:null,
     }).valid).toBe(false);
+  });
+});
+
+
+describe("CLI and dashboard can resolve approved overlays without mutating signed research",()=>{
+  it("applies a valid human-reviewed owner to the in-memory runtime",async()=>{
+    const before=JSON.stringify(runtime);
+    const resolved=await resolveApprovedExistingArticleQueryOwnerV1({
+      articleId:props.articleId,evidenceSnapshotId:props.evidenceSnapshotId,
+      replayArtifactId:props.replayArtifactId,research:props,
+      findReview:async nodeId=>nodeId===candidate.nodeId?record:null,
+    });
+    expect(resolved.approvedReviewApplied).toBe(true);
+    expect(resolved.approvedQueryNodeId).toBe(candidate.nodeId);
+    expect(resolved.runtime.sectionBlueprints.sections[1]?.queryNodeIds)
+      .toEqual([candidate.nodeId]);
+    expect(JSON.stringify(runtime)).toBe(before);
+  });
+  it("never certifies owner without the actual persisted approval",async()=>{
+    const resolved=await resolveApprovedExistingArticleQueryOwnerV1({
+      articleId:props.articleId,evidenceSnapshotId:props.evidenceSnapshotId,
+      replayArtifactId:props.replayArtifactId,research:props,
+      findReview:async()=>null,
+    });
+    expect(resolved.approvedReviewApplied).toBe(false);
+    expect(resolved.approvedQueryNodeId).toBe(null);
+    expect(resolved.runtime).toBe(runtime);
   });
 });
