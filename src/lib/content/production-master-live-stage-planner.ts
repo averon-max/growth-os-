@@ -1,4 +1,4 @@
-import { recordWriterTraceV1, recordWriterForensicArtifactV1 } from "./writer-trace-v1";
+import { recordWriterTraceV1, recordWriterForensicArtifactV1, hashTraceTextV1 } from "./writer-trace-v1";
 import {
   reconcilePostEvidenceScopeV1,
   assertReconciledPostEvidenceScopeV1,
@@ -3166,187 +3166,97 @@ function inspectStagePlanCompleteness(
       discoveredSources: questionSources.length,
       unresolvedAfter: unresolvedEvidenceClaims.map(claim => claim.id),
     });
+    recordWriterTraceV1("research.evidence_recovery.question_probe", {
+      probedClaims: earlyQuestionProbeClaimsV3.length,
+      discoveredSources: questionSources.length,
+      unresolvedClaims: unresolvedEvidenceClaims.length,
+    });
   }
 
 
-  const evidenceRecoveryWaves:
-    Array<{
-      wave:
-        number;
 
-      query:
-        string;
-
-      unresolvedBefore:
-        string[];
-
-      discoveredSources:
-        number;
-
-      verifiedAfter:
-        number;
-
-      unresolvedAfter:
-        string[];
-    }> =
-      [];
-
-
-  const recoveryQuerySuffixes =
-    [
-      "",
-      " official guidance",
-      " consumer guidance",
-      " government guidance",
-      " help center",
-      " facts",
-    ];
-
+  // One bounded, sequential recovery route; all source candidates still
+  // pass the original fetch + VERIFIED_EXCERPT claim verifier.
+  // No new providers, query expansion, or additional retries.
+  const evidenceRecoveryWaves: Array<{
+    wave: number;
+    query: string;
+    unresolvedBefore: string[];
+    discoveredSources: number;
+    verifiedAfter: number;
+    unresolvedAfter: string[];
+  }> = [];
+  const recoveryQuerySuffixes = [
+    "",
+    " official guidance",
+    " consumer guidance",
+    " government guidance",
+    " help center",
+    " facts",
+  ] as const;
 
   for (
-    let recoveryWave =
-      0;
-
-    recoveryWave <
-      MAX_EVIDENCE_RECOVERY_WAVES_V1 &&
-    unresolvedEvidenceClaims.length >
-      0;
-
+    let recoveryWave = 0;
+    recoveryWave < Math.min(MAX_EVIDENCE_RECOVERY_WAVES_V1, recoveryQuerySuffixes.length) &&
+      unresolvedEvidenceClaims.length > 0;
     recoveryWave++
   ) {
-    const unresolvedBefore =
-      unresolvedEvidenceClaims.map(
-        (
-          claim
-        ) =>
-          claim.id
-      );
-
-
+    const unresolvedBefore = unresolvedEvidenceClaims.map(claim => claim.id);
     const recoveryPrimaryQuery =
-      `${research.keyword}${recoveryQuerySuffixes[
-        recoveryWave
-      ] ?? ""}`.trim();
+      `${research.keyword}${recoveryQuerySuffixes[recoveryWave] ?? ""}`.trim();
 
+    const fallbackEvidenceSources = await discoverClaimEvidenceFallbackSourcesV1({
+      claims: unresolvedEvidenceClaims,
+      primaryQuery: recoveryPrimaryQuery,
+      locationName: research.market.locationName,
+      languageName: research.market.languageName,
+      existingUrls: evidenceGraphInput.sources.map(source => source.url),
+    });
+    fallbackEvidenceSourcesTotal += fallbackEvidenceSources.length;
 
-    const fallbackEvidenceSources =
-      await discoverClaimEvidenceFallbackSourcesV1({
-        claims:
-          unresolvedEvidenceClaims,
-
-        primaryQuery:
-          recoveryPrimaryQuery,
-
-        locationName:
-          research.market
-            .locationName,
-
-        languageName:
-          research.market
-            .languageName,
-
-        existingUrls:
-          evidenceGraphInput
-            .sources
-            .map(
-              (
-                source
-              ) =>
-                source.url
-            ),
+    if (fallbackEvidenceSources.length > 0) {
+      // Prioritize newly discovered URLs within the safe body-fetch limit;
+      // retain previously verified claimEvidence for later passes.
+      evidenceGraphInput = await enrichLiveEvidenceGraphV1({
+        graph: {
+          sources: [...fallbackEvidenceSources, ...evidenceGraphInput.sources],
+          claimEvidence: [...evidenceGraphInput.claimEvidence],
+        },
+        claims: unresolvedEvidenceClaims,
       });
-
-
-    fallbackEvidenceSourcesTotal +=
-      fallbackEvidenceSources
-        .length;
-
-
-    if (
-      fallbackEvidenceSources.length >
-      0
-    ) {
-      /*
-       * Put fresh sources first because fetchSourceBodies()
-       * has its own safety bound. Old verified evidence is
-       * retained in claimEvidence.
-       */
-      evidenceGraphInput =
-        await enrichLiveEvidenceGraphV1({
-          graph: {
-            sources: [
-              ...fallbackEvidenceSources,
-              ...evidenceGraphInput
-                .sources,
-            ],
-
-            claimEvidence: [
-              ...evidenceGraphInput
-                .claimEvidence,
-            ],
-          },
-
-          claims:
-            unresolvedEvidenceClaims,
-        });
     }
 
-
-    const verifiedAfterWave =
-      verifiedClaimIdsFromGraph(
-        evidenceGraphInput
-      );
-
-
-    unresolvedEvidenceClaims =
-      claimsInput.filter(
-        (
-          claim
-        ) =>
-          !verifiedAfterWave.has(
-            claim.id
-          )
-      );
-
-
-    evidenceRecoveryWaves.push({
-      wave:
-        recoveryWave +
-        1,
-
-      query:
-        recoveryPrimaryQuery,
-
-      unresolvedBefore,
-
-      discoveredSources:
-        fallbackEvidenceSources
-          .length,
-
-      verifiedAfter:
-        verifiedAfterWave
-          .size,
-
-      unresolvedAfter:
-        unresolvedEvidenceClaims
-          .map(
-            (
-              claim
-            ) =>
-              claim.id
-          ),
-    });
-
-
-    console.info(
-      "[content evidence recovery wave]",
-      evidenceRecoveryWaves[
-        evidenceRecoveryWaves.length -
-          1
-      ]
+    const verifiedAfterWave = verifiedClaimIdsFromGraph(evidenceGraphInput);
+    unresolvedEvidenceClaims = claimsInput.filter(
+      claim => !verifiedAfterWave.has(claim.id),
     );
+    const waveRecord = {
+      wave: recoveryWave + 1,
+      query: recoveryPrimaryQuery,
+      unresolvedBefore,
+      discoveredSources: fallbackEvidenceSources.length,
+      verifiedAfter: verifiedAfterWave.size,
+      unresolvedAfter: unresolvedEvidenceClaims.map(claim => claim.id),
+    };
+    evidenceRecoveryWaves.push(waveRecord);
+    recordWriterTraceV1("research.evidence_recovery.wave", {
+      wave: waveRecord.wave,
+      querySha256: hashTraceTextV1(recoveryPrimaryQuery),
+      unresolvedBeforeCount: unresolvedBefore.length,
+      discoveredSources: waveRecord.discoveredSources,
+      verifiedAfterCount: waveRecord.verifiedAfter,
+      unresolvedAfterCount: waveRecord.unresolvedAfter.length,
+    });
+    console.info("[content evidence recovery wave]", waveRecord);
   }
 
+  recordWriterTraceV1("research.evidence_recovery.summary", {
+    attemptedWaves: evidenceRecoveryWaves.length,
+    budgetedWaves: MAX_EVIDENCE_RECOVERY_WAVES_V1,
+    questionProbeClaims: earlyQuestionProbeClaimsV3.length,
+    fallbackDiscoveredSources: fallbackEvidenceSourcesTotal,
+    unresolvedClaims: unresolvedEvidenceClaims.length,
+  });
 
   let finallyVerifiedClaimIds =
     verifiedClaimIdsFromGraph(

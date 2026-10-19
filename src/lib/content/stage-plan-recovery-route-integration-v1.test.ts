@@ -57,4 +57,25 @@ describe("production Stage Plan recovery route integration", () => {
       localClaimOwnerRepairAttempted: true,
     })).toBe("STOP");
   });
+  it("keeps evidence discovery bounded and records safe recovery decisions", () => {
+    const source = plannerSource();
+    expect(source).toContain("MAX_EVIDENCE_RECOVERY_WAVES_V1 =");
+    expect(source).toContain("Math.min(MAX_EVIDENCE_RECOVERY_WAVES_V1, recoveryQuerySuffixes.length)");
+    for (const suffix of [
+      " official guidance",
+      " consumer guidance",
+      " government guidance",
+      " help center",
+      " facts",
+    ]) expect(source).toContain(suffix);
+    expect(source).toContain("unresolvedEvidenceClaims.length > 0");
+    expect(source).toContain('recordWriterTraceV1("research.evidence_recovery.wave"');
+    expect(source).toContain('recordWriterTraceV1("research.evidence_recovery.summary"');
+    expect(source).toContain('recordWriterTraceV1("research.evidence_recovery.question_probe"');
+    expect(source).toContain("querySha256: hashTraceTextV1(recoveryPrimaryQuery)");
+    expect(source).not.toContain("query: recoveryPrimaryQuery,\n      unresolvedBeforeCount");
+    // Refactoring the retrieval loop must not increase paid planner/repair calls.
+    expect(source.match(/await callContentAiJson\(/g)).toHaveLength(5);
+  });
+
 });
