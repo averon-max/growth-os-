@@ -32,3 +32,18 @@ NODE_OPTIONS=--conditions=react-server npx tsx scripts/content-v2-stage-evidence
 2. Review paraphrased candidate sentences against captured exact quotes; persist reviewed section evidence to a versioned, authorized EvidenceSnapshot only on explicit approval.
 3. Build the general reviewed official-action link contract: source-backed, same H2, exact candidate fingerprint, explicit human approval (never allow arbitrary external links).
 4. Run the existing bounded critics and true new-fingerprint replay on the exact unchanged V2 text. Require new human Query Owner approval and explicit atomic save/publish.
+
+## Version-bound official outbound navigation
+
+The shared Approve/Publish citation scope now distinguishes signed evidence from explicit editor-reviewed official action destinations. Approving a destination requires an OFFICIAL_NAVIGATION_REVIEW_V1 record persisted with the evidence snapshot:
+
+- APPROVED (not PENDING_REVIEW), reviewedBy, reviewedAt.
+- Exact current articleFingerprint and HTTPS destination URL, not a wildcard domain.
+- Exact H2 sectionIndex and signed supportingSourceUrl + supportingEvidenceId owned by that H2.
+- The H2 still needs a visible signed factual source. Navigation never counts as evidence.
+
+The staging script adds four specific source-backed entries for two destinations under decision PENDING_REVIEW. It checks the resulting signed H2 scopes, and simulates approval only in memory as a dry run. It NEVER writes APPROVED, a reviewer name, evidence, article, or CMS data to PostgreSQL. The general contract has no hardcoded site/domain exceptions.
+
+Test with npx vitest run src/lib/content/existing-article-citation-authority-v1.test.ts src/lib/content/article-release-shared-gates.test.ts
+
+Remaining blockers: final semantic article-to-excerpt review, explicit human approval of these official action destinations, new article fingerprint critics/Replay and Query Owner approval. No source preflight or staged candidate alone authorizes publication.
