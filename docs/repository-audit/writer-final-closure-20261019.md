@@ -42,9 +42,13 @@ This branch adds \`assertReleaseArticleCitationScopeV1\` after immutable snapsho
 
 A valid URL match is a **necessary** provenance condition and NOT automatic semantic claim-to-excerpt proof. No AI, new Research, publisher or DB write occurs in the helper.
 
+The shared release path now also resolves Query Owner through the existing signed human-review overlay and checks observed query-to-H2 binding using the same Search Readiness engine used by dashboard and CLI. Unapproved/missing/query-to-section-bridge findings block approval and publication. A human review on a different article/replay fingerprint remains historic and cannot be reused.
+
 ## Remaining blockers to finish Editorial V2
 
 The seven unmatched section links in five URL groups:
+
+Use `scripts/content-writer-final-state.mjs` to consume the local V2 DB preflight, section evidence report and optional privacy-safe trace report in one read-only decision summary. This is a triage tool, not an auto-publisher.
 
 - FTC identity theft education, H2 #3: already in global source ledger but no target section's verified claim.
 - AnnualCreditReport.com, H2 #3 and #5: navigational official site; verify via FTC authority and clarify navigational/evidentiary function.
