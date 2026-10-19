@@ -126,18 +126,10 @@ import {
 } from "./research-pack";
 
 import {
-  externalEvidenceSourcesPrompt,
-  extractExternalEvidenceSources,
   withExternalEvidenceSources,
 } from "./external-evidence-sources";
 
-import {
-  buildEvidenceAwareOutline,
-} from "./evidence-aware-planning";
 
-import {
-  resolveEvidenceDeferredMasterScopeV1,
-} from "./evidence-deferred-master-scope";
 
 import {
   resolvePublicationEvidenceSectionScopeV1,
@@ -1387,70 +1379,6 @@ export async function generateArticleFromBrief(
         factRegistry,
     });
 
-  const externalEvidenceSources =
-    extractExternalEvidenceSources(
-      generationSnapshot
-        ?.plan ??
-      null
-    );
-
-  const externalEvidenceContext =
-    externalEvidenceSourcesPrompt(
-      externalEvidenceSources
-    );
-
-  const articleOutlinePlan =
-    buildEvidenceAwareOutline({
-      outline:
-        brief.outline as {
-          heading: string;
-          level: 2 | 3;
-          summary: string;
-        }[],
-
-      externalEvidenceSources,
-    });
-
-  /*
-   * Evidence-aware planner owns the DEFER decision.
-   *
-   * The resolver only maps an already-deferred outline topic to
-   * the corresponding Master section identity.
-   *
-   * A section with assigned requiredClaims or evidenceIds cannot
-   * be removed by the resolver.
-   */
-  /*
-   * LEGACY_EVIDENCE_OUTLINE_DIAGNOSTIC_ONLY_V1
-   *
-   * This result MUST NOT determine Writer structure after
-   * ArticleExecutionPlan has been persisted.
-   */
-  /*
-   * LEGACY_EVIDENCE_OUTLINE_DIAGNOSTIC_RESULT_V1
-   *
-   * Kept only for compatibility / diagnostics.
-   *
-   * This value MUST NOT participate in:
-   * - deferredMasterIndexes
-   * - effectiveMasterSections
-   * - ArticleGenerationContract section selection
-   * - Writer job count
-   */
-  const evidenceDeferredMasterScope =
-    resolveEvidenceDeferredMasterScopeV1({
-      blueprints:
-        masterRuntimeInspection
-          .runtime
-          .sectionBlueprints
-          .sections,
-
-      deferredSections:
-        articleOutlinePlan
-          .deferredSections,
-    });
-
-
   /*
    * PUBLICATION_EVIDENCE_DEFERRED_SCOPE_V1
    *
@@ -1827,70 +1755,25 @@ export async function generateArticleFromBrief(
     );
 
 
-  /*
-   * Diagnostics can explain WHY a locked-plan section was
-   * deferred, but they may not defer an additional section.
-   */
+  // The verified persisted plan is the only section-scope authority.
+  // No lexical heading-affinity guess may defer or reinstate Writer jobs.
   const effectiveEvidenceDeferredSections =
-    [
-      ...evidenceDeferredMasterScope
-        .deferredSections,
-
-      ...publicationEvidenceDeferredScope
-        .deferredSections,
-    ]
-      .filter(
-        (
-          section
-        ) => {
-          const index =
-            postLockRuntimeSections
-              .findIndex(
-                (
-                  runtimeSection
-                ) =>
-                  runtimeSection
-                    .heading
-                    .trim()
-                    .toLowerCase() ===
-                  section
-                    .heading
-                    .trim()
-                    .toLowerCase()
-              );
-
-          return (
-            index >=
-              0 &&
-            deferredMasterIndexes
-              .has(
-                index
-              )
-          );
-        }
-      )
-      .filter(
-        (
-          section,
-          index,
-          all
-        ) =>
-          all.findIndex(
-            (
-              candidate
-            ) =>
-              candidate
-                .heading
-                .trim()
-                .toLowerCase() ===
-              section
-                .heading
-                .trim()
-                .toLowerCase()
-          ) ===
-          index
-      );
-
+    persistedArticleExecutionPlan.sections.flatMap((section, index) => {
+      if (section.state !== "DEFERRED_NO_EVIDENCE") return [];
+      const runtime = postLockRuntimeSections[index];
+      return [{
+        heading: section.heading,
+        sourceDeferredHeading: section.heading,
+        summary: runtime?.mission ?? null,
+        reason: "MISSING_PUBLICATION_GRADE_EVIDENCE" as const,
+      }];
+    });
+  recordWriterTraceV1("article.locked_evidence_scope", {
+    deferredCount: effectiveEvidenceDeferredSections.length,
+    writableCount: persistedArticleExecutionPlan.sections.filter(
+      section => section.state === "WRITABLE").length,
+    scopeAuthority: "ARTICLE_EXECUTION_PLAN_V1",
+  });
 
   const effectiveMasterSections =
     postLockRuntimeSections
@@ -2072,35 +1955,6 @@ export async function generateArticleFromBrief(
       h1Mission:
         articleGenerationContract
           .h1Mission,
-    }
-  );
-
-
-  console.info(
-    "[content legacy evidence-aware outline diagnostic]",
-    {
-      briefId:
-        brief.id,
-
-      verifiedExcerptCount:
-        articleOutlinePlan
-          .verifiedExcerptCount,
-
-      keptSections:
-        articleOutlinePlan
-          .outline
-          .map(
-            (section) =>
-              section.heading
-          ),
-
-      deferredSections:
-        articleOutlinePlan
-          .deferredSections
-          .map(
-            (section) =>
-              section.heading
-          ),
     }
   );
 

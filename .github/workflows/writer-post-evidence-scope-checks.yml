@@ -7,6 +7,7 @@ on:
       - cleanup/remove-unwired-content-20261018
       - refactor/content-runtime-consolidation-20261018
       - refactor/content-single-writer-only-20261018
+      - refactor/content-remove-legacy-outline-scope-20261018
   workflow_dispatch:
 
 permissions:
@@ -44,6 +45,19 @@ jobs:
           })),null,2));
           console.log('REACHABLE_WRITER_ONLY',xs.filter(x=>x.inWriterGraph).length);
           console.log('RUNTIME_NOT_WRITER',xs.filter(x=>x.inRuntimeGraph&&!x.inWriterGraph).length);
+          JS
+      - name: No legacy evidence scope owner after Plan lock
+        run: |
+          node - <<'JS'
+          const fs=require("fs");
+          const content=fs.readFileSync("src/lib/content/service.ts","utf8");
+          if(/\b(?:buildEvidenceAwareOutline|resolveEvidenceDeferredMasterScopeV1|articleOutlinePlan)\b/.test(content)) throw Error("LEGACY_SCOPE_RESOLVER_PRESENT");
+          if(!content.includes('article.locked_evidence_scope'))throw Error("LOCKED_SCOPE_TRACE_MISSING");
+          const graph=JSON.parse(fs.readFileSync(".growth-os-tmp/writer-module-map.json","utf8"));
+          for(const name of ["evidence-deferred-master-scope.ts","evidence-aware-planning.ts"]) {
+            const x=graph.contentProduction.find(x=>x.path.endsWith("/"+name));
+            console.log("LEGACY_MODULE_REACHABILITY",JSON.stringify({name,runtime:x?.inRuntimeGraph,writer:x?.inWriterGraph,productionImporters:x?.directProductionImporters,scriptImporters:x?.directOtherImporters,testImporters:x?.directTestImporters}));
+          }
           JS
       - name: Reviewed deletion gate
         run: node scripts/repository-deletion-gate.mjs --check
