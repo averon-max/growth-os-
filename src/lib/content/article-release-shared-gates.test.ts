@@ -41,6 +41,8 @@ describe("approve and publish shared release gate wiring", () => {
     expect(ready.indexOf("assertReleaseArticleCitationScopeV1({"))
       .toBeLessThan(ready.indexOf("evaluateExplicitPublishGateV1({"));
     expect(ready).toContain("ARTICLE_RELEASE_RESEARCH_RUNTIME_MISSING");
+    expect(ready).toContain("navigationReview: releaseSourceRecord.officialNavigationReviewV1");
+    expect(ready).toContain("buildSerpReplayArticleFingerprintV1({");
     expect(ready).toContain("ARTICLE_RELEASE_QUERY_BINDING_UNAPPROVED");
     expect(ready).toContain("contentQueryOwnerReview.findFirst({");
   });
