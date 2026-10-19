@@ -200,6 +200,19 @@ async function main():Promise<void>{
       existingIds.add(claimId);evidenceIds.add(evidenceId);
     }
 
+    // Navigation remains unapproved, but its FTC authority must be proved
+    // in the SAME H2 before we even propose a release role.
+    for(const nav of review.navigation){
+      const ownerSource=proof.fetchedSources[nav.trustedVia];
+      const trustedOnPage=ownerSource?.navigationAuthorityAnchors.some(
+        x=>x.url===nav.url&&x.present);
+      const sectionEvidence=nav.h2Indexes.every(index=>captured.some(fact=>
+        fact.sourceUrl===nav.trustedVia&&fact.ownerH2.includes(index)));
+      if(nav.role!=="OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT" ||
+        !trustedOnPage || !sectionEvidence)
+        throw Error("UNVERIFIED_NAVIGATION_AUTHORITY:"+nav.url);
+    }
+
     // Rebuild the ledger through the ORIGINAL research policy, do not
     // fabricate VERIFIED statuses or relax publisher evidence thresholds.
     const rebuilt=buildClaimLedger({
