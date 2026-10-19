@@ -290,6 +290,29 @@ async function main():Promise<void>{
     // This is the same normalized review field used by the shared
     // release gate. PENDING means it CANNOT authorize any navigation yet.
     staged.officialNavigationReviewV1=officialNavigationReviewV1;
+    const pendingNavScope=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:candidateBody,plan:validatedPlan,
+      runtime:inspection.runtime,
+      navigationReview:officialNavigationReviewV1,
+      articleFingerprint:candidateFingerprint,
+    });
+    if(pendingNavScope.unapprovedLinks!==scope.unapprovedLinks)
+      throw Error("PENDING_NAVIGATION_WRONGLY_AUTHORIZED");
+    // Simulate the intended editorial decision only IN MEMORY: never
+    // store an approved decision, signature, reviewer or timestamp here.
+    const hypothetical=verifyExistingArticleCitationScopeV1({
+      candidateBodyMarkdown:candidateBody,plan:validatedPlan,
+      runtime:inspection.runtime,
+      navigationReview:{
+        ...officialNavigationReviewV1,decision:"APPROVED",
+        approvedBy:"SIMULATION_NOT_HUMAN_REVIEW",
+        approvedAt:"2026-10-19T00:00:00.000Z",
+      },
+      articleFingerprint:candidateFingerprint,
+    });
+    if(hypothetical.unapprovedLinks>0||
+      !hypothetical.completeSectionCitationCoverage)
+      throw Error("HYPOTHETICAL_NAVIGATION_SOURCE_SCOPE_STILL_BLOCKED");
     const originalRecheck=sha(JSON.stringify(oldSnapshot));
     if(originalRecheck!==originalSnapshotSha)
       throw Error("ORIGINAL_SNAPSHOT_MUTATED_IN_MEMORY");
@@ -340,6 +363,8 @@ async function main():Promise<void>{
       navigationOnly:stage.citationScopeAfterStaging.navigationOccurrencesOnly,
       navigationReviewDecision:stage.officialNavigationReviewV1.decision,
       navigationApprovalEntryCount:stage.officialNavigationReviewV1.entries.length,
+      previewOnlyUnapprovedLinksAfterHypotheticalApproval:hypothetical.unapprovedLinks,
+      previewOnlyDecisionIsNotApproval:true,
       next:"Approve version-specific navigation and claim entailment, then final critics and new SERP Replay",
       output,databaseUnchanged:true,paidCalls:0,publishAllowed:false,
     },null,2));
