@@ -1,0 +1,90 @@
+{
+  "version": "EDITORIAL_V2_OFFICIAL_EVIDENCE_WORKLIST_V1",
+  "articleId": "cmv606xg60006siqlir66uq23",
+  "candidateMarkdownSha256": "41a3925afe4a671077ac4e377e7ecfd1329c87ee46f14fb1c0d5b7b7b7a5f442",
+  "verifiedExternalResearchOn": "2026-10-19",
+  "scope": "US credit monitoring educational article",
+  "approvalStatus": "WEB_REVIEWED_NOT_SIGNED_NOT_PUBLISHABLE",
+  "rules": [
+    "Source texts must be re-fetched and checked before creating an immutable Growth OS VERIFIED_EXCERPT.",
+    "A link to an official action destination must not be mislabeled as a VERIFIED_EXCERPT from that destination.",
+    "Do not overwrite original EvidenceSnapshot or ContentArticle. Preserve original and add versioned candidate only.",
+    "Do not fabricate new human Query Owner approval or SERP Replay."
+  ],
+  "factualEvidence": [
+    {
+      "group": "identity-monitoring-limitations",
+      "url": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+      "sourceType": "PRIMARY_GOVERNMENT",
+      "authorityTier": "A",
+      "ownerSectionIndexes": [
+        2
+      ],
+      "candidateClaim": "Credit monitoring may not detect withdrawals from a bank account or fraudulent tax refund filings.",
+      "exactShortExcerpts": [
+        "someone withdraws money from your bank account",
+        "someone uses your Social Security number to file a tax return"
+      ],
+      "semanticVerdict": "FTC page explicitly lists both in credit-monitoring limitations; live exact-excerpt capture and candidate sentence review still required"
+    },
+    {
+      "group": "weekly-credit-reports",
+      "url": "https://consumer.ftc.gov/articles/free-credit-reports",
+      "sourceType": "PRIMARY_GOVERNMENT",
+      "authorityTier": "A",
+      "ownerSectionIndexes": [
+        2,
+        4
+      ],
+      "candidateClaim": "In the U.S., people may access free reports from each of the three major credit bureaus weekly through AnnualCreditReport.com.",
+      "exactShortExcerpts": [
+        "once a week for free at AnnualCreditReport.com"
+      ],
+      "semanticVerdict": "FTC explicitly confirms permanent weekly access; exact-source verification and section ownership still pending."
+    },
+    {
+      "group": "freeze-and-fraud-alert",
+      "url": "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+      "sourceType": "PRIMARY_GOVERNMENT",
+      "authorityTier": "A",
+      "ownerSectionIndexes": [
+        5
+      ],
+      "candidateClaim": "For suspected identity theft, freezes are requested from each bureau; an initial fraud alert placed with one bureau is shared with the other two.",
+      "exactShortExcerpts": [
+        "Place a credit freeze by contacting each of the three national credit bureaus",
+        "That one must notify the other two."
+      ],
+      "semanticVerdict": "FTC distinguishes freezes from fraud alerts; candidate action steps still require semantic and jurisdiction review."
+    }
+  ],
+  "navigationLinks": [
+    {
+      "url": "https://www.annualcreditreport.com/index.action",
+      "ownerSectionIndexes": [
+        2,
+        4
+      ],
+      "navigationPurpose": "Request personal reports",
+      "authorityPage": "https://consumer.ftc.gov/articles/free-credit-reports",
+      "trustedAuthorityAnchor": "Only one website",
+      "status": "OFFICIAL_DESTINATION_CONFIRMED_BY_FTC_NOT_SOURCE_EXCERPT"
+    },
+    {
+      "url": "https://www.identitytheft.gov/",
+      "ownerSectionIndexes": [
+        5
+      ],
+      "navigationPurpose": "Report identity theft and build a recovery plan",
+      "authorityPage": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+      "trustedAuthorityAnchor": "get a personal recovery plan",
+      "status": "OFFICIAL_DESTINATION_CONFIRMED_BY_FTC_NOT_SOURCE_EXCERPT"
+    }
+  ],
+  "stagedEvidenceApproved": false,
+  "newCriticsRun": false,
+  "newFingerprintReplayRun": false,
+  "humanQueryOwnerApproved": false,
+  "originalDatabaseMutated": false,
+  "paidCalls": 0
+}
