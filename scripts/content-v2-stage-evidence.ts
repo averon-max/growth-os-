@@ -269,6 +269,27 @@ async function main():Promise<void>{
 
     const shape={...saved,bodyMarkdown:candidateBody};
     const candidateFingerprint=buildSerpReplayArticleFingerprintV1(shape);
+    const officialNavigationReviewV1={
+      version:"OFFICIAL_NAVIGATION_REVIEW_V1",
+      articleFingerprint:candidateFingerprint,
+      decision:"PENDING_REVIEW",
+      entries:review.navigation.flatMap(nav=>nav.h2Indexes.map(index=>{
+        const supporting=captured.find(fact=>
+          fact.sourceUrl===nav.trustedVia&&fact.ownerH2.includes(index));
+        if(!supporting)throw Error("NAVIGATION_SUPPORTING_EVIDENCE_MISSING");
+        return {
+          url:nav.url,sectionIndex:index,
+          supportingSourceUrl:nav.trustedVia,
+          supportingEvidenceId:supporting.evidenceId,
+          purpose:nav.url.includes("annualcreditreport")
+            ?"Request free credit reports at official US destination"
+            :"Report identity theft at the official US recovery service",
+        };
+      })),
+    } as const;
+    // This is the same normalized review field used by the shared
+    // release gate. PENDING means it CANNOT authorize any navigation yet.
+    staged.officialNavigationReviewV1=officialNavigationReviewV1;
     const originalRecheck=sha(JSON.stringify(oldSnapshot));
     if(originalRecheck!==originalSnapshotSha)
       throw Error("ORIGINAL_SNAPSHOT_MUTATED_IN_MEMORY");
@@ -285,6 +306,7 @@ async function main():Promise<void>{
       navigation:review.navigation.map(nav=>({
         ...nav,approvalState:"REVIEWED_NOT_YET_AUTHORIZED_FOR_RELEASE",
       })),
+      officialNavigationReviewV1,
       citationScopeAfterStaging:{
         totalLinks:scope.totalLinks,
         remainingUnapprovedLinkOccurrences:scope.unapprovedLinks,
@@ -316,6 +338,8 @@ async function main():Promise<void>{
       snapshotTechnicalValidation:stage.snapshotTechnicalValidation,
       remainingUnapprovedLinkOccurrences:scope.unapprovedLinks,
       navigationOnly:stage.citationScopeAfterStaging.navigationOccurrencesOnly,
+      navigationReviewDecision:stage.officialNavigationReviewV1.decision,
+      navigationApprovalEntryCount:stage.officialNavigationReviewV1.entries.length,
       next:"Approve version-specific navigation and claim entailment, then final critics and new SERP Replay",
       output,databaseUnchanged:true,paidCalls:0,publishAllowed:false,
     },null,2));
