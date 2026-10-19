@@ -64,6 +64,8 @@ async function main(): Promise<void> {
       await import("../src/lib/content/master-runtime-adapter");
     const { evaluateArticleSearchReadinessV2 } =
       await import("../src/lib/content/article-search-readiness-v2");
+    const { resolveApprovedExistingArticleQueryOwnerV1 } =
+      await import("../src/lib/content/existing-article-approved-query-owner-v1");
 
     const sourcePlan = article.brief.evidenceSnapshot?.plan ?? null;
     const sourceRecord = record(sourcePlan);
@@ -122,13 +124,30 @@ async function main(): Promise<void> {
       where: { contentArticleId: article.id },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
-    const editorialAndSearch = evaluateArticleSearchReadinessV2({
+    const verifiedRuntime = inspectMasterRuntimeSnapshot(sourcePlan).runtime;
+    const research = {
       article: generated,
-      runtime: inspectMasterRuntimeSnapshot(sourcePlan).runtime,
+      runtime: verifiedRuntime,
       plan: executionPlan,
       primaryKeyword: brief.primaryKeyword,
       secondaryKeywords: brief.secondaryKeywords,
       replay: latestReplay,
+    };
+    const approved = verifiedRuntime && executionPlan &&
+      article.brief.evidenceSnapshot ?
+      await resolveApprovedExistingArticleQueryOwnerV1({
+        articleId: article.id,
+        evidenceSnapshotId: article.brief.evidenceSnapshot.id,
+        replayArtifactId: latestReplay?.id ?? null,
+        research: { ...research, runtime: verifiedRuntime, plan: executionPlan },
+        findReview: nodeId => prisma.contentQueryOwnerReview.findFirst({
+          where: { contentArticleId: article.id, queryNodeId: nodeId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        }),
+      }) : null;
+    const editorialAndSearch = evaluateArticleSearchReadinessV2({
+      ...research,
+      runtime: approved?.runtime ?? verifiedRuntime,
     });
 
     const lines = article.bodyMarkdown.split(/\r?\n/);
@@ -227,6 +246,8 @@ async function main(): Promise<void> {
       },
       editorialAndSearchReadiness: {
         source: editorialAndSearch.version,
+        approvedQueryOwnerOverlayApplied: approved?.approvedReviewApplied ?? false,
+        approvedQueryNodeId: approved?.approvedQueryNodeId ?? null,
         status: editorialAndSearch.status,
         canClaimSeoReady: editorialAndSearch.canClaimSeoReady,
         publishRecommendation: editorialAndSearch.publishRecommendation,
