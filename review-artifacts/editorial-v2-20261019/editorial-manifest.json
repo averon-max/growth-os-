@@ -1,0 +1,96 @@
+{
+  "version": "HUMAN_REVISED_EDITORIAL_CANDIDATE_V2",
+  "based_on": "User supplied 2026-10-19 editorial candidate, not DB read",
+  "original_word_count_approx": 2130,
+  "revised_word_count_approx": 1986,
+  "original_h2": 6,
+  "revised_h2": 6,
+  "original_h3": 4,
+  "revised_h3": 6,
+  "markdown_sha256": "41a3925afe4a671077ac4e377e7ecfd1329c87ee46f14fb1c0d5b7b7b7a5f442",
+  "preserved_all_original_reference_URLs_within_same_H2": true,
+  "references_per_section": [
+    {
+      "section": 0,
+      "originalUrls": 2,
+      "revisedUrls": 2,
+      "removedUrls": [],
+      "addedUrls": []
+    },
+    {
+      "section": 1,
+      "originalUrls": 3,
+      "revisedUrls": 3,
+      "removedUrls": [],
+      "addedUrls": []
+    },
+    {
+      "section": 2,
+      "originalUrls": 1,
+      "revisedUrls": 4,
+      "removedUrls": [],
+      "addedUrls": [
+        "https://consumer.ftc.gov/articles/free-credit-reports",
+        "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+        "https://www.annualcreditreport.com/index.action"
+      ]
+    },
+    {
+      "section": 3,
+      "originalUrls": 2,
+      "revisedUrls": 2,
+      "removedUrls": [],
+      "addedUrls": []
+    },
+    {
+      "section": 4,
+      "originalUrls": 3,
+      "revisedUrls": 5,
+      "removedUrls": [],
+      "addedUrls": [
+        "https://consumer.ftc.gov/articles/free-credit-reports",
+        "https://www.annualcreditreport.com/index.action"
+      ]
+    },
+    {
+      "section": 5,
+      "originalUrls": 2,
+      "revisedUrls": 4,
+      "removedUrls": [],
+      "addedUrls": [
+        "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+        "https://www.identitytheft.gov/"
+      ]
+    }
+  ],
+  "supplemental_web_sources_new_to_signed_research": [
+    "https://consumer.ftc.gov/articles/free-credit-reports",
+    "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+    "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+    "https://www.annualcreditreport.com/index.action",
+    "https://www.identitytheft.gov/"
+  ],
+  "verified_online_sources": [
+    "FTC credit freeze or fraud alert",
+    "FTC free credit reports",
+    "FTC identity theft",
+    "CFPB credit report disputes",
+    "CFPB checking own credit report"
+  ],
+  "staged_evidence_required_before_publication": true,
+  "source_body_provenance": "User-provided exported Markdown",
+  "publication_state": "NOT_READY_NOT_PERSISTED",
+  "serp_replay_state": "NOT_RUN_FOR_THIS_CANDIDATE",
+  "query_owner_approval": "DO_NOT_REUSE_OLD_APPROVAL_WITHOUT_REVALIDATION",
+  "database_mutated": false,
+  "paid_ai_calls": 0,
+  "editorial_changes": [
+    "Remove repeated setup and alert explanations",
+    "Replace internal evidence language with reader prose",
+    "Distinguish soft from hard inquiry",
+    "Remove unsupported universal $0-$50 price band",
+    "Add FTC free weekly credit report option",
+    "Add explicit fraud alert/freeze/recovery steps and links",
+    "Preserve all original URLs within their sections"
+  ]
+}
