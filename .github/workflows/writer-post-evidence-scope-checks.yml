@@ -123,6 +123,7 @@ jobs:
             "src/lib/content/score-impact-closure-preview-v1.ts",
             "src/lib/content/score-impact-closure-preview-v1.test.ts",
             "scripts/content-article-final-closure-preview.ts",
+            "scripts/content-stage-score-evidence-revision.ts",
             "src/lib/content/article-question-gap-audit-v1.ts",
             "src/lib/content/article-question-gap-audit-v1.test.ts",
             "scripts/content-existing-article-question-gap-audit.ts",
