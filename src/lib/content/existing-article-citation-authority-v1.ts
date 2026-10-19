@@ -56,3 +56,34 @@ export function verifyExistingArticleCitationScopeV1(input:{
     warning:"URL scope alone does not prove a claim or authorize a write. Exact content still requires sentence entailment, nine critics and fingerprinted replay.",
   };
 }
+
+
+/**
+ * Shared release-time source ownership guard for approval AND publication.
+ * A link placed in a different H2, or a new URL outside signed Section
+ * Contract evidence, can never be legitimized by a technical score or an
+ * unrelated successful SERP Replay.
+ *
+ * This is a necessary provenance check, NOT semantic entailment certification.
+ */
+export class ReleaseArticleCitationScopeErrorV1 extends Error {
+  readonly code = "ARTICLE_RELEASE_CITATION_SCOPE_INVALID" as const;
+  constructor(readonly details: ReturnType<typeof verifyExistingArticleCitationScopeV1>) {
+    super(this.code + ":" + [
+      ...(details.unapprovedLinks ? ["UNSIGNED_OR_WRONG_SECTION_LINKS"] : []),
+      ...(details.totalLinks === 0 ? ["VISIBLE_CITATIONS_MISSING"] : []),
+      ...(!details.completeSectionCitationCoverage ? ["EVIDENCED_H2_UNCITED"] : []),
+    ].join(","));
+    this.name = "ReleaseArticleCitationScopeErrorV1";
+  }
+}
+export function assertReleaseArticleCitationScopeV1(
+  input: Parameters<typeof verifyExistingArticleCitationScopeV1>[0]
+): ReturnType<typeof verifyExistingArticleCitationScopeV1> {
+  const details = verifyExistingArticleCitationScopeV1(input);
+  if (details.unapprovedLinks > 0 || details.totalLinks === 0 ||
+      !details.completeSectionCitationCoverage) {
+    throw new ReleaseArticleCitationScopeErrorV1(details);
+  }
+  return details;
+}
