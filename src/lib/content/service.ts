@@ -2376,6 +2376,11 @@ export async function generateArticleFromBrief(
     recordWriterForensicArtifactV1("critic.initial_suite", {
       masterCriticExecution, masterCriticContext,
     });
+    recordWriterTraceV1("critic.initial.completed", {
+      status: masterCriticExecution.suite.status,
+      criticCount: masterCriticExecution.provenance.finalCriticCount,
+      blockerCount: masterCriticExecution.suite.counts.blockFindings,
+    });
 
 
     /*
@@ -2487,6 +2492,12 @@ export async function generateArticleFromBrief(
     let finalMasterCriticExecution =
       masterCriticRepairExecution
         .finalCritics;
+    recordWriterTraceV1("critic.final.completed", {
+      status: finalMasterCriticExecution.suite.status,
+      criticCount: finalMasterCriticExecution.provenance.finalCriticCount,
+      repairedSectionCount: masterCriticRepairExecution.provenance.repairedSectionCount,
+      repairAttemptCount: masterCriticRepairExecution.provenance.repairAttemptCount,
+    });
 
     /*
      * REAL_RECOVERY_POST_MASTER_CRITIC_CHECKPOINT_V1
@@ -2681,6 +2692,9 @@ export async function generateArticleFromBrief(
       ) {
         masterSerpReplayWarning =
           "SERP_REPLAY_SKIPPED_PRIOR_MASTER_CRITIC_BLOCK";
+        recordWriterTraceV1("serp.replay.skipped", {
+          reasonCode: "PRIOR_MASTER_CRITIC_BLOCK",
+        });
 
         console.info(
           "[content serp replay skipped]",
@@ -2754,12 +2768,26 @@ export async function generateArticleFromBrief(
         finalMasterCriticExecution =
           competitiveReplayExecution
             .postRepairCritics;
+        // Supersede the pre-replay verdict if a competitive section
+        // repair caused a new complete critic pass.
+        recordWriterTraceV1("critic.final.completed", {
+          status: finalMasterCriticExecution.suite.status,
+          criticCount: finalMasterCriticExecution.provenance.finalCriticCount,
+          repairedSectionCount: masterCriticRepairExecution.provenance.repairedSectionCount +
+            competitiveReplayExecution.provenance.repairedSectionCount,
+        });
       }
 
 
       masterSerpReplay =
         competitiveReplayExecution
           .finalReplay;
+      recordWriterTraceV1("serp.replay.completed", {
+        status: masterSerpReplay.status,
+        comparedResultCount: masterSerpReplay.provenance.comparedResultCount,
+        blockerCount: masterSerpReplay.blockers.length,
+        warningCount: masterSerpReplay.warnings.length,
+      });
       recordWriterForensicArtifactV1("serp.replay_and_repair", {
         competitiveReplayExecution,
       });
@@ -2935,6 +2963,9 @@ export async function generateArticleFromBrief(
         Error
           ? replayError.message
           : "SERP_REPLAY_EXECUTION_FAILED";
+      recordWriterTraceV1("serp.replay.failed", {
+        reasonCode: "SERP_REPLAY_EXECUTION_FAILED",
+      });
 
 
       /*
@@ -3454,6 +3485,11 @@ export async function generateArticleFromBrief(
       finalArticleReadiness,
       finalMasterCriticExecution,
       masterSerpReplay,
+    });
+    recordWriterTraceV1("audit.final_readiness.completed", {
+      status: finalArticleReadiness.status,
+      blockerCount: finalArticleReadiness.blockers.length,
+      warningCount: finalArticleReadiness.warnings.length,
     });
     console.info(
       "[content final article readiness]",

@@ -203,6 +203,15 @@ async function main(): Promise<void> {
       console.log("PRIOR_REJECTED_ARTICLE_BACKED_UP=" + backup);
     }
 
+    // A CLI Writer run always has a private, per-run audit trail.
+    // Existing production/web tracing remains explicitly configurable.
+    if (!process.env.GROWTH_OS_WRITER_TRACE_DIR?.trim()) {
+      process.env.GROWTH_OS_WRITER_TRACE_DIR =
+        join(process.cwd(), ".growth-os-traces");
+    }
+    console.log("WRITER_TRACE_DIR=" + process.env.GROWTH_OS_WRITER_TRACE_DIR);
+    console.log("WRITER_TRACE_VIEW=node scripts/writer-status.mjs");
+
     const { openAiGenerator } = await import("../src/lib/content/openai-generator");
     const { generateArticleFromBrief } = await import("../src/lib/content/service");
     const {
