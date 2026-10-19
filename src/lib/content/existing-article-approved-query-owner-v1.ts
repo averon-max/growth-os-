@@ -84,3 +84,37 @@ export function evaluateApprovedExistingArticleQueryOwnerV1(input:{
     ownerSectionIndex:candidate.proposedOwnerSectionIndex,
   };
 }
+
+
+/**
+ * Read-only resolution for CLI and UI consumers. The signed snapshot stays
+ * unchanged; only a matching human-approved overlay is applied in memory.
+ * Callers supply a scoped repository lookup to keep this logic pure and
+ * avoid importing Prisma into search-readiness calculations.
+ */
+export async function resolveApprovedExistingArticleQueryOwnerV1(input:{
+  articleId:string;
+  evidenceSnapshotId:string;
+  replayArtifactId:string|null;
+  research:Parameters<typeof proposeExistingArticleQueryOwnerRebindV1>[0];
+  findReview:(nodeId:string)=>Promise<Readonly<ExistingArticleOwnerReviewV1>|null>;
+}){
+  const proposal=proposeExistingArticleQueryOwnerRebindV1(input.research);
+  const nodeId=proposal.candidateCount===1?proposal.proposals[0]?.nodeId:null;
+  if(!nodeId)return {
+    runtime:input.research.runtime,
+    approvedReviewApplied:false,
+    approvedQueryNodeId:null as string|null,
+  };
+  const review=await input.findReview(nodeId);
+  const approved=evaluateApprovedExistingArticleQueryOwnerV1({
+    ...input.research,articleId:input.articleId,
+    evidenceSnapshotId:input.evidenceSnapshotId,
+    replayArtifactId:input.replayArtifactId,review,
+  });
+  return {
+    runtime:approved.valid?approved.runtime:input.research.runtime,
+    approvedReviewApplied:approved.valid,
+    approvedQueryNodeId:approved.valid?nodeId:null,
+  };
+}

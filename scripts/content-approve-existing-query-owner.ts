@@ -109,22 +109,25 @@ async function main(){
     const snapHash=await sha(obj);
     const {Prisma}=await import("@prisma/client");
     const outcome=await prisma.$transaction(async(tx)=>{
-      const [current,source,lastReplay,existing]=await Promise.all([
-        tx.contentArticle.findUnique({where:{id:articleId}}),
-        tx.contentEvidenceSnapshot.findUnique({
-          where:{briefId:article.briefId},select:{id:true,plan:true},
-        }),
-        tx.serpReplayArtifact.findFirst({
-          where:{contentArticleId:articleId},
-          orderBy:[{createdAt:"desc"},{id:"desc"}],
-        }),
-        tx.contentQueryOwnerReview.findFirst({
-          where:{contentArticleId:articleId,
-            queryNodeId:proposed.nodeId,
-            sourceArticleFingerprint:fingerprint,
-            sourceQueryGraphSha256:proposal.sourceQueryGraphSha256},
-        }),
-      ]);
+      // Prisma transaction uses one PostgreSQL connection: never submit
+      // overlapping client.query calls on it (deprecated in pg 8, rejected
+      // in pg 9). All reads retain the same SERIALIZABLE snapshot.
+      const current=await tx.contentArticle.findUnique({
+        where:{id:articleId},
+      });
+      const source=await tx.contentEvidenceSnapshot.findUnique({
+        where:{briefId:article.briefId},select:{id:true,plan:true},
+      });
+      const lastReplay=await tx.serpReplayArtifact.findFirst({
+        where:{contentArticleId:articleId},
+        orderBy:[{createdAt:"desc"},{id:"desc"}],
+      });
+      const existing=await tx.contentQueryOwnerReview.findFirst({
+        where:{contentArticleId:articleId,
+          queryNodeId:proposed.nodeId,
+          sourceArticleFingerprint:fingerprint,
+          sourceQueryGraphSha256:proposal.sourceQueryGraphSha256},
+      });
       if(!current||!source||current.status!=="IN_REVIEW"||
         current.updatedAt.getTime()!==article.updatedAt.getTime()||
         current.title!==article.title||

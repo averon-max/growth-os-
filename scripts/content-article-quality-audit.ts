@@ -60,6 +60,12 @@ async function main(): Promise<void> {
       await import("../src/lib/content/stored-publication-evidence-gate-v1");
     const { parsePersistedArticleExecutionPlanV1 } =
       await import("../src/lib/content/article-execution-plan-binding-v1");
+    const { inspectMasterRuntimeSnapshot } =
+      await import("../src/lib/content/master-runtime-adapter");
+    const { evaluateArticleSearchReadinessV2 } =
+      await import("../src/lib/content/article-search-readiness-v2");
+    const { resolveApprovedExistingArticleQueryOwnerV1 } =
+      await import("../src/lib/content/existing-article-approved-query-owner-v1");
 
     const sourcePlan = article.brief.evidenceSnapshot?.plan ?? null;
     const sourceRecord = record(sourcePlan);
@@ -110,6 +116,39 @@ async function main(): Promise<void> {
     } catch (error) {
       executionPlanError = error instanceof Error ? error.message : String(error);
     }
+
+    // Keep the legacy 0-100 technical score unchanged, but surface the
+    // independent search/editorial verdict from the existing shared engine.
+    // The persisted SERP fingerprint is read, never regenerated.
+    const latestReplay = await prisma.serpReplayArtifact.findFirst({
+      where: { contentArticleId: article.id },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    const verifiedRuntime = inspectMasterRuntimeSnapshot(sourcePlan).runtime;
+    const research = {
+      article: generated,
+      runtime: verifiedRuntime,
+      plan: executionPlan,
+      primaryKeyword: brief.primaryKeyword,
+      secondaryKeywords: brief.secondaryKeywords,
+      replay: latestReplay,
+    };
+    const approved = verifiedRuntime && executionPlan &&
+      article.brief.evidenceSnapshot ?
+      await resolveApprovedExistingArticleQueryOwnerV1({
+        articleId: article.id,
+        evidenceSnapshotId: article.brief.evidenceSnapshot.id,
+        replayArtifactId: latestReplay?.id ?? null,
+        research: { ...research, runtime: verifiedRuntime, plan: executionPlan },
+        findReview: nodeId => prisma.contentQueryOwnerReview.findFirst({
+          where: { contentArticleId: article.id, queryNodeId: nodeId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        }),
+      }) : null;
+    const editorialAndSearch = evaluateArticleSearchReadinessV2({
+      ...research,
+      runtime: approved?.runtime ?? verifiedRuntime,
+    });
 
     const lines = article.bodyMarkdown.split(/\r?\n/);
     const allHeadings = lines.filter((line) => /^#{1,6}\s+/.test(line));
@@ -189,6 +228,7 @@ async function main(): Promise<void> {
       },
       quality: {
         score: audit.score,
+        scoreScope: "TECHNICAL_RULES_ONLY_NOT_EDITORIAL_OR_SEARCH_READINESS",
         issues: audit.issues,
         keywordDensityPercent: audit.primaryKeywordDensityPct,
         contentGatePass: gate.pass,
@@ -203,6 +243,20 @@ async function main(): Promise<void> {
         lexicalTopics: intelligence.topics,
         lexicalQuestions: intelligence.questions,
         benchmarkObservation: intelligence.benchmarkObservation,
+      },
+      editorialAndSearchReadiness: {
+        source: editorialAndSearch.version,
+        approvedQueryOwnerOverlayApplied: approved?.approvedReviewApplied ?? false,
+        approvedQueryNodeId: approved?.approvedQueryNodeId ?? null,
+        status: editorialAndSearch.status,
+        canClaimSeoReady: editorialAndSearch.canClaimSeoReady,
+        publishRecommendation: editorialAndSearch.publishRecommendation,
+        findings: editorialAndSearch.findings,
+        strictSpacingIssues: editorialAndSearch.article.probableSpacingIssues,
+        possibleWordJoins: editorialAndSearch.article.possibleWordJoins,
+        replay: editorialAndSearch.replay,
+        observedSupportingQueries: editorialAndSearch.observedSupportingQueries,
+        assignedSupportingQueries: editorialAndSearch.assignedSupportingQueries,
       },
       plainText: article.bodyMarkdown,
     };
