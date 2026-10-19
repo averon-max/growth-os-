@@ -6,6 +6,7 @@ import {
 } from "./final-article-version-integrity-v1";
 
 import { assertCanonicalWriterPreflightV1 } from "./canonical-writer-preflight-v1";
+import { assertReleaseArticleCitationScopeV1 } from "./existing-article-citation-authority-v1";
 import { deriveBriefOutlineFromExecutionPlanV1 } from "./article-execution-plan-v1";
 
 import {
@@ -3700,6 +3701,35 @@ async function requireArticleReadyForReleaseV1(
   assertStoredPublicationEvidenceV1(
     article.brief.evidenceSnapshot?.plan
   );
+
+  // Reject new, globally verified-but-wrong-section, or unsigned
+  // external references before approval AND CMS publication. A 100/100
+  // technical score and a successful replay do not authorize source
+  // citations absent from the immutable plan's VERIFIED_EXCERPT ownership.
+  const releaseSourcePlan = article.brief.evidenceSnapshot?.plan;
+  const releaseSourceRecord = releaseSourcePlan &&
+    typeof releaseSourcePlan === "object" &&
+    !Array.isArray(releaseSourcePlan)
+      ? releaseSourcePlan as Record<string, unknown> : null;
+  const releaseSourceRuntime = inspectMasterRuntimeSnapshot(
+    releaseSourcePlan
+  ).runtime;
+  if (!releaseSourceRuntime || !releaseSourceRecord?.articleExecutionPlan) {
+    throw new Error("ARTICLE_RELEASE_RESEARCH_RUNTIME_MISSING");
+  }
+  const releaseCitationScope = assertReleaseArticleCitationScopeV1({
+    candidateBodyMarkdown: article.bodyMarkdown,
+    plan: parsePersistedArticleExecutionPlanV1(
+      releaseSourceRecord.articleExecutionPlan
+    ),
+    runtime: releaseSourceRuntime,
+  });
+  console.info("[content release citation provenance]", {
+    articleId,
+    approvedLinks: releaseCitationScope.totalLinks,
+    unapprovedLinks: releaseCitationScope.unapprovedLinks,
+    uncitedSections: releaseCitationScope.uncitedEvidenceSections.length,
+  });
 
   const intelligence =
     await analyzeStoredContentPlan({
