@@ -17,7 +17,7 @@ const json = args.includes("--json");
 const runArg = args.indexOf("--run");
 const runId = runArg >= 0 ? args[runArg + 1] : null;
 const positional = args.filter((arg, i) => arg !== "--json" &&
-  arg !== "--run" && i !== runArg + 1);
+  arg !== "--run" && (runArg < 0 || i !== runArg + 1));
 const directory = positional[0] ?? ".growth-os-traces";
 if (positional.length > 1 || (runArg >= 0 && (!runId || !/^[\w-]{1,120}$/.test(runId)))) {
   console.error("USAGE: node scripts/writer-status.mjs [TRACE_DIRECTORY] [--run ID] [--json]");
