@@ -6,6 +6,8 @@ import {
 } from "./final-article-version-integrity-v1";
 
 import { assertCanonicalWriterPreflightV1 } from "./canonical-writer-preflight-v1";
+import { assertReleaseArticleCitationScopeV1 } from "./existing-article-citation-authority-v1";
+import { resolveApprovedExistingArticleQueryOwnerV1 } from "./existing-article-approved-query-owner-v1";
 import { deriveBriefOutlineFromExecutionPlanV1 } from "./article-execution-plan-v1";
 
 import {
@@ -53,7 +55,7 @@ import {
   evaluateComprehensiveEditorialReleaseV1,
   assertComprehensiveEditorialReleaseV1,
 } from "./comprehensive-editorial-release-gate-v1";
-import {assertArticleProseHygieneV2}
+import {assertArticleProseHygieneV2, evaluateArticleSearchReadinessV2}
   from "./article-search-readiness-v2";
 import {assertArticleInformationGainV1}
   from "./article-editorial-information-gain-v1";
@@ -3701,6 +3703,36 @@ async function requireArticleReadyForReleaseV1(
     article.brief.evidenceSnapshot?.plan
   );
 
+  // Reject new, globally verified-but-wrong-section, or unsigned
+  // external references before approval AND CMS publication. A 100/100
+  // technical score and a successful replay do not authorize source
+  // citations absent from the immutable plan's VERIFIED_EXCERPT ownership.
+  const releaseSourcePlan = article.brief.evidenceSnapshot?.plan;
+  const releaseSourceRecord = releaseSourcePlan &&
+    typeof releaseSourcePlan === "object" &&
+    !Array.isArray(releaseSourcePlan)
+      ? releaseSourcePlan as Record<string, unknown> : null;
+  const releaseSourceRuntime = inspectMasterRuntimeSnapshot(
+    releaseSourcePlan
+  ).runtime;
+  if (!releaseSourceRuntime || !releaseSourceRecord?.articleExecutionPlan) {
+    throw new Error("ARTICLE_RELEASE_RESEARCH_RUNTIME_MISSING");
+  }
+  const releaseExecutionPlan = parsePersistedArticleExecutionPlanV1(
+    releaseSourceRecord.articleExecutionPlan
+  );
+  const releaseCitationScope = assertReleaseArticleCitationScopeV1({
+    candidateBodyMarkdown: article.bodyMarkdown,
+    plan: releaseExecutionPlan,
+    runtime: releaseSourceRuntime,
+  });
+  console.info("[content release citation provenance]", {
+    articleId,
+    approvedLinks: releaseCitationScope.totalLinks,
+    unapprovedLinks: releaseCitationScope.unapprovedLinks,
+    uncitedSections: releaseCitationScope.uncitedEvidenceSections.length,
+  });
+
   const intelligence =
     await analyzeStoredContentPlan({
       briefId:
@@ -3849,6 +3881,46 @@ async function requireArticleReadyForReleaseV1(
       ],
     });
 
+
+  // The source/plan/replay may be unchanged while the article's exact
+  // fingerprint has changed. An old human Query Owner approval MUST NOT
+  // authorize the next version. Read the latest signed record through
+  // the same validator used by dashboard and both read-only CLIs.
+  const releaseArticleShape = {
+    title: article.title,
+    metaDescription: article.metaDescription,
+    h1: article.h1,
+    bodyMarkdown: article.bodyMarkdown,
+  };
+  const releaseResearch = {
+    article: releaseArticleShape,
+    runtime: releaseSourceRuntime,
+    plan: releaseExecutionPlan,
+    primaryKeyword: article.brief.primaryKeyword,
+    secondaryKeywords: article.brief.secondaryKeywords,
+    replay: releaseReplayArtifact,
+  };
+  const releaseOwner = await resolveApprovedExistingArticleQueryOwnerV1({
+    articleId,
+    evidenceSnapshotId: article.brief.evidenceSnapshot!.id,
+    replayArtifactId: releaseReplayArtifact?.id ?? null,
+    research: releaseResearch,
+    findReview: nodeId => prisma.contentQueryOwnerReview.findFirst({
+      where: { contentArticleId: articleId, queryNodeId: nodeId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
+  });
+  const releaseSearchReadiness = evaluateArticleSearchReadinessV2({
+    ...releaseResearch,
+    runtime: releaseOwner.runtime,
+  });
+  const unapprovedQueryFindings = releaseSearchReadiness.findings
+    .filter(item => item.code === "QUERY_BINDING_REVIEW_REQUIRED" ||
+      item.code === "QUERY_TO_SECTION_BRIDGE_MISSING");
+  if (unapprovedQueryFindings.length > 0) {
+    throw new Error("ARTICLE_RELEASE_QUERY_BINDING_UNAPPROVED:" +
+      unapprovedQueryFindings.map(item => item.code).join(","));
+  }
 
   const releasePublishGate =
     evaluateExplicitPublishGateV1({
