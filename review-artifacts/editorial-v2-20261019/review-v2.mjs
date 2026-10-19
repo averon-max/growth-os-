@@ -59,12 +59,14 @@ if(mode==="--offline"){
     const [{buildSerpReplayArticleFingerprintV1:fp},{auditArticle},
       {inspectMasterRuntimeSnapshot},
       {parsePersistedArticleExecutionPlanV1},
-      {evaluateArticleSearchReadinessV2}]=await Promise.all([
+      {evaluateArticleSearchReadinessV2},
+      {verifyExistingArticleCitationScopeV1}]=await Promise.all([
         import("../../src/lib/content/serp-replay-fingerprint"),
         import("../../src/lib/content/content-quality"),
         import("../../src/lib/content/master-runtime-adapter"),
         import("../../src/lib/content/article-execution-plan-binding-v1"),
         import("../../src/lib/content/article-search-readiness-v2"),
+        import("../../src/lib/content/existing-article-citation-authority-v1"),
       ]);
     const saved={title:article.title,metaDescription:article.metaDescription,
       h1:article.h1,bodyMarkdown:article.bodyMarkdown};
@@ -96,19 +98,44 @@ if(mode==="--offline"){
     const runtime=inspectMasterRuntimeSnapshot(snapshot).runtime;
     const audit=auditArticle({article:candidate,
       primaryKeyword:article.brief.primaryKeyword});
+    const citationScope=runtime&&plan
+      ?verifyExistingArticleCitationScopeV1({
+        candidateBodyMarkdown:body,runtime,plan,
+      }):null;
+    const releaseBlockers=[
+      ...(citationScope===null?["SIGNED_SECTION_CITATION_SCOPE_UNAVAILABLE"]:[]),
+      ...(citationScope?.unapprovedLinks?["UNSIGNED_SECTION_SOURCE_LINKS"]:[]),
+      ...(!citationScope?.completeSectionCitationCoverage
+        ?["EVIDENCED_SECTION_WITHOUT_SIGNED_VISIBLE_CITATION"]:[]),
+      ...(candidateFingerprint!==replay?.articleFingerprint
+        ?["NEW_FINGERPRINT_SERP_REPLAY_MISSING"]:[]),
+      "NEW_VERSION_QUERY_OWNER_APPROVAL_MISSING",
+      "NEW_VERSION_CRITICS_NOT_EXECUTED",
+      "NEW_FACTUAL_CLAIM_SEMANTIC_VERIFICATION_MISSING",
+    ];
     const readiness=evaluateArticleSearchReadinessV2({
       article:candidate,runtime,plan,replay:null,
       primaryKeyword:article.brief.primaryKeyword,
       secondaryKeywords:article.brief.secondaryKeywords,
     });
     console.log(JSON.stringify({
-      ...offline,status:"DB_PREFLIGHT_COMPLETE_NOT_PUBLICATION_READY",
+      ...offline,status:releaseBlockers.length?"DB_PREFLIGHT_BLOCKED":"DB_PREFLIGHT_REVIEW_ONLY",
       sourceUnchanged,candidateFingerprint,
       savedArticleFingerprint:originalFingerprint,
       candidateDiffersFromOriginal:candidateFingerprint!==originalFingerprint,
       oldReplayMatchesOriginal:replay?.articleFingerprint===originalFingerprint,
       matchesOldReplay:replay?.articleFingerprint===candidateFingerprint,
       sectionUrlComparison,
+      citationScope: citationScope?{
+        status:citationScope.status,
+        signedSectionScopeLinks:citationScope.totalLinks-citationScope.unapprovedLinks,
+        unapprovedSectionLinks:citationScope.unapprovedLinks,
+        uncitedEvidenceSections:citationScope.uncitedEvidenceSections,
+        sections:citationScope.sections.map(x=>({index:x.sectionIndex,
+          heading:x.heading,links:x.links,unapproved:x.rejectedLinks})),
+        note:"URL matches are necessary but not sufficient for claim-to-excerpt semantic support",
+      }:null,
+      releaseBlockers,
       technicalAudit:{score:audit.score,wordCount:audit.wordCount,
         h2Count:audit.h2Count,h3Count:audit.h3Count,issues:audit.issues},
       planError,verifiedResearchRuntimePresent:!!runtime,
