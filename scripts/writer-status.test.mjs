@@ -100,6 +100,29 @@ test("old logs explicitly show not recorded rather than pretending pass",()=>{
     assert.equal(report.stages.replay,"NOT_RECORDED");
   }finally{rmSync(directory,{recursive:true,force:true});}
 });
+
+test("the last critic verdict wins after SERP repair, no false PASS",()=>{
+  const directory=mkdtempSync(join(tmpdir(),"writer-quick-"));
+  try{
+    write(directory,id,[
+      event(1,"run.started",{scope:"content.article"}),
+      event(2,"writer.draft_generated",{approxWordCount:2000,h2Count:6,h3Count:4}),
+      event(3,"critic.final.completed",{status:"PASS",criticCount:9,repairedSectionCount:1}),
+      event(4,"critic.final.completed",{status:"BLOCK",criticCount:9,repairedSectionCount:2}),
+      event(5,"serp.replay.completed",{status:"WARN"}),
+      event(6,"audit.final_readiness.completed",{status:"FAIL",blockerCount:1}),
+      event(7,"run.article_rejected",{articleStatus:"REJECTED"}),
+    ]);
+    const output=run(directory,["--json"]);
+    assert.equal(output.status,0);
+    const report=JSON.parse(output.stdout);
+    assert.equal(report.result,"REJECTED");
+    assert.equal(report.stages.critics,"BLOCK");
+    assert.equal(report.stages.readiness,"FAIL");
+    assert.equal(report.details.repairedSections,2);
+  }finally{rmSync(directory,{recursive:true,force:true});}
+});
+
 test("missing trace reports a clear error, never generates an article",()=>{
   const output=run("/does-not-exist-growth-os-trace");
   assert.equal(output.status,2);
