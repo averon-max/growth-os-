@@ -34,6 +34,8 @@ async function main(){
       await import("../src/lib/content/article-execution-plan-binding-v1");
     const {evaluateArticleSearchReadinessV2}=
       await import("../src/lib/content/article-search-readiness-v2");
+    const {resolveApprovedExistingArticleQueryOwnerV1}=
+      await import("../src/lib/content/existing-article-approved-query-owner-v1");
     const normalized=snap&&typeof snap==="object"&&!Array.isArray(snap)
       ?snap as Record<string,unknown>:null;
     let plan:null|ReturnType<typeof parsePersistedArticleExecutionPlanV1>=null;
@@ -44,20 +46,33 @@ async function main(){
       // Invalid historic plan is a blocker, not permission to guess scope.
     }
     const runtime=inspectMasterRuntimeSnapshot(snap).runtime;
-    const readiness=evaluateArticleSearchReadinessV2({
-      article:{
-        title:article.title,metaDescription:article.metaDescription,
-        h1:article.h1,bodyMarkdown:article.bodyMarkdown,
-      },
+    const articleShape={
+      title:article.title,metaDescription:article.metaDescription,
+      h1:article.h1,bodyMarkdown:article.bodyMarkdown,
+    };
+    const research={article:articleShape,runtime,plan,
       primaryKeyword:article.brief.primaryKeyword,
-      secondaryKeywords:article.brief.secondaryKeywords,
-      runtime,plan,replay,
+      secondaryKeywords:article.brief.secondaryKeywords,replay};
+    const approved=runtime&&plan&&article.brief.evidenceSnapshot?
+      await resolveApprovedExistingArticleQueryOwnerV1({
+        articleId,evidenceSnapshotId:article.brief.evidenceSnapshot.id,
+        replayArtifactId:replay?.id??null,
+        research:{...research,runtime,plan},
+        findReview:nodeId=>prisma.contentQueryOwnerReview.findFirst({
+          where:{contentArticleId:articleId,queryNodeId:nodeId},
+          orderBy:[{createdAt:"desc"},{id:"desc"}],
+        }),
+      }):null;
+    const readiness=evaluateArticleSearchReadinessV2({
+      ...research,runtime:approved?.runtime??runtime,
     });
     console.log(JSON.stringify({
       mode:"FREE_READ_ONLY_SEARCH_READINESS_V2",
       articleId,articleStatus:article.status,
       articleUpdatedAt:article.updatedAt.toISOString(),
       latestReplayArtifactId:replay?.id??null,
+      approvedQueryOwnerOverlayApplied:approved?.approvedReviewApplied??false,
+      approvedQueryNodeId:approved?.approvedQueryNodeId??null,
       ...readiness,
       paidResearchCalls:0,paidWriterCalls:0,
       databaseUnchanged:true,
