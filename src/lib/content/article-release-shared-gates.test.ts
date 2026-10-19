@@ -20,6 +20,8 @@ describe("approve and publish shared release gate wiring", () => {
       "evaluateArticlePublicationPolicy(",
       "assertArticlePublicationPolicyPassed(",
       "evaluateComprehensiveEditorialReleaseV1(",
+      "resolveApprovedExistingArticleQueryOwnerV1(",
+      "evaluateArticleSearchReadinessV2(",
       "evaluateExplicitPublishGateV1(",
       "assertExplicitPublishGatePassedV1(",
     ];
@@ -39,6 +41,8 @@ describe("approve and publish shared release gate wiring", () => {
     expect(ready.indexOf("assertReleaseArticleCitationScopeV1({"))
       .toBeLessThan(ready.indexOf("evaluateExplicitPublishGateV1({"));
     expect(ready).toContain("ARTICLE_RELEASE_RESEARCH_RUNTIME_MISSING");
+    expect(ready).toContain("ARTICLE_RELEASE_QUERY_BINDING_UNAPPROVED");
+    expect(ready).toContain("contentQueryOwnerReview.findFirst({");
   });
   it("preserves distinct status guards and uses release validation before persistence or CMS", () => {
     const approve = source.slice(source.indexOf("export async function approveArticle("),
