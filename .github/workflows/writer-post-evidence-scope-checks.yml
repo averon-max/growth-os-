@@ -8,6 +8,7 @@ on:
       - refactor/content-runtime-consolidation-20261018
       - refactor/content-single-writer-only-20261018
       - refactor/content-remove-legacy-outline-scope-20261018
+      - refactor/content-evidence-recovery-observability-20261018
   workflow_dispatch:
 
 permissions:
@@ -93,6 +94,20 @@ jobs:
         run: |
           test ! -e src/lib/content/content-strategy-prompt-v1.ts
           test ! -e src/lib/content/content-strategy-prompt-v1.test.ts
+      - name: Recovery observability invariant
+        run: |
+          node - <<'JS'
+          const fs = require('fs');
+          const source = fs.readFileSync('src/lib/content/production-master-live-stage-planner.ts','utf8');
+          for (const stage of ['research.evidence_recovery.wave','research.evidence_recovery.summary','research.evidence_recovery.question_probe']) {
+            if (!source.includes(stage)) throw new Error('MISSING_TRACE_STAGE:' + stage);
+          }
+          if ((source.match(/await callContentAiJson\(/g) || []).length !== 5) throw new Error('UNEXPECTED_PAID_PLANNER_CALLS');
+          if (!source.includes('Math.min(MAX_EVIDENCE_RECOVERY_WAVES_V1, recoveryQuerySuffixes.length)')) {
+            throw new Error('UNBOUNDED_EVIDENCE_QUERY_EXPANSION');
+          }
+          console.log('EVIDENCE_RECOVERY_BOUNDED_TRACE_PASS');
+          JS
       - name: TypeScript strict
         run: npx tsc --noEmit
       - name: All Content and Keyword regressions
