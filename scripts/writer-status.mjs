@@ -78,7 +78,8 @@ const { name, events, badLines } = selected;
 const last = events.at(-1);
 const terminalStages = new Set(["run.succeeded", "run.failed", "run.article_rejected", "run.http_error"]);
 const terminal = [...events].reverse().find(e => terminalStages.has(e.stage));
-const failure = [...events].reverse().find(e => e.stage === "run.failed" || e.stage === "writer.preflight.blocked");
+const failure = findLast(events, "run.failed");
+const blockedPreflight = findLast(events, "writer.preflight.blocked");
 const draft = findLast(events, "writer.draft_generated");
 const finalCritic = findLast(events, "critic.final.completed");
 const readiness = findLast(events, "audit.final_readiness.completed");
@@ -110,9 +111,10 @@ const report = {
     readinessBlockers: num(readiness?.fields?.blockerCount),
     readinessWarnings: num(readiness?.fields?.warningCount),
     observedModelExchanges: modelCalls,
-    failureClass: safe(failure?.fields?.failureClass),
-    reasonCode: safe(failure?.fields?.reasonCode),
-    recommendedAction: safe(failure?.fields?.recommendedAction),
+    failureClass: safe(failure?.fields?.failureClass) ?? safe(blockedPreflight?.fields?.failureClass),
+    reasonCode: safe(failure?.fields?.reasonCode) ?? safe(blockedPreflight?.fields?.reasonCode),
+    recommendedAction: safe(failure?.fields?.recommendedAction) ??
+      safe(blockedPreflight?.fields?.recommendedAction),
   },
   diagnostics: [
     ...(badLines ? ["MALFORMED_JSONL_LINES:" + badLines] : []),
