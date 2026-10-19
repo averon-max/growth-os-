@@ -60,6 +60,10 @@ async function main(): Promise<void> {
       await import("../src/lib/content/stored-publication-evidence-gate-v1");
     const { parsePersistedArticleExecutionPlanV1 } =
       await import("../src/lib/content/article-execution-plan-binding-v1");
+    const { inspectMasterRuntimeSnapshot } =
+      await import("../src/lib/content/master-runtime-adapter");
+    const { evaluateArticleSearchReadinessV2 } =
+      await import("../src/lib/content/article-search-readiness-v2");
 
     const sourcePlan = article.brief.evidenceSnapshot?.plan ?? null;
     const sourceRecord = record(sourcePlan);
@@ -110,6 +114,22 @@ async function main(): Promise<void> {
     } catch (error) {
       executionPlanError = error instanceof Error ? error.message : String(error);
     }
+
+    // Keep the legacy 0-100 technical score unchanged, but surface the
+    // independent search/editorial verdict from the existing shared engine.
+    // The persisted SERP fingerprint is read, never regenerated.
+    const latestReplay = await prisma.serpReplayArtifact.findFirst({
+      where: { contentArticleId: article.id },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    const editorialAndSearch = evaluateArticleSearchReadinessV2({
+      article: generated,
+      runtime: inspectMasterRuntimeSnapshot(sourcePlan).runtime,
+      plan: executionPlan,
+      primaryKeyword: brief.primaryKeyword,
+      secondaryKeywords: brief.secondaryKeywords,
+      replay: latestReplay,
+    });
 
     const lines = article.bodyMarkdown.split(/\r?\n/);
     const allHeadings = lines.filter((line) => /^#{1,6}\s+/.test(line));
@@ -189,6 +209,7 @@ async function main(): Promise<void> {
       },
       quality: {
         score: audit.score,
+        scoreScope: "TECHNICAL_RULES_ONLY_NOT_EDITORIAL_OR_SEARCH_READINESS",
         issues: audit.issues,
         keywordDensityPercent: audit.primaryKeywordDensityPct,
         contentGatePass: gate.pass,
@@ -203,6 +224,18 @@ async function main(): Promise<void> {
         lexicalTopics: intelligence.topics,
         lexicalQuestions: intelligence.questions,
         benchmarkObservation: intelligence.benchmarkObservation,
+      },
+      editorialAndSearchReadiness: {
+        source: editorialAndSearch.version,
+        status: editorialAndSearch.status,
+        canClaimSeoReady: editorialAndSearch.canClaimSeoReady,
+        publishRecommendation: editorialAndSearch.publishRecommendation,
+        findings: editorialAndSearch.findings,
+        strictSpacingIssues: editorialAndSearch.article.probableSpacingIssues,
+        possibleWordJoins: editorialAndSearch.article.possibleWordJoins,
+        replay: editorialAndSearch.replay,
+        observedSupportingQueries: editorialAndSearch.observedSupportingQueries,
+        assignedSupportingQueries: editorialAndSearch.assignedSupportingQueries,
       },
       plainText: article.bodyMarkdown,
     };
