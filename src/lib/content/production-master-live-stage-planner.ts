@@ -3166,12 +3166,12 @@ function inspectStagePlanCompleteness(
       discoveredSources: questionSources.length,
       unresolvedAfter: unresolvedEvidenceClaims.map(claim => claim.id),
     });
-  }
     recordWriterTraceV1("research.evidence_recovery.question_probe", {
       probedClaims: earlyQuestionProbeClaimsV3.length,
       discoveredSources: questionSources.length,
       unresolvedClaims: unresolvedEvidenceClaims.length,
     });
+  }
 
 
 
