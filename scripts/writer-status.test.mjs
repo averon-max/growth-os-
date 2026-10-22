@@ -148,10 +148,10 @@ test("joins the selected template from the matching brief run without exposing t
       event(5,"run.succeeded",{articleStatus:"IN_REVIEW"}),
     ]);
     write(directory,later,[
-      event(1,"run.started",{scope:"content.brief"},{runId:later}),
-      event(2,"template.selected",{templateId:"EXPLAINER_GUIDE"},{runId:later}),
-      event(3,"brief.correlation",{briefIdSha256:briefHash},{runId:later}),
-      event(4,"run.succeeded",{articleStatus:"READY"},{runId:later}),
+      event(1,"run.started",{scope:"content.brief"},later),
+      event(2,"template.selected",{templateId:"EXPLAINER_GUIDE"},later),
+      event(3,"brief.correlation",{briefIdSha256:briefHash},later),
+      event(4,"run.succeeded",{articleStatus:"READY"},later),
     ]);
     const output=run(directory,["--json"]);
     assert.equal(output.status,0,output.stderr);
