@@ -74,7 +74,7 @@ The Writer redesign should treat 200 as the **maximum candidate inventory**, not
 
 \`\`\`bash
 node --test scripts/writer-status.test.mjs scripts/writer-trace-report.test.mjs
-npx vitest run src/lib/content/writer-trace-v1.test.ts src/lib/content/writer-trace-resilience-v1.test.ts src/lib/content/article-release-shared-gates.test.ts
+npx vitest run src/lib/content/writer-trace-v1.test.ts src/lib/content/writer-forensic-trace-v1.test.ts src/lib/content/writer-trace-resilience-v1.test.ts src/lib/content/writer-trace-offline-acceptance.test.ts src/lib/content/article-release-shared-gates.test.ts
 npx tsc --noEmit
 \`\`\`
 
