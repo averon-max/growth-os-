@@ -151,7 +151,7 @@ test("groups shared append-only file by run ID and verifies inline private artif
     {eventId:2,runId:"run-2",timestamp:now,stage:"run.succeeded",fields:{articleStatus:"READY"}},
   ];
   try{
-    writeFileSync(log,events.map(e=>JSON.stringify(e)).join("\\n")+"\\n",{mode:0o600});
+    writeFileSync(log,events.map(e=>JSON.stringify(e)).join("\n")+"\n",{mode:0o600});
     const safe=execute(directory);
     assert.equal(safe.reports.length,1);
     assert.equal(safe.reports[0].runId,"run-1");
