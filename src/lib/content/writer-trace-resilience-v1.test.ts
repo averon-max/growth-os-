@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { FileHandle } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -33,8 +34,7 @@ describe("writer trace reliability, without generating an article", () => {
         });
         recordWriterForensicArtifactV1("stage/" + secret, { keyword: "private source" });
       });
-      const [name] = (await readdir(directory)).filter(value => value.endsWith(".jsonl"));
-      const contents = await readFile(join(directory, name!), "utf8");
+      const contents = await readFile(join(directory, "writer-runs.jsonl"), "utf8");
       expect(contents).not.toContain(secret);
       expect(contents).not.toContain("private.example.internal");
       const events = contents.trim().split("\n").map(line => JSON.parse(line));
@@ -67,11 +67,16 @@ describe("writer trace reliability, without generating an article", () => {
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
+      const originalSync = FileHandle.prototype.sync;
+      let syncCalls = 0;
+      vi.spyOn(FileHandle.prototype, "sync").mockImplementation(function () {
+        syncCalls++;
+        if (syncCalls === 2) {
+          return Promise.reject(Object.assign(new Error("private sync failure"), { code: "EIO" }));
+        }
+        return originalSync.call(this);
+      });
       const result = await withWriterTraceV1({ scope: "write-failure" }, async () => {
-        const [name] = (await readdir(directory)).filter(value => value.endsWith(".jsonl"));
-        const filePath = join(directory, name!);
-        await rm(filePath);
-        await mkdir(filePath); // deliberately make appendFile fail with EISDIR
         recordWriterTraceV1("research.collected", { count: 3 });
         return 42;
       });
