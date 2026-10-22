@@ -1250,6 +1250,40 @@ export async function generateArticleFromBrief(
     ? tracePlanRecord.questions : [];
   const tracePlanSections = Array.isArray(tracePlanRecord?.sections)
     ? tracePlanRecord.sections : [];
+  const traceObjectField = (value: unknown, key: string): unknown => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    return (value as Record<string, unknown>)[key];
+  };
+  const traceStringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+          .map(item => item.trim()).filter(Boolean)
+      : [];
+  const traceQueryCandidates = tracePlanQueries.flatMap(item => {
+    const query = traceObjectField(item, "query");
+    return typeof query === "string" && query.trim() ? [query.trim()] : [];
+  });
+  const traceTopicCandidates = tracePlanTopics.flatMap(item => {
+    const topic = traceObjectField(item, "topic");
+    const queries = traceStringArray(traceObjectField(item, "queries"));
+    return [...(typeof topic === "string" && topic.trim() ? [topic.trim()] : []), ...queries];
+  });
+  const traceSectionCandidates = tracePlanSections.flatMap(section => [
+    ...traceStringArray(traceObjectField(section, "queries")),
+    ...traceStringArray(traceObjectField(section, "topics")),
+    ...traceStringArray(traceObjectField(section, "questions")),
+  ]);
+  const tracePrimaryQuery = traceObjectField(tracePlanRecord, "primaryQuery");
+  const traceKeywordCandidates = [...new Map([
+    ...traceBriefKeywords,
+    ...(typeof tracePrimaryQuery === "string" ? [tracePrimaryQuery.trim()] : []),
+    ...traceQueryCandidates,
+    ...traceTopicCandidates,
+    ...traceStringArray(tracePlanQuestions),
+    ...traceSectionCandidates,
+  ].filter(Boolean).map(term => [term.toLocaleLowerCase(), term] as const)).values()];
+  const traceBoundedKeywordCandidates = traceKeywordCandidates.slice(0, 200);
+  const traceKeywordOverflowCount = Math.max(0, traceKeywordCandidates.length - 200);
   recordWriterTraceV1("article.input_profile", {
     templateId: traceTemplateId ?? "NOT_EXPLICITLY_BOUND",
     templatePolicyBound: traceTemplateId !== null,
@@ -1257,11 +1291,15 @@ export async function generateArticleFromBrief(
     primaryKeywordCount: brief.primaryKeyword.trim() ? 1 : 0,
     secondaryKeywordCount: traceSecondaryKeywords.length,
     uniqueBriefKeywordCount: traceBriefKeywords.length,
+    uniqueKeywordCandidateCount: traceKeywordCandidates.length,
+    loggedKeywordCandidateCount: traceBoundedKeywordCandidates.length,
     keywordCandidateLimit: 200,
-    keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+    keywordCandidateOverflowCount: traceKeywordOverflowCount,
+    keywordLimitStatus: traceKeywordOverflowCount > 0 ? "TRUNCATED_AT_200" : "WITHIN_200",
+    keywordInventorySource: "BRIEF_AND_PLAN_QUERY_TOPIC_QUESTION_FIELDS",
     plannedQueryCount: tracePlanQueries.length,
     plannedTopicCount: tracePlanTopics.length,
-    plannedQuestionCount: tracePlanQuestions.length,
+    plannedQuestionCount: traceStringArray(tracePlanQuestions).length,
     plannedSectionCount: tracePlanSections.length,
   });
   recordWriterForensicArtifactV1("article.input_profile", {
@@ -1273,8 +1311,8 @@ export async function generateArticleFromBrief(
     },
     templateId: traceTemplateId,
     keywordCandidateLimit: 200,
-    keywordCandidates: traceBriefKeywords.slice(0, 200),
-    keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+    keywordCandidates: traceBoundedKeywordCandidates,
+    keywordCandidateOverflowCount: traceKeywordOverflowCount,
     generationPlan: tracePlanValue,
   });
 
@@ -2253,7 +2291,7 @@ export async function generateArticleFromBrief(
       }
       return count;
     };
-    const traceKeywordOccurrences = traceBriefKeywords.slice(0, 200).map(keyword => ({
+    const traceKeywordOccurrences = traceBoundedKeywordCandidates.map(keyword => ({
       keyword,
       exactPhraseOccurrences: traceExactOccurrences(traceDraftBody, keyword),
     }));
@@ -2272,8 +2310,8 @@ export async function generateArticleFromBrief(
       wordCount: traceDraftWordCount,
       h2Count: traceH2Count,
       h3Count: traceH3Count,
-      keywordCandidates: traceBriefKeywords.slice(0, 200),
-      keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+      keywordCandidates: traceBoundedKeywordCandidates,
+      keywordCandidateOverflowCount: traceKeywordOverflowCount,
       keywordOccurrences: traceKeywordOccurrences,
     });
     recordWriterTraceV1("writer.draft_generated", {
@@ -2285,9 +2323,9 @@ export async function generateArticleFromBrief(
       h2Count: traceH2Count,
       h3Count: traceH3Count,
       templateId: traceTemplateId ?? "NOT_EXPLICITLY_BOUND",
-      keywordCandidateCount: traceBriefKeywords.length,
+      keywordCandidateCount: traceKeywordCandidates.length,
       keywordCandidateLimit: 200,
-      keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+      keywordCandidateOverflowCount: traceKeywordOverflowCount,
       exactMatchedKeywordCount: traceKeywordOccurrences.filter(item => item.exactPhraseOccurrences > 0).length,
       exactKeywordOccurrenceTotal: traceKeywordOccurrences.reduce((sum, item) => sum + item.exactPhraseOccurrences, 0),
     });
