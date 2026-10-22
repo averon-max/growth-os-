@@ -34,7 +34,7 @@ const SAFE_METADATA_STRING_KEYS = new Set([
   "correlationSha256", "briefIdSha256", "websiteIdSha256",
   "requestId", "responseId", "articleIdHash", "templateId",
   "recommendedAction", "pageType", "searchIntent", "templatePolicyId",
-  "articleClass", "keywordLimitStatus",
+  "articleClass", "keywordLimitStatus", "keywordInventorySource",
 ]);
 // Stage labels must be constants, never untrusted model or provider prose.
 // Reject unexpected labels rather than leaking their raw values in JSONL.
