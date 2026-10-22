@@ -105,3 +105,80 @@ describe("approval and publication: section-signed sources are mandatory",()=>{
     })).toThrow("EVIDENCED_H2_UNCITED");
   });
 });
+
+
+describe("version-bound human reviewed outbound official ACTION links",()=>{
+  const candidate=base
+    .replace("Credit monitoring alerts consumers when account activity changes appear in credit records.",
+      "Credit monitoring alerts consumers when account activity changes appear in credit records. [FTC](https://consumer.ftc.gov/source) [Official action](https://www.annualcreditreport.com/index.action)")
+    .replace("Monitoring cannot automatically prevent identity theft.",
+      "Monitoring cannot automatically prevent identity theft. [CFPB](https://consumerfinance.gov/source)");
+  const review={
+    version:"OFFICIAL_NAVIGATION_REVIEW_V1",
+    articleFingerprint:"article-fingerprint-42",
+    decision:"APPROVED",
+    approvedBy:"verified-editor",
+    approvedAt:"2026-10-19T17:00:00.000Z",
+    entries:[{url:"https://www.annualcreditreport.com/index.action",
+      supportingSourceUrl:"https://consumer.ftc.gov/source",
+      supportingEvidenceId:"e1",sectionIndex:0,
+      purpose:"Navigate to official free credit report request website"}],
+  };
+  it("keeps action links blocked until explicitly reviewed",()=>{
+    const pending={...review,decision:"PENDING_REVIEW"};
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate,plan,runtime,
+      articleFingerprint:review.articleFingerprint,navigationReview:pending,
+    })).toThrow("UNSIGNED_OR_WRONG_SECTION_LINKS");
+  });
+  it("approves only one exact URL in the matching H2, not any domain wildcard",()=>{
+    const output=assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate,plan,runtime,
+      articleFingerprint:review.articleFingerprint,navigationReview:review,
+    });
+    expect(output.unapprovedLinks).toBe(0);
+    expect(output.completeSectionCitationCoverage).toBe(true);
+    expect(output.sections[0]?.approvedNavigationLinks).toBe(1);
+    expect(output.sections[0]?.evidenceCitationLinks).toBe(1);
+    expect(output.fullySemanticallyVerified).toBe(false);
+  });
+  it("rejects stale article fingerprint",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate,plan,runtime,
+      articleFingerprint:"another-article-sha",navigationReview:review,
+    })).toThrow("NAVIGATION_APPROVAL_FINGERPRINT_OR_DECISION_INVALID");
+  });
+  it("rejects source evidence assigned to a different H2",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate,plan,runtime,
+      articleFingerprint:review.articleFingerprint,
+      navigationReview:{...review,entries:[{...review.entries[0],
+        supportingEvidenceId:"e2"}]},
+    })).toThrow("NAVIGATION_APPROVAL_SOURCE_NOT_SIGNED_IN_H2");
+  });
+  it("rejects action link when its signed authority source is not visibly linked in the same H2",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate.replace(
+        " [FTC](https://consumer.ftc.gov/source)",""),
+      plan,runtime,articleFingerprint:review.articleFingerprint,
+      navigationReview:review,
+    })).toThrow("NAVIGATION_SUPPORTING_SOURCE_NOT_VISIBLE_IN_H2");
+  });
+  it("rejects unapproved extra URL even if another official destination was approved",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate.replace(
+        " [Official action](https://www.annualcreditreport.com/index.action)",
+        " [Official action](https://www.annualcreditreport.com/index.action) [extra](https://unknown.example/)"),
+      plan,runtime,articleFingerprint:review.articleFingerprint,
+      navigationReview:review,
+    })).toThrow("UNSIGNED_OR_WRONG_SECTION_LINKS");
+  });
+  it("action-only links cannot satisfy required source citation in a section",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate.replace(
+        " [FTC](https://consumer.ftc.gov/source)",""),
+      plan,runtime,articleFingerprint:review.articleFingerprint,
+      navigationReview:review,
+    })).toThrow("NAVIGATION_SUPPORTING_SOURCE_NOT_VISIBLE_IN_H2");
+  });
+});

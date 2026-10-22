@@ -7,6 +7,7 @@ import {
 
 import { assertCanonicalWriterPreflightV1 } from "./canonical-writer-preflight-v1";
 import { assertReleaseArticleCitationScopeV1 } from "./existing-article-citation-authority-v1";
+import { buildSerpReplayArticleFingerprintV1 } from "./serp-replay-fingerprint";
 import { resolveApprovedExistingArticleQueryOwnerV1 } from "./existing-article-approved-query-owner-v1";
 import { deriveBriefOutlineFromExecutionPlanV1 } from "./article-execution-plan-v1";
 
@@ -3761,6 +3762,16 @@ async function requireArticleReadyForReleaseV1(
     candidateBodyMarkdown: article.bodyMarkdown,
     plan: releaseExecutionPlan,
     runtime: releaseSourceRuntime,
+    articleFingerprint: buildSerpReplayArticleFingerprintV1({
+      title: article.title,
+      metaDescription: article.metaDescription,
+      h1: article.h1,
+      bodyMarkdown: article.bodyMarkdown,
+    }),
+    // Unreviewed/unrecorded links remain blocked. A future persisted
+    // review must match the *current* article fingerprint and signed
+    // supporting source evidence in the very same H2.
+    navigationReview: releaseSourceRecord.officialNavigationReviewV1,
   });
   console.info("[content release citation provenance]", {
     articleId,

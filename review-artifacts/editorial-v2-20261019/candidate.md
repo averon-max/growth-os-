@@ -52,7 +52,7 @@ Reviewing your reports yourself is an important companion to automated alerts. U
 
 ## Does credit monitoring affect your credit score?
 
-No. Using a credit monitoring service to review your own credit information does not by itself lower your credit score. Checking your own credit report is a **soft inquiry**, not a new-credit application. The [CFPB confirms](https://www.consumerfinance.gov/ask-cfpb/does-requesting-my-credit-report-hurt-my-credit-score-en-1229) that requesting your own report does not hurt your score. This is different from a lender's **hard inquiry** when you apply for credit, which may affect a score.
+No. Using a credit monitoring service to review your own credit information does not by itself lower your credit score. Checking your own credit report is not an inquiry for new credit. The [CFPB confirms](https://www.consumerfinance.gov/ask-cfpb/does-requesting-my-credit-report-hurt-my-credit-score-en-1229) that requesting your own report does not hurt your score. This is different from a lender's **hard inquiry** when you apply for credit, which may affect a score.
 
 A score can change while you happen to be using a monitoring service, but the timing alone does not establish that monitoring caused the change. Look for underlying events such as a new account, a hard inquiry or reported balance changes.
 
