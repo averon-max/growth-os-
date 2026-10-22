@@ -110,7 +110,7 @@ describe("writer trace reliability, without generating an article", () => {
       });
       expect(result).toBe(42);
       expect(errors.mock.calls.some(call => String(call[0]).includes("write failed"))).toBe(true);
-      expect(errors.mock.calls.some(call => String(call[0]).includes("incomplete log"))).toBe(true);
+      expect(errors.mock.calls.some(call => String(call[0]).includes("incomplete single-file log"))).toBe(true);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
