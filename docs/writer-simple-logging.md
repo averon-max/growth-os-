@@ -4,7 +4,7 @@
 No new generator. The existing production \`generateArticleFromBrief\` continues to run the one canonical Master Writer with verified research, bounded section repairs, nine critics, fingerprinted SERP Replay and explicit release/publish gates.
 
 We changed **observability only**:
-- In \`NODE_ENV=development\`, a private \`.growth-os-traces/<run>.jsonl\` is recorded automatically (unless the trace env points elsewhere). In production, logging is opt-in with \`GROWTH_OS_WRITER_TRACE_DIR\`.
+- In \`NODE_ENV=development\`, all runs append to the one private \`.growth-os-traces/writer-runs.jsonl\` file (unless \`GROWTH_OS_WRITER_TRACE_DIR\` points elsewhere). The file is never rotated or replaced automatically. In production, logging is opt-in with \`GROWTH_OS_WRITER_TRACE_DIR\`.
 - Explicit CLI \`content-writer-closure --run\` automatically enables safe local trace and prints the one inspection command.
 - The **actual production pipeline** emits compact events for draft, initial/final critics, last post-SERP-repair critics, replay (completed/skipped/failed), final readiness (PASS/WARN/FAIL), and terminal status.
 - \`node scripts/writer-status.mjs\` prints the latest article run, stage by stage, and the actionable failure code. \`--json\` produces a compact machine-readable report.
@@ -35,6 +35,19 @@ GROWTH_OS_LIVE_WRITER=1 npx tsx scripts/content-writer-closure.ts --brief=BRIEF_
 Do not use generation again for an existing IN_REVIEW article; do not run it solely to create a log. Existing \`cmv606xg60006siqlir66uq23\` should finish through its V2 evidence+review/publish path, not whole-article regeneration.
 
 Advanced *safe* all-runs diagnostics remain available in \`node scripts/writer-trace-report.mjs .growth-os-traces\`. Never share \`--raw\` unless you intend to expose private prompts and research.
+
+### Occasionally clear the log
+
+The log is append-only during normal use; there is no per-run file creation or automatic cleanup. To clear its history, stop any Writer/dev process first, then run:
+
+\`\`\`bash
+cd /Users/user/growth-os
+test -f .growth-os-traces/writer-runs.jsonl
+: > .growth-os-traces/writer-runs.jsonl
+chmod 600 .growth-os-traces/writer-runs.jsonl
+\`\`\`
+
+This permanently removes the saved history from that one file. The next run appends to the same file again.
 
 ## Status interpretation
 
