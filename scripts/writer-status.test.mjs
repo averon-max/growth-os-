@@ -128,3 +128,38 @@ test("missing trace reports a clear error, never generates an article",()=>{
   assert.equal(output.status,2);
   assert.match(output.stderr,/NO_LOCAL_WRITER_TRACES/);
 });
+
+
+test("joins the selected template from the matching brief run without exposing the brief ID",()=>{
+  const directory=mkdtempSync(join(tmpdir(),"writer-template-join-"));
+  const briefHash="a".repeat(64);
+  try{
+    write(directory,id,[
+      event(1,"run.started",{scope:"content.article"}),
+      event(2,"article.entrypoint",{briefIdSha256:briefHash}),
+      event(3,"article.input_profile",{
+        templateId:"NOT_EXPLICITLY_BOUND",templatePolicyBound:false,
+        searchIntent:"INFORMATIONAL",primaryKeywordCount:1,
+        secondaryKeywordCount:4,uniqueBriefKeywordCount:5,
+        keywordCandidateLimit:200,keywordCandidateOverflowCount:0,
+        plannedQueryCount:12,plannedTopicCount:6,plannedQuestionCount:4,
+        plannedSectionCount:6}),
+      event(4,"writer.draft_generated",{approxWordCount:2200,h2Count:6,h3Count:5}),
+      event(5,"run.succeeded",{articleStatus:"IN_REVIEW"}),
+    ]);
+    write(directory,later,[
+      event(1,"run.started",{scope:"content.brief"},{runId:later}),
+      event(2,"template.selected",{templateId:"EXPLAINER_GUIDE"},{runId:later}),
+      event(3,"brief.correlation",{briefIdSha256:briefHash},{runId:later}),
+      event(4,"run.succeeded",{articleStatus:"READY"},{runId:later}),
+    ]);
+    const output=run(directory,["--json"]);
+    assert.equal(output.status,0,output.stderr);
+    const report=JSON.parse(output.stdout);
+    assert.equal(report.input.templateId,"EXPLAINER_GUIDE");
+    assert.equal(report.input.templatePolicyBound,true);
+    assert.equal(report.input.uniqueBriefKeywordCount,5);
+    assert.equal(report.details.draftH2,6);
+    assert.equal(JSON.stringify(report).includes(briefHash),false);
+  }finally{rmSync(directory,{recursive:true,force:true});}
+});
