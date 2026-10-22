@@ -144,8 +144,9 @@ async function main():Promise<void>{
     }
     const retrievedAt=new Date().toISOString();
     const captured:Array<{claimKey:string;ownerH2:number[];sourceUrl:string;
-      sourceId:string;claimId:string;evidenceId:string;articleExcerpt:string;
-      exactSourceText:string;semanticModelApproved:false}>=[];
+      sourceId:string;claimId:string;evidenceId:string;claimIds:string[];
+      evidenceIds:string[];articleExcerpt:string;exactSourceText:string;
+      exactSourceTexts:string[];semanticModelApproved:false}>=[];
     const newClaims:Array<{id:string;text:string;category:"FACT";risk:"MEDIUM";
       jurisdiction:string}>=[];
     const stagedSources=new Map<string,Record<string,any>>();
@@ -159,26 +160,25 @@ async function main():Promise<void>{
         throw Error("INVALID_HUMAN_REVIEW_MAPPING:"+row.claimKey);
       const sourceBody=verifiedBodies.get(row.sourceUrl);
       if(!sourceBody)throw Error("NO_FETCHED_SOURCE_FOR_CLAIM:"+row.claimKey);
-      const quote=sourceSentence(sourceBody,row.sourceExactFragments[0]!);
-      // Exact FTC sentence becomes a source claim, NOT a claim that the
-      // edited article text has been independently semantically approved.
-      if(!findVerifiedExcerptCandidateV1({claimText:quote,bodyText:quote}))
-        throw Error("FTC_EXCERPT_LEXICAL_VERIFICATION_FAILED:"+row.claimKey);
-      for(const fragment of row.sourceExactFragments){
+      const fragments=unique(row.sourceExactFragments);
+      if(fragments.length!==row.sourceExactFragments.length)
+        throw Error("DUPLICATE_SOURCE_FRAGMENT:"+row.claimKey);
+      const quotes=fragments.map(fragment=>{
         if(!norm(sourceBody).includes(norm(fragment)))
           throw Error("FTC_REQUIRED_FRAGMENT_MISSING:"+row.claimKey);
+        return sourceSentence(sourceBody,fragment);
+      });
+      // Each source sentence is its own exact VERIFIED_EXCERPT. A candidate
+      // claim may depend on multiple source facts; never silently store only
+      // the first one. These quotes are NOT yet semantic approval of prose.
+      for(const quote of quotes){
+        if(!findVerifiedExcerptCandidateV1({claimText:quote,bodyText:quote}))
+          throw Error("FTC_EXCERPT_LEXICAL_VERIFICATION_FAILED:"+row.claimKey);
       }
-      const hash=sha(row.claimKey+"|"+row.sourceUrl).slice(0,18);
-      const claimId="claim-v2-official-"+hash;
-      const evidenceId="evidence-v2-official-"+hash;
-      if(existingIds.has(claimId)||evidenceIds.has(evidenceId))
-        throw Error("EVIDENCE_ID_COLLISION:"+row.claimKey);
       const sources=runtime.evidenceGraph.sources as Array<Record<string,any>>;
       // Historical ledger entries for a URL may be REFERENCE_ONLY,
       // incorrectly classified, or have old fetch metadata. Preserve every
-      // historical source unchanged; this new, real FTC fetch gets a
-      // distinct source identity so the freshness and primary-source gates
-      // evaluate the evidence actually fetched for this candidate.
+      // historical source unchanged; this fresh fetch gets its own identity.
       let source=stagedSources.get(row.sourceUrl);
       if(!source){
         const sourceId="source-v2-official-"+sha(row.sourceUrl).slice(0,18);
@@ -190,22 +190,34 @@ async function main():Promise<void>{
         sources.push(source);
         stagedSources.set(row.sourceUrl,source);
       }
-      newClaims.push({id:claimId,text:quote,category:"FACT",risk:"MEDIUM",
-        jurisdiction:"United States"});
-      (runtime.evidenceGraph.claimEvidence as Array<any>).push({
-        id:evidenceId,claimId,sourceId:source.id,relation:"SUPPORTS",
-        kind:"VERIFIED_EXCERPT",excerpt:quote});
-      for(const i of unique(row.h2Indexes.map(String)).map(Number)){
-        planSections[i]!.requiredClaimIds=unique([...planSections[i]!.requiredClaimIds,claimId]);
-        planSections[i]!.evidenceIds=unique([...planSections[i]!.evidenceIds,evidenceId]);
-        blueprint[i]!.requiredClaims=unique([...blueprint[i]!.requiredClaims,claimId]);
-        blueprint[i]!.evidenceIds=unique([...blueprint[i]!.evidenceIds,evidenceId]);
+      const rowClaimIds:string[]=[],rowEvidenceIds:string[]=[];
+      for(let quoteIndex=0;quoteIndex<quotes.length;quoteIndex++){
+        const quote=quotes[quoteIndex]!;
+        const hash=sha(row.claimKey+"|"+row.sourceUrl+"|"+fragments[quoteIndex]).slice(0,18);
+        const claimId="claim-v2-official-"+hash;
+        const evidenceId="evidence-v2-official-"+hash;
+        if(existingIds.has(claimId)||evidenceIds.has(evidenceId))
+          throw Error("EVIDENCE_ID_COLLISION:"+row.claimKey);
+        newClaims.push({id:claimId,text:quote,category:"FACT",risk:"MEDIUM",
+          jurisdiction:"United States"});
+        (runtime.evidenceGraph.claimEvidence as Array<any>).push({
+          id:evidenceId,claimId,sourceId:source.id,relation:"SUPPORTS",
+          kind:"VERIFIED_EXCERPT",excerpt:quote});
+        for(const i of unique(row.h2Indexes.map(String)).map(Number)){
+          planSections[i]!.requiredClaimIds=unique([...planSections[i]!.requiredClaimIds,claimId]);
+          planSections[i]!.evidenceIds=unique([...planSections[i]!.evidenceIds,evidenceId]);
+          blueprint[i]!.requiredClaims=unique([...blueprint[i]!.requiredClaims,claimId]);
+          blueprint[i]!.evidenceIds=unique([...blueprint[i]!.evidenceIds,evidenceId]);
+        }
+        plan.verifiedEvidenceIds=unique([...plan.verifiedEvidenceIds,evidenceId]);
+        existingIds.add(claimId);evidenceIds.add(evidenceId);
+        rowClaimIds.push(claimId);rowEvidenceIds.push(evidenceId);
       }
-      plan.verifiedEvidenceIds=unique([...plan.verifiedEvidenceIds,evidenceId]);
       captured.push({claimKey:row.claimKey,ownerH2:row.h2Indexes,sourceUrl:row.sourceUrl,
-        sourceId:source.id,claimId,evidenceId,articleExcerpt:row.candidateExcerpt,
-        exactSourceText:quote,semanticModelApproved:false});
-      existingIds.add(claimId);evidenceIds.add(evidenceId);
+        sourceId:source.id,claimId:rowClaimIds[0]!,evidenceId:rowEvidenceIds[0]!,
+        claimIds:rowClaimIds,evidenceIds:rowEvidenceIds,
+        articleExcerpt:row.candidateExcerpt,exactSourceText:quotes[0]!,
+        exactSourceTexts:quotes,semanticModelApproved:false});
     }
 
     // Navigation remains unapproved, but its FTC authority must be proved
@@ -358,6 +370,7 @@ async function main():Promise<void>{
       candidateFingerprint:stage.candidateArticleFingerprint,
       originalSourceFingerprintUnchanged:true,
       capturedFactCount:stage.capturedFacts.length,
+      sourceExcerptCount:stage.capturedFacts.reduce((n,fact)=>n+fact.exactSourceTexts.length,0),
       sourceCount:verifiedBodies.size,
       claimStatus:"VERIFIED_SOURCE_QUOTE_NOT_ARTICLE_SEMANTIC_APPROVAL",
       articleSemanticApproval:"PENDING",
