@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/writer-unified-preflight-trace-20261018
+      - fix/writer-single-log-template-observability-20261021
   workflow_dispatch:
 
 permissions:
