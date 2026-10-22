@@ -34,11 +34,11 @@ async function readEvents(directory: string) {
   const name = names[0]!;
   const logText = await readFile(join(directory, name), "utf8");
   const events = logText.trim().split("\n").map(line => JSON.parse(line));
-  return { events, logText, runId: name.slice(0, -6) };
+  return { events, logText };
 }
 
 describe("writer forensic logging-only storage", () => {
-  it("stores full private research separately from safe JSONL with verified hash", async () => {
+  it("stores opted-in private research inline in the single JSONL file with a verified hash", async () => {
     const dir = await mkdtemp(join(tmpdir(), "growth-os-forensic-"));
     process.env.GROWTH_OS_WRITER_TRACE_DIR = dir;
     process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS = "1";
@@ -51,25 +51,24 @@ describe("writer forensic logging-only storage", () => {
           nested: { apiKey: "secret-value" },
         });
       });
-      const { events, logText, runId } = await readEvents(dir);
+      const { events, logText } = await readEvents(dir);
       expect(events.map(event => event.eventId)).toEqual([1, 2, 3]);
       const snapshot = events.find(event => event.stage === "forensic.keywords");
       expect(snapshot.fields.fullArtifact).toBe(true);
-      expect(snapshot.fields.artifact).toBeUndefined();
-      expect(logText).not.toContain("PRIVATE_RESEARCH_TEXT_");
-      expect(logText).not.toContain("keyword-query-");
-      const filePath = join(dir, runId + ".artifacts", snapshot.fields.artifactFile);
-      const fileText = await readFile(filePath, "utf8");
-      const privateData = JSON.parse(fileText);
+      expect(snapshot.fields.artifactFile).toBeUndefined();
+      expect(logText).toContain("PRIVATE_RESEARCH_TEXT_");
+      expect(logText).toContain("keyword-query-");
+      const privateData = snapshot.fields.artifact;
       expect(privateData.queries).toHaveLength(70);
       expect(privateData.paragraph).toBe(paragraph);
       expect(privateData.authToken).toBe("[redacted]");
       expect(privateData.nested.apiKey).toBe("[redacted]");
+      const serializedArtifact = JSON.stringify(privateData);
       expect(snapshot.fields.artifactSha256).toBe(
-        createHash("sha256").update(fileText, "utf8").digest("hex")
+        createHash("sha256").update(serializedArtifact, "utf8").digest("hex")
       );
-      expect(snapshot.fields.artifactBytes).toBe(Buffer.byteLength(fileText));
-      expect((await stat(filePath)).mode & 0o077).toBe(0);
+      expect(snapshot.fields.artifactBytes).toBe(Buffer.byteLength(serializedArtifact));
+      expect((await stat(join(dir, "writer-runs.jsonl"))).mode & 0o077).toBe(0);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -160,16 +159,17 @@ describe("writer forensic logging-only storage", () => {
         })
       ));
       const files = (await readdir(dir)).filter(name => name.endsWith(".jsonl"));
-      expect(files).toHaveLength(2);
-      const runs = await Promise.all(files.map(async name =>
-        (await readFile(join(dir, name), "utf8")).trim().split("\n").map(line => JSON.parse(line))
-      ));
-      expect(new Set(runs.map(run => run[0].runId)).size).toBe(2);
-      for (const run of runs) {
+      expect(files).toEqual(["writer-runs.jsonl"]);
+      const allEvents = (await readFile(join(dir, files[0]!), "utf8"))
+        .trim().split("\n").map(line => JSON.parse(line));
+      const runIds = [...new Set(allEvents.map(event => event.runId))];
+      expect(runIds).toHaveLength(2);
+      for (const runId of runIds) {
+        const run = allEvents.filter(event => event.runId === runId);
         expect(run.map(event => event.stage)).toEqual([
           "run.started", "parallel.begin", "parallel.end", "run.succeeded",
         ]);
-        expect(new Set(run.map(event => event.runId)).size).toBe(1);
+        expect(run.map(event => event.eventId)).toEqual([1, 2, 3, 4]);
         expect(run[1].fields.label.sha256).toEqual(run[2].fields.label.sha256);
       }
     } finally {
