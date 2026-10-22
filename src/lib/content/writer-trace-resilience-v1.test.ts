@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe("writer trace reliability, without generating an article", () => {
-  it("does not leak an untrusted stage label into SAFE JSONL", async () => {
+  it("keeps untrusted stage labels safe and embeds opted-in artifacts in the one JSONL file", async () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-stage-"));
     const secret = "very-private-stage-needle";
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
@@ -36,10 +36,10 @@ describe("writer trace reliability, without generating an article", () => {
       });
       const contents = await readFile(join(directory, "writer-runs.jsonl"), "utf8");
       expect(contents).not.toContain(secret);
-      expect(contents).not.toContain("private.example.internal");
+      expect(contents).toContain("private.example.internal"); // explicit artifact opt-in stores private details inline
       const events = contents.trim().split("\n").map(line => JSON.parse(line));
       expect(events.some(e => e.stage === "trace.invalid_stage")).toBe(true);
-      expect(events.some(e => e.stage === "forensic.invalid_stage")).toBe(true);
+      expect(events.some(e => e.stage === "forensic.invalid_stage" && e.fields.artifact?.keyword === "private source")).toBe(true);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
