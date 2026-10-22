@@ -62,6 +62,26 @@ describe("writer trace reliability, without generating an article", () => {
     }
   });
 
+  it("blocks the action before paid work if the initial log cannot be durably synced", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "growth-os-initial-log-failure-"));
+    process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(FileHandle.prototype, "sync").mockRejectedValue(
+      Object.assign(new Error("private initial sync failure"), { code: "EIO" }),
+    );
+    let executions = 0;
+    try {
+      await expect(withWriterTraceV1({ scope: "paid-run" }, async () => {
+        executions++;
+        return 1;
+      })).rejects.toThrow("WRITER_TRACE_INITIAL_WRITE_FAILED");
+      expect(executions).toBe(0);
+      expect(errors.mock.calls.some(call => String(call[0]).includes("event write failed"))).toBe(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("reports write failures without changing the action result", async () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-write-failure-"));
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
