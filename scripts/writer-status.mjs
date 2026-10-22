@@ -159,7 +159,11 @@ const report = {
     searchIntent: safe(inputProfile?.fields?.searchIntent) ?? "NOT_RECORDED",
     primaryKeywordCount: num(inputProfile?.fields?.primaryKeywordCount),
     secondaryKeywordCount: num(inputProfile?.fields?.secondaryKeywordCount),
-    uniqueBriefKeywordCount: num(inputProfile?.fields?.uniqueBriefKeywordCount) ?? num(draft?.fields?.keywordCandidateCount),
+    uniqueBriefKeywordCount: num(inputProfile?.fields?.uniqueBriefKeywordCount),
+    uniqueKeywordCandidateCount: num(inputProfile?.fields?.uniqueKeywordCandidateCount) ?? num(draft?.fields?.keywordCandidateCount),
+    loggedKeywordCandidateCount: num(inputProfile?.fields?.loggedKeywordCandidateCount),
+    keywordLimitStatus: safe(inputProfile?.fields?.keywordLimitStatus) ?? "NOT_RECORDED",
+    keywordInventorySource: safe(inputProfile?.fields?.keywordInventorySource) ?? "NOT_RECORDED",
     keywordCandidateLimit: num(inputProfile?.fields?.keywordCandidateLimit),
     keywordCandidateOverflowCount: num(inputProfile?.fields?.keywordCandidateOverflowCount),
     plannedSectionCount: num(inputProfile?.fields?.plannedSectionCount),
@@ -199,7 +203,7 @@ if (json) {
     console.log(stage.toUpperCase().padEnd(11) + status);
   }
   console.log("TEMPLATE   " + report.input.templateId +
-    " | keyword candidates=" + (report.input.uniqueBriefKeywordCount ?? "?") +
+    " | keyword candidates=" + (report.input.uniqueKeywordCandidateCount ?? "?") +
     "/" + (report.input.keywordCandidateLimit ?? "?"));
   console.log("DRAFT      " + (report.details.draftWords ?? "?") +
     " words | H2=" + (report.details.draftH2 ?? "?") +
