@@ -44,6 +44,19 @@ Advanced *safe* all-runs diagnostics remain available in \`node scripts/writer-t
 - After any prose edit, previous fingerprinted Replay and Query Owner approval are historical, not transferable.
 - Real publishability still depends on signed H2 evidence, version-matched critics/replay, human review, and CMS integration.
 
+## Use the log to design the next Writer version
+
+Do not change prompts or add keyword quotas until one real, fully traced run has been inspected. The existing policy already has 15 template IDs; the log should show which one the brief planner selected and how the resulting article matched its plan.
+
+The trace records up to 200 unique candidates collected from the primary/secondary brief keywords plus query/topic/question fields in the persisted plan. It records the overflow count instead of silently pretending that more than 200 terms were handled. With private artifacts enabled, the same file also contains the actual candidate list, the generation plan, prompt/output snapshots and the draft H1/H2/H3 outline with exact phrase-occurrence counts.
+
+The Writer redesign should treat 200 as the **maximum candidate inventory**, not a requirement to repeat 200 terms in the article:
+- Deduplicate and cluster related queries by intent; assign each candidate a section/semantic job and a disposition (covered, duplicate, deferred, unsupported, or excluded with reason).
+- Select one of the 15 templates from page intent, business mission, and observed SERP type. Each template supplies its own semantic roles and H2/H3 planning ranges.
+- Use keywords and questions to shape useful sections, not to create one heading per term. Never force exact-match density or unsupported claims.
+- Log target versus actual H1/H2/H3, word range, keyword-to-section mapping, exact phrase occurrences, evidence gaps, repair attempts, model token/time usage, critic verdicts and SERP Replay result.
+- Do not regenerate an existing IN_REVIEW article just to create a trace. Use a new eligible brief only after the read-only preflight is ready and the operator explicitly authorizes a paid run.
+
 ## Acceptance (offline)
 
 \`\`\`bash
