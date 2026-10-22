@@ -14,7 +14,6 @@ import { diagnoseWriterFailureV1 } from "./writer-failure-diagnosis-v1";
  */
 interface TraceContextV1 {
   readonly runId: string;
-  readonly filePath: string;
   readonly handle: FileHandle;
   sequence: number;
   pending: Promise<void>;
@@ -182,7 +181,7 @@ export async function withWriterTraceV1<T>(
   await handle.chmod(0o600);
 
   const trace: TraceContextV1 = {
-    runId, filePath, handle, sequence: 0,
+    runId, handle, sequence: 0,
     pending: Promise.resolve(), writeFailures: 0,
   };
   return context.run(trace, async () => {
