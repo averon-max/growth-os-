@@ -122,7 +122,7 @@ describe("offline Writer trace acceptance / cross-run lineage", () => {
       expect(files[0].name).toBe("writer-runs.jsonl");
       const allJsonl = files[0].text;
       for (const privateText of [privateKeyword, privateDraft, repairedDraft, "PRIVATE_MODEL_PROMPT"]) {
-        expect(allJsonl).toContain(privateText);
+        expect(allJsonl).toContain(JSON.stringify(privateText).slice(1, -1));
       }
 
       const allEvents = allJsonl.trim().split("\n").map(line => JSON.parse(line));
@@ -177,7 +177,7 @@ describe("offline Writer trace acceptance / cross-run lineage", () => {
       expect(keywords.privateArtifact.queries[0].query).toBe(privateKeyword);
       expect(repair.privateArtifact.after).toBe(repairedDraft);
       expect(readiness.privateArtifact.bodyMarkdown).toBe(repairedDraft);
-      expect(allJsonl).toContain(repairedDraft); // opted-in private artifacts live in this same local file
+      expect(allJsonl).toContain(JSON.stringify(repairedDraft).slice(1, -1)); // opted-in private artifacts live in this same local file
       // Hash references should identify exact persisted source bytes.
       const expected = createHash("sha256").update(briefId).digest("hex");
       expect(expected).toBe(briefHash);
