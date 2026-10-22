@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 /**
- * One human-readable, SAFE summary for the latest real Master Writer run.
- * No DB, network, AI, retries, publication or sensitive artifact reads.
- *
- * node scripts/writer-status.mjs
- * node scripts/writer-status.mjs --json
- * node scripts/writer-status.mjs .growth-os-traces --run RUN_ID
- *
- * Old logs may lack newly recorded stages: NOT_RECORDED is not FAILED.
+ * Safe read-only summary of the latest real Writer run.
+ * Default log: .growth-os-traces/writer-runs.jsonl (all runs, append-only).
+ * Legacy per-run JSONL directories remain readable.
+ * Never prints prompt, article, keyword, or source text.
  */
 import { lstat, readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const args = process.argv.slice(2);
 const json = args.includes("--json");
@@ -18,9 +14,9 @@ const runArg = args.indexOf("--run");
 const runId = runArg >= 0 ? args[runArg + 1] : null;
 const positional = args.filter((arg, i) => arg !== "--json" &&
   arg !== "--run" && (runArg < 0 || i !== runArg + 1));
-const directory = positional[0] ?? ".growth-os-traces";
+const target = positional[0] ?? ".growth-os-traces/writer-runs.jsonl";
 if (positional.length > 1 || (runArg >= 0 && (!runId || !/^[\w-]{1,120}$/.test(runId)))) {
-  console.error("USAGE: node scripts/writer-status.mjs [TRACE_DIRECTORY] [--run ID] [--json]");
+  console.error("USAGE: node scripts/writer-status.mjs [TRACE_FILE_OR_DIRECTORY] [--run ID] [--json]");
   process.exit(2);
 }
 
@@ -31,63 +27,95 @@ const findLast = (events, stage) => [...events].reverse().find(e => e.stage === 
 const seen = (events, stage) => events.some(e => e.stage === stage);
 const marker = (events, stage, key = "status") =>
   safe(findLast(events, stage)?.fields?.[key]) ?? (seen(events, stage) ? "RECORDED" : "NOT_RECORDED");
+const terminalStages = new Set(["run.succeeded", "run.failed", "run.article_rejected", "run.http_error"]);
 
-let files;
+let sourceFiles = [];
 try {
-  const stats = await lstat(directory);
-  if (!stats.isDirectory() || stats.isSymbolicLink()) throw Error("NOT_A_DIRECTORY");
-  files = (await readdir(directory)).filter(name => /^[0-9]+-[0-9a-f-]+\.jsonl$/i.test(name)).sort().reverse();
+  const stats = await lstat(target);
+  if (stats.isSymbolicLink()) throw Error("SYMLINK_NOT_ALLOWED");
+  if (stats.isFile()) {
+    sourceFiles = [target];
+  } else if (stats.isDirectory()) {
+    const names = await readdir(target);
+    sourceFiles = names
+      .filter(name => name === "writer-runs.jsonl" || /^[0-9]+-[0-9a-f-]+\.jsonl$/i.test(name))
+      .map(name => join(target, name));
+    for (const file of sourceFiles) {
+      const fileStats = await lstat(file);
+      if (fileStats.isSymbolicLink() || !fileStats.isFile()) throw Error("INVALID_TRACE_FILE");
+    }
+  } else {
+    throw Error("INVALID_TRACE_TARGET");
+  }
 } catch {
-  console.error("NO_LOCAL_WRITER_TRACES: run with GROWTH_OS_WRITER_TRACE_DIR=.growth-os-traces");
+  console.error("NO_LOCAL_WRITER_TRACES: expected .growth-os-traces/writer-runs.jsonl");
   process.exit(2);
 }
-if (runId) files = files.filter(name => name === runId + ".jsonl");
-if (!files.length) {
+if (!sourceFiles.length) {
   console.error("NO_MATCHING_WRITER_RUNS");
   process.exit(2);
 }
 
-let selected = null;
-for (const name of files) {
-  const stats = await lstat(join(directory, name));
-  if (!stats.isFile() || stats.isSymbolicLink()) continue;
-  const source = await readFile(join(directory, name), "utf8");
-  const parsed = [];
-  let badLines = 0;
+const runs = new Map();
+let malformedLines = 0;
+for (const file of sourceFiles) {
+  const source = await readFile(file, "utf8");
   for (const line of source.split("\n")) {
     if (!line.trim()) continue;
-    try {
-      const value = JSON.parse(line);
-      if (value && Number.isInteger(value.eventId) && typeof value.stage === "string") {
-        parsed.push(value);
-      } else badLines++;
-    } catch { badLines++; }
+    let event;
+    try { event = JSON.parse(line); } catch { malformedLines++; continue; }
+    if (!event || !Number.isInteger(event.eventId) ||
+        typeof event.stage !== "string" || typeof event.runId !== "string") {
+      malformedLines++;
+      continue;
+    }
+    if (!runs.has(event.runId)) runs.set(event.runId, { events: [], files: new Set() });
+    const run = runs.get(event.runId);
+    run.events.push(event);
+    run.files.add(file);
   }
-  const start = parsed.find(e => e.stage === "run.started");
-  if (!start) continue;
-  if (!runId && start.fields?.scope !== "content.article") continue;
-  selected = { name, events: parsed, badLines };
-  break;
 }
+
+const candidates = [...runs.entries()]
+  .filter(([id, run]) => (!runId || id === runId) &&
+    (runId || run.events.some(e => e.stage === "run.started" && e.fields?.scope === "content.article")))
+  .map(([id, run]) => {
+    run.events.sort((a, b) => a.eventId - b.eventId);
+    const start = run.events.find(e => e.stage === "run.started");
+    return { id, ...run, startTime: Date.parse(start?.timestamp ?? "") || 0 };
+  })
+  .sort((a, b) => b.startTime - a.startTime);
+
+const selected = candidates[0];
 if (!selected) {
-  console.error("NO_ARTICLE_TRACE_FOUND: old runs may not have tracing enabled");
+  console.error(runId ? "NO_MATCHING_WRITER_RUNS" :
+    "NO_ARTICLE_TRACE_FOUND: no content.article run has been recorded");
   process.exit(2);
 }
 
-const { name, events, badLines } = selected;
+const { id: selectedRunId, events } = selected;
 const last = events.at(-1);
-const terminalStages = new Set(["run.succeeded", "run.failed", "run.article_rejected", "run.http_error"]);
 const terminal = [...events].reverse().find(e => terminalStages.has(e.stage));
 const failure = findLast(events, "run.failed");
 const blockedPreflight = findLast(events, "writer.preflight.blocked");
 const draft = findLast(events, "writer.draft_generated");
 const finalCritic = findLast(events, "critic.final.completed");
 const readiness = findLast(events, "audit.final_readiness.completed");
+const inputProfile = findLast(events, "article.input_profile");
 const modelCalls = events.filter(e => e.stage === "model.exchange").length;
+const privateTextIncluded = events.some(e => e.stage.startsWith("forensic.") &&
+  e.fields?.fullArtifact === true && Object.hasOwn(e.fields, "artifact"));
+const diagnostics = [
+  ...(malformedLines ? ["MALFORMED_JSONL_LINES:" + malformedLines] : []),
+  ...(!terminal ? ["NO_TERMINAL_EVENT_YET"] : []),
+  ...(terminal && terminal !== last ? ["TERMINAL_NOT_LAST_EVENT"] : []),
+  ...(privateTextIncluded ? ["PRIVATE_TEXT_PRESENT_IN_LOG_KEEP_LOCAL"] : []),
+];
 const report = {
-  version: "GROWTH_OS_WRITER_QUICK_STATUS_V1",
-  runId: safe(events[0]?.runId) ?? name.slice(0, -6),
-  startedAt: events[0]?.timestamp ?? null,
+  version: "GROWTH_OS_WRITER_QUICK_STATUS_V2",
+  logFile: selected.files.size === 1 ? basename([...selected.files][0]) : "MULTIPLE_TRACE_SOURCES",
+  runId: safe(selectedRunId) ?? "INVALID_RUN_ID",
+  startedAt: selected.start?.timestamp ?? null,
   result: terminal?.stage === "run.succeeded" ? safe(terminal.fields?.articleStatus) ?? "SUCCEEDED" :
     terminal?.stage === "run.article_rejected" ? "REJECTED" :
     terminal?.stage === "run.failed" ? "FAILED" :
@@ -102,6 +130,17 @@ const report = {
       seen(events, "serp.replay.skipped") ? "SKIPPED" : marker(events, "serp.replay.completed"),
     readiness: marker(events, "audit.final_readiness.completed"),
   },
+  input: {
+    templateId: safe(inputProfile?.fields?.templateId) ?? "NOT_RECORDED",
+    templatePolicyBound: inputProfile?.fields?.templatePolicyBound === true,
+    searchIntent: safe(inputProfile?.fields?.searchIntent) ?? "NOT_RECORDED",
+    primaryKeywordCount: num(inputProfile?.fields?.primaryKeywordCount),
+    secondaryKeywordCount: num(inputProfile?.fields?.secondaryKeywordCount),
+    uniqueKeywordCandidateCount: num(inputProfile?.fields?.uniqueKeywordCandidateCount),
+    keywordCandidateLimit: num(inputProfile?.fields?.keywordCandidateLimit),
+    keywordCandidateOverflowCount: num(inputProfile?.fields?.keywordCandidateOverflowCount),
+    plannedSectionCount: num(inputProfile?.fields?.plannedSectionCount),
+  },
   details: {
     draftWords: num(draft?.fields?.approxWordCount),
     draftH2: num(draft?.fields?.h2Count),
@@ -115,13 +154,11 @@ const report = {
     reasonCode: safe(failure?.fields?.reasonCode) ?? safe(blockedPreflight?.fields?.reasonCode),
     recommendedAction: safe(failure?.fields?.recommendedAction) ??
       safe(blockedPreflight?.fields?.recommendedAction),
+    headingOutlineCaptured: events.some(e => e.stage === "forensic.writer.draft_outline" &&
+      e.fields?.fullArtifact === true && Object.hasOwn(e.fields, "artifact")),
   },
-  diagnostics: [
-    ...(badLines ? ["MALFORMED_JSONL_LINES:" + badLines] : []),
-    ...(!terminal ? ["NO_TERMINAL_EVENT_YET"] : []),
-    ...(terminal && terminal !== last ? ["TERMINAL_NOT_LAST_EVENT"] : []),
-  ],
-  privateTextIncluded: false,
+  diagnostics,
+  privateTextIncluded,
   databaseUnchangedByThisCommand: true,
   noPaidCallsByThisCommand: true,
 };
@@ -133,6 +170,9 @@ if (json) {
   for (const [stage, status] of Object.entries(report.stages)) {
     console.log(stage.toUpperCase().padEnd(11) + status);
   }
+  console.log("TEMPLATE   " + report.input.templateId +
+    " | keyword candidates=" + (report.input.uniqueKeywordCandidateCount ?? "?") +
+    "/" + (report.input.keywordCandidateLimit ?? "?"));
   console.log("DRAFT      " + (report.details.draftWords ?? "?") +
     " words | H2=" + (report.details.draftH2 ?? "?") +
     " | H3=" + (report.details.draftH3 ?? "?"));
