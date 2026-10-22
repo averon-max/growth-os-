@@ -42,7 +42,7 @@ The shared Approve/Publish citation scope now distinguishes signed evidence from
 - Exact H2 sectionIndex and signed supportingSourceUrl + supportingEvidenceId owned by that H2.
 - The H2 still needs a visible signed factual source. Navigation never counts as evidence.
 
-The staging script adds four specific source-backed entries for two destinations under decision PENDING_REVIEW. It checks the resulting signed H2 scopes, and simulates approval only in memory as a dry run. It NEVER writes APPROVED, a reviewer name, evidence, article, or CMS data to PostgreSQL. The general contract has no hardcoded site/domain exceptions.
+The staging script adds three exact H2-specific source-backed entries for two destinations under decision PENDING_REVIEW. It checks the resulting signed H2 scopes, and simulates approval only in memory as a dry run. It NEVER writes APPROVED, a reviewer name, evidence, article, or CMS data to PostgreSQL. The general contract has no hardcoded site/domain exceptions.
 
 Test with npx vitest run src/lib/content/existing-article-citation-authority-v1.test.ts src/lib/content/article-release-shared-gates.test.ts
 
