@@ -18,7 +18,7 @@ loadEnvConfig(process.env.GROWTH_OS_ENV_DIR?.trim()||process.cwd());
 
 type Row={claimKey:string;h2Indexes:number[];candidateExcerpt:string;
   sourceUrl:string;sourceExactFragments:string[];semanticReview:string};
-type NavRow={url:string;h2Indexes:number[];trustedVia:string;role:string};
+type NavRow={url:string;h2Indexes:number[];trustedVia:string;role:string;supportingClaimKey:string};
 type Proof={mode:string;candidateSha256:string;sourceLinkScope:string;
   fetchAndExactExcerptCheck:string;fetchedSources:Record<string,{
     fetched:boolean;httpStatus:number|null;
@@ -215,7 +215,8 @@ async function main():Promise<void>{
       const trustedOnPage=ownerSource?.navigationAuthorityAnchors.some(
         x=>x.url===nav.url&&x.present);
       const sectionEvidence=nav.h2Indexes.every(index=>captured.some(fact=>
-        fact.sourceUrl===nav.trustedVia&&fact.ownerH2.includes(index)));
+        fact.claimKey===nav.supportingClaimKey&&fact.sourceUrl===nav.trustedVia&&
+        fact.ownerH2.includes(index)));
       if(nav.role!=="OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT" ||
         !trustedOnPage || !sectionEvidence)
         throw Error("UNVERIFIED_NAVIGATION_AUTHORITY:"+nav.url);
@@ -274,7 +275,7 @@ async function main():Promise<void>{
       articleFingerprint:candidateFingerprint,
       decision:"PENDING_REVIEW",
       entries:review.navigation.flatMap(nav=>nav.h2Indexes.map(index=>{
-        const supporting=captured.find(fact=>
+        const supporting=captured.find(fact=>fact.claimKey===nav.supportingClaimKey&&
           fact.sourceUrl===nav.trustedVia&&fact.ownerH2.includes(index));
         if(!supporting)throw Error("NAVIGATION_SUPPORTING_EVIDENCE_MISSING");
         return {
