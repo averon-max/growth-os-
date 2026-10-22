@@ -68,12 +68,12 @@
         5
       ],
       "candidateExcerpt": "report it through IdentityTheft.gov to obtain a recovery plan",
-      "sourceUrl": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
+      "sourceUrl": "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
       "sourceExactFragments": [
-        "get a personal recovery plan"
+        "if identity theft happens to you, visit IdentityTheft.gov to report it and get a personal recovery plan"
       ],
       "semanticReview": "SUPPORTED",
-      "limitation": "The service destination is a navigation link; evidence is the FTC information page"
+      "limitation": "This FTC page is visibly cited in H2 5 and directly recommends IdentityTheft.gov; the exact source excerpt is fetched again during staging."
     }
   ],
   "navigation": [
@@ -91,8 +91,9 @@
       "h2Indexes": [
         5
       ],
-      "trustedVia": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
-      "role": "OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT"
+      "trustedVia": "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+      "role": "OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT",
+      "supportingClaimKey": "identity-theft-recovery"
     }
   ],
   "boundaries": {
@@ -104,5 +105,5 @@
     "humanQueryOwnerApproved": false,
     "publicationAuthorized": false
   },
-  "nextImplementationStep": "Create versioned Section Contract evidence entries for these 5 mappings (using fetched full exact FTC sentences and the actual immutable source ledger), record 2 navigation links as separately verified outbound actions, validate the whole staged snapshot and only then execute the existing bounded critic/replay + explicit human approve flow"
+  "nextImplementationStep": "Bind each official action destination to the exact source claim that endorses it, require that source URL to be visible in the same H2, then run final review and replay."
 }
