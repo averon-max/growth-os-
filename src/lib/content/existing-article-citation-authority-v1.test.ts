@@ -179,6 +179,6 @@ describe("version-bound human reviewed outbound official ACTION links",()=>{
         " [FTC](https://consumer.ftc.gov/source)",""),
       plan,runtime,articleFingerprint:review.articleFingerprint,
       navigationReview:review,
-    })).toThrow("EVIDENCED_H2_UNCITED");
+    })).toThrow("NAVIGATION_SUPPORTING_SOURCE_NOT_VISIBLE_IN_H2");
   });
 });
