@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -20,7 +21,7 @@ afterEach(() => {
 });
 
 describe("writer trace reliability, without generating an article", () => {
-  it("does not leak an untrusted stage label into SAFE JSONL", async () => {
+  it("keeps untrusted stage labels safe and embeds opted-in artifacts in the one JSONL file", async () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-stage-"));
     const secret = "very-private-stage-needle";
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
@@ -33,13 +34,12 @@ describe("writer trace reliability, without generating an article", () => {
         });
         recordWriterForensicArtifactV1("stage/" + secret, { keyword: "private source" });
       });
-      const [name] = (await readdir(directory)).filter(value => value.endsWith(".jsonl"));
-      const contents = await readFile(join(directory, name!), "utf8");
+      const contents = await readFile(join(directory, "writer-runs.jsonl"), "utf8");
       expect(contents).not.toContain(secret);
-      expect(contents).not.toContain("private.example.internal");
+      expect(contents).not.toContain("private.example.internal"); // safe metadata stays hashed even when artifacts are opted in
       const events = contents.trim().split("\n").map(line => JSON.parse(line));
       expect(events.some(e => e.stage === "trace.invalid_stage")).toBe(true);
-      expect(events.some(e => e.stage === "forensic.invalid_stage")).toBe(true);
+      expect(events.some(e => e.stage === "forensic.invalid_stage" && e.fields.artifact?.keyword === "private source")).toBe(true);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -62,22 +62,55 @@ describe("writer trace reliability, without generating an article", () => {
     }
   });
 
+  it("blocks the action before paid work if the initial log cannot be durably synced", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "growth-os-initial-log-failure-"));
+    process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const probe = await open(join(directory, "probe"), "a", 0o600);
+    const fileHandlePrototype = Object.getPrototypeOf(probe) as { sync: () => Promise<void> };
+    await probe.close();
+    vi.spyOn(fileHandlePrototype, "sync").mockRejectedValue(
+      Object.assign(new Error("private initial sync failure"), { code: "EIO" }),
+    );
+    let executions = 0;
+    try {
+      await expect(withWriterTraceV1({ scope: "paid-run" }, async () => {
+        executions++;
+        return 1;
+      })).rejects.toThrow("WRITER_TRACE_INITIAL_WRITE_FAILED");
+      expect(executions).toBe(0);
+      expect(errors.mock.calls.some(call => String(call[0]).includes("event write failed"))).toBe(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("reports write failures without changing the action result", async () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-write-failure-"));
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
+      const probe = await open(join(directory, "probe"), "a", 0o600);
+      const fileHandlePrototype = Object.getPrototypeOf(probe) as { sync: () => Promise<void> };
+      await probe.close();
+      const originalSync = fileHandlePrototype.sync;
+      let syncCalls = 0;
+      vi.spyOn(fileHandlePrototype, "sync").mockImplementation(function (
+        this: { sync: () => Promise<void> },
+      ) {
+        syncCalls++;
+        if (syncCalls === 2) {
+          return Promise.reject(Object.assign(new Error("private sync failure"), { code: "EIO" }));
+        }
+        return Reflect.apply(originalSync, this, []) as Promise<void>;
+      });
       const result = await withWriterTraceV1({ scope: "write-failure" }, async () => {
-        const [name] = (await readdir(directory)).filter(value => value.endsWith(".jsonl"));
-        const filePath = join(directory, name!);
-        await rm(filePath);
-        await mkdir(filePath); // deliberately make appendFile fail with EISDIR
         recordWriterTraceV1("research.collected", { count: 3 });
         return 42;
       });
       expect(result).toBe(42);
       expect(errors.mock.calls.some(call => String(call[0]).includes("write failed"))).toBe(true);
-      expect(errors.mock.calls.some(call => String(call[0]).includes("incomplete log"))).toBe(true);
+      expect(errors.mock.calls.some(call => String(call[0]).includes("incomplete single-file log"))).toBe(true);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
