@@ -8,7 +8,7 @@ We changed **observability only**:
 - Explicit CLI \`content-writer-closure --run\` automatically enables safe local trace and prints the one inspection command.
 - The **actual production pipeline** emits compact events for draft, initial/final critics, last post-SERP-repair critics, replay (completed/skipped/failed), final readiness (PASS/WARN/FAIL), and terminal status.
 - \`node scripts/writer-status.mjs\` prints the latest article run, stage by stage, and the actionable failure code. \`--json\` produces a compact machine-readable report.
-- JSONL logs retain only scrubbed metadata by default. Prompt text, user-provided data, drafts and detached forensic artifacts remain disabled unless separately explicitly opted in. Do not commit any traces.
+- The JSONL file contains scrubbed metadata by default. For one controlled local run, set both `GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS=1` and `GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT=1`; the same file then embeds private research, prompt/output snapshots, the bounded keyword inventory, and the exact heading outline. These details can include confidential website/article data. Keep the file local; never commit or share it. Private artifacts are capped at 16 MiB each and their hashes are recorded.
 
 ## Commands
 
@@ -52,4 +52,6 @@ npx vitest run src/lib/content/writer-trace-v1.test.ts src/lib/content/writer-tr
 npx tsc --noEmit
 \`\`\`
 
-This change does **not** fake new Writer generation, Critic approvals, replay, evidence signatures or CMS success. It makes actual future runs observable with one command.
+The trace records the template selected during brief planning, links it to the article run using a one-way brief-ID hash, and records keyword/plan counts plus draft word/H2/H3/exact-phrase metrics. Full keyword terms and headings are available only in the explicit private-artifact mode. The existing 15-template policy remains the source of template rules; the trace is evidence for the next design step, not a new writer by itself.
+
+This change does **not** fake new Writer generation, Critic approvals, replay, evidence signatures or CMS success. It makes actual future runs observable in one file.
