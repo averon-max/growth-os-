@@ -36,7 +36,7 @@ describe("writer trace reliability, without generating an article", () => {
       });
       const contents = await readFile(join(directory, "writer-runs.jsonl"), "utf8");
       expect(contents).not.toContain(secret);
-      expect(contents).toContain("private.example.internal"); // explicit artifact opt-in stores private details inline
+      expect(contents).not.toContain("private.example.internal"); // safe metadata stays hashed even when artifacts are opted in
       const events = contents.trim().split("\n").map(line => JSON.parse(line));
       expect(events.some(e => e.stage === "trace.invalid_stage")).toBe(true);
       expect(events.some(e => e.stage === "forensic.invalid_stage" && e.fields.artifact?.keyword === "private source")).toBe(true);
