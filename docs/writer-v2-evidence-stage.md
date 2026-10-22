@@ -26,6 +26,7 @@ test -z "$(git status --porcelain)"
 git fetch origin fix/writer-versioned-navigation-20261019
 git merge --ff-only FETCH_HEAD
 npx tsc --noEmit
+node review-artifacts/editorial-v2-20261019/review-v2.mjs --offline
 npx vitest run src/lib/content/existing-article-citation-authority-v1.test.ts src/lib/content/article-release-shared-gates.test.ts
 NODE_OPTIONS=--conditions=react-server npx tsx scripts/content-v2-source-preflight.ts --fetch-official
 NODE_OPTIONS=--conditions=react-server npx tsx scripts/content-v2-stage-evidence.ts
