@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -54,6 +54,37 @@ describe("writer execution tracing", () => {
       expect(contents).not.toContain("private-model-output");
     } finally {
       await rm(directory, {recursive: true, force: true});
+    }
+  });
+
+  it("appends multiple runs to one private JSONL file with per-run ordered events", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "growth-os-one-log-"));
+    process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
+    try {
+      await withWriterTraceV1({ scope: "content.article", correlationId: "brief-a" }, async () => {
+        recordWriterTraceV1("article.input_profile", { keywordCandidateLimit: 200 });
+      });
+      await withWriterTraceV1({ scope: "content.article", correlationId: "brief-b" }, async () => {
+        recordWriterTraceV1("writer.draft_generated", { approxWordCount: 2100 });
+      });
+      expect(await readdir(directory)).toEqual(["writer-runs.jsonl"]);
+      const file = join(directory, "writer-runs.jsonl");
+      const contents = await readFile(file, "utf8");
+      const events = contents.trim().split("\n").map(line => JSON.parse(line));
+      const runIds = [...new Set(events.map(event => event.runId))];
+      expect(runIds).toHaveLength(2);
+      for (const runId of runIds) {
+        const runEvents = events.filter(event => event.runId === runId);
+        expect(runEvents.map(event => event.eventId)).toEqual(
+          runEvents.map((_event, index) => index + 1),
+        );
+        expect(runEvents[0].stage).toBe("run.started");
+        expect(["run.succeeded", "run.failed"]).toContain(runEvents.at(-1).stage);
+      }
+      expect((await stat(directory)).mode & 0o777).toBe(0o700);
+      expect((await stat(file)).mode & 0o777).toBe(0o600);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 
