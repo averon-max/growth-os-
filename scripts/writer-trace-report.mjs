@@ -76,9 +76,16 @@ for (const file of files) {
     } catch { parseErrors.push(index + 1); }
   }
   const grouped = new Map();
-  for (const event of allEvents) {
-    if (!grouped.has(event.runId)) grouped.set(event.runId, []);
-    grouped.get(event.runId).push(event);
+  if (basename(file) === "writer-runs.jsonl") {
+    // The canonical shared log intentionally contains many run IDs.
+    for (const event of allEvents) {
+      if (!grouped.has(event.runId)) grouped.set(event.runId, []);
+      grouped.get(event.runId).push(event);
+    }
+  } else if (allEvents.length) {
+    // Legacy per-run files are expected to contain exactly one run. Keep
+    // mixed IDs visible as an integrity warning instead of hiding corruption.
+    grouped.set(allEvents[0].runId, allEvents);
   }
   for (const [groupRunId, unsortedEvents] of grouped) {
   if (runId && groupRunId !== runId) continue;
