@@ -9,7 +9,7 @@
  */
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 const argv = process.argv.slice(2);
 let directory = ".growth-os-traces", runId = null, stageFilter = null, raw = false;
@@ -145,8 +145,8 @@ for (const file of files) {
       artifactChecks.push({eventId:event.eventId,valid:false,reason:"INVALID_ARTIFACT_REFERENCE"});
       continue;
     }
-    const traceDirectory = singleFile ? (await import("node:path")).dirname(file) : directory;
-    const location = join(traceDirectory, file.slice(0, -6) + ".artifacts", name);
+    const traceDirectory = singleFile ? dirname(file) : directory;
+    const location = join(traceDirectory, basename(file).slice(0, -6) + ".artifacts", name);
     try {
       const stats = await lstat(location);
       if (!stats.isFile() || (stats.mode & 0o077) !== 0) {
