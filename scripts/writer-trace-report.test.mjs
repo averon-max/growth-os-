@@ -88,7 +88,7 @@ test("identifies mixed run IDs, wrong first event and terminal not last", () => 
       {eventId:4,runId:"run-1",timestamp:now,stage:"late.event",fields:{}},
     ];
     writeFileSync(join(directory,"run-1.jsonl"),
-      events.map(event=>JSON.stringify(event)).join("\n")+"\n");
+      events.map(event=>JSON.stringify(event)).join("\n")+"\n",{mode:0o600});
     const warnings=execute(directory).reports[0].warnings;
     assert.ok(warnings.includes("FIRST_EVENT_ID_INVALID"));
     assert.ok(warnings.includes("MIXED_RUN_IDS"));
