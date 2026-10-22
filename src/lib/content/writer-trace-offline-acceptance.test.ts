@@ -46,7 +46,7 @@ async function readRunFiles(directory: string) {
 }
 
 describe("offline Writer trace acceptance / cross-run lineage", () => {
-  it("connects brief and article, records critic+repair and validates every detached artifact", async () => {
+  it("connects brief and article in one append-only file and validates inline artifacts", async () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-offline-acceptance-"));
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
     process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS = "1";
@@ -118,14 +118,17 @@ describe("offline Writer trace acceptance / cross-run lineage", () => {
       });
 
       const files = await readRunFiles(directory);
-      expect(files).toHaveLength(2);
-      expect(files.map(f => f.name)).not.toContain("fixture-brief-id.jsonl");
-      const allJsonl = files.map(f => f.text).join("\n");
-      for (const secret of [privateKeyword, privateDraft, repairedDraft, "PRIVATE_MODEL_PROMPT"]) {
-        expect(allJsonl).not.toContain(secret);
+      expect(files).toHaveLength(1);
+      expect(files[0].name).toBe("writer-runs.jsonl");
+      const allJsonl = files[0].text;
+      for (const privateText of [privateKeyword, privateDraft, repairedDraft, "PRIVATE_MODEL_PROMPT"]) {
+        expect(allJsonl).toContain(privateText);
       }
 
-      const parsedRuns = files.map(file => file.text.trim().split("\n").map(line => JSON.parse(line)));
+      const allEvents = allJsonl.trim().split("\n").map(line => JSON.parse(line));
+      const runIds = [...new Set(allEvents.map(event => event.runId))];
+      expect(runIds).toHaveLength(2);
+      const parsedRuns = runIds.map(runId => allEvents.filter(event => event.runId === runId));
       for (const events of parsedRuns) {
         expect(events[0].stage).toBe("run.started");
         expect(events.at(-1).stage).toBe("run.succeeded");
@@ -174,7 +177,7 @@ describe("offline Writer trace acceptance / cross-run lineage", () => {
       expect(keywords.privateArtifact.queries[0].query).toBe(privateKeyword);
       expect(repair.privateArtifact.after).toBe(repairedDraft);
       expect(readiness.privateArtifact.bodyMarkdown).toBe(repairedDraft);
-      expect(allJsonl).not.toContain(repairedDraft);
+      expect(allJsonl).toContain(repairedDraft); // opted-in private artifacts live in this same local file
       // Hash references should identify exact persisted source bytes.
       const expected = createHash("sha256").update(briefId).digest("hex");
       expect(expected).toBe(briefHash);
