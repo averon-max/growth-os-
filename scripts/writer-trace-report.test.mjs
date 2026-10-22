@@ -67,7 +67,7 @@ test("reports malformed JSONL, missing terminal event and broken sequences", () 
       {eventId:4,runId:"run-1",timestamp:"2026-10-17T12:01:00Z",stage:"research.error",fields:{}},
     ];
     writeFileSync(join(directory,"run-1.jsonl"),
-      events.map(e=>JSON.stringify(e)).join("\n")+"\n{broken json\n");
+      events.map(e=>JSON.stringify(e)).join("\n")+"\n{broken json\n",{mode:0o600});
     const report=execute(directory).reports[0];
     assert.ok(report.warnings.includes("MALFORMED_JSONL"));
     assert.ok(report.warnings.includes("NONCONTIGUOUS_SEQUENCE"));
@@ -88,7 +88,7 @@ test("identifies mixed run IDs, wrong first event and terminal not last", () => 
       {eventId:4,runId:"run-1",timestamp:now,stage:"late.event",fields:{}},
     ];
     writeFileSync(join(directory,"run-1.jsonl"),
-      events.map(event=>JSON.stringify(event)).join("\n")+"\n");
+      events.map(event=>JSON.stringify(event)).join("\n")+"\n",{mode:0o600});
     const warnings=execute(directory).reports[0].warnings;
     assert.ok(warnings.includes("FIRST_EVENT_ID_INVALID"));
     assert.ok(warnings.includes("MIXED_RUN_IDS"));
@@ -130,6 +130,36 @@ test("shows stable template and error owner without leaking private section deta
     });
     assert.equal(JSON.stringify(report).includes("PRIVATE_CLIENT_CLAIM"),false);
   } finally {
+    rmSync(directory,{recursive:true,force:true});
+  }
+});
+
+
+test("groups shared append-only file by run ID and verifies inline private artifacts",()=>{
+  const directory=mkdtempSync(join(tmpdir(),"writer-trace-shared-log-"));
+  const log=join(directory,"writer-runs.jsonl");
+  const now="2026-10-21T12:00:00.000Z";
+  const privateArtifact={headings:["What is credit monitoring?"],keywords:["credit monitoring"]};
+  const serialized=JSON.stringify(privateArtifact);
+  const artifactHash=createHash("sha256").update(serialized,"utf8").digest("hex");
+  const events=[
+    {eventId:1,runId:"run-1",timestamp:now,stage:"run.started",fields:{scope:"content.article"}},
+    {eventId:1,runId:"run-2",timestamp:now,stage:"run.started",fields:{scope:"content.brief"}},
+    {eventId:2,runId:"run-1",timestamp:now,stage:"forensic.writer.draft_outline",
+      fields:{fullArtifact:true,artifactBytes:Buffer.byteLength(serialized),artifactSha256:artifactHash,artifact:privateArtifact}},
+    {eventId:3,runId:"run-1",timestamp:now,stage:"run.article_rejected",fields:{articleStatus:"REJECTED"}},
+    {eventId:2,runId:"run-2",timestamp:now,stage:"run.succeeded",fields:{articleStatus:"READY"}},
+  ];
+  try{
+    writeFileSync(log,events.map(e=>JSON.stringify(e)).join("\n")+"\n",{mode:0o600});
+    const safe=execute(directory);
+    assert.equal(safe.reports.length,1);
+    assert.equal(safe.reports[0].runId,"run-1");
+    assert.deepEqual(safe.reports[0].artifactChecks,[{eventId:2,valid:true,reason:null}]);
+    assert.equal(JSON.stringify(safe).includes("credit monitoring"),false);
+    const raw=execute(directory,["--stage","forensic.","--raw"]);
+    assert.equal(raw.reports[0].rawEvents[0].privateArtifact.headings[0],"What is credit monitoring?");
+  }finally{
     rmSync(directory,{recursive:true,force:true});
   }
 });
