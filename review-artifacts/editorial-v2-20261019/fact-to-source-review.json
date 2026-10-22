@@ -84,7 +84,8 @@
         4
       ],
       "trustedVia": "https://consumer.ftc.gov/articles/free-credit-reports",
-      "role": "OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT"
+      "role": "OFFICIAL_ACTION_DESTINATION_NOT_VERIFIED_EXCERPT",
+      "supportingClaimKey": "weekly-free-three-bureau-reports"
     },
     {
       "url": "https://www.identitytheft.gov/",
