@@ -27,7 +27,7 @@ test("one command summarizes a complete safe real-stage run without text",()=>{
       event(1,"run.started",{scope:"content.article"}),
       event(2,"article.locked_evidence_scope",{}),
       event(3,"writer.preflight.passed",{stage:"required_evidence"}),
-      event(4,"writer.draft_generated",{approxWordCount:1986,h2Count:6,h3Count:6}),
+      event(4,"writer.draft_generated",{approxWordCount:1986,h2Count:6,h3Count:6,keywordCandidateCount:17}),
       event(5,"model.exchange",{prompt:"PRIVATE_PROMPT_NEEDLE"}),
       event(6,"critic.initial.completed",{status:"WARN"}),
       event(7,"critic.final.completed",{status:"PASS",criticCount:9,repairedSectionCount:1}),
@@ -141,7 +141,10 @@ test("joins the selected template from the matching brief run without exposing t
         templateId:"NOT_EXPLICITLY_BOUND",templatePolicyBound:false,
         searchIntent:"INFORMATIONAL",primaryKeywordCount:1,
         secondaryKeywordCount:4,uniqueBriefKeywordCount:5,
+        uniqueKeywordCandidateCount:17,loggedKeywordCandidateCount:17,
         keywordCandidateLimit:200,keywordCandidateOverflowCount:0,
+        keywordLimitStatus:"WITHIN_200",
+        keywordInventorySource:"BRIEF_AND_PLAN_QUERY_TOPIC_QUESTION_FIELDS",
         plannedQueryCount:12,plannedTopicCount:6,plannedQuestionCount:4,
         plannedSectionCount:6}),
       event(4,"writer.draft_generated",{approxWordCount:2200,h2Count:6,h3Count:5}),
@@ -159,6 +162,8 @@ test("joins the selected template from the matching brief run without exposing t
     assert.equal(report.input.templateId,"EXPLAINER_GUIDE");
     assert.equal(report.input.templatePolicyBound,true);
     assert.equal(report.input.uniqueBriefKeywordCount,5);
+    assert.equal(report.input.uniqueKeywordCandidateCount,17);
+    assert.equal(report.input.keywordLimitStatus,"WITHIN_200");
     assert.equal(report.details.draftH2,6);
     assert.equal(JSON.stringify(report).includes(briefHash),false);
   }finally{rmSync(directory,{recursive:true,force:true});}
