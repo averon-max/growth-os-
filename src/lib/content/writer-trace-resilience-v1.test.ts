@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { FileHandle } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -66,7 +66,10 @@ describe("writer trace reliability, without generating an article", () => {
     const directory = await mkdtemp(join(tmpdir(), "growth-os-initial-log-failure-"));
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.spyOn(FileHandle.prototype, "sync").mockRejectedValue(
+    const probe = await open(join(directory, "probe"), "a", 0o600);
+    const fileHandlePrototype = Object.getPrototypeOf(probe) as { sync: () => Promise<void> };
+    await probe.close();
+    vi.spyOn(fileHandlePrototype, "sync").mockRejectedValue(
       Object.assign(new Error("private initial sync failure"), { code: "EIO" }),
     );
     let executions = 0;
@@ -87,14 +90,19 @@ describe("writer trace reliability, without generating an article", () => {
     process.env.GROWTH_OS_WRITER_TRACE_DIR = directory;
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      const originalSync = FileHandle.prototype.sync;
+      const probe = await open(join(directory, "probe"), "a", 0o600);
+      const fileHandlePrototype = Object.getPrototypeOf(probe) as { sync: () => Promise<void> };
+      await probe.close();
+      const originalSync = fileHandlePrototype.sync;
       let syncCalls = 0;
-      vi.spyOn(FileHandle.prototype, "sync").mockImplementation(function () {
+      vi.spyOn(fileHandlePrototype, "sync").mockImplementation(function (
+        this: { sync: () => Promise<void> },
+      ) {
         syncCalls++;
         if (syncCalls === 2) {
           return Promise.reject(Object.assign(new Error("private sync failure"), { code: "EIO" }));
         }
-        return originalSync.call(this);
+        return Reflect.apply(originalSync, this, []) as Promise<void>;
       });
       const result = await withWriterTraceV1({ scope: "write-failure" }, async () => {
         recordWriterTraceV1("research.collected", { count: 3 });
