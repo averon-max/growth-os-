@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
-import {mkdtempSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,appendFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {spawnSync} from "node:child_process";
@@ -14,7 +14,7 @@ function event(n,stage,fields={},runId=id){
   return {version:"GROWTH_OS_WRITER_TRACE_V1",eventId:n,runId,timestamp:now,stage,fields};
 }
 function write(directory,runId,events){
-  writeFileSync(join(directory,runId+".jsonl"),
+  appendFileSync(join(directory,"writer-runs.jsonl"),
     events.map(x=>JSON.stringify(x)).join("\n")+"\n",{mode:0o600});
 }
 function run(directory,args=[]){
