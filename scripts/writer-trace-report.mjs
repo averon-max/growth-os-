@@ -45,7 +45,7 @@ try {
       .map(name => join(directory, name));
     for (const file of files) {
       const fileStats = await lstat(file);
-      if (fileStats.isSymbolicLink() || !fileStats.isFile()) throw Error("INVALID_TRACE_FILE");
+      if (fileStats.isSymbolicLink() || !fileStats.isFile() || (fileStats.mode & 0o077) !== 0) throw Error("INVALID_TRACE_FILE_OR_PERMISSIONS");
     }
   } else {
     throw Error("INVALID_TRACE_TARGET");
