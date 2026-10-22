@@ -50,10 +50,11 @@
       "ownerSectionIndexes": [
         5
       ],
-      "candidateClaim": "For suspected identity theft, freezes are requested from each bureau; an initial fraud alert placed with one bureau is shared with the other two.",
+      "candidateClaim": "For suspected identity theft, a free freeze is placed with each bureau, an initial fraud alert at one bureau is shared with the other two, and the FTC directs consumers to IdentityTheft.gov for a recovery plan.",
       "exactShortExcerpts": [
         "Place a credit freeze by contacting each of the three national credit bureaus",
-        "That one must notify the other two."
+        "That one must notify the other two.",
+        "if identity theft happens to you, visit IdentityTheft.gov to report it and get a personal recovery plan"
       ],
       "semanticVerdict": "FTC distinguishes freezes from fraud alerts; candidate action steps still require semantic and jurisdiction review."
     }
@@ -76,8 +77,8 @@
         5
       ],
       "navigationPurpose": "Report identity theft and build a recovery plan",
-      "authorityPage": "https://consumer.ftc.gov/articles/what-know-about-identity-theft",
-      "trustedAuthorityAnchor": "get a personal recovery plan",
+      "authorityPage": "https://consumer.ftc.gov/credit-freeze-or-fraud-alert-right-you",
+      "trustedAuthorityAnchor": "if identity theft happens to you, visit IdentityTheft.gov to report it and get a personal recovery plan",
       "status": "OFFICIAL_DESTINATION_CONFIRMED_BY_FTC_NOT_SOURCE_EXCERPT"
     }
   ],
