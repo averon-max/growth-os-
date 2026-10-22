@@ -30,7 +30,7 @@ NODE_OPTIONS=--conditions=react-server npx tsx scripts/content-v2-stage-evidence
 ## Pending after that check
 1. If stage validation fails, fix the **specific** existing source/claim/plan invariant without bypassing it.
 2. Review paraphrased candidate sentences against captured exact quotes; persist reviewed section evidence to a versioned, authorized EvidenceSnapshot only on explicit approval.
-3. Build the general reviewed official-action link contract: source-backed, same H2, exact candidate fingerprint, explicit human approval (never allow arbitrary external links).
+3. Obtain explicit human approval for the version-bound official-action entries; the release contract now requires the exact current fingerprint, same-H2 visible authority link and supporting evidence ID.
 4. Run the existing bounded critics and true new-fingerprint replay on the exact unchanged V2 text. Require new human Query Owner approval and explicit atomic save/publish.
 
 ## Version-bound official outbound navigation
