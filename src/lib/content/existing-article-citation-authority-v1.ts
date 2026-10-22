@@ -27,16 +27,19 @@ export function verifyExistingArticleCitationScopeV1(input:{
   const sections=input.plan.sections.filter(s=>s.state==="WRITABLE");
   const bodies=splitPersistedArticleByCanonicalH2V1(
     input.candidateBodyMarkdown,sections.map(s=>s.heading));
+  const visibleSourceUrlsBySection=bodies.map(body=>
+    [...body.matchAll(/\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/gu)]
+      .map(m=>m[1]!));
   const allowedNavigation=resolveApprovedOfficialNavigationV1({
     review:input.navigationReview,
     currentFingerprint:input.articleFingerprint??"",
     plan:input.plan,runtime:input.runtime,
+    visibleSourceUrlsBySection,
   });
   const results=bodies.map((body,index)=>{
     const allowed=getOwnedVerifiedCitationsV1(input.runtime,input.plan,index);
     const approved=new Set(allowed.map(a=>key(a.url)).filter(Boolean));
-    const links=[...body.matchAll(/\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/gu)]
-      .map(m=>m[1]);
+    const links=visibleSourceUrlsBySection[index]!;
     const approvedEvidenceLinks=links.filter(url=>approved.has(key(url)));
     const approvedNavigationLinks=links.filter(url=>
       allowedNavigation.has(index+"|"+key(url)));
