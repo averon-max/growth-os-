@@ -9,7 +9,7 @@
  */
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 const argv = process.argv.slice(2);
 let directory = ".growth-os-traces", runId = null, stageFilter = null, raw = false;
@@ -31,29 +31,66 @@ for (let i = 0; i < argv.length; i++) {
   } else directory = arg;
 }
 
-let files;
-try { files = (await readdir(directory)).filter(name => name.endsWith(".jsonl")).sort(); }
-catch (error) {
-  console.error("Trace directory unavailable: " + String(error.message));
+let files = [];
+let singleFile = false;
+try {
+  const stats = await lstat(directory);
+  if (stats.isSymbolicLink()) throw Error("TRACE_SYMLINK_NOT_ALLOWED");
+  if (stats.isFile()) {
+    if ((stats.mode & 0o077) !== 0) throw Error("TRACE_FILE_PERMISSIONS_INVALID");
+    singleFile = true;
+    files = [directory];
+  } else if (stats.isDirectory()) {
+    files = (await readdir(directory))
+      .filter(name => name === "writer-runs.jsonl" || name.endsWith(".jsonl"))
+      .map(name => join(directory, name));
+    for (const file of files) {
+      const fileStats = await lstat(file);
+      if (fileStats.isSymbolicLink() || !fileStats.isFile() || (fileStats.mode & 0o077) !== 0) throw Error("INVALID_TRACE_FILE_OR_PERMISSIONS");
+    }
+  } else {
+    throw Error("INVALID_TRACE_TARGET");
+  }
+} catch {
+  console.error("Trace target unavailable or unsafe; no generation triggered.");
   process.exit(1);
 }
-if (runId) files = files.filter(name => name === runId + ".jsonl");
+if (runId && !singleFile) {
+  files = files.filter(file => basename(file) === "writer-runs.jsonl" ||
+    basename(file) === runId + ".jsonl");
+}
 if (!files.length) { console.error("No matching JSONL runs; no generation triggered."); process.exit(1); }
 
 const reports = [];
 for (const file of files) {
-  const source = await readFile(join(directory, file), "utf8");
-  const events = [];
+  const source = await readFile(file, "utf8");
+  const allEvents = [];
   const parseErrors = [];
   for (const [index, line] of source.split("\n").entries()) {
     if (!line.trim()) continue;
     try {
       const event = JSON.parse(line);
-      if (!event || !Number.isInteger(event.eventId) || typeof event.stage !== "string")
+      if (!event || !Number.isInteger(event.eventId) ||
+          typeof event.stage !== "string" || typeof event.runId !== "string")
         parseErrors.push(index + 1);
-      else events.push(event);
+      else allEvents.push(event);
     } catch { parseErrors.push(index + 1); }
   }
+  const grouped = new Map();
+  if (basename(file) === "writer-runs.jsonl") {
+    // The canonical shared log intentionally contains many run IDs.
+    for (const event of allEvents) {
+      if (!grouped.has(event.runId)) grouped.set(event.runId, []);
+      grouped.get(event.runId).push(event);
+    }
+  } else if (allEvents.length) {
+    // Legacy per-run files are expected to contain exactly one run. Keep
+    // mixed IDs visible as an integrity warning instead of hiding corruption.
+    grouped.set(allEvents[0].runId, allEvents);
+  }
+  for (const [groupRunId, unsortedEvents] of grouped) {
+  if (runId && groupRunId !== runId) continue;
+  const events = unsortedEvents.sort((a,b) => a.eventId - b.eventId);
   const stageCounts = Object.create(null);
   for (const event of events) stageCounts[event.stage] = (stageCounts[event.stage] || 0) + 1;
   const modelExchanges = events.filter(e => e.stage === "model.exchange");
@@ -94,6 +131,20 @@ for (const file of files) {
   const artifactChecks = [];
   for (const event of artifacts.filter(e => e.fields?.fullArtifact)) {
     const name = event.fields?.artifactFile;
+    if (!name && Object.hasOwn(event.fields ?? {}, "artifact")) {
+      try {
+        const serialized = JSON.stringify(event.fields.artifact);
+        const bytes = Buffer.from(serialized, "utf8");
+        const digest = createHash("sha256").update(bytes).digest("hex");
+        const valid = digest === event.fields.artifactSha256 &&
+          bytes.length === event.fields.artifactBytes;
+        artifactChecks.push({eventId:event.eventId,valid,reason:valid?null:"INLINE_ARTIFACT_HASH_OR_SIZE_MISMATCH"});
+        if (valid && raw) detached.set(event.eventId, event.fields.artifact);
+      } catch {
+        artifactChecks.push({eventId:event.eventId,valid:false,reason:"INLINE_ARTIFACT_INVALID"});
+      }
+      continue;
+    }
     if (!name) {
       artifactChecks.push({eventId:event.eventId,valid:false,reason:"LEGACY_INLINE_ARTIFACT"});
       continue;
@@ -102,7 +153,8 @@ for (const file of files) {
       artifactChecks.push({eventId:event.eventId,valid:false,reason:"INVALID_ARTIFACT_REFERENCE"});
       continue;
     }
-    const location = join(directory, file.slice(0, -6) + ".artifacts", name);
+    const traceDirectory = singleFile ? dirname(file) : directory;
+    const location = join(traceDirectory, basename(file).slice(0, -6) + ".artifacts", name);
     try {
       const stats = await lstat(location);
       if (!stats.isFile() || (stats.mode & 0o077) !== 0) {
@@ -147,7 +199,7 @@ for (const file of files) {
   const start = Date.parse(events[0]?.timestamp || "");
   const end = Date.parse(events.at(-1)?.timestamp || "");
   const report = {
-    file, runId: events[0]?.runId ?? null,
+    file: singleFile ? basename(file) : basename(file), runId: events[0]?.runId ?? null,
     scope: events.find(e => e.stage === "run.started")?.fields?.scope ?? null,
     briefIdSha256: (() => {
       const value = events.find(e => e.stage === "brief.correlation" || e.stage === "article.entrypoint")
@@ -193,6 +245,7 @@ for (const file of files) {
     }),
   };
   reports.push(report);
+  }
 }
 // Link recorded brief/article traces without guessing from filenames or article content.
 const relatedRuns = [];
