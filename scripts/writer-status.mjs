@@ -82,7 +82,7 @@ const candidates = [...runs.entries()]
   .map(([id, run]) => {
     run.events.sort((a, b) => a.eventId - b.eventId);
     const start = run.events.find(e => e.stage === "run.started");
-    return { id, ...run, startTime: Date.parse(start?.timestamp ?? "") || 0 };
+    return { id, ...run, start, startTime: Date.parse(start?.timestamp ?? "") || 0 };
   })
   .sort((a, b) => b.startTime - a.startTime);
 
