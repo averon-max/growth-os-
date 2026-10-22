@@ -1221,6 +1221,63 @@ export async function generateArticleFromBrief(
         },
       });
 
+  // One-file Writer diagnostics: record the exact input envelope and bounded
+  // inventory sizes before the first model call. Raw research/keywords remain
+  // opt-in private artifact data inside writer-runs.jsonl.
+  const tracePlanValue = generationSnapshot?.plan;
+  const tracePlanRecord = tracePlanValue && typeof tracePlanValue === "object" &&
+    !Array.isArray(tracePlanValue)
+      ? tracePlanValue as Record<string, unknown>
+      : null;
+  const traceTemplateValue = tracePlanRecord?.templateId ??
+    tracePlanRecord?.selectedTemplateId ?? tracePlanRecord?.articleTemplateId;
+  const traceTemplateId = typeof traceTemplateValue === "string" &&
+    /^[A-Za-z0-9_.-]{1,120}$/.test(traceTemplateValue)
+      ? traceTemplateValue
+      : null;
+  const traceSecondaryKeywords = (brief.secondaryKeywords ?? [])
+    .map(keyword => keyword.trim())
+    .filter(Boolean);
+  const traceBriefKeywords = [...new Set([
+    brief.primaryKeyword.trim(),
+    ...traceSecondaryKeywords,
+  ].filter(Boolean))];
+  const tracePlanQueries = Array.isArray(tracePlanRecord?.queries)
+    ? tracePlanRecord.queries : [];
+  const tracePlanTopics = Array.isArray(tracePlanRecord?.topics)
+    ? tracePlanRecord.topics : [];
+  const tracePlanQuestions = Array.isArray(tracePlanRecord?.questions)
+    ? tracePlanRecord.questions : [];
+  const tracePlanSections = Array.isArray(tracePlanRecord?.sections)
+    ? tracePlanRecord.sections : [];
+  recordWriterTraceV1("article.input_profile", {
+    templateId: traceTemplateId ?? "NOT_EXPLICITLY_BOUND",
+    templatePolicyBound: traceTemplateId !== null,
+    searchIntent: brief.searchIntent,
+    primaryKeywordCount: brief.primaryKeyword.trim() ? 1 : 0,
+    secondaryKeywordCount: traceSecondaryKeywords.length,
+    uniqueBriefKeywordCount: traceBriefKeywords.length,
+    keywordCandidateLimit: 200,
+    keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+    plannedQueryCount: tracePlanQueries.length,
+    plannedTopicCount: tracePlanTopics.length,
+    plannedQuestionCount: tracePlanQuestions.length,
+    plannedSectionCount: tracePlanSections.length,
+  });
+  recordWriterForensicArtifactV1("article.input_profile", {
+    brief: {
+      topic: brief.topic,
+      searchIntent: brief.searchIntent,
+      primaryKeyword: brief.primaryKeyword,
+      secondaryKeywords: traceSecondaryKeywords,
+    },
+    templateId: traceTemplateId,
+    keywordCandidateLimit: 200,
+    keywordCandidates: traceBriefKeywords.slice(0, 200),
+    keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+    generationPlan: tracePlanValue,
+  });
+
   const productionMasterReadiness =
     inspectProductionMasterRuntimePlan(
       generationSnapshot
@@ -2177,17 +2234,62 @@ export async function generateArticleFromBrief(
      * Status stays GENERATING until final readiness authorizes
      * IN_REVIEW.
      */
+    const traceDraftBody = masterWriterRun.article.bodyMarkdown;
+    const traceDraftHeadings = traceDraftBody.split(/\r?\n/)
+      .map(line => {
+        const match = /^(#{1,3})\s+(.+?)\s*#*\s*$/.exec(line);
+        return match ? { level: match[1]!.length, text: match[2]!.trim() } : null;
+      })
+      .filter((heading): heading is { level: number; text: string } => heading !== null);
+    const traceExactOccurrences = (text: string, term: string): number => {
+      const haystack = text.toLocaleLowerCase();
+      const needle = term.trim().toLocaleLowerCase();
+      if (!needle) return 0;
+      let count = 0;
+      let offset = 0;
+      while ((offset = haystack.indexOf(needle, offset)) >= 0) {
+        count++;
+        offset += needle.length;
+      }
+      return count;
+    };
+    const traceKeywordOccurrences = traceBriefKeywords.slice(0, 200).map(keyword => ({
+      keyword,
+      exactPhraseOccurrences: traceExactOccurrences(traceDraftBody, keyword),
+    }));
+    const traceDraftWordCount = traceDraftBody.trim()
+      ? traceDraftBody.trim().split(/\s+/).length : 0;
+    const traceH2Count = (traceDraftBody.match(/^## /gm) ?? []).length;
+    const traceH3Count = (traceDraftBody.match(/^### /gm) ?? []).length;
     recordWriterForensicArtifactV1("writer.draft_and_contract", {
       articleGenerationContract, masterWriterRun,
+    });
+    recordWriterForensicArtifactV1("writer.draft_outline", {
+      templateId: traceTemplateId,
+      title: masterWriterRun.article.title,
+      h1: masterWriterRun.article.h1,
+      headings: traceDraftHeadings,
+      wordCount: traceDraftWordCount,
+      h2Count: traceH2Count,
+      h3Count: traceH3Count,
+      keywordCandidates: traceBriefKeywords.slice(0, 200),
+      keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+      keywordOccurrences: traceKeywordOccurrences,
     });
     recordWriterTraceV1("writer.draft_generated", {
       articleIdHash: hashTraceTextV1(pendingArticle.id),
       h1: masterWriterRun.article.h1,
-      markdownChars: masterWriterRun.article.bodyMarkdown.length,
-      approxWordCount: masterWriterRun.article.bodyMarkdown.trim()
-        ? masterWriterRun.article.bodyMarkdown.trim().split(/\s+/).length : 0,
-      h2Count: (masterWriterRun.article.bodyMarkdown.match(/^## /gm) ?? []).length,
-      h3Count: (masterWriterRun.article.bodyMarkdown.match(/^### /gm) ?? []).length,
+      h1Count: 1,
+      markdownChars: traceDraftBody.length,
+      approxWordCount: traceDraftWordCount,
+      h2Count: traceH2Count,
+      h3Count: traceH3Count,
+      templateId: traceTemplateId ?? "NOT_EXPLICITLY_BOUND",
+      keywordCandidateCount: traceBriefKeywords.length,
+      keywordCandidateLimit: 200,
+      keywordCandidateOverflowCount: Math.max(0, traceBriefKeywords.length - 200),
+      exactMatchedKeywordCount: traceKeywordOccurrences.filter(item => item.exactPhraseOccurrences > 0).length,
+      exactKeywordOccurrenceTotal: traceKeywordOccurrences.reduce((sum, item) => sum + item.exactPhraseOccurrences, 0),
     });
 
     await prisma.contentArticle.update({
