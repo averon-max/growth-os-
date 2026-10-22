@@ -46,6 +46,7 @@ export function resolveApprovedOfficialNavigationV1(input:{
   currentFingerprint:string;
   plan:Readonly<ArticleExecutionPlanV1>;
   runtime:Readonly<MasterRuntimeSnapshotV1>;
+  visibleSourceUrlsBySection:readonly (readonly string[])[];
 }):ReadonlySet<string>{
   if(input.review===undefined||input.review===null)return new Set();
   if(!data(input.review)||input.review.version!=="OFFICIAL_NAVIGATION_REVIEW_V1"||
@@ -82,6 +83,10 @@ export function resolveApprovedOfficialNavigationV1(input:{
     if(!evidence.some(e=>safeUrl(e.url)===source&&
       e.evidenceId===item.supportingEvidenceId))
       throw Error("NAVIGATION_APPROVAL_SOURCE_NOT_SIGNED_IN_H2");
+    const visibleSources=new Set(
+      (input.visibleSourceUrlsBySection[sectionIndex]??[]).map(safeUrl));
+    if(!visibleSources.has(source))
+      throw Error("NAVIGATION_SUPPORTING_SOURCE_NOT_VISIBLE_IN_H2");
     const binding=sectionIndex+"|"+url;
     if(accepted.has(binding))throw Error("NAVIGATION_APPROVAL_DUPLICATE");
     accepted.add(binding);
