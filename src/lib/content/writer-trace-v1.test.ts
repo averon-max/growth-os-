@@ -11,12 +11,15 @@ import {
 
 const previousDirectory = process.env.GROWTH_OS_WRITER_TRACE_DIR;
 const previousText = process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT;
+const previousArtifacts = process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS;
 
 afterEach(() => {
   if (previousDirectory === undefined) delete process.env.GROWTH_OS_WRITER_TRACE_DIR;
   else process.env.GROWTH_OS_WRITER_TRACE_DIR = previousDirectory;
   if (previousText === undefined) delete process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT;
   else process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_TEXT = previousText;
+  if (previousArtifacts === undefined) delete process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS;
+  else process.env.GROWTH_OS_WRITER_TRACE_INCLUDE_ARTIFACTS = previousArtifacts;
 });
 
 describe("writer execution tracing", () => {
