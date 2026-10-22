@@ -103,10 +103,11 @@ const finalCritic = findLast(events, "critic.final.completed");
 const readiness = findLast(events, "audit.final_readiness.completed");
 const inputProfile = findLast(events, "article.input_profile");
 const articleBriefHash = findLast(events, "article.entrypoint")?.fields?.briefIdSha256;
-const matchingBriefRun = typeof articleBriefHash === "string"
-  ? [...runs.values()].find(run => run.events.some(e =>
+const matchingBriefRuns = typeof articleBriefHash === "string"
+  ? [...runs.values()].filter(run => run.events.some(e =>
       e.stage === "brief.correlation" && e.fields?.briefIdSha256 === articleBriefHash))
-  : null;
+  : [];
+const matchingBriefRun = matchingBriefRuns.at(-1) ?? null;
 const templateEvent = matchingBriefRun
   ? findLast(matchingBriefRun.events, "template.selected")
   : null;
@@ -115,6 +116,16 @@ const selectedTemplateId = directTemplateId && directTemplateId !== "NOT_EXPLICI
   ? directTemplateId
   : safe(templateEvent?.fields?.templateId);
 const modelCalls = events.filter(e => e.stage === "model.exchange").length;
+const modelUsageEvents = events.filter(e => e.stage === "model.usage");
+const modelTimingEvents = events.filter(e =>
+  e.stage === "model.response_metadata" || e.stage === "model.request_failed_attempt");
+const sumField = (items, field) => items.reduce((total, event) =>
+  total + (Number.isFinite(event.fields?.[field]) && event.fields[field] >= 0
+    ? event.fields[field] : 0), 0);
+const startTimeMs = Date.parse(selected.start?.timestamp ?? "");
+const terminalTimeMs = Date.parse(terminal?.timestamp ?? "");
+const elapsedMs = Number.isFinite(startTimeMs) && Number.isFinite(terminalTimeMs)
+  ? Math.max(0, terminalTimeMs - startTimeMs) : null;
 const privateTextIncluded = events.some(e => e.stage.startsWith("forensic.") &&
   e.fields?.fullArtifact === true && Object.hasOwn(e.fields, "artifact"));
 const diagnostics = [
@@ -148,7 +159,7 @@ const report = {
     searchIntent: safe(inputProfile?.fields?.searchIntent) ?? "NOT_RECORDED",
     primaryKeywordCount: num(inputProfile?.fields?.primaryKeywordCount),
     secondaryKeywordCount: num(inputProfile?.fields?.secondaryKeywordCount),
-    uniqueBriefKeywordCount: num(inputProfile?.fields?.uniqueBriefKeywordCount),
+    uniqueBriefKeywordCount: num(inputProfile?.fields?.uniqueBriefKeywordCount) ?? num(draft?.fields?.keywordCandidateCount),
     keywordCandidateLimit: num(inputProfile?.fields?.keywordCandidateLimit),
     keywordCandidateOverflowCount: num(inputProfile?.fields?.keywordCandidateOverflowCount),
     plannedSectionCount: num(inputProfile?.fields?.plannedSectionCount),
@@ -162,6 +173,11 @@ const report = {
     readinessBlockers: num(readiness?.fields?.blockerCount),
     readinessWarnings: num(readiness?.fields?.warningCount),
     observedModelExchanges: modelCalls,
+    elapsedMs,
+    modelDurationMs: sumField(modelTimingEvents, "durationMs"),
+    inputTokens: sumField(modelUsageEvents, "inputTokens"),
+    outputTokens: sumField(modelUsageEvents, "outputTokens"),
+    totalTokens: sumField(modelUsageEvents, "totalTokens"),
     failureClass: safe(failure?.fields?.failureClass) ?? safe(blockedPreflight?.fields?.failureClass),
     reasonCode: safe(failure?.fields?.reasonCode) ?? safe(blockedPreflight?.fields?.reasonCode),
     recommendedAction: safe(failure?.fields?.recommendedAction) ??
@@ -190,6 +206,10 @@ if (json) {
     " | H3=" + (report.details.draftH3 ?? "?"));
   console.log("REPAIRS    " + (report.details.repairedSections ?? "?") +
     " sections | model exchanges=" + report.details.observedModelExchanges);
+  console.log("TIME       total=" + (report.details.elapsedMs ?? "?") +
+    "ms | model=" + report.details.modelDurationMs + "ms");
+  console.log("TOKENS     input=" + report.details.inputTokens +
+    " | output=" + report.details.outputTokens + " | total=" + report.details.totalTokens);
   if (report.details.reasonCode) {
     console.log("ERROR      " + report.details.reasonCode);
     console.log("OWNER      " + (report.details.failureClass ?? "UNKNOWN"));
