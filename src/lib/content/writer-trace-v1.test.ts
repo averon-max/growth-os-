@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -41,9 +41,7 @@ describe("writer execution tracing", () => {
         return 42;
       });
       expect(result).toBe(42);
-      const names = await readdir(directory);
-      expect(names).toHaveLength(1);
-      const contents = await readFile(join(directory, names[0]), "utf8");
+      const contents = await readFile(join(directory, "writer-runs.jsonl"), "utf8");
       const events = contents.trim().split("\n").map(line => JSON.parse(line));
       expect(events.map(event => event.stage)).toEqual([
         "run.started", "research.selected", "model.exchange", "run.succeeded",
