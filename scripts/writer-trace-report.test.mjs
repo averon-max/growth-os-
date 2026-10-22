@@ -133,3 +133,33 @@ test("shows stable template and error owner without leaking private section deta
     rmSync(directory,{recursive:true,force:true});
   }
 });
+
+
+test("groups shared append-only file by run ID and verifies inline private artifacts",()=>{
+  const directory=mkdtempSync(join(tmpdir(),"writer-trace-shared-log-"));
+  const log=join(directory,"writer-runs.jsonl");
+  const now="2026-10-21T12:00:00.000Z";
+  const privateArtifact={headings:["What is credit monitoring?"],keywords:["credit monitoring"]};
+  const serialized=JSON.stringify(privateArtifact);
+  const artifactHash=createHash("sha256").update(serialized,"utf8").digest("hex");
+  const events=[
+    {eventId:1,runId:"run-1",timestamp:now,stage:"run.started",fields:{scope:"content.article"}},
+    {eventId:1,runId:"run-2",timestamp:now,stage:"run.started",fields:{scope:"content.brief"}},
+    {eventId:2,runId:"run-1",timestamp:now,stage:"forensic.writer.draft_outline",
+      fields:{fullArtifact:true,artifactBytes:Buffer.byteLength(serialized),artifactSha256:artifactHash,artifact:privateArtifact}},
+    {eventId:3,runId:"run-1",timestamp:now,stage:"run.article_rejected",fields:{articleStatus:"REJECTED"}},
+    {eventId:2,runId:"run-2",timestamp:now,stage:"run.succeeded",fields:{articleStatus:"READY"}},
+  ];
+  try{
+    writeFileSync(log,events.map(e=>JSON.stringify(e)).join("\\n")+"\\n",{mode:0o600});
+    const safe=execute(directory);
+    assert.equal(safe.reports.length,1);
+    assert.equal(safe.reports[0].runId,"run-1");
+    assert.deepEqual(safe.reports[0].artifactChecks,[{eventId:2,valid:true,reason:null}]);
+    assert.equal(JSON.stringify(safe).includes("credit monitoring"),false);
+    const raw=execute(directory,["--stage","forensic.","--raw"]);
+    assert.equal(raw.reports[0].rawEvents[0].privateArtifact.headings[0],"What is credit monitoring?");
+  }finally{
+    rmSync(directory,{recursive:true,force:true});
+  }
+});
