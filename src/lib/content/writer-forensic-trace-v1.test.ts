@@ -34,7 +34,7 @@ async function readEvents(directory: string) {
   const name = names[0]!;
   const logText = await readFile(join(directory, name), "utf8");
   const events = logText.trim().split("\n").map(line => JSON.parse(line));
-  return { events, logText, runId: events[0]?.runId as string };
+  return { events, logText };
 }
 
 describe("writer forensic logging-only storage", () => {
@@ -51,7 +51,7 @@ describe("writer forensic logging-only storage", () => {
           nested: { apiKey: "secret-value" },
         });
       });
-      const { events, logText, runId } = await readEvents(dir);
+      const { events, logText } = await readEvents(dir);
       expect(events.map(event => event.eventId)).toEqual([1, 2, 3]);
       const snapshot = events.find(event => event.stage === "forensic.keywords");
       expect(snapshot.fields.fullArtifact).toBe(true);
