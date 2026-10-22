@@ -102,6 +102,18 @@ const draft = findLast(events, "writer.draft_generated");
 const finalCritic = findLast(events, "critic.final.completed");
 const readiness = findLast(events, "audit.final_readiness.completed");
 const inputProfile = findLast(events, "article.input_profile");
+const articleBriefHash = findLast(events, "article.entrypoint")?.fields?.briefIdSha256;
+const matchingBriefRun = typeof articleBriefHash === "string"
+  ? [...runs.values()].find(run => run.events.some(e =>
+      e.stage === "brief.correlation" && e.fields?.briefIdSha256 === articleBriefHash))
+  : null;
+const templateEvent = matchingBriefRun
+  ? findLast(matchingBriefRun.events, "template.selected")
+  : null;
+const directTemplateId = safe(inputProfile?.fields?.templateId);
+const selectedTemplateId = directTemplateId && directTemplateId !== "NOT_EXPLICITLY_BOUND"
+  ? directTemplateId
+  : safe(templateEvent?.fields?.templateId);
 const modelCalls = events.filter(e => e.stage === "model.exchange").length;
 const privateTextIncluded = events.some(e => e.stage.startsWith("forensic.") &&
   e.fields?.fullArtifact === true && Object.hasOwn(e.fields, "artifact"));
@@ -131,12 +143,12 @@ const report = {
     readiness: marker(events, "audit.final_readiness.completed"),
   },
   input: {
-    templateId: safe(inputProfile?.fields?.templateId) ?? "NOT_RECORDED",
-    templatePolicyBound: inputProfile?.fields?.templatePolicyBound === true,
+    templateId: selectedTemplateId ?? "NOT_RECORDED",
+    templatePolicyBound: inputProfile?.fields?.templatePolicyBound === true || Boolean(templateEvent),
     searchIntent: safe(inputProfile?.fields?.searchIntent) ?? "NOT_RECORDED",
     primaryKeywordCount: num(inputProfile?.fields?.primaryKeywordCount),
     secondaryKeywordCount: num(inputProfile?.fields?.secondaryKeywordCount),
-    uniqueKeywordCandidateCount: num(inputProfile?.fields?.uniqueKeywordCandidateCount),
+    uniqueBriefKeywordCount: num(inputProfile?.fields?.uniqueBriefKeywordCount),
     keywordCandidateLimit: num(inputProfile?.fields?.keywordCandidateLimit),
     keywordCandidateOverflowCount: num(inputProfile?.fields?.keywordCandidateOverflowCount),
     plannedSectionCount: num(inputProfile?.fields?.plannedSectionCount),
@@ -171,7 +183,7 @@ if (json) {
     console.log(stage.toUpperCase().padEnd(11) + status);
   }
   console.log("TEMPLATE   " + report.input.templateId +
-    " | keyword candidates=" + (report.input.uniqueKeywordCandidateCount ?? "?") +
+    " | keyword candidates=" + (report.input.uniqueBriefKeywordCount ?? "?") +
     "/" + (report.input.keywordCandidateLimit ?? "?"));
   console.log("DRAFT      " + (report.details.draftWords ?? "?") +
     " words | H2=" + (report.details.draftH2 ?? "?") +
