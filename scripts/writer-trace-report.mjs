@@ -37,6 +37,7 @@ try {
   const stats = await lstat(directory);
   if (stats.isSymbolicLink()) throw Error("TRACE_SYMLINK_NOT_ALLOWED");
   if (stats.isFile()) {
+    if ((stats.mode & 0o077) !== 0) throw Error("TRACE_FILE_PERMISSIONS_INVALID");
     singleFile = true;
     files = [directory];
   } else if (stats.isDirectory()) {
