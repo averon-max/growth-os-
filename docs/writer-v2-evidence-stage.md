@@ -21,9 +21,13 @@
 
 ```bash
 cd /Users/user/growth-os
-git fetch origin fix/v2-staged-evidence-snapshot-20261019
+test "$(git branch --show-current)" = "fix/writer-versioned-navigation-20261019"
+test -z "$(git status --porcelain)"
+git fetch origin fix/writer-versioned-navigation-20261019
 git merge --ff-only FETCH_HEAD
 npx tsc --noEmit
+npx vitest run src/lib/content/existing-article-citation-authority-v1.test.ts src/lib/content/article-release-shared-gates.test.ts
+NODE_OPTIONS=--conditions=react-server npx tsx scripts/content-v2-source-preflight.ts --fetch-official
 NODE_OPTIONS=--conditions=react-server npx tsx scripts/content-v2-stage-evidence.ts
 ```
 
