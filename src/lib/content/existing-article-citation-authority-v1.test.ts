@@ -156,6 +156,14 @@ describe("version-bound human reviewed outbound official ACTION links",()=>{
         supportingEvidenceId:"e2"}]},
     })).toThrow("NAVIGATION_APPROVAL_SOURCE_NOT_SIGNED_IN_H2");
   });
+  it("rejects action link when its signed authority source is not visibly linked in the same H2",()=>{
+    expect(()=>assertReleaseArticleCitationScopeV1({
+      candidateBodyMarkdown:candidate.replace(
+        " [FTC](https://consumer.ftc.gov/source)",""),
+      plan,runtime,articleFingerprint:review.articleFingerprint,
+      navigationReview:review,
+    })).toThrow("NAVIGATION_SUPPORTING_SOURCE_NOT_VISIBLE_IN_H2");
+  });
   it("rejects unapproved extra URL even if another official destination was approved",()=>{
     expect(()=>assertReleaseArticleCitationScopeV1({
       candidateBodyMarkdown:candidate.replace(
