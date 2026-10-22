@@ -67,7 +67,7 @@ test("reports malformed JSONL, missing terminal event and broken sequences", () 
       {eventId:4,runId:"run-1",timestamp:"2026-10-17T12:01:00Z",stage:"research.error",fields:{}},
     ];
     writeFileSync(join(directory,"run-1.jsonl"),
-      events.map(e=>JSON.stringify(e)).join("\n")+"\n{broken json\n");
+      events.map(e=>JSON.stringify(e)).join("\n")+"\n{broken json\n",{mode:0o600});
     const report=execute(directory).reports[0];
     assert.ok(report.warnings.includes("MALFORMED_JSONL"));
     assert.ok(report.warnings.includes("NONCONTIGUOUS_SEQUENCE"));
