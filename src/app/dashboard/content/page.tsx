@@ -255,27 +255,10 @@ export default async function ContentPage({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <a
-              href="#content-workspace"
-              className={styles.primaryButton}
-              aria-label="Go to article generation"
-            >
-              <FileText size={13} />
-              Generate article
-            </a>
-
-            <ContentCreateButton
-              websiteId={website.id}
-            />
-          </div>
+          <ContentCreateButton
+            websiteId={website.id}
+            label="Generate article"
+          />
         </div>
 
         <div className={styles.contentTabs}>
