@@ -1222,6 +1222,101 @@ export async function generateArticleFromBrief(
         },
       });
 
+  // One-file Writer diagnostics: record the exact input envelope and bounded
+  // inventory sizes before the first model call. Raw research/keywords remain
+  // opt-in private artifact data inside writer-runs.jsonl.
+  const tracePlanValue = generationSnapshot?.plan;
+  const tracePlanRecord = tracePlanValue && typeof tracePlanValue === "object" &&
+    !Array.isArray(tracePlanValue)
+      ? tracePlanValue as Record<string, unknown>
+      : null;
+  const traceTemplateValue = tracePlanRecord?.templateId ??
+    tracePlanRecord?.selectedTemplateId ?? tracePlanRecord?.articleTemplateId;
+  const traceTemplateId = typeof traceTemplateValue === "string" &&
+    /^[A-Za-z0-9_.-]{1,120}$/.test(traceTemplateValue)
+      ? traceTemplateValue
+      : null;
+  const traceSecondaryKeywords = (brief.secondaryKeywords ?? [])
+    .map(keyword => keyword.trim())
+    .filter(Boolean);
+  const traceBriefKeywords = [...new Set([
+    brief.primaryKeyword.trim(),
+    ...traceSecondaryKeywords,
+  ].filter(Boolean))];
+  const tracePlanQueries = Array.isArray(tracePlanRecord?.queries)
+    ? tracePlanRecord.queries : [];
+  const tracePlanTopics = Array.isArray(tracePlanRecord?.topics)
+    ? tracePlanRecord.topics : [];
+  const tracePlanQuestions = Array.isArray(tracePlanRecord?.questions)
+    ? tracePlanRecord.questions : [];
+  const tracePlanSections = Array.isArray(tracePlanRecord?.sections)
+    ? tracePlanRecord.sections : [];
+  const traceObjectField = (value: unknown, key: string): unknown => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    return (value as Record<string, unknown>)[key];
+  };
+  const traceStringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+          .map(item => item.trim()).filter(Boolean)
+      : [];
+  const traceQueryCandidates = tracePlanQueries.flatMap(item => {
+    const query = traceObjectField(item, "query");
+    return typeof query === "string" && query.trim() ? [query.trim()] : [];
+  });
+  const traceTopicCandidates = tracePlanTopics.flatMap(item => {
+    const topic = traceObjectField(item, "topic");
+    const queries = traceStringArray(traceObjectField(item, "queries"));
+    return [...(typeof topic === "string" && topic.trim() ? [topic.trim()] : []), ...queries];
+  });
+  const traceSectionCandidates = tracePlanSections.flatMap(section => [
+    ...traceStringArray(traceObjectField(section, "queries")),
+    ...traceStringArray(traceObjectField(section, "topics")),
+    ...traceStringArray(traceObjectField(section, "questions")),
+  ]);
+  const tracePrimaryQuery = traceObjectField(tracePlanRecord, "primaryQuery");
+  const traceKeywordCandidates = [...new Map([
+    ...traceBriefKeywords,
+    ...(typeof tracePrimaryQuery === "string" ? [tracePrimaryQuery.trim()] : []),
+    ...traceQueryCandidates,
+    ...traceTopicCandidates,
+    ...traceStringArray(tracePlanQuestions),
+    ...traceSectionCandidates,
+  ].filter(Boolean).map(term => [term.toLocaleLowerCase(), term] as const)).values()];
+  const traceBoundedKeywordCandidates = traceKeywordCandidates.slice(0, 200);
+  const traceKeywordOverflowCount = Math.max(0, traceKeywordCandidates.length - 200);
+  recordWriterTraceV1("article.input_profile", {
+    templateId: traceTemplateId ?? "NOT_EXPLICITLY_BOUND",
+    templatePolicyBound: traceTemplateId !== null,
+    searchIntent: brief.searchIntent,
+    primaryKeywordCount: brief.primaryKeyword.trim() ? 1 : 0,
+    secondaryKeywordCount: traceSecondaryKeywords.length,
+    uniqueBriefKeywordCount: traceBriefKeywords.length,
+    uniqueKeywordCandidateCount: traceKeywordCandidates.length,
+    loggedKeywordCandidateCount: traceBoundedKeywordCandidates.length,
+    keywordCandidateLimit: 200,
+    keywordCandidateOverflowCount: traceKeywordOverflowCount,
+    keywordLimitStatus: traceKeywordOverflowCount > 0 ? "TRUNCATED_AT_200" : "WITHIN_200",
+    keywordInventorySource: "BRIEF_AND_PLAN_QUERY_TOPIC_QUESTION_FIELDS",
+    plannedQueryCount: tracePlanQueries.length,
+    plannedTopicCount: tracePlanTopics.length,
+    plannedQuestionCount: traceStringArray(tracePlanQuestions).length,
+    plannedSectionCount: tracePlanSections.length,
+  });
+  recordWriterForensicArtifactV1("article.input_profile", {
+    brief: {
+      topic: brief.topic,
+      searchIntent: brief.searchIntent,
+      primaryKeyword: brief.primaryKeyword,
+      secondaryKeywords: traceSecondaryKeywords,
+    },
+    templateId: traceTemplateId,
+    keywordCandidateLimit: 200,
+    keywordCandidates: traceBoundedKeywordCandidates,
+    keywordCandidateOverflowCount: traceKeywordOverflowCount,
+    generationPlan: tracePlanValue,
+  });
+
   const productionMasterReadiness =
     inspectProductionMasterRuntimePlan(
       generationSnapshot
@@ -2178,17 +2273,50 @@ export async function generateArticleFromBrief(
      * Status stays GENERATING until final readiness authorizes
      * IN_REVIEW.
      */
+    const traceDraftBody = masterWriterRun.article.bodyMarkdown;
+    const traceDraftHeadings = traceDraftBody.split(/\r?\n/)
+      .map(line => {
+        const match = /^(#{1,3})\s+(.+?)\s*#*\s*$/.exec(line);
+        return match ? { level: match[1]!.length, text: match[2]!.trim() } : null;
+      })
+      .filter((heading): heading is { level: number; text: string } => heading !== null);
+    const traceExactOccurrences = (text: string, term: string): number => {
+      const haystack = text.toLocaleLowerCase();
+      const needle = term.trim().toLocaleLowerCase();
+      if (!needle) return 0;
+      let count = 0;
+      let offset = 0;
+      while ((offset = haystack.indexOf(needle, offset)) >= 0) {
+        count++;
+        offset += needle.length;
+      }
+      return count;
+    };
+    const traceKeywordOccurrences = traceBoundedKeywordCandidates.map(keyword => ({
+      keyword,
+      exactPhraseOccurrences: traceExactOccurrences(traceDraftBody, keyword),
+    }));
+    const traceDraftWordCount = traceDraftBody.trim()
+      ? traceDraftBody.trim().split(/\s+/).length : 0;
+    const traceH2Count = (traceDraftBody.match(/^## /gm) ?? []).length;
+    const traceH3Count = (traceDraftBody.match(/^### /gm) ?? []).length;
     recordWriterForensicArtifactV1("writer.draft_and_contract", {
       articleGenerationContract, masterWriterRun,
     });
     recordWriterTraceV1("writer.draft_generated", {
       articleIdHash: hashTraceTextV1(pendingArticle.id),
       h1: masterWriterRun.article.h1,
-      markdownChars: masterWriterRun.article.bodyMarkdown.length,
-      approxWordCount: masterWriterRun.article.bodyMarkdown.trim()
-        ? masterWriterRun.article.bodyMarkdown.trim().split(/\s+/).length : 0,
-      h2Count: (masterWriterRun.article.bodyMarkdown.match(/^## /gm) ?? []).length,
-      h3Count: (masterWriterRun.article.bodyMarkdown.match(/^### /gm) ?? []).length,
+      h1Count: 1,
+      markdownChars: traceDraftBody.length,
+      approxWordCount: traceDraftWordCount,
+      h2Count: traceH2Count,
+      h3Count: traceH3Count,
+      templateId: traceTemplateId ?? "NOT_EXPLICITLY_BOUND",
+      keywordCandidateCount: traceKeywordCandidates.length,
+      keywordCandidateLimit: 200,
+      keywordCandidateOverflowCount: traceKeywordOverflowCount,
+      exactMatchedKeywordCount: traceKeywordOccurrences.filter(item => item.exactPhraseOccurrences > 0).length,
+      exactKeywordOccurrenceTotal: traceKeywordOccurrences.reduce((sum, item) => sum + item.exactPhraseOccurrences, 0),
     });
 
     await prisma.contentArticle.update({

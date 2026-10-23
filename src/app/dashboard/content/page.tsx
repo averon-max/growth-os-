@@ -257,6 +257,7 @@ export default async function ContentPage({
 
           <ContentCreateButton
             websiteId={website.id}
+            label="Generate article"
           />
         </div>
 

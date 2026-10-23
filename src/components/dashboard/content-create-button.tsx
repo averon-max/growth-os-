@@ -212,8 +212,10 @@ const ARTICLE_TYPE_OPTIONS:
 
 export function ContentCreateButton({
   websiteId,
+  label = "Create content",
 }: {
   websiteId: string;
+  label?: string;
 }) {
   const router =
     useRouter();
@@ -723,7 +725,7 @@ export function ContentCreateButton({
           size={13}
         />
 
-        Create content
+        {label}
       </button>
 
       {open ? (

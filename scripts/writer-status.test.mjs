@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
-import {mkdtempSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,appendFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {spawnSync} from "node:child_process";
@@ -14,7 +14,7 @@ function event(n,stage,fields={},runId=id){
   return {version:"GROWTH_OS_WRITER_TRACE_V1",eventId:n,runId,timestamp:now,stage,fields};
 }
 function write(directory,runId,events){
-  writeFileSync(join(directory,runId+".jsonl"),
+  appendFileSync(join(directory,"writer-runs.jsonl"),
     events.map(x=>JSON.stringify(x)).join("\n")+"\n",{mode:0o600});
 }
 function run(directory,args=[]){
@@ -27,7 +27,7 @@ test("one command summarizes a complete safe real-stage run without text",()=>{
       event(1,"run.started",{scope:"content.article"}),
       event(2,"article.locked_evidence_scope",{}),
       event(3,"writer.preflight.passed",{stage:"required_evidence"}),
-      event(4,"writer.draft_generated",{approxWordCount:1986,h2Count:6,h3Count:6}),
+      event(4,"writer.draft_generated",{approxWordCount:1986,h2Count:6,h3Count:6,keywordCandidateCount:17}),
       event(5,"model.exchange",{prompt:"PRIVATE_PROMPT_NEEDLE"}),
       event(6,"critic.initial.completed",{status:"WARN"}),
       event(7,"critic.final.completed",{status:"PASS",criticCount:9,repairedSectionCount:1}),
@@ -127,4 +127,44 @@ test("missing trace reports a clear error, never generates an article",()=>{
   const output=run("/does-not-exist-growth-os-trace");
   assert.equal(output.status,2);
   assert.match(output.stderr,/NO_LOCAL_WRITER_TRACES/);
+});
+
+
+test("joins the selected template from the matching brief run without exposing the brief ID",()=>{
+  const directory=mkdtempSync(join(tmpdir(),"writer-template-join-"));
+  const briefHash="a".repeat(64);
+  try{
+    write(directory,id,[
+      event(1,"run.started",{scope:"content.article"}),
+      event(2,"article.entrypoint",{briefIdSha256:briefHash}),
+      event(3,"article.input_profile",{
+        templateId:"NOT_EXPLICITLY_BOUND",templatePolicyBound:false,
+        searchIntent:"INFORMATIONAL",primaryKeywordCount:1,
+        secondaryKeywordCount:4,uniqueBriefKeywordCount:5,
+        uniqueKeywordCandidateCount:17,loggedKeywordCandidateCount:17,
+        keywordCandidateLimit:200,keywordCandidateOverflowCount:0,
+        keywordLimitStatus:"WITHIN_200",
+        keywordInventorySource:"BRIEF_AND_PLAN_QUERY_TOPIC_QUESTION_FIELDS",
+        plannedQueryCount:12,plannedTopicCount:6,plannedQuestionCount:4,
+        plannedSectionCount:6}),
+      event(4,"writer.draft_generated",{approxWordCount:2200,h2Count:6,h3Count:5}),
+      event(5,"run.succeeded",{articleStatus:"IN_REVIEW"}),
+    ]);
+    write(directory,later,[
+      event(1,"run.started",{scope:"content.brief"},later),
+      event(2,"template.selected",{templateId:"EXPLAINER_GUIDE"},later),
+      event(3,"brief.correlation",{briefIdSha256:briefHash},later),
+      event(4,"run.succeeded",{articleStatus:"READY"},later),
+    ]);
+    const output=run(directory,["--json"]);
+    assert.equal(output.status,0,output.stderr);
+    const report=JSON.parse(output.stdout);
+    assert.equal(report.input.templateId,"EXPLAINER_GUIDE");
+    assert.equal(report.input.templatePolicyBound,true);
+    assert.equal(report.input.uniqueBriefKeywordCount,5);
+    assert.equal(report.input.uniqueKeywordCandidateCount,17);
+    assert.equal(report.input.keywordLimitStatus,"WITHIN_200");
+    assert.equal(report.details.draftH2,6);
+    assert.equal(JSON.stringify(report).includes(briefHash),false);
+  }finally{rmSync(directory,{recursive:true,force:true});}
 });
