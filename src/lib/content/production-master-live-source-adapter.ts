@@ -661,7 +661,7 @@ export async function collectProductionMasterLiveSources(
           languageName,
           1,
           relatedKeywordLimit
-        ),
+        ).catch(() => []),
 
       dependencies
         .fetchSearchVolume(
@@ -670,7 +670,7 @@ export async function collectProductionMasterLiveSources(
           ],
           locationName,
           languageName
-        ),
+        ).catch(() => []),
 
       dependencies
         .fetchKeywordDifficulty(
@@ -679,7 +679,7 @@ export async function collectProductionMasterLiveSources(
           ],
           locationName,
           languageName
-        ),
+        ).catch(() => []),
 
       dependencies
         .buildSerpIntelligence({

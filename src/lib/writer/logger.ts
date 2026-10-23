@@ -18,7 +18,13 @@ let logFile: string | null = null;
 
 export function initLogger(keyword: string): string {
   const date = new Date().toISOString().slice(0, 10);
-  const slug = keyword.replace(/\s+/g, "-").toLowerCase().slice(0, 40);
+  const slug =
+    keyword
+      .normalize("NFKD")
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase()
+      .slice(0, 40) || "untitled";
   const dir = path.join(process.cwd(), "writer-logs");
   fs.mkdirSync(dir, { recursive: true });
   logFile = path.join(dir, `${date}-${slug}.jsonl`);
