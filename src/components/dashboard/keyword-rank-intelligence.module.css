@@ -349,3 +349,6 @@
     border-right: 0;
   }
 }
+
+.up { color: #7dd3a0 !important; }
+.down { color: #f0a3aa !important; }

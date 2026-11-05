@@ -298,8 +298,8 @@
 }
 
 .issueDot[data-tone="accent"] {
-  border-color: #817bde;
-  background: rgba(108,104,217,.20);
+  border-color: #60a5fa;
+  background: rgba(59,130,246,.20);
 }
 
 .issueDot[data-tone="muted"] {
@@ -410,9 +410,9 @@
 }
 
 .badgeAccent {
-  color: #958fe5;
-  border-color: rgba(108,104,217,.16);
-  background: rgba(108,104,217,.055);
+  color: #93c5fd;
+  border-color: rgba(59,130,246,.16);
+  background: rgba(59,130,246,.055);
 }
 
 .badgeMuted {
@@ -532,7 +532,7 @@
 
   background: var(--surface-2);
 
-  color: #8b86dd;
+  color: #60a5fa;
 }
 
 .emptyTitle {
@@ -608,10 +608,10 @@
 }
 
 .formInput:focus {
-  border-color: rgba(108,104,217,.32);
+  border-color: rgba(59,130,246,.32);
 
   box-shadow:
-    0 0 0 3px rgba(108,104,217,.05);
+    0 0 0 3px rgba(59,130,246,.05);
 }
 
 .formError {
@@ -628,7 +628,7 @@
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 6px;
 
-  background: #6664c9;
+  background: #3b82f6;
   color: #fff;
 
   font-size: 10px;
@@ -705,7 +705,7 @@
 
   border-radius: 50%;
 
-  background: #716dd3;
+  background: #3b82f6;
 }
 
 .progressStepLabel {
@@ -1009,7 +1009,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid #7179d9;
+  border: 1px solid #3b82f6;
   border-radius: 5px;
   background: #3b82f6;
   color: #fff;
@@ -1021,7 +1021,7 @@
 }
 
 .primaryButton:hover {
-  background: #6974dc;
+  background: #3b82f6;
 }
 
 .pageBody {
@@ -1241,7 +1241,7 @@
   display: inline-flex !important;
   align-items: center !important;
   gap: 4px !important;
-  color: #8992df !important;
+  color: #93c5fd !important;
   font-size: 10px !important;
   font-weight: 500 !important;
   text-decoration: none !important;
@@ -1251,7 +1251,7 @@
 .textButton:hover,
 .link:hover,
 .groupHeaderAction:hover {
-  color: #b0b6f4 !important;
+  color: #bfdbfe !important;
 }
 
 .toolbarButton {
@@ -1311,7 +1311,7 @@
 }
 
 .statusaccent {
-  background: #7982de !important;
+  background: #60a5fa !important;
 }
 
 .statusmuted {
@@ -1426,8 +1426,8 @@
 }
 
 .severityaccent {
-  border-color: #3e4266 !important;
-  color: #929ae9 !important;
+  border-color: #1e3a5f !important;
+  color: #93c5fd !important;
 }
 
 .severitymuted {
@@ -1469,7 +1469,7 @@
 }
 
 .priorityaccent {
-  background: #6973d5 !important;
+  background: #3b82f6 !important;
 }
 
 .prioritymuted {
@@ -1590,7 +1590,7 @@
   bottom: -1px;
   left: 0;
   height: 1px;
-  background: #7d86df;
+  background: #60a5fa;
 }
 
 .resumeSurface {
@@ -1872,7 +1872,7 @@
 }
 
 .contentPriorityDot[data-priority="MEDIUM"] {
-  background: #737ddd;
+  background: #60a5fa;
 }
 
 .contentPriorityDot[data-priority="LOW"] {
@@ -2043,9 +2043,14 @@
 }
 
 .contentArticleStatus[data-status="APPROVED"] {
-  border-color: #3e4267;
-  color: #929ae8;
+  border-color: #1e3a5f;
+  color: #93c5fd;
 }
 
 /* no glowing dots in stat cards */
 .statAccent { display: none !important; }
+
+/* ===== calm polish ===== */
+.statGrid, .group, .table, .card { border-color: rgba(255,255,255,.07) !important; }
+.table tbody tr:hover, .dataRow:hover, .issueRow:hover, .issueTableRow:hover, .opportunityRow:hover { background: rgba(59,130,246,.05) !important; }
+.formInput:focus { border-color: rgba(59,130,246,.45) !important; box-shadow: 0 0 0 3px rgba(59,130,246,.10) !important; }
