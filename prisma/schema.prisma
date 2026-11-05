@@ -923,3 +923,16 @@ model TrackedKeyword {
   @@unique([websiteId, keyword])
   @@index([websiteId])
 }
+
+/// Сохранённые ответы DataForSEO — повторные запросы не тратят деньги
+model ApiCache {
+  key       String   @id
+  endpoint  String
+  response  Json
+  cost      Float    @default(0)
+  hits      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([endpoint])
+}
