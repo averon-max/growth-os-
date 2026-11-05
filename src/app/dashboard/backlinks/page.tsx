@@ -1,12 +1,25 @@
+import { requireUser } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
+import { EmptyState } from "@/components/dashboard/ui";
+import { BacklinksClient } from "@/components/dashboard/backlinks-client";
+import { Globe } from "lucide-react";
 import styles from "@/components/dashboard/ui.module.css";
 
-export default function Page() {
+export default async function BacklinksPage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
+  const user = await requireUser();
+  const { websiteId } = await searchParams;
+  const membership = await prisma.workspaceMember.findFirst({ where: { userId: user.id }, select: { workspaceId: true } });
+  const websites = membership
+    ? await prisma.website.findMany({ where: { business: { workspaceId: membership.workspaceId } }, orderBy: { createdAt: "asc" }, select: { id: true, url: true } })
+    : [];
+  const website = websites.find((w) => w.id === websiteId) ?? websites[0] ?? null;
   return (
     <>
-      <Topbar title="Backlinks" />
+      <Topbar title="Backlinks" websiteSwitcher={membership && website ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined} />
       <div className={styles.pageBody}>
-        <p style={{ color: "var(--secondary)", fontSize: 13 }}>Referring domains, new and lost links, anchors and link quality.</p>
+        {website ? <BacklinksClient key={website.id} websiteId={website.id} domain={new URL(website.url).hostname} />
+          : <EmptyState icon={Globe} title="No website yet" description="Add a website to see its backlinks." actionLabel="Add website" actionHref="/dashboard/add-website" />}
       </div>
     </>
   );
