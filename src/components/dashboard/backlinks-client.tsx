@@ -28,6 +28,8 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const [q, setQ] = useState("");
   const [only, setOnly] = useState<"all" | "dofollow" | "new" | "lost">("all");
   const [sel, setSel] = useState<DrawerData | null>(null);
+  const [pg, setPg] = useState(0);
+  const [pg, setPg] = useState(0);
   type Link = BacklinksReport["links"][number];
   const linkItems = (ls: Link[]) => ls.map((l) => ({ primary: short(l.from), secondary: `${l.anchor || "(no anchor)"} → ${short(l.to)} · ${l.dofollow ? "dofollow" : "nofollow"}`, href: l.from }));
   const openDomain = (d: string) => {
@@ -83,22 +85,22 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
 
       <div className={p.tabs}>
         {([["domains", "Referring domains", data?.domains.length], ["links", "Backlinks", data?.links.length], ["anchors", "Anchors", data?.anchors.length]] as [Tab, string, number | undefined][]).map(([id, label, n]) => (
-          <button key={id} className={p.tab} data-on={tab === id ? "true" : "false"} onClick={() => setTab(id)}>{label}{n === undefined ? null : <span className={p.tabCount}>{n}</span>}</button>
+          <button key={id} className={p.tab} data-on={tab === id ? "true" : "false"} onClick={() => { setTab(id); setPg(0); }}>{label}{n === undefined ? null : <span className={p.tabCount}>{n}</span>}</button>
         ))}
       </div>
 
       <div className={u.group}>
         <div className={p.toolbar}>
           {tab === "links" ? (["all", "dofollow", "new", "lost"] as const).map((o) => (
-            <button key={o} className={p.chip} data-on={only === o ? "true" : "false"} onClick={() => setOnly(o)}>{o === "all" ? "All" : o === "dofollow" ? "Dofollow" : o === "new" ? "New" : "Lost"}</button>
+            <button key={o} className={p.chip} data-on={only === o ? "true" : "false"} onClick={() => { setOnly(o); setPg(0); }}>{o === "all" ? "All" : o === "dofollow" ? "Dofollow" : o === "new" ? "New" : "Lost"}</button>
           )) : null}
-          <input className={p.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter…" />
+          <input className={p.search} value={q} onChange={(e) => { setQ(e.target.value); setPg(0); }} placeholder="Filter…" />
         </div>
         {data === null ? <div className={p.empty}>{busy ? "Loading backlinks from DataForSEO…" : "No data."}</div>
           : tab === "domains" ? (domains.length === 0 ? <div className={p.empty}>No referring domains found.</div> : (
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Domain</th><th>Rank</th><th>Backlinks</th><th>Spam score</th><th>First seen</th></tr></thead>
-              <tbody>{domains.map((d) => (
+              <tbody>{domains.slice(pg * 100, pg * 100 + 100).map((d) => (
                 <tr key={d.domain} data-click="" onClick={() => openDomain(d.domain)}><td><a onClick={(e) => e.stopPropagation()} className={p.page} href={`https://${d.domain}`} target="_blank" rel="noreferrer">{d.domain}</a></td>
                   <td className={p.num}>{fmt(d.rank)}</td><td className={p.num}>{fmt(d.backlinks)}</td>
                   <td className={(d.spamScore ?? 0) >= 50 ? p.down : p.num}>{d.spamScore ?? "—"}</td><td className={p.dim}>{day(d.firstSeen)}</td></tr>
@@ -107,7 +109,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           )) : tab === "links" ? (links.length === 0 ? <div className={p.empty}>No backlinks match.</div> : (
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Source page</th><th>Anchor</th><th>Target</th><th>Type</th><th>Rank</th><th>First seen</th><th>Status</th></tr></thead>
-              <tbody>{links.map((l, i) => (
+              <tbody>{links.slice(pg * 100, pg * 100 + 100).map((l, i) => (
                 <tr key={l.from + l.to + i} data-click="" onClick={() => openLink(l)}>
                   <td><a onClick={(e) => e.stopPropagation()} className={p.page} href={l.from} target="_blank" rel="noreferrer" title={l.title ?? undefined}>{short(l.from)}</a></td>
                   <td className={l.anchor ? undefined : p.dim}>{l.anchor || "(no anchor)"}</td>
@@ -121,12 +123,34 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           )) : (anchors.length === 0 ? <div className={p.empty}>No anchors found.</div> : (
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Anchor</th><th>Backlinks</th><th>Referring domains</th><th>First seen</th></tr></thead>
-              <tbody>{anchors.map((a) => (
+              <tbody>{anchors.slice(pg * 100, pg * 100 + 100).map((a) => (
                 <tr key={a.anchor} data-click="" onClick={() => openAnchor(a.anchor)}><td>{a.anchor}</td><td className={p.num}>{fmt(a.backlinks)}</td><td className={p.num}>{fmt(a.domains)}</td><td className={p.dim}>{day(a.firstSeen)}</td></tr>
               ))}</tbody>
             </table>
           ))}
       </div>
+      {(() => {
+        const n = tab === "domains" ? domains.length : tab === "links" ? links.length : anchors.length;
+        const pages = Math.ceil(n / 100);
+        return pages > 1 ? (
+          <div className={p.pager}>
+            <button disabled={pg === 0} onClick={() => setPg(pg - 1)}>← Prev</button>
+            <span>{pg + 1} / {pages} · {n.toLocaleString()} rows</span>
+            <button disabled={pg >= pages - 1} onClick={() => setPg(pg + 1)}>Next →</button>
+          </div>
+        ) : null;
+      })()}
+      {(() => {
+        const n = tab === "domains" ? domains.length : tab === "links" ? links.length : anchors.length;
+        const pages = Math.ceil(n / 100);
+        return pages > 1 ? (
+          <div className={p.pager}>
+            <button disabled={pg === 0} onClick={() => setPg(pg - 1)}>← Prev</button>
+            <span>{pg + 1} / {pages} · {n.toLocaleString()} rows</span>
+            <button disabled={pg >= pages - 1} onClick={() => setPg(pg + 1)}>Next →</button>
+          </div>
+        ) : null;
+      })()}
       {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
     </>
   );

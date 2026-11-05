@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
@@ -144,8 +144,46 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
   const [chips, setChips] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<DrawerData | null>(null);
+  useEffect(() => {
+    const f = sel?.serpFor;
+    if (f === undefined || sel?.extra) return;
+    let off = false;
+    setSel((s) => (s ? { ...s, extraLoading: true, extraTitle: "Top Google results" } : s));
+    fetch(`/api/planner/serp?websiteId=${encodeURIComponent(websiteId)}&keyword=${encodeURIComponent(f.keyword)}&volume=${f.volume}`)
+      .then((r) => r.json())
+      .then((d: { error?: string; items?: { position: number; domain: string; ours: boolean; clicks: number; title: string | null; url: string }[] }) => {
+        if (off) return;
+        const items = d.items ?? [];
+        setSel((s) => (s && s.serpFor === f ? {
+          ...s, extraLoading: false,
+          extraTitle: d.error ? `Top results unavailable: ${d.error}` : `Top ${items.length} Google results · SEO value = est. clicks / mo`,
+          extra: items.map((it) => ({ primary: `#${it.position}  ${it.domain}${it.ours ? "  (you)" : ""}`, secondary: `${it.position <= 3 ? "Top 3 · " : it.position <= 5 ? "Top 5 · " : ""}~${fmt(it.clicks)} clicks/mo · ${it.title ?? ""}`, href: it.url })),
+        } : s));
+      })
+      .catch(() => { if (off === false) setSel((s) => (s ? { ...s, extraLoading: false, extra: [], extraTitle: "Top results unavailable" } : s)); });
+    return () => { off = true; };
+  }, [sel?.serpFor, websiteId]);
+  useEffect(() => {
+    const f = sel?.serpFor;
+    if (f === undefined || sel?.extra) return;
+    let off = false;
+    setSel((s) => (s ? { ...s, extraLoading: true, extraTitle: "Top Google results" } : s));
+    fetch(`/api/planner/serp?websiteId=${encodeURIComponent(websiteId)}&keyword=${encodeURIComponent(f.keyword)}&volume=${f.volume}`)
+      .then((r) => r.json())
+      .then((d: { error?: string; items?: { position: number; domain: string; ours: boolean; clicks: number; title: string | null; url: string }[] }) => {
+        if (off) return;
+        const items = d.items ?? [];
+        setSel((s) => (s && s.serpFor === f ? {
+          ...s, extraLoading: false,
+          extraTitle: d.error ? `Top results unavailable: ${d.error}` : `Top ${items.length} Google results · SEO value = est. clicks / mo`,
+          extra: items.map((it) => ({ primary: `#${it.position}  ${it.domain}${it.ours ? "  (you)" : ""}`, secondary: `${it.position <= 3 ? "Top 3 · " : it.position <= 5 ? "Top 5 · " : ""}~${fmt(it.clicks)} clicks/mo · ${it.title ?? ""}`, href: it.url })),
+        } : s));
+      })
+      .catch(() => { if (off === false) setSel((s) => (s ? { ...s, extraLoading: false, extra: [], extraTitle: "Top results unavailable" } : s)); });
+    return () => { off = true; };
+  }, [sel?.serpFor, websiteId]);
   const openKw = (k: PlannerKeyword) => setSel({
-    title: k.keyword, subtitle: `${k.intent} · cluster “${k.cluster}”`,
+    title: k.keyword, serpFor: { keyword: k.keyword, volume: k.volume ?? 0 }, subtitle: `${k.intent} · cluster “${k.cluster}”`,
     fields: [["Volume / mo", fmt(k.volume)], ["Difficulty", k.kd === null ? "—" : String(k.kd)], ["CPC", money(k.cpc)], ["Position", k.position === null ? "—" : String(k.position)], ["Clicks · 28d", fmt(k.clicks)], ["Impressions · 28d", fmt(k.impressions)], ["Sources", k.sources.join(", ")]],
     itemsTitle: `Ranking pages · ${k.pages.length}`, items: k.pages.map((x) => ({ primary: short(x), href: x })),
     actions: <><WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write article" compact /><a className={p.ghost} href={`https://www.google.com/search?q=${encodeURIComponent(k.keyword)}`} target="_blank" rel="noreferrer">Google SERP</a><button className={p.ghost} onClick={() => { setQ(k.cluster); setChips([]); setTab("keywords"); setSel(null); }}>Show cluster</button></>,

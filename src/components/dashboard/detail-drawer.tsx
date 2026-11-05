@@ -4,7 +4,27 @@ import { X } from "lucide-react";
 import s from "./detail-drawer.module.css";
 
 export interface DrawerItem { primary: string; secondary?: string; href?: string }
-export interface DrawerData { title: string; subtitle?: string; fields?: [string, ReactNode][]; itemsTitle?: string; items?: DrawerItem[]; actions?: ReactNode }
+export interface DrawerData {
+  title: string; subtitle?: string; fields?: [string, ReactNode][];
+  itemsTitle?: string; items?: DrawerItem[];
+  extraTitle?: string; extra?: DrawerItem[]; extraLoading?: boolean;
+  serpFor?: { keyword: string; volume: number };
+  actions?: ReactNode;
+}
+
+function List({ title, items }: { title: string; items: DrawerItem[] }) {
+  return (
+    <>
+      <div className={s.label}>{title}</div>
+      {items.length === 0 ? <div className={s.secondary}>Nothing here.</div> : items.map((it, i) =>
+        it.href ? (
+          <a key={i} className={s.item} href={it.href} target="_blank" rel="noreferrer"><span className={s.primary}>{it.primary}</span>{it.secondary ? <span className={s.secondary}>{it.secondary}</span> : null}</a>
+        ) : (
+          <div key={i} className={s.item}><span className={s.primary}>{it.primary}</span>{it.secondary ? <span className={s.secondary}>{it.secondary}</span> : null}</div>
+        ))}
+    </>
+  );
+}
 
 /** Linear-style peek panel: opens on row click, closes on Esc or backdrop click. */
 export function DetailDrawer({ data, onClose }: { data: DrawerData; onClose: () => void }) {
@@ -31,17 +51,8 @@ export function DetailDrawer({ data, onClose }: { data: DrawerData; onClose: () 
               {data.fields.map(([k, v]) => <div key={k} className={s.field}><span>{k}</span><span>{v}</span></div>)}
             </>
           ) : null}
-          {data.items ? (
-            <>
-              <div className={s.label}>{data.itemsTitle ?? "Items"}</div>
-              {data.items.length === 0 ? <div className={s.secondary}>Nothing in the current sample.</div> : data.items.map((it, i) =>
-                it.href ? (
-                  <a key={i} className={s.item} href={it.href} target="_blank" rel="noreferrer"><span className={s.primary}>{it.primary}</span>{it.secondary ? <span className={s.secondary}>{it.secondary}</span> : null}</a>
-                ) : (
-                  <div key={i} className={s.item}><span className={s.primary}>{it.primary}</span>{it.secondary ? <span className={s.secondary}>{it.secondary}</span> : null}</div>
-                ))}
-            </>
-          ) : null}
+          {data.extraLoading ? <><div className={s.label}>{data.extraTitle ?? "Loading"}</div><div className={s.secondary}>Loading…</div></> : data.extra ? <List title={data.extraTitle ?? "More"} items={data.extra} /> : null}
+          {data.items ? <List title={data.itemsTitle ?? "Items"} items={data.items} /> : null}
         </div>
         {data.actions ? <div className={s.actions}>{data.actions}</div> : null}
       </aside>

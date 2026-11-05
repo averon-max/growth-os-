@@ -180,3 +180,7 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
   cache.set(opts.websiteId, { at: Date.now(), report });
   return report;
 }
+
+export function getCachedPlannerReport(websiteId: string): PlannerReport | null {
+  return cache.get(websiteId)?.report ?? null;
+}
