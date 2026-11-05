@@ -1,5 +1,6 @@
 import { dfs, num, str, rec } from "@/lib/dataforseo/client";
 import { analyzeSite, getCachedPlannerReport } from "@/lib/planner/analyze";
+import { isPlatform } from "./tracker";
 
 // Average organic CTR by position: used to estimate how many clicks each result captures.
 const CTR = [0.28, 0.15, 0.1, 0.07, 0.05, 0.04, 0.03, 0.025, 0.02, 0.018];
@@ -50,7 +51,7 @@ export async function buildLandscape(opts: { websiteId: string; workspaceId: str
 
   const agg = new Map<string, { domain: string; appearances: number; top3: number; posSum: number; clicks: number; keywords: { keyword: string; position: number; volume: number | null }[] }>();
   for (const k of keywords) for (const h of k.top) {
-    if (isOurs(h.domain) || h.domain === "") continue;
+    if (isOurs(h.domain) || h.domain === "" || isPlatform(h.domain)) continue;
     const d = agg.get(h.domain) ?? { domain: h.domain, appearances: 0, top3: 0, posSum: 0, clicks: 0, keywords: [] };
     d.appearances += 1;
     if (h.position <= 3) d.top3 += 1;

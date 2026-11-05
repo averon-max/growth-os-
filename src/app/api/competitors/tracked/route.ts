@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
-import { competitorStats, normalizeDomain, ourKeywordList, ourPositions, type CompStats } from "@/lib/competitors/tracker";
+import { competitorStats, isPlatform, normalizeDomain, ourKeywordList, ourPositions, type CompStats } from "@/lib/competitors/tracker";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     if (websiteId === "" || domain === null) return NextResponse.json({ error: "Enter a valid domain, e.g. example.com." }, { status: 400 });
     const { user, ours } = await ctx(websiteId);
     if (domain === ours) return NextResponse.json({ error: "That is your own domain." }, { status: 400 });
+    if (isPlatform(domain)) return NextResponse.json({ error: `${domain} is a platform that appears in every search result, not a competitor. Add a site that competes with you.` }, { status: 400 });
     if (rateLimit("comp-add:" + user.id, 60, 3600 * 1000) === false) return NextResponse.json({ error: "Too many changes this hour." }, { status: 429 });
     const count = await prisma.competitor.count({ where: { websiteId } });
     if (count >= MAX_TRACKED) return NextResponse.json({ error: `You can track up to ${MAX_TRACKED} competitors.` }, { status: 400 });

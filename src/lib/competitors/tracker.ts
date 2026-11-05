@@ -9,6 +9,10 @@ export interface CompStats { domain: string; overview: Overview; shared: number;
 const EMPTY: Overview = { keywords: null, etv: null, top3: null, top10: null, top20: null };
 const cache = new Map<string, { at: number; ranked: RankedKeywordResult[]; overview: Overview }>();
 
+/** Platforms that appear in every SERP: never organic competitors. */
+export const PLATFORM_RE = /(^|\.)(google|youtube|facebook|amazon|wikipedia|reddit|linkedin|instagram|pinterest|tiktok|quora|twitter|x|apple|bing|yahoo|yelp|medium)\.[a-z.]+$/i;
+export const isPlatform = (d: string) => PLATFORM_RE.test(d);
+
 export function normalizeDomain(input: string): string | null {
   const d = input.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/[/?#].*$/, "");
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) && d.length <= 253 ? d : null;

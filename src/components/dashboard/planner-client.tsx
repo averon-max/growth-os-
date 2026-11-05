@@ -101,7 +101,8 @@ function Research({ workspaceId, websiteId, seeds, onAdd }: { workspaceId: strin
       .then((d: { tracked?: { domain: string; keywords: { keyword: string; volume: number | null; kd: number | null; their: number | null; ours: number | null }[] }[] }) => {
         if (off) return;
         const best = new Map<string, Gap>();
-        for (const c of d.tracked ?? []) for (const k of c.keywords) {
+        const PLATFORM = /(^|\.)(google|youtube|facebook|amazon|wikipedia|reddit|linkedin|instagram|pinterest|tiktok|quora|twitter|x|apple|bing|yahoo|yelp|medium)\.[a-z.]+$/i;
+        for (const c of (d.tracked ?? []).filter((t) => PLATFORM.test(t.domain) === false)) for (const k of c.keywords) {
           const gap = (k.their === null ? false : k.their <= 10) && (k.ours === null || k.ours > 20);
           if (gap && best.has(k.keyword) === false) best.set(k.keyword, { keyword: k.keyword, volume: k.volume, kd: k.kd, from: c.domain, their: k.their });
         }
