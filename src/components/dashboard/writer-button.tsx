@@ -1,42 +1,29 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Sparkles, X } from "lucide-react";
 import { WriterForm } from "./writer-form";
+import s from "./writer.module.css";
 
 export function WriterButton({ websiteId }: { websiteId: string }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (open === false) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          background: "#7c3aed", color: "#fff", border: "none",
-          borderRadius: 8, padding: "8px 18px", fontSize: 14,
-          fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
-        }}
-      >
-        ✦ Write with AI
-      </button>
-
+      <button className={s.trigger} onClick={() => setOpen(true)}><Sparkles size={14} />Write with AI</button>
       {open && (
-        <div
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-            zIndex: 100, display: "flex", justifyContent: "flex-end",
-          }}
-        >
-          <div style={{
-            width: 420, height: "100%", background: "#0a0c10",
-            borderLeft: "1px solid #1e2330", overflowY: "auto",
-            display: "flex", flexDirection: "column",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #1e2330" }}>
-              <span style={{ color: "#94a3b8", fontSize: 13 }}>New Article</span>
-              <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
+        <div className={s.overlay} onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+          <div className={s.drawer}>
+            <div className={s.drawerHead}>
+              <span>New article</span>
+              <button className={s.close} onClick={() => setOpen(false)} aria-label="Close"><X size={15} /></button>
             </div>
-            <WriterForm websiteId={websiteId} onSuccess={() => setTimeout(() => window.location.reload(), 1500)} />
+            <WriterForm websiteId={websiteId} onSuccess={() => setTimeout(() => window.location.reload(), 2500)} />
           </div>
         </div>
       )}

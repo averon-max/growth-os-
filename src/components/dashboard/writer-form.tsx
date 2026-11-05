@@ -1,31 +1,56 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Sparkles, Download, Copy, Check } from "lucide-react";
 import { CATEGORY_LABELS, ArticleCategory } from "@/lib/writer/templates";
+import s from "./writer.module.css";
 
 const CATEGORIES = Object.entries(CATEGORY_LABELS) as [ArticleCategory, string][];
+type Result = { title: string; metaDescription: string; body: string; wordCount: number; score?: number; editorialScore?: number };
+
+const STEPS_RESEARCH = ["Keyword research", "SERP analysis", "Planning sections", "Writing", "Editorial review"];
+const STEPS_EXACT = ["SERP analysis", "Planning sections", "Writing", "Editorial review"];
+
+function stats(r: Result) {
+  const b = r.body;
+  const words = r.wordCount || b.split(/\s+/).filter(Boolean).length;
+  const h2 = (b.match(/^## /gm) || []).length;
+  const faq = (b.match(/^#{2,4} .*\?\s*$/gm) || []).length;
+  const links = (b.match(/\]\(https?:\/\//g) || []).length;
+  const tables = (b.match(/^\|.*\|\s*\n\|[\s:-]+\|/gm) || []).length;
+  const raw = r.score ?? r.editorialScore;
+  return { words, read: Math.max(1, Math.round(words / 230)), h2, faq, links, tables, score: typeof raw === "number" ? raw : null };
+}
 
 export function WriterForm({ websiteId, onSuccess }: { websiteId: string; onSuccess?: () => void }) {
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<ArticleCategory>("definition");
-  const [exactKeyword, setExactKeyword] = useState(false);
+  const [exact, setExact] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(0);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ title: string; metaDescription: string; body: string; wordCount: number } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [result, setResult] = useState<Result | null>(null);
+  const steps = exact ? STEPS_EXACT : STEPS_RESEARCH;
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (loading === false) return;
+    setStep(0);
+    const t = setInterval(() => setStep((v) => Math.min(v + 1, steps.length - 1)), 14000);
+    return () => clearInterval(t);
+  }, [loading, steps.length]);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!keyword.trim()) return;
-    setLoading(true);
-    setError("");
-    setResult(null);
+    if (keyword.trim() === "") return;
+    setLoading(true); setError(""); setResult(null);
     try {
       const res = await fetch("/api/writer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim(), category, websiteId, exactKeyword }),
+        body: JSON.stringify({ keyword: keyword.trim(), category, websiteId, exactKeyword: exact }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+      if (res.ok === false) throw new Error(data.error || "Failed");
       setResult(data);
       onSuccess?.();
     } catch (err) {
@@ -35,111 +60,80 @@ export function WriterForm({ websiteId, onSuccess }: { websiteId: string; onSucc
     }
   }
 
-  const inp: React.CSSProperties = {
-    background: "#0f1117", border: "1px solid #1e2330", borderRadius: 8,
-    padding: "10px 14px", color: "#f1f5f9", fontSize: 14, outline: "none",
-    width: "100%", boxSizing: "border-box",
-  };
+  function download(r: Result) {
+    const blob = new Blob([`# ${r.title}\n\n${r.body}`], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${r.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
+    a.click();
+  }
+
+  const st = result ? stats(result) : null;
+  const pct = loading ? Math.round(((step + 0.5) / steps.length) * 100) : 0;
 
   return (
-    <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ background: "#7c3aed", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, letterSpacing: 1 }}>AI WRITER</span>
-      </div>
-      <div>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>Write an article</h2>
-        <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-          Enter a seed keyword. The AI picks the best variant from DataForSEO, analyses the SERP, then writes a full article with GPT-5.
-        </p>
+    <div className={s.panel}>
+      <div className={s.head}>
+        <span className={s.eyebrow}><Sparkles size={11} strokeWidth={2} />AI Writer</span>
+        <h2 className={s.title}>Write an article</h2>
+        <p className={s.sub}>Seed keyword → best variant from DataForSEO → SERP analysis → full article with editorial review.</p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <input
-          value={keyword}
-          onChange={e => setKeyword(e.target.value)}
-          placeholder="e.g. best crm software"
-          disabled={loading}
-          style={inp}
-        />
-
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
-          <div
-            onClick={() => setExactKeyword(v => !v)}
-            style={{
-              width: 18, height: 18, borderRadius: 4, border: "1px solid",
-              borderColor: exactKeyword ? "#7c3aed" : "#2d3748",
-              background: exactKeyword ? "#7c3aed" : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, transition: "all 0.15s",
-            }}
-          >
-            {exactKeyword && <span style={{ color: "#fff", fontSize: 11, lineHeight: 1 }}>✓</span>}
-          </div>
-          <span style={{ fontSize: 13, color: exactKeyword ? "#a78bfa" : "#64748b" }}>
-            Use exact keyword <span style={{ color: "#475569", fontSize: 12 }}>(skip AI keyword research)</span>
-          </span>
-        </label>
-
-        <select value={category} onChange={e => setCategory(e.target.value as ArticleCategory)} disabled={loading} style={inp}>
-          {CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-
-        <button
-          type="submit"
-          disabled={loading || !keyword.trim()}
-          style={{
-            background: loading ? "#4c1d95" : "#7c3aed", color: "#fff", border: "none",
-            borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600,
-            cursor: loading ? "not-allowed" : "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          }}
-        >
-          {loading ? (
-            <>
-              <span style={{ width: 14, height: 14, border: "2px solid #fff3", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
-              {exactKeyword ? "Writing…" : "Researching & writing…"}
-            </>
-          ) : "✦ Write Article"}
-        </button>
-      </form>
-
-      {error && (
-        <div style={{ background: "#1c0a0a", border: "1px solid #7f1d1d", borderRadius: 8, padding: "10px 14px", color: "#fca5a5", fontSize: 13 }}>
-          {error}
-        </div>
-      )}
-
-      {result && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ background: "#0f1117", border: "1px solid #1e2330", borderRadius: 10, padding: 16 }}>
-            <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15, marginBottom: 6 }}>{result.title}</div>
-            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>{result.metaDescription}</div>
-            <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#475569" }}>
-              <span>~{result.wordCount} words</span>
-              <span style={{ color: "#22c55e" }}>✓ Saved to briefs</span>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              const blob = new Blob([`# ${result.title}\n\n${result.body}`], { type: "text/markdown" });
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = `${result.title.toLowerCase().replace(/\s+/g, "-")}.md`;
-              a.click();
-            }}
-            style={{ background: "#0f1117", border: "1px solid #1e2330", borderRadius: 8, padding: "8px 14px", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}
-          >
-            ↓ Download .md
+      <div className={s.card}>
+        <div className={s.cardHead}><span>Brief</span><span>{CATEGORY_LABELS[category]}</span></div>
+        <form onSubmit={submit} className={s.form}>
+          <input className={s.input} value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. best crm software" disabled={loading} />
+          <select className={s.select} value={category} onChange={(e) => setCategory(e.target.value as ArticleCategory)} disabled={loading}>
+            {CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <label className={s.toggle} onClick={() => loading || setExact((v) => v === false)}>
+            <span className={s.switch} data-on={exact ? "true" : "false"} />
+            <span>Use exact keyword <span className={s.hint}>· skip keyword research</span></span>
+          </label>
+          <button type="submit" className={s.primary} disabled={loading || keyword.trim() === ""}>
+            {loading ? <><span className={s.spin} />{steps[step]}…</> : <><Sparkles size={14} />Write article</>}
           </button>
-          <div style={{ background: "#080a0f", border: "1px solid #1e2330", borderRadius: 8, padding: 14, maxHeight: 300, overflowY: "auto" }}>
-            <pre style={{ margin: 0, color: "#94a3b8", fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-              {result.body.slice(0, 2000)}{result.body.length > 2000 ? "\n\n…(download for full)" : ""}
-            </pre>
+        </form>
+      </div>
+
+      {loading && (
+        <div className={s.card}>
+          <div className={s.cardHead}><span>Progress</span><span>{pct}%</span></div>
+          <div className={s.bar}><div className={s.barFill} style={{ width: `${pct}%` }} /></div>
+          <div className={s.steps}>
+            {steps.map((label, i) => (
+              <div key={label} className={s.step} data-s={i < step ? "done" : i === step ? "active" : "todo"}>
+                <span className={s.dot} />{label}
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {error && <div className={s.error}>{error}</div>}
+
+      {result && st && (
+        <div className={s.card}>
+          <div className={s.cardHead}><span>Result</span><span className={s.saved}>✓ Saved to briefs</span></div>
+          <div className={s.metrics}>
+            <div className={s.metric}><span className={s.mLabel}>Words</span><span className={s.mValue}>{st.words.toLocaleString()}</span></div>
+            <div className={s.metric}><span className={s.mLabel}>Read time</span><span className={s.mValue}>{st.read} min</span></div>
+            <div className={s.metric}><span className={s.mLabel}>Score</span><span className={s.mValue} data-tone={st.score === null ? undefined : st.score >= 8.5 ? "good" : "warn"}>{st.score === null ? "—" : st.score.toFixed(1)}</span></div>
+            <div className={s.metric}><span className={s.mLabel}>Sections</span><span className={s.mValue}>{st.h2}</span></div>
+            <div className={s.metric}><span className={s.mLabel}>FAQ</span><span className={s.mValue}>{st.faq}</span></div>
+            <div className={s.metric}><span className={s.mLabel}>Sources · Tables</span><span className={s.mValue}>{st.links} · {st.tables}</span></div>
+          </div>
+          <div className={s.resTitle}>{result.title}</div>
+          <div className={s.resMeta}>{result.metaDescription}</div>
+          <div className={s.actions}>
+            <button className={s.ghost} onClick={() => download(result)}><Download size={13} />Download .md</button>
+            <button className={s.ghost} onClick={() => { navigator.clipboard.writeText(result.body); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+              {copied ? <Check size={13} /> : <Copy size={13} />}{copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <pre className={s.preview}>{result.body.slice(0, 2500)}{result.body.length > 2500 ? "\n\n…" : ""}</pre>
+        </div>
+      )}
     </div>
   );
 }
