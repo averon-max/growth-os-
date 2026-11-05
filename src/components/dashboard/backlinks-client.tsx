@@ -29,7 +29,6 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const [only, setOnly] = useState<"all" | "dofollow" | "new" | "lost">("all");
   const [sel, setSel] = useState<DrawerData | null>(null);
   const [pg, setPg] = useState(0);
-  const [pg, setPg] = useState(0);
   type Link = BacklinksReport["links"][number];
   const linkItems = (ls: Link[]) => ls.map((l) => ({ primary: short(l.from), secondary: `${l.anchor || "(no anchor)"} → ${short(l.to)} · ${l.dofollow ? "dofollow" : "nofollow"}`, href: l.from }));
   const openDomain = (d: string) => {
@@ -129,17 +128,6 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
             </table>
           ))}
       </div>
-      {(() => {
-        const n = tab === "domains" ? domains.length : tab === "links" ? links.length : anchors.length;
-        const pages = Math.ceil(n / 100);
-        return pages > 1 ? (
-          <div className={p.pager}>
-            <button disabled={pg === 0} onClick={() => setPg(pg - 1)}>← Prev</button>
-            <span>{pg + 1} / {pages} · {n.toLocaleString()} rows</span>
-            <button disabled={pg >= pages - 1} onClick={() => setPg(pg + 1)}>Next →</button>
-          </div>
-        ) : null;
-      })()}
       {(() => {
         const n = tab === "domains" ? domains.length : tab === "links" ? links.length : anchors.length;
         const pages = Math.ceil(n / 100);

@@ -37,20 +37,6 @@ async function callAll(endpoint: string, task: Rec): Promise<Rec[]> {
   return out;
 }
 
-const MAX_ROWS = 20000;
-/** Pages through a DataForSEO list endpoint (1000 rows per request) up to MAX_ROWS. */
-async function callAll(endpoint: string, task: Rec): Promise<Rec[]> {
-  const out: Rec[] = [];
-  for (let offset = 0; offset < MAX_ROWS; offset += 1000) {
-    const r = (await call(endpoint, { ...task, limit: 1000, offset }))[0] ?? {};
-    const items = (r.items as Rec[] | undefined) ?? [];
-    out.push(...items);
-    const total = num(r.total_count) ?? 0;
-    if (items.length < 1000 || out.length >= total) break;
-  }
-  return out;
-}
-
 export interface BacklinksReport {
   domain: string; generatedAt: string;
   summary: { rank: number | null; backlinks: number | null; referringDomains: number | null; referringIps: number | null; brokenBacklinks: number | null; spamScore: number | null; dofollowShare: number | null };
