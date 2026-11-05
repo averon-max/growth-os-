@@ -72,3 +72,14 @@ writer-logs/
 *.bak
 *.bak2
 *.backup-*
+
+# junk
+writer-logs/
+.growth-os-tmp/
+.growth-os-backups/
+.growth-os-traces/
+review-artifacts/
+*.backup*
+*.bak
+*.tsbuildinfo
+.DS_Store
