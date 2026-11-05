@@ -2046,3 +2046,6 @@
   border-color: #3e4267;
   color: #929ae8;
 }
+
+/* no glowing dots in stat cards */
+.statAccent { display: none !important; }
