@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import styles from "./audience-geo-intelligence.module.css";
+import { crimeaToUkraine } from "@/lib/geo/crimea";
 
 interface CloudflareCountry {
   country: string;
@@ -1203,6 +1204,7 @@ export function AudienceGeoIntelligence({
               >
                 <Geographies
                   geography="/world-110m.json"
+                  parseGeographies={crimeaToUkraine}
                 >
                   {({
                     geographies,

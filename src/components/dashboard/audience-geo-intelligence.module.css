@@ -517,3 +517,9 @@
 .geoPath:focus {
   outline: none;
 }
+
+/* ===== map: Linear style ===== */
+.mapWrap { background: #101112 !important; border-radius: 10px !important; }
+.mapWrap svg path { stroke: #08090a !important; stroke-width: .5px !important; outline: none !important; transition: fill .12s ease; }
+.mapWrap svg path:hover { fill: #60a5fa !important; cursor: pointer; }
+.hoverCard { border: 1px solid #23252a !important; border-radius: 10px !important; background: #141516 !important; box-shadow: 0 12px 40px rgba(0,0,0,.45) !important; }
