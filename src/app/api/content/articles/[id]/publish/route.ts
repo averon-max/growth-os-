@@ -1,374 +1,77 @@
-import { EditorialRepetitionGateErrorV1 } from "@/lib/content/editorial-repetition-guard-v1";
-import { ArticleInformationGainGateErrorV1 } from "@/lib/content/article-editorial-information-gain-v1";
-import {ArticleProseHygieneErrorV2}
-  from "@/lib/content/article-search-readiness-v2";
-import {ComprehensiveEditorialReleaseErrorV1}
-  from "@/lib/content/comprehensive-editorial-release-gate-v1";
-import {
-  ArticlePublicationPolicyError,
-} from "@/lib/content/article-publication-policy";
+import { NextRequest, NextResponse } from "next/server";
+import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
+import { getContentArticleById } from "@/lib/content/repository";
+import { prisma } from "@/lib/prisma";
+import { getCMSConnection } from "@/lib/cms/repository";
+import { getProviderForType } from "@/lib/cms/registry";
+import { assertOutcomeActionExecutable, markOutcomeActionExecuted } from "@/lib/keywords/outcome-service";
+import { requireArticleReleasable, ReleaseBlockedError } from "@/lib/writer/release";
 
-import {
-  ContentGateError,
-} from "@/lib/content/content-gate";
+type OutcomeLink = { status: "EXECUTED" | "NOT_EXECUTED" | "FAILED_TO_RECORD"; actionId: string } | null;
 
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
-
-import {
-  requireUser,
-  requireWebsiteAccess,
-  authErrorResponse,
-} from "@/lib/auth-helpers";
-
-import {
-  getContentArticleById,
-} from "@/lib/content/repository";
-
-import {
-  publishArticle,
-} from "@/lib/content/service";
-
-import {
-  getCMSConnection,
-} from "@/lib/cms/repository";
-
-import {
-  getProviderForType,
-} from "@/lib/cms/registry";
-
-import {
-  assertOutcomeActionExecutable,
-  markOutcomeActionExecuted,
-} from "@/lib/keywords/outcome-service";
-
-export async function POST(
-  req: NextRequest,
-  {
-    params,
-  }: {
-    params:
-      Promise<{
-        id:
-          string;
-      }>;
-  }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const {
-      id,
-    } =
-      await params;
+    const { id } = await params;
+    const user = await requireUser();
+    const body = (await req.json().catch(() => ({}))) as { outcomeActionId?: unknown };
 
-    const user =
-      await requireUser();
+    const article = await getContentArticleById(id);
+    if (article === null) return NextResponse.json({ error: "Article not found." }, { status: 404 });
+    const website = await requireWebsiteAccess(user.id, article.brief.websiteId);
 
-    const body =
-      await req
-        .json()
-        .catch(
-          () => ({})
-        ) as {
-          outcomeActionId?:
-            string;
-        };
-
-    const outcomeActionId =
-      typeof body.outcomeActionId ===
-        "string"
-        ? body.outcomeActionId.trim()
-        : "";
-
-    const article =
-      await getContentArticleById(
-        id
-      );
-
-    if (
-      !article
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Article not found.",
-        },
-        {
-          status:
-            404,
-        }
-      );
-    }
-
-    const website =
-      await requireWebsiteAccess(
-        user.id,
-        article.brief.websiteId
-      );
-
-    const effectiveOutcomeActionId =
-      outcomeActionId ||
-      article.brief.outcomeActionId?.trim() ||
-      "";
-
-    if (
-      effectiveOutcomeActionId
-    ) {
+    const actionId = (typeof body.outcomeActionId === "string" ? body.outcomeActionId.trim() : "") || article.brief.outcomeActionId?.trim() || "";
+    const actionScope = {
+      workspaceId: website.business.workspaceId,
+      websiteId: article.brief.websiteId,
+      actionId,
+      executionKind: "CONTENT_PUBLISH" as const,
+      primaryKeyword: article.brief.primaryKeyword,
+    };
+    if (actionId) {
       try {
-        await assertOutcomeActionExecutable({
-          workspaceId:
-            website.business.workspaceId,
-
-          websiteId:
-            article.brief.websiteId,
-
-          actionId:
-            effectiveOutcomeActionId,
-
-          executionKind:
-            "CONTENT_PUBLISH",
-
-          primaryKeyword:
-            article.brief.primaryKeyword,
-        });
+        await assertOutcomeActionExecutable(actionScope);
       } catch {
-        return NextResponse.json(
-          {
-            error:
-              "This Growth OS action cannot be linked to this content execution.",
-          },
-          {
-            status:
-              409,
-          }
-        );
+        return NextResponse.json({ error: "This Growth OS action cannot be linked to this content execution." }, { status: 409 });
       }
     }
 
-    const connection =
-      await getCMSConnection(
-        article.brief.websiteId
-      );
+    const connection = await getCMSConnection(article.brief.websiteId);
+    if (connection === null) return NextResponse.json({ error: "CMS is not connected for this website. Connect it in CMS settings." }, { status: 409 });
 
-    if (
-      !connection
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "CMS is not connected for this website.",
-        },
-        {
-          status:
-            409,
-        }
-      );
-    }
+    const ready = await requireArticleReleasable(id);
+    const result = await getProviderForType(connection.cmsType).publishContent(ready.brief.websiteId, {
+      title: ready.title,
+      metaDescription: ready.metaDescription,
+      h1: ready.h1,
+      bodyMarkdown: ready.bodyMarkdown,
+    });
+    const ok = result.status === "SUCCESS";
+    const updated = await prisma.contentArticle.update({
+      where: { id },
+      data: { status: ok ? "PUBLISHED" : "PUBLISH_FAILED", publishedUrl: result.publishedUrl, publishedAt: ok ? new Date() : null, publishError: result.errorMessage },
+    });
 
-    const provider =
-      getProviderForType(
-        connection.cmsType
-      );
-
-    const updated =
-      await publishArticle(
-        provider,
-        id
-      );
-
-    let outcomeLink:
-      | {
-          status:
-            "EXECUTED";
-          actionId:
-            string;
-        }
-      | {
-          status:
-            "NOT_EXECUTED";
-          actionId:
-            string;
-        }
-      | {
-          status:
-            "FAILED_TO_RECORD";
-          actionId:
-            string;
-        }
-      | null =
-      null;
-
-    if (
-      effectiveOutcomeActionId
-    ) {
-      if (
-        updated.status ===
-        "PUBLISHED"
-      ) {
+    let outcomeLink: OutcomeLink = null;
+    if (actionId) {
+      if (ok) {
         try {
-          await markOutcomeActionExecuted({
-            workspaceId:
-              website.business.workspaceId,
-
-            websiteId:
-              article.brief.websiteId,
-
-            actionId:
-              effectiveOutcomeActionId,
-
-            executionKind:
-              "CONTENT_PUBLISH",
-
-            primaryKeyword:
-              article.brief.primaryKeyword,
-
-            contentArticleId:
-              updated.id,
-          });
-
-          outcomeLink = {
-            status:
-              "EXECUTED",
-
-            actionId:
-              effectiveOutcomeActionId,
-          };
-        } catch (
-          linkError
-        ) {
-          console.error(
-            "content publish outcome link error",
-            linkError
-          );
-
-          outcomeLink = {
-            status:
-              "FAILED_TO_RECORD",
-
-            actionId:
-              effectiveOutcomeActionId,
-          };
+          await markOutcomeActionExecuted({ ...actionScope, contentArticleId: updated.id });
+          outcomeLink = { status: "EXECUTED", actionId };
+        } catch (linkError) {
+          console.error("content publish outcome link error", linkError);
+          outcomeLink = { status: "FAILED_TO_RECORD", actionId };
         }
       } else {
-        outcomeLink = {
-          status:
-            "NOT_EXECUTED",
-
-          actionId:
-            effectiveOutcomeActionId,
-        };
+        outcomeLink = { status: "NOT_EXECUTED", actionId };
       }
     }
-
-    return NextResponse.json(
-      outcomeLink
-        ? {
-            article:
-              updated,
-
-            outcomeLink,
-          }
-        : {
-            article:
-              updated,
-          }
-    );
-  } catch (
-    err
-  ) {
-    if(err instanceof ComprehensiveEditorialReleaseErrorV1){
-      return NextResponse.json({
-        error:"This guide needs useful sourced depth and H3 subsection structure before approval. Use Improve existing article; no duplicate brief is needed.",
-        code:err.code,blockers:err.blockers,retryable:false,
-      },{status:409});
+    return NextResponse.json(outcomeLink ? { article: updated, outcomeLink } : { article: updated });
+  } catch (err) {
+    if (err instanceof ReleaseBlockedError) {
+      return NextResponse.json({ error: "Article is not ready for publication.", reasons: err.reasons }, { status: 409 });
     }
-    if(err instanceof ArticleProseHygieneErrorV2){
-      return NextResponse.json({
-        code:err.code,
-        error:"Article requires a controlled spacing and punctuation copyedit before approval or publication.",
-        defects:err.defects,
-        retryable:false,
-        guidance:"Edit and review only affected sentences, then rerun factual and SERP Replay gates for the new fingerprint.",
-      },{status:409});
-    }
-    if(err instanceof ArticleInformationGainGateErrorV1){
-      return NextResponse.json({
-        code:err.code,
-        error:"The article has low-information filler or intrusive Source labels. Rewrite the affected meaning using only verified claims, keep research references outside prose, and rerun exact article verification.",
-        findings:err.findings,
-      },{status:422});
-    }
-    if (err instanceof EditorialRepetitionGateErrorV1) {
-      return NextResponse.json({ error:err.message, code:err.code, sections:err.findings.map(f=>({sectionIndex:f.sectionIndex,issue:f.code})) }, {status:409});
-    }
-
-    if (
-      err instanceof
-      ArticlePublicationPolicyError
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Article requires editorial or evidence review.",
-
-          issues:
-            err.issues,
-
-          planWarnings:
-            err.planWarnings,
-
-          evidenceFindings:
-            err.evidenceFindings,
-        },
-        {
-          status:
-            409,
-        }
-      );
-    }
-
-    if (
-      err instanceof
-      ContentGateError
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Article blocked by Content Quality Gate.",
-
-          issues:
-            err.issues,
-
-          claims:
-            err.claimFindings,
-        },
-        {
-          status:
-            409,
-        }
-      );
-    }
-
-    console.error(
-      "content/articles/[id]/publish POST error",
-      err
-    );
-
-    const {
-      status,
-      body:
-        errBody,
-    } =
-      authErrorResponse(
-        err
-      );
-
-    return NextResponse.json(
-      errBody,
-      {
-        status,
-      }
-    );
+    console.error("content/articles/[id]/publish POST error", err);
+    const { status, body } = authErrorResponse(err);
+    return NextResponse.json(body, { status });
   }
 }
