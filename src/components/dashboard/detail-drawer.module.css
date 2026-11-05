@@ -24,3 +24,7 @@
 .title { color: #f7f8f8 !important; font-weight: 590 !important; }
 .label { color: #8a8f98 !important; font-weight: 510 !important; }
 .actions { border-top: 1px solid #1d1e21 !important; }
+
+/* ===== blue accent ===== */
+.btnOn { color: #f2c94c !important; border-color: rgba(242,201,76,.35) !important; }
+.fill { background: #3b82f6 !important; }

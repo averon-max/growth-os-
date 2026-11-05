@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import type { BacklinksReport } from "@/lib/backlinks/domain";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
+import { LinearList, type LRow } from "./linear-list";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -59,6 +60,32 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const domains = (data?.domains ?? []).filter((d) => ql === "" || d.domain.includes(ql));
   const anchors = (data?.anchors ?? []).filter((a) => ql === "" || a.anchor.toLowerCase().includes(ql));
   const newCount = (data?.links ?? []).filter((l) => l.isNew).length;
+  const SPAM = /backlink|pbn|dofollow|\bseo\b|\bda ?\d|buy|cheap|casino|poker|slot|betting|888|rank first/i;
+  const spamDomain = new Map((data?.domains ?? []).map((d) => [d.domain, d.spamScore ?? 0]));
+  const linkToxic = (l: Link) => SPAM.test(l.anchor ?? "") || SPAM.test(l.from) || (spamDomain.get(l.fromDomain) ?? 0) >= 50;
+  const mon = (s: string | null) => (s ? new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
+  const page = <T,>(xs: T[]) => xs.slice(pg * 100, pg * 100 + 100);
+  const domainRow = (d: BacklinksReport["domains"][number], i: number): LRow => {
+    const tox = (d.spamScore ?? 0) >= 50;
+    return { key: d.domain, id: `RD-${pg * 100 + i + 1}`, status: tox ? "red" : "green", title: d.domain, hint: `${fmt(d.backlinks)} link${d.backlinks === 1 ? "" : "s"}`,
+      pills: [tox ? { label: "Spam", dot: "#eb5757" } : { label: "Clean", dot: "#4cb782" }], metrics: [`spam ${d.spamScore ?? "—"}`, `rank ${fmt(d.rank)}`], date: mon(d.firstSeen), onClick: () => openDomain(d.domain) };
+  };
+  const linkRow = (l: Link, i: number): LRow => {
+    const tox = linkToxic(l);
+    return { key: l.from + l.to + i, id: `BL-${pg * 100 + i + 1}`, status: l.isLost ? "gray" : tox ? "red" : "green", title: l.fromDomain || short(l.from), hint: l.anchor || "no anchor",
+      pills: [tox ? { label: "PBN", dot: "#eb5757" } : { label: l.dofollow ? "dofollow" : "nofollow" }, ...(l.isNew ? [{ label: "New", dot: "#f2c94c" }] : []), ...(l.isLost ? [{ label: "Lost" }] : [])],
+      metrics: [short(l.to)], date: mon(l.firstSeen), onClick: () => openLink(l) };
+  };
+  const pd = page(domains);
+  const pl = page(links);
+  const domainGroups = [
+    { title: "Toxic", status: "red" as const, count: domains.filter((d) => (d.spamScore ?? 0) >= 50).length, rows: pd.filter((d) => (d.spamScore ?? 0) >= 50).map(domainRow) },
+    { title: "Clean", status: "green" as const, count: domains.filter((d) => (d.spamScore ?? 0) < 50).length, rows: pd.filter((d) => (d.spamScore ?? 0) < 50).map(domainRow) },
+  ];
+  const linkGroups = [
+    { title: "Toxic", status: "red" as const, count: links.filter(linkToxic).length, rows: pl.filter(linkToxic).map(linkRow) },
+    { title: "Live", status: "green" as const, count: links.filter((l) => linkToxic(l) === false).length, rows: pl.filter((l) => linkToxic(l) === false).map(linkRow) },
+  ];
   const lostCount = (data?.links ?? []).filter((l) => l.isLost).length;
 
   return (
@@ -96,7 +123,8 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           <input className={p.search} value={q} onChange={(e) => { setQ(e.target.value); setPg(0); }} placeholder="Filter…" />
         </div>
         {data === null ? <div className={p.empty}>{busy ? "Loading backlinks from DataForSEO…" : "No data."}</div>
-          : tab === "domains" ? (domains.length === 0 ? <div className={p.empty}>No referring domains found.</div> : (
+          : tab === "domains" || tab === "links" ? <LinearList groups={tab === "domains" ? domainGroups : linkGroups} empty="Nothing matches." />
+          : (tab as string) === "domains" ? (domains.length === 0 ? <div className={p.empty}>No referring domains found.</div> : (
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Domain</th><th>Rank</th><th>Backlinks</th><th>Spam score</th><th>First seen</th></tr></thead>
               <tbody>{domains.slice(pg * 100, pg * 100 + 100).map((d) => (
@@ -105,7 +133,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                   <td className={(d.spamScore ?? 0) >= 50 ? p.down : p.num}>{d.spamScore ?? "—"}</td><td className={p.dim}>{day(d.firstSeen)}</td></tr>
               ))}</tbody>
             </table>
-          )) : tab === "links" ? (links.length === 0 ? <div className={p.empty}>No backlinks match.</div> : (
+          )) : (tab as string) === "links" ? (links.length === 0 ? <div className={p.empty}>No backlinks match.</div> : (
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Source page</th><th>Anchor</th><th>Target</th><th>Type</th><th>Rank</th><th>First seen</th><th>Status</th></tr></thead>
               <tbody>{links.slice(pg * 100, pg * 100 + 100).map((l, i) => (

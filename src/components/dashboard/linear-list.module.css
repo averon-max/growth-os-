@@ -1,0 +1,17 @@
+.gh{display:flex;align-items:center;gap:9px;height:36px;padding:0 16px;background:#1c1d1f;border-bottom:1px solid #23252a;color:#f7f8f8;font-size:13px;font-weight:510}
+.gh .n{color:#62666d;font-weight:400}
+.r{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-bottom:1px solid #1d1e21;color:#8a8f98;font-size:13px;cursor:pointer;text-decoration:none}
+.r:hover{background:rgba(255,255,255,.035)}
+.id{width:58px;flex:0 0 auto;color:#62666d;font:12px "JetBrains Mono",ui-monospace,Menlo,monospace}
+.tt{flex:1;min-width:0;overflow:hidden;color:#f7f8f8;font-weight:510;text-overflow:ellipsis;white-space:nowrap}
+.tt span{margin-left:8px;color:#62666d;font-weight:400}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border:1px solid #23252a;border-radius:999px;color:#8a8f98;font-size:12px;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%}
+.m{min-width:56px;flex:0 0 auto;color:#8a8f98;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.d{width:52px;flex:0 0 auto;color:#62666d;font-size:12px;text-align:right;white-space:nowrap}
+.st{width:14px;height:14px;flex:0 0 auto;border-radius:50%;border:1.5px solid currentColor}
+.half{background:conic-gradient(currentColor 0 50%,transparent 50% 100%)}
+.full{background:currentColor}
+.empty{padding:36px 16px;color:#62666d;text-align:center}
+.r:hover .tt{color:#93c5fd}
+.dot{display:none}

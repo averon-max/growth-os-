@@ -1,0 +1,38 @@
+"use client";
+import s from "./linear-list.module.css";
+
+export type LStatus = "red" | "green" | "yellow" | "gray" | "blue";
+export interface LRow { key: string; id?: string; status: LStatus; title: string; hint?: string; pills?: { label: string; dot?: string }[]; metrics?: string[]; date?: string; onClick?: () => void }
+export interface LGroup { title: string; count: number; status: LStatus; rows: LRow[] }
+
+const COLOR: Record<LStatus, string> = { red: "#eb5757", green: "#4cb782", yellow: "#f2c94c", gray: "#62666d", blue: "#5e6ad2" };
+const SHAPE: Record<LStatus, string> = { red: s.half, green: s.full, yellow: s.half, gray: "", blue: s.full };
+
+export function StatusIcon({ status }: { status: LStatus }) {
+  return <span className={`${s.st} ${SHAPE[status]}`} style={{ color: COLOR[status] }} />;
+}
+
+/** Linear-style grouped list: group headers, status icon, mono ID, title + hint, pills and metrics on the right. */
+export function LinearList({ groups, empty = "Nothing here." }: { groups: LGroup[]; empty?: string }) {
+  const visible = groups.filter((g) => g.rows.length > 0);
+  if (visible.length === 0) return <div className={s.empty}>{empty}</div>;
+  return (
+    <>
+      {visible.map((g) => (
+        <div key={g.title}>
+          <div className={s.gh}><StatusIcon status={g.status} />{g.title}<span className={s.n}>{g.count}</span></div>
+          {g.rows.map((r) => (
+            <div key={r.key} className={s.r} onClick={r.onClick} role={r.onClick ? "button" : undefined}>
+              {r.id ? <span className={s.id}>{r.id}</span> : null}
+              <StatusIcon status={r.status} />
+              <span className={s.tt}>{r.title}{r.hint ? <span>· {r.hint}</span> : null}</span>
+              {(r.pills ?? []).map((p) => <span key={p.label} className={s.pill} style={p.dot ? { color: p.dot, borderColor: p.dot + "55" } : undefined}>{p.label}</span>)}
+              {(r.metrics ?? []).map((m, i) => <span key={i} className={s.m}>{m}</span>)}
+              {r.date ? <span className={s.d}>{r.date}</span> : null}
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
