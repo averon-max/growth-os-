@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import type { CompKw, CompStats } from "@/lib/competitors/tracker";
+import { CompetitorsLandscape } from "./competitors-landscape";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -232,7 +233,7 @@ export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; d
       </div>
 
       {current ? <Breakdown key={current.domain} c={current} /> : null}
-      <Matrix mine={mine} comps={list} />
+      <CompetitorsLandscape websiteId={websiteId} tracked={isTracked} onTrack={(d) => void add(d)} />
 
       <div className={u.compactHeader} style={{ marginTop: 22 }}>
         <div>
