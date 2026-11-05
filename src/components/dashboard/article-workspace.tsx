@@ -1,5 +1,6 @@
 "use client";
 
+import ArticleImageDropzone from "@/components/editor/ArticleImageDropzone";
 import {
   slugify,
   formatNumber,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {countWords} from "@/lib/content/article-analyzer";
 
 import {
@@ -60,6 +62,7 @@ import {
 import {
   detectPersistedArticleEditorialRepetitionV1,
 } from "@/lib/content/editorial-repetition-guard-v1";
+import ArticleCodeExport from "./article-code-export";
 
 
 type ArticleState = {
@@ -382,6 +385,9 @@ export function ArticleWorkspace({
     setEditing,
   ] =
     useState(false);
+
+  // ARTICLE_CODE_EXPORT: the article as HTML / Schema / WordPress / React / Markdown / JSON
+  const [codeOpen, setCodeOpen] = useState(false);
 
   const [
     busy,
@@ -1436,6 +1442,17 @@ ${article.bodyMarkdown}`
             )}
           </button>
 
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            aria-pressed={codeOpen}
+            title="Convert this article to HTML, Schema, WordPress, React, Markdown or JSON"
+            onClick={() => setCodeOpen((value) => !value)}
+          >
+            <FileText size={12} />
+            {codeOpen ? "Hide code" : "Code"}
+          </button>
+
           {editing ? (
             <button
               type="button"
@@ -1608,6 +1625,17 @@ ${article.bodyMarkdown}`
         </div>
       ) : null}
 
+      {codeOpen ? (
+        <ArticleCodeExport
+          open
+          markdown={draft.bodyMarkdown}
+          title={draft.h1 || article.title}
+          meta={draft.metaDescription}
+          url={article.publishedUrl ?? undefined}
+          fileName={article.primaryKeyword || article.title}
+        />
+      ) : null}
+
       <div
         className={
           styles.editorGrid
@@ -1703,10 +1731,24 @@ ${article.bodyMarkdown}`
                 />
               </label>
 
+              <ArticleImageDropzone
+                onReplace={(oldMd, newMd) => setDraft((current) => ({ ...current, bodyMarkdown: (current.bodyMarkdown ?? "").split(oldMd).join(newMd) }))}
+                onInsert={(markdown) => {
+                  const el = document.getElementById("article-body-editor") as HTMLTextAreaElement | null;
+                  setDraft((current) => {
+                    const body = current.bodyMarkdown ?? "";
+                    const pos = el ? Math.min(el.selectionStart ?? body.length, body.length) : body.length;
+                    const block = `\n\n${markdown}\n\n`;
+                    requestAnimationFrame(() => { if (el) { el.focus(); el.selectionStart = el.selectionEnd = pos + block.length; } });
+                    return { ...current, bodyMarkdown: body.slice(0, pos) + block + body.slice(pos) };
+                  });
+                }}
+              />
               <label>
                 Article
 
                 <textarea
+                  id="article-body-editor"
                   className={
                     styles.bodyEditor
                   }
@@ -1751,7 +1793,7 @@ ${article.bodyMarkdown}`
                 {draft.h1}
               </h1>
 
-              <ReactMarkdown
+              <ReactMarkdown remarkPlugins={[remarkGfm]}
                 components={{
                   h1: ({
                     children,
@@ -1793,6 +1835,33 @@ ${article.bodyMarkdown}`
                     >
                       {children}
                     </h3>
+                  ),
+                  table: ({ children }) => (
+                    <div style={{ overflowX: "auto", margin: "16px 0" }}>
+                      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "14px" }}>
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  thead: ({ children }) => (
+                    <thead style={{ backgroundColor: "var(--color-surface-2, #f5f5f5)" }}>
+                      {children}
+                    </thead>
+                  ),
+                  th: ({ children }) => (
+                    <th style={{ border: "1px solid var(--color-border, #e0e0e0)", padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td style={{ border: "1px solid var(--color-border, #e0e0e0)", padding: "8px 12px", verticalAlign: "top" }}>
+                      {children}
+                    </td>
+                  ),
+                  tr: ({ children }) => (
+                    <tr style={{ borderBottom: "1px solid var(--color-border, #e0e0e0)" }}>
+                      {children}
+                    </tr>
                   ),
                 }}
               >
