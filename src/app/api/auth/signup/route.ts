@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { rateLimit, ipFrom } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export async function POST(req: NextRequest) {
   try {
+    if (rateLimit("signup:" + ipFrom(req.headers.get("x-forwarded-for")), 5, 60 * 60 * 1000) === false) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    }
     const body = await req.json();
     const { email, password, name } = body as {
       email?: string;
@@ -29,7 +33,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
+    if (password.length < MIN_PASSWORD_LENGTH || password.length > 200) {
       return NextResponse.json(
         { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` },
         { status: 400 }

@@ -4,15 +4,15 @@ import heicConvert from "heic-convert";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { requireUser } from "@/lib/auth-helpers";
 
 export const runtime = "nodejs";
 const MAX_BYTES = 25 * 1024 * 1024;
-const SESSION_COOKIES = ["next-auth.session-token", "__Secure-next-auth.session-token", "authjs.session-token", "__Secure-authjs.session-token"];
 const slug = (s: string) => s.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "image";
 const isHeic = (f: File) => /heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name);
 
 export async function POST(req: NextRequest) {
-  if (!SESSION_COOKIES.some((c) => req.cookies.get(c))) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  try { await requireUser(); } catch { return NextResponse.json({ error: "Not signed in" }, { status: 401 }); }
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
