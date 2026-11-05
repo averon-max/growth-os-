@@ -109,12 +109,12 @@ function positionText(
     value ===
     null
   ) {
-    return "Нет данных";
+    return "No data";
   }
 
   return `≈ ${value.toFixed(
     1
-  )} место`;
+  )} pos.`;
 }
 
 function changeText(
@@ -129,7 +129,7 @@ function changeText(
   ) {
     return {
       text:
-        "Пока нет сравнения",
+        "No comparison yet",
       className:
         styles.flat,
     };
@@ -167,7 +167,7 @@ function changeText(
 
   return {
     text:
-      "Без сильных изменений",
+      "No major changes",
     className:
       styles.flat,
   };
@@ -180,22 +180,22 @@ function meaningText(
     signal
   ) {
     case "TOP":
-      return "Уже очень высоко — важно не потерять позицию.";
+      return "Already near the top. Focus on holding the position.";
 
     case "QUICK_WIN":
-      return "Вы уже близко к верхним результатам. Это хорошая возможность для роста.";
+      return "Close to the top results. A strong growth opportunity.";
 
     case "RISING":
-      return "Запрос уже растёт. Стоит усилить страницу, пока есть движение вверх.";
+      return "This query is climbing. Strengthen the page while it moves up.";
 
     case "DECLINING":
-      return "Позиция падает. Нужно проверить страницу и конкурентов.";
+      return "Position is dropping. Review the page and competitors.";
 
     case "NO_VISIBILITY":
-      return "Google пока почти не показывает сайт по этому запросу.";
+      return "Google rarely shows the site for this query yet.";
 
     default:
-      return "Есть потенциал для роста, но сначала нужно понять, что мешает странице.";
+      return "Room to grow. First find what is holding the page back.";
   }
 }
 
@@ -292,7 +292,7 @@ export function KeywordRankIntelligence({
           ) {
             throw new Error(
               payload.error ??
-                "Не удалось загрузить данные из Google."
+                "Could not load data from Google."
             );
           }
 
@@ -305,7 +305,7 @@ export function KeywordRankIntelligence({
           setError(
             err instanceof Error
               ? err.message
-              : "Не удалось загрузить данные из Google."
+              : "Could not load data from Google."
           );
         } finally {
           setLoading(
@@ -345,7 +345,7 @@ export function KeywordRankIntelligence({
               styles.eyebrow
             }
           >
-            Поиск Google
+            Google Search
           </p>
 
           <h2
@@ -353,7 +353,7 @@ export function KeywordRankIntelligence({
               styles.title
             }
           >
-            Как люди находят ваш сайт
+            How people find your site
           </h2>
 
           <p
@@ -361,9 +361,9 @@ export function KeywordRankIntelligence({
               styles.subtitle
             }
           >
-            Здесь видно, по каким запросам Google показывает ваш сайт,
-            где вы находитесь в результатах и какие запросы проще всего
-            поднять выше.
+            Which queries Google shows your site for,
+            where you rank, and which queries are easiest
+            to move up.
           </p>
         </div>
 
@@ -401,7 +401,7 @@ export function KeywordRankIntelligence({
                       )
                   }
                 >
-                  {value} дней
+                  {value} days
                 </button>
               )
             )
@@ -417,7 +417,7 @@ export function KeywordRankIntelligence({
               styles.loading
             }
           >
-            Загружаем реальные данные Google Search Console…
+            Loading real Google Search Console data…
           </div>
         ) : error ? (
           <div
@@ -433,7 +433,7 @@ export function KeywordRankIntelligence({
               styles.empty
             }
           >
-            Пока нет данных для анализа.
+            No data to analyze yet.
           </div>
         ) : (
           <>
@@ -452,7 +452,7 @@ export function KeywordRankIntelligence({
                     styles.metricLabel
                   }
                 >
-                  Запросов отслеживаем
+                  Tracked queries
                 </span>
 
                 <strong
@@ -470,7 +470,7 @@ export function KeywordRankIntelligence({
                     styles.metricHint
                   }
                 >
-                  Поисковые запросы, найденные системой
+                  Queries found for this site
                 </span>
               </div>
 
@@ -484,7 +484,7 @@ export function KeywordRankIntelligence({
                     styles.metricLabel
                   }
                 >
-                  Показы в Google
+                  Impressions
                 </span>
 
                 <strong
@@ -502,7 +502,7 @@ export function KeywordRankIntelligence({
                     styles.metricHint
                   }
                 >
-                  Сколько раз люди видели ваш сайт
+                  Times your site was shown
                 </span>
               </div>
 
@@ -516,7 +516,7 @@ export function KeywordRankIntelligence({
                     styles.metricLabel
                   }
                 >
-                  В среднем на запрос
+                  Avg per query
                 </span>
 
                 <strong
@@ -534,7 +534,7 @@ export function KeywordRankIntelligence({
                     styles.metricHint
                   }
                 >
-                  Среднее число показов одного запроса
+                  Average impressions per query
                 </span>
               </div>
 
@@ -548,7 +548,7 @@ export function KeywordRankIntelligence({
                     styles.metricLabel
                   }
                 >
-                  Переходы из Google
+                  Clicks
                 </span>
 
                 <strong
@@ -566,7 +566,7 @@ export function KeywordRankIntelligence({
                     styles.metricHint
                   }
                 >
-                  Сколько раз люди открыли ваш сайт
+                  Visits from Google search
                 </span>
               </div>
 
@@ -580,7 +580,7 @@ export function KeywordRankIntelligence({
                     styles.metricLabel
                   }
                 >
-                  Среднее место
+                  Avg position
                 </span>
 
                 <strong
@@ -603,7 +603,7 @@ export function KeywordRankIntelligence({
                     styles.metricHint
                   }
                 >
-                  Чем меньше число, тем выше сайт
+                  Lower is better
                 </span>
               </div>
 
@@ -617,7 +617,7 @@ export function KeywordRankIntelligence({
                     styles.metricLabel
                   }
                 >
-                  На первой странице
+                  Page one
                 </span>
 
                 <strong
@@ -635,7 +635,7 @@ export function KeywordRankIntelligence({
                     styles.metricHint
                   }
                 >
-                  Запросы примерно в Top 10
+                  Queries in the top 10
                 </span>
               </div>
             </div>
@@ -689,7 +689,7 @@ export function KeywordRankIntelligence({
                   styles.summaryItem
                 }
               >
-                Почти на первой странице{" "}
+                Striking distance{" "}
                 <strong>
                   {
                     data.stats.nearFirstPage
@@ -702,7 +702,7 @@ export function KeywordRankIntelligence({
                   styles.summaryItem
                 }
               >
-                Поднялись{" "}
+                Up{" "}
                 <strong>
                   {
                     data.stats.improved
@@ -715,7 +715,7 @@ export function KeywordRankIntelligence({
                   styles.summaryItem
                 }
               >
-                Опустились{" "}
+                Down{" "}
                 <strong>
                   {
                     data.stats.declined
@@ -745,7 +745,7 @@ export function KeywordRankIntelligence({
                         styles.panelTitle
                       }
                     >
-                      Видимость сайта в Google
+                      Google visibility
                     </h3>
 
                     <p
@@ -753,8 +753,8 @@ export function KeywordRankIntelligence({
                         styles.panelCopy
                       }
                     >
-                      Сравниваем все ваши показы со средним количеством
-                      показов одного поискового запроса.
+                      Total impressions compared with the average
+                      impressions of a single query.
                     </p>
                   </div>
 
@@ -768,7 +768,7 @@ export function KeywordRankIntelligence({
                         styles.legendPrimary
                       }
                     >
-                      Ваши показы
+                      Your impressions
                     </span>
 
                     <span
@@ -776,7 +776,7 @@ export function KeywordRankIntelligence({
                         styles.legendSecondary
                       }
                     >
-                      Среднее на запрос
+                      Avg per query
                     </span>
                   </div>
                 </div>
@@ -901,7 +901,7 @@ export function KeywordRankIntelligence({
                         yAxisId="total"
                         type="monotone"
                         dataKey="impressions"
-                        name="Ваши показы"
+                        name="Your impressions"
                         stroke="var(--accent)"
                         strokeWidth={
                           2
@@ -918,7 +918,7 @@ export function KeywordRankIntelligence({
                         yAxisId="average"
                         type="monotone"
                         dataKey="avgImpressions"
-                        name="Среднее на запрос"
+                        name="Avg per query"
                         stroke="var(--secondary)"
                         strokeWidth={
                           1.5
@@ -951,7 +951,7 @@ export function KeywordRankIntelligence({
                       styles.panelTitle
                     }
                   >
-                    Где проще всего вырасти
+                    Easiest wins
                   </h3>
 
                   <p
@@ -959,8 +959,8 @@ export function KeywordRankIntelligence({
                       styles.panelCopy
                     }
                   >
-                    Сначала показываем запросы, где сайт уже близко к
-                    верхним результатам и есть реальный поисковый спрос.
+                    Queries close to the top results with
+                    real search demand, shown first.
                   </p>
                 </div>
 
@@ -982,7 +982,7 @@ export function KeywordRankIntelligence({
                               "28%",
                           }}
                         >
-                          Что ищут
+                          Query
                         </th>
 
                         <th
@@ -991,7 +991,7 @@ export function KeywordRankIntelligence({
                               "16%",
                           }}
                         >
-                          Где вы
+                          Position
                         </th>
 
                         <th
@@ -1000,7 +1000,7 @@ export function KeywordRankIntelligence({
                               "13%",
                           }}
                         >
-                          7 дней
+                          7 days
                         </th>
 
                         <th
@@ -1009,7 +1009,7 @@ export function KeywordRankIntelligence({
                               "12%",
                           }}
                         >
-                          Показы
+                          Impressions
                         </th>
 
                         <th
@@ -1018,7 +1018,7 @@ export function KeywordRankIntelligence({
                               "12%",
                           }}
                         >
-                          Ищут/мес
+                          Volume/mo
                         </th>
 
                         <th
@@ -1027,7 +1027,7 @@ export function KeywordRankIntelligence({
                               "19%",
                           }}
                         >
-                          Что это значит
+                          Insight
                         </th>
                       </tr>
                     </thead>
@@ -1138,10 +1138,10 @@ export function KeywordRankIntelligence({
                 styles.notice
               }
             >
-              “Место в Google” здесь — среднее место по реальным данным
-              Google Search Console. Оно может отличаться у разных людей,
-              устройств и городов. Позже точную проверку конкретной выдачи
-              добавим через Live SERP.
+              Position is the average position from real
+              Google Search Console data. It varies by user,
+              device and location. For an exact check of a specific SERP
+              use Live SERP.
             </div>
           </>
         )

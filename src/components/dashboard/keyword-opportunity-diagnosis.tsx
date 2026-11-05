@@ -124,17 +124,17 @@ function decisionTitle(
     decision ===
     "CREATE"
   ) {
-    return "Создать новую страницу";
+    return "Create a new page";
   }
 
   if (
     decision ===
     "UPDATE"
   ) {
-    return "Улучшить существующую страницу";
+    return "Improve an existing page";
   }
 
-  return "Пока ничего не менять";
+  return "No change for now";
 }
 
 function decisionLabel(
@@ -294,7 +294,7 @@ export function KeywordOpportunityDiagnosis({
             ) {
               throw new Error(
                 data.error ??
-                  "Не удалось построить план."
+                  "Could not build the plan."
               );
             }
 
@@ -318,7 +318,7 @@ export function KeywordOpportunityDiagnosis({
               setError(
                 err instanceof Error
                   ? err.message
-                  : "Не удалось построить план."
+                  : "Could not build the plan."
               );
             }
           } finally {
@@ -419,7 +419,7 @@ export function KeywordOpportunityDiagnosis({
         ) {
           throw new Error(
             data.error ??
-              "Не удалось подготовить страницу."
+              "Could not prepare the page."
           );
         }
 
@@ -432,7 +432,7 @@ export function KeywordOpportunityDiagnosis({
         setOutcomeBriefError(
           err instanceof Error
             ? err.message
-            : "Не удалось подготовить страницу."
+            : "Could not prepare the page."
         );
       } finally {
         setCreatingOutcomeBrief(
@@ -495,7 +495,7 @@ export function KeywordOpportunityDiagnosis({
         ) {
           throw new Error(
             data.error ??
-              "Не удалось сохранить план."
+              "Could not save the plan."
           );
         }
 
@@ -508,7 +508,7 @@ export function KeywordOpportunityDiagnosis({
         setStartError(
           err instanceof Error
             ? err.message
-            : "Не удалось сохранить план."
+            : "Could not save the plan."
         );
       } finally {
         setStartingAction(
@@ -542,7 +542,7 @@ export function KeywordOpportunityDiagnosis({
               styles.title
             }
           >
-            Что делать по запросу «{keyword}»
+            What to do for “{keyword}”
           </h3>
 
           <p
@@ -550,9 +550,9 @@ export function KeywordOpportunityDiagnosis({
               styles.subtitle
             }
           >
-            Решение основано на вашем сайте,
-            сохранённой Google-выдаче и реально
-            прочитанных страницах конкурентов.
+            Based on your site,
+            the saved Google results and competitor
+            pages that were actually read.
           </p>
         </div>
 
@@ -565,7 +565,7 @@ export function KeywordOpportunityDiagnosis({
             onClose
           }
         >
-          Закрыть
+          Close
         </button>
       </div>
 
@@ -576,7 +576,7 @@ export function KeywordOpportunityDiagnosis({
               styles.state
             }
           >
-            Анализируем доказательства и строим план…
+            Analyzing evidence and building the plan…
           </div>
         ) : error ? (
           <div
@@ -669,17 +669,17 @@ export function KeywordOpportunityDiagnosis({
                         {
                           startedAction.compatibilityStatus ===
                           "UNVERIFIED"
-                            ? "Сначала подтвердите услугу"
+                            ? "Confirm the service first"
                             : startedAction.compatibilityStatus ===
                                 "CONFLICT"
-                              ? "Действие заблокировано"
+                              ? "Action blocked"
                               : startedAction.compatibilityStatus ===
                                   "EDUCATIONAL_ONLY"
-                                ? "Только образовательный материал"
+                                ? "Educational content only"
                                 : actionPlan.decision ===
                                     "SKIP"
-                                  ? "Решение сохранено"
-                                  : "План сохранён и готов"
+                                  ? "Decision saved"
+                                  : "Plan saved and ready"
                         }
                       </strong>
 
@@ -706,7 +706,7 @@ export function KeywordOpportunityDiagnosis({
                               startedAction.id
                             )}`}
                           >
-                            Проверить данные бизнеса
+                            Review business details
                           </a>
                         )
                       }
@@ -734,11 +734,11 @@ export function KeywordOpportunityDiagnosis({
                                     }
                                   >
                                     <strong>
-                                      План страницы готов
+                                      Page plan ready
                                     </strong>
 
                                     <span>
-                                      Основная тема:{" "}
+                                      Main topic:{" "}
                                       {
                                         createdOutcomeBrief.primaryKeyword
                                       }
@@ -753,7 +753,7 @@ export function KeywordOpportunityDiagnosis({
                                       websiteId
                                     )}`}
                                   >
-                                    Открыть Content
+                                    Open Content
                                   </a>
                                 </>
                               ) : (
@@ -773,11 +773,11 @@ export function KeywordOpportunityDiagnosis({
                                 >
                                   {
                                     creatingOutcomeBrief
-                                      ? "Подготавливаем…"
+                                      ? "Preparing…"
                                       : startedAction.compatibilityStatus ===
                                           "EDUCATIONAL_ONLY"
-                                        ? "Создать образовательную страницу"
-                                        : "Создать страницу"
+                                        ? "Create an educational page"
+                                        : "Create page"
                                   }
                                 </button>
                               )
@@ -815,11 +815,11 @@ export function KeywordOpportunityDiagnosis({
                     >
                       {
                         startingAction
-                          ? "Сохраняем…"
+                          ? "Saving…"
                           : actionPlan.decision ===
                               "SKIP"
-                            ? "Сохранить решение"
-                            : "Начать работу"
+                            ? "Save decision"
+                            : "Start"
                       }
                     </button>
                   )
@@ -857,7 +857,7 @@ export function KeywordOpportunityDiagnosis({
                   {
                     diagnosis.liveRank ===
                     null
-                      ? "Не в Top 100"
+                      ? "Not in top 100"
                       : `#${diagnosis.liveRank}`
                   }
                 </strong>
@@ -867,7 +867,7 @@ export function KeywordOpportunityDiagnosis({
                     styles.metaLabel
                   }
                 >
-                  Google сейчас
+                  Google now
                 </span>
               </div>
 
@@ -891,7 +891,7 @@ export function KeywordOpportunityDiagnosis({
                     styles.metaLabel
                   }
                 >
-                  страниц сайта проверено
+                  site pages checked
                 </span>
               </div>
 
@@ -915,7 +915,7 @@ export function KeywordOpportunityDiagnosis({
                     styles.metaLabel
                   }
                 >
-                  конкурентов прочитано
+                  competitors read
                 </span>
               </div>
 
@@ -939,7 +939,7 @@ export function KeywordOpportunityDiagnosis({
                     styles.metaLabel
                   }
                 >
-                  подтверждённых content gaps
+                  confirmed content gaps
                 </span>
               </div>
             </div>
@@ -959,7 +959,7 @@ export function KeywordOpportunityDiagnosis({
                     styles.sectionTitle
                   }
                 >
-                  Почему такое решение
+                  Why this decision
                 </h4>
 
                 <div
@@ -1007,7 +1007,7 @@ export function KeywordOpportunityDiagnosis({
                           styles.contextLabel
                         }
                       >
-                        Ближайшая существующая страница
+                        Closest existing page
                       </div>
 
                       <div
@@ -1025,7 +1025,7 @@ export function KeywordOpportunityDiagnosis({
                           styles.contextSub
                         }
                       >
-                        Совпадение с темой:{" "}
+                        Topic match:{" "}
                         {
                           diagnosis.ownPage.relevanceScore ===
                           null
@@ -1049,7 +1049,7 @@ export function KeywordOpportunityDiagnosis({
                       18,
                   }}
                 >
-                  Что подтверждено конкурентами
+                  What competitors confirm
                 </h4>
 
                 {
@@ -1060,8 +1060,8 @@ export function KeywordOpportunityDiagnosis({
                         styles.emptyEvidence
                       }
                     >
-                      Подтверждённых общих content gaps пока нет.
-                      Growth OS не будет придумывать секции без достаточных доказательств.
+                      No confirmed shared content gaps yet.
+                      Growth OS will not invent sections without enough evidence.
                     </div>
                   ) : (
                     actionPlan.evidenceBackedTopics.map(
@@ -1091,10 +1091,10 @@ export function KeywordOpportunityDiagnosis({
                               styles.body
                             }
                           >
-                            Подтверждено на{" "}
+                            Confirmed on{" "}
                             {
                               topic.competitorCoverage
-                            } конкурентных страницах.
+                            } competitor pages.
                           </div>
                         </div>
                       )
@@ -1111,7 +1111,7 @@ export function KeywordOpportunityDiagnosis({
                       18,
                   }}
                 >
-                  Проверенные конкуренты
+                  Checked competitors
                 </h4>
 
                 {
@@ -1144,7 +1144,7 @@ export function KeywordOpportunityDiagnosis({
                           >
                             {
                               competitor.fetched
-                                ? "прочитано"
+                                ? "read"
                                 : "SERP only"
                             }
                           </span>
@@ -1175,7 +1175,7 @@ export function KeywordOpportunityDiagnosis({
                     styles.sectionTitle
                   }
                 >
-                  План действий
+                  Action plan
                 </h4>
 
                 {
@@ -1280,7 +1280,7 @@ export function KeywordOpportunityDiagnosis({
                       styles.measurementTitle
                     }
                   >
-                    Как проверим результат
+                    How we measure results
                   </div>
 
                   <div
@@ -1301,7 +1301,7 @@ export function KeywordOpportunityDiagnosis({
                               styles.checkpoint
                             }
                           >
-                            {day} дней
+                            {day} days
                           </span>
                         )
                       )
@@ -1313,8 +1313,8 @@ export function KeywordOpportunityDiagnosis({
                       styles.body
                     }
                   >
-                    Позиция, показы, клики и CTR — когда данные доступны.
-                    Сравниваем с baseline, но не обещаем причинность или конкретный рост.
+                    Position, impressions, clicks and CTR, when data is available.
+                    Compared with a baseline; no causality or specific growth is promised.
                   </div>
                 </div>
 
@@ -1324,7 +1324,7 @@ export function KeywordOpportunityDiagnosis({
                   }
                 >
                   <summary>
-                    Технические детали
+                    Technical details
                   </summary>
 
                   <div
@@ -1341,7 +1341,7 @@ export function KeywordOpportunityDiagnosis({
                     </div>
 
                     <div>
-                      Это только наблюдение, не целевой объём текста.
+                      Observation only, not a target word count.
                     </div>
 
                     <div

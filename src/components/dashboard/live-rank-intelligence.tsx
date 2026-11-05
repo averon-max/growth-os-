@@ -92,7 +92,7 @@ function statusCopy(
     case "TOP_3":
       return {
         text:
-          "Вы уже среди самых заметных результатов. Главное — удержать позицию.",
+          "Among the most visible results. Hold the position.",
         className:
           styles.good,
       };
@@ -100,7 +100,7 @@ function statusCopy(
     case "FIRST_PAGE":
       return {
         text:
-          "Вы уже на первой странице Google. Есть смысл усилить страницу и двигаться выше.",
+          "On Google's first page. Strengthen the page to move higher.",
         className:
           styles.good,
       };
@@ -108,7 +108,7 @@ function statusCopy(
     case "NEAR_FIRST_PAGE":
       return {
         text:
-          "Вы очень близко к первой странице. Это одна из лучших возможностей для роста.",
+          "Very close to page one. One of the best growth opportunities.",
         className:
           styles.warn,
       };
@@ -116,7 +116,7 @@ function statusCopy(
     case "BUILDING":
       return {
         text:
-          "Google уже видит вашу страницу, но ей ещё нужно усиление, чтобы приблизиться к первой странице.",
+          "Google sees the page, but it needs strengthening to reach page one.",
         className:
           styles.warn,
       };
@@ -124,7 +124,7 @@ function statusCopy(
     case "LOW_VISIBILITY":
       return {
         text:
-          "Сайт показывается по этому запросу, но пока находится далеко от верхних результатов.",
+          "The site shows for this query but is far from the top results.",
         className:
           styles.bad,
       };
@@ -132,7 +132,7 @@ function statusCopy(
     case "CHECK_FAILED":
       return {
         text:
-          "Не удалось проверить этот запрос сейчас. Остальные результаты всё равно доступны.",
+          "Could not check this query right now. Other results are still available.",
         className:
           styles.bad,
       };
@@ -140,7 +140,7 @@ function statusCopy(
     default:
       return {
         text:
-          "Ваш сайт пока не найден среди первых 100 обычных результатов Google по этому запросу.",
+          "Not in Google's top 100 organic results for this query yet.",
         className:
           styles.bad,
       };
@@ -153,16 +153,16 @@ function priorityCopy(
   if (
     priority === "HIGH"
   ) {
-    return "Хорошая возможность";
+    return "Good opportunity";
   }
 
   if (
     priority === "MEDIUM"
   ) {
-    return "Стоит изучить";
+    return "Worth a look";
   }
 
-  return "Долгосрочно";
+  return "Long term";
 }
 
 export function LiveRankIntelligence({
@@ -261,7 +261,7 @@ export function LiveRankIntelligence({
           ) {
             throw new Error(
               data.error ??
-                "Не удалось загрузить проверку позиций."
+                "Could not load the rank check."
             );
           }
 
@@ -275,7 +275,7 @@ export function LiveRankIntelligence({
           setError(
             err instanceof Error
               ? err.message
-              : "Не удалось загрузить проверку позиций."
+              : "Could not load the rank check."
           );
         } finally {
           setLoading(
@@ -335,7 +335,7 @@ export function LiveRankIntelligence({
         ) {
           throw new Error(
             data.error ??
-              "Не удалось проверить позиции."
+              "Could not check positions."
           );
         }
 
@@ -348,7 +348,7 @@ export function LiveRankIntelligence({
         setError(
           err instanceof Error
             ? err.message
-            : "Не удалось проверить позиции."
+            : "Could not check positions."
         );
       } finally {
         setRefreshing(
@@ -438,7 +438,7 @@ export function LiveRankIntelligence({
                   -2,
               }}
             />
-            Где вы сейчас в Google
+            Where you rank in Google now
           </h2>
 
           <p
@@ -446,8 +446,8 @@ export function LiveRankIntelligence({
               styles.copy
             }
           >
-            Growth OS берёт реальные поисковые запросы для вашего бизнеса
-            и проверяет, на каком месте сайт находится прямо сейчас.
+            Growth OS takes real search queries for your business
+            and checks where the site ranks right now.
           </p>
         </div>
 
@@ -466,10 +466,10 @@ export function LiveRankIntelligence({
         >
           {
             refreshing
-              ? "Проверяем Google…"
+              ? "Checking Google…"
               : report
-                ? "Обновить позиции"
-                : "Проверить позиции"
+                ? "Refresh positions"
+                : "Check positions"
           }
         </button>
       </div>
@@ -493,7 +493,7 @@ export function LiveRankIntelligence({
               styles.state
             }
           >
-            Проверяем, есть ли сохранённые результаты…
+            Looking for saved results…
           </div>
         ) : !report ? (
           <div
@@ -501,9 +501,9 @@ export function LiveRankIntelligence({
               styles.state
             }
           >
-            Нажмите «Проверить позиции». Growth OS найдёт несколько
-            важных поисковых запросов для вашего бизнеса и проверит сайт
-            среди первых 100 результатов Google.
+            Click “Check positions”. Growth OS will pick a few
+            important queries for your business and check the site
+            against Google's top 100 results.
           </div>
         ) : (
           <>
@@ -532,7 +532,7 @@ export function LiveRankIntelligence({
                     styles.statLabel
                   }
                 >
-                  запросов проверено
+                  queries checked
                 </span>
               </div>
 
@@ -556,7 +556,7 @@ export function LiveRankIntelligence({
                     styles.statLabel
                   }
                 >
-                  уже на первой странице
+                  on page one
                 </span>
               </div>
 
@@ -580,7 +580,7 @@ export function LiveRankIntelligence({
                     styles.statLabel
                   }
                 >
-                  очень близко к первой странице
+                  close to page one
                 </span>
               </div>
 
@@ -604,7 +604,7 @@ export function LiveRankIntelligence({
                     styles.statLabel
                   }
                 >
-                  хорошие возможности для роста
+                  growth opportunities
                 </span>
               </div>
             </div>
@@ -627,7 +627,7 @@ export function LiveRankIntelligence({
                           "21%",
                       }}
                     >
-                      Что ищут
+                      Query
                     </th>
 
                     <th
@@ -636,7 +636,7 @@ export function LiveRankIntelligence({
                           "12%",
                       }}
                     >
-                      Ваше место
+                      Your position
                     </th>
 
                     <th
@@ -645,7 +645,7 @@ export function LiveRankIntelligence({
                           "10%",
                       }}
                     >
-                      Ищут/мес
+                      Volume/mo
                     </th>
 
                     <th
@@ -654,7 +654,7 @@ export function LiveRankIntelligence({
                           "10%",
                       }}
                     >
-                      Сложность
+                      Difficulty
                     </th>
 
                     <th
@@ -663,7 +663,7 @@ export function LiveRankIntelligence({
                           "47%",
                       }}
                     >
-                      Что это значит
+                      Insight
                     </th>
                   </tr>
                 </thead>
@@ -718,11 +718,11 @@ export function LiveRankIntelligence({
                                 {
                                   item.status ===
                                   "CHECK_FAILED"
-                                    ? "Ошибка"
+                                    ? "Error"
                                     : item.rank ===
                                         null
-                                      ? "Не в Top 100"
-                                      : `${item.rank} место`
+                                      ? "Not in top 100"
+                                      : `#${item.rank}`
                                 }
                               </span>
                             </td>
@@ -764,7 +764,7 @@ export function LiveRankIntelligence({
                                     )
                                 }
                               >
-                                Почему я не выше?
+                                Why not higher?
                               </button>
 
                               {
@@ -779,7 +779,7 @@ export function LiveRankIntelligence({
                                     }
                                   >
                                     <summary>
-                                      Детали
+                                      Details
                                     </summary>
 
                                     <div
@@ -790,7 +790,7 @@ export function LiveRankIntelligence({
                                       {
                                         item.rankingUrl && (
                                           <>
-                                            В Google ранжируется ваша страница:
+                                            Your ranking page:
                                             <span
                                               className={
                                                 styles.url
@@ -813,7 +813,7 @@ export function LiveRankIntelligence({
                                                 7,
                                             }}
                                           >
-                                            Выше в результатах:
+                                            Ranking above you:
                                             {
                                               item.competitors
                                                 .slice(
@@ -877,11 +877,11 @@ export function LiveRankIntelligence({
               }
             >
               <span>
-                Проверено для {report.marketLabel} · desktop · первые 100 результатов.
+                Checked for {report.marketLabel} · desktop · top 100 results.
               </span>
 
               <span>
-                Последняя проверка:{" "}
+                Last check:{" "}
                 {
                   new Date(
                     report.checkedAt
