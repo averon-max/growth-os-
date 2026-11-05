@@ -53,3 +53,5 @@
 .drawerHead{position:sticky;top:0;z-index:1;height:48px;padding:0 14px 0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--background);color:var(--secondary);font-size:12px}
 .close{width:28px;height:28px;display:grid;place-items:center;border:1px solid transparent;border-radius:6px;background:none;color:var(--muted);cursor:pointer}
 .close:hover{border-color:var(--border);color:var(--primary)}
+.textTrigger{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 10px;border:1px solid rgba(59,130,246,.35);border-radius:6px;background:var(--accent-soft);color:#93c5fd;font-size:12px;font-weight:550;cursor:pointer;white-space:nowrap}
+.textTrigger:hover{border-color:#3b82f6;color:#fff}

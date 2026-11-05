@@ -62,6 +62,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
           Content
         </Link>
 
+        <ArticleWorkspace
+          qualityMinimumWords={0}
+          initialArticle={{
+            id: article.id,
+            websiteId: article.brief.websiteId,
+            title: article.title,
+            metaDescription: article.metaDescription,
+            h1: article.h1,
+            bodyMarkdown: article.bodyMarkdown,
+            status: article.status,
+            publishedUrl: article.publishedUrl,
+            publishedAt: article.publishedAt?.toISOString() ?? null,
+            updatedAt: article.updatedAt.toISOString(),
+            topic: article.brief.topic,
+            primaryKeyword: article.brief.primaryKeyword,
+            searchIntent: article.brief.searchIntent,
+          }}
+        />
+
         <div className={s.wrap}>
           <section className={s.card} aria-label="Article statistics">
             <div className={s.head}><span>Article statistics</span><span className={s.badge}>{article.brief.searchIntent}</span></div>
@@ -95,25 +114,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
             </section>
           ) : null}
         </div>
-
-        <ArticleWorkspace
-          qualityMinimumWords={0}
-          initialArticle={{
-            id: article.id,
-            websiteId: article.brief.websiteId,
-            title: article.title,
-            metaDescription: article.metaDescription,
-            h1: article.h1,
-            bodyMarkdown: article.bodyMarkdown,
-            status: article.status,
-            publishedUrl: article.publishedUrl,
-            publishedAt: article.publishedAt?.toISOString() ?? null,
-            updatedAt: article.updatedAt.toISOString(),
-            topic: article.brief.topic,
-            primaryKeyword: article.brief.primaryKeyword,
-            searchIntent: article.brief.searchIntent,
-          }}
-        />
       </div>
     </>
   );

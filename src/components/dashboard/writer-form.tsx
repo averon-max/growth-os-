@@ -21,8 +21,8 @@ function stats(r: Result) {
   return { words, read: Math.max(1, Math.round(words / 230)), h2, faq, links, tables, score: typeof raw === "number" ? raw : null };
 }
 
-export function WriterForm({ websiteId, onSuccess }: { websiteId: string; onSuccess?: () => void }) {
-  const [keyword, setKeyword] = useState("");
+export function WriterForm({ websiteId, onSuccess, initialKeyword }: { websiteId: string; onSuccess?: () => void; initialKeyword?: string }) {
+  const [keyword, setKeyword] = useState(initialKeyword ?? "");
   const [category, setCategory] = useState<ArticleCategory>("definition");
   const [exact, setExact] = useState(false);
   const [loading, setLoading] = useState(false);
