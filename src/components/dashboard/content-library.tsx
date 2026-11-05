@@ -15,6 +15,31 @@ export interface LibraryArticle {
 }
 export interface LibraryOpportunity { id: string; title: string; reason: string; score: number }
 
+function articleType(a: LibraryArticle): { label: string; dot?: string } {
+  const t = (a.title || "").toLowerCase();
+  if (a.publishError) return { label: "Error", dot: "#eb5757" };
+  if (/step[- ]by[- ]step/.test(t)) return { label: "Step-by-step", dot: "#f2994a" };
+  if (/complete|ultimate|guide/.test(t)) return { label: "Guide", dot: "#4cb782" };
+  if (/^how (to|do)/.test(t)) return { label: "How-to", dot: "#f2c94c" };
+  if (/^\d+ |best |top /.test(t)) return { label: "List", dot: "#d0d6e0" };
+  return { label: "Article", dot: "#8a8f98" };
+}
+function cleanError(e: string): string {
+  const code = e.match(/^(.*?API error \d{3})/i)?.[1];
+  const msg = e.match(/"message"\s*:\s*"([^"]+)"/)?.[1];
+  return [code, msg].filter(Boolean).join(" — ") || e;
+}
+function oppTag(title: string): { label: string; dot: string } {
+  const t = title.toLowerCase();
+  if (/meta|title tag|description/.test(t)) return { label: "Meta", dot: "#60a5fa" };
+  if (/canonical|redirect|index|crawl|speed/.test(t)) return { label: "Technical", dot: "#f2994a" };
+  if (/structured|schema|rich/.test(t)) return { label: "Schema", dot: "#4cb782" };
+  if (/thin|expand|content|word/.test(t)) return { label: "Content", dot: "#f2c94c" };
+  if (/link/.test(t)) return { label: "Links", dot: "#d0d6e0" };
+  return { label: "SEO", dot: "#8a8f98" };
+}
+
+
 type Filter = "all" | "failed" | "draft" | "approved" | "published";
 const group = (st: string): Exclude<Filter, "all"> =>
   st === "PUBLISHED" ? "published" : st === "APPROVED" ? "approved" : st === "PUBLISH_FAILED" || st === "REJECTED" || st === "BLOCKED_EXTERNAL" ? "failed" : "draft";
@@ -64,8 +89,8 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
 
   const row = (a: LibraryArticle, i: number): LRow => ({
     key: a.id, id: `ART-${articles.indexOf(a) + 1 || i + 1}`, status: META[group(a.status)].status, title: a.title || "Untitled article",
-    hint: a.publishError ? a.publishError : a.keyword,
-    pills: [{ label: a.intent }],
+    hint: a.publishError ? cleanError(a.publishError) : a.keyword,
+    pills: [articleType(a), { label: a.intent }],
     metrics: [`${a.words.toLocaleString()} w`], date: a.updated,
     onClick: () => router.push(`/dashboard/content/articles/${a.id}`),
     actions: (
@@ -80,7 +105,7 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
   const oppGroups: LGroup[] = [{
     title: "Content opportunities", status: "yellow", count: opportunities.length,
     rows: opportunities.map((o, i) => ({
-      key: o.id, id: `OPP-${i + 1}`, status: written.has(o.title.toLowerCase().trim()) ? "green" : "yellow", title: o.title, hint: o.reason, metrics: [`score ${Math.round(o.score)}`],
+      key: o.id, id: `OPP-${i + 1}`, status: written.has(o.title.toLowerCase().trim()) ? "green" : "yellow", title: o.title, hint: o.reason, pills: [oppTag(o.title)], metrics: [`score ${Math.round(o.score)}`],
       actions: written.has(o.title.toLowerCase().trim()) ? <span className={p.up}>Written</span> : websiteId ? <WriterButton websiteId={websiteId} initialKeyword={o.title} label="Write" compact /> : null,
     })),
   }];

@@ -2030,3 +2030,91 @@
 .primaryButton { background: #3b82f6 !important; color: #fff !important; }
 .primaryButton:hover { background: #4f8ff7 !important; }
 .table tbody tr[data-click]:hover td:first-child { color: #93c5fd !important; }
+
+/* ===== v16: всё как список Content (LinearList) ===== */
+.dataList, .group, .contentSection, .card, .formCard, .scoreCard, .progressCard, .issueTable {
+  border: 1px solid #23252a !important; border-radius: 10px !important; background: #141516 !important;
+  box-shadow: none !important; overflow: hidden !important;
+}
+.dataList { margin-top: 0 !important; padding: 0 !important; display: block !important; }
+.sectionBar, .groupHeader, .contentSectionHeader, .issueTableHead {
+  min-height: 40px !important; padding: 0 16px !important; display: flex !important; align-items: center !important; gap: 9px !important;
+  border: 1px solid #23252a !important; border-bottom: 0 !important; border-radius: 10px 10px 0 0 !important;
+  background: #1c1d1f !important; box-shadow: none !important;
+}
+.group .groupHeader, .contentSection .contentSectionHeader, .issueTable .issueTableHead { border: 0 !important; border-bottom: 1px solid #23252a !important; border-radius: 0 !important; }
+.sectionBar + .dataList { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+.sectionTitle, .groupLabel, .contentSectionTitle { color: #f7f8f8 !important; font-size: 13px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.sectionCount, .groupCount, .contentSectionMeta { color: #62666d !important; font-size: 13px !important; font-weight: 400 !important; background: none !important; border: 0 !important; padding: 0 !important; }
+.sectionIcon { color: #8a8f98 !important; }
+
+.dataRow, .issueRow, .opportunityRow, .issueTableRow, .contentArticleRow, .contentOpportunityRow {
+  min-height: 48px !important; padding: 8px 16px !important; gap: 12px !important;
+  border: 0 !important; border-bottom: 1px solid #1d1e21 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important; transition: background 100ms ease !important;
+}
+.dataRow:last-child, .issueRow:last-child, .opportunityRow:last-child, .issueTableRow:last-child { border-bottom: 0 !important; }
+.dataRow:hover, .issueRow:hover, .opportunityRow:hover, .issueTableRow:hover { background: rgba(255,255,255,.035) !important; }
+.dataRow::before, .dataRow::after, .issueRow::before, .issueRow::after { display: none !important; }
+.dataIdentity, .issueMain, .issueIdentity, .summaryIdentity { gap: 12px !important; align-items: center !important; min-width: 0 !important; }
+.dataTitle, .issueTitle, .opportunityTop, .contentArticleMain { color: #f7f8f8 !important; font-size: 13px !important; font-weight: 510 !important; letter-spacing: 0 !important; }
+.dataRow:hover .dataTitle, .issueRow:hover .issueTitle, .opportunityRow:hover .opportunityTop { color: #93c5fd !important; }
+.dataSecondary, .issueDesc, .opportunityBody, .contentArticleMeta { margin-top: 2px !important; color: #62666d !important; font-size: 12.5px !important; font-weight: 400 !important; }
+.dataValue, .issueMeta, .opportunityMeta { gap: 10px !important; color: #8a8f98 !important; font-size: 13px !important; font-variant-numeric: tabular-nums; }
+.siteIcon, .rowIcon {
+  width: 26px !important; height: 26px !important; border: 1px solid #23252a !important; border-radius: 7px !important;
+  background: #1c1d1f !important; color: #8a8f98 !important; box-shadow: none !important;
+}
+
+/* статус — как в Content: круг, половина, полный */
+.issueDot, .statusMark, .contentPriorityDot {
+  width: 14px !important; height: 14px !important; flex: 0 0 auto !important; border-radius: 50% !important;
+  border: 1.5px solid currentColor !important; background: transparent !important; box-shadow: none !important; color: #62666d;
+}
+.issueDot::before, .issueDot::after, .statusMark::before, .statusMark::after { display: none !important; }
+.issueDot[data-tone="success"], .statusgood { color: #4cb782 !important; background: currentColor !important; }
+.issueDot[data-tone="accent"], .statusaccent { color: #3b82f6 !important; background: currentColor !important; }
+.issueDot[data-tone="warning"], .statuswarn { color: #f2c94c !important; background: conic-gradient(currentColor 0 50%, transparent 50% 100%) !important; }
+.issueDot[data-tone="danger"], .statusbad, .statusdanger { color: #eb5757 !important; background: conic-gradient(currentColor 0 50%, transparent 50% 100%) !important; }
+.issueDot[data-tone="muted"], .statusmuted { color: #62666d !important; background: transparent !important; }
+
+/* бейджи — разные цвета по смыслу */
+.badge, .scorePill, .priorityLabel, .severityLabel {
+  height: 22px !important; padding: 0 8px !important; display: inline-flex !important; align-items: center !important;
+  border: 1px solid #23252a !important; border-radius: 999px !important; background: transparent !important;
+  color: #8a8f98 !important; font-size: 12px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; box-shadow: none !important;
+}
+.badgeDanger, .severitydanger, .prioritydanger { color: #eb5757 !important; border-color: rgba(235,87,87,.28) !important; background: rgba(235,87,87,.08) !important; }
+.badgeWarning, .severitywarning, .prioritywarning { color: #f2c94c !important; border-color: rgba(242,201,76,.28) !important; background: rgba(242,201,76,.08) !important; }
+.badgeSuccess { color: #4cb782 !important; border-color: rgba(76,183,130,.28) !important; background: rgba(76,183,130,.08) !important; }
+.badgeAccent, .severityaccent, .priorityaccent, .scorePill { color: #60a5fa !important; border-color: rgba(96,165,250,.28) !important; background: rgba(96,165,250,.08) !important; }
+.badgeMuted, .severitymuted, .prioritymuted { color: #8a8f98 !important; border-color: #23252a !important; background: transparent !important; }
+
+/* кнопки в строках — как Approve/Write */
+.rowAction, .textButton, .toolbarButton, .issueAction, .groupHeaderAction, .summaryAction, .emptyAction {
+  height: 28px !important; padding: 0 10px !important; display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  border: 1px solid #23252a !important; border-radius: 7px !important; background: #1c1d1f !important; box-shadow: none !important;
+  color: #f7f8f8 !important; font-size: 12.5px !important; font-weight: 510 !important; text-decoration: none !important; white-space: nowrap;
+}
+.rowAction:hover, .textButton:hover, .toolbarButton:hover, .issueAction:hover, .groupHeaderAction:hover, .summaryAction:hover, .emptyAction:hover { border-color: rgba(59,130,246,.45) !important; }
+
+/* метрики на Overview — как чипы-блоки */
+.metricRow { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; gap: 0 !important; margin: 0 0 28px !important;
+  border: 1px solid #23252a !important; border-radius: 10px !important; background: #141516 !important; overflow: hidden !important; box-shadow: none !important; }
+.metric { padding: 14px 16px !important; border: 0 !important; border-right: 1px solid #1d1e21 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.metric:last-child { border-right: 0 !important; }
+.metricLabel { color: #8a8f98 !important; font-size: 12.5px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.metric strong { display: block; margin-top: 6px !important; color: #f7f8f8 !important; font-size: 22px !important; font-weight: 590 !important; letter-spacing: -.02em !important; }
+.metric strong[data-danger="true"] { color: #eb5757 !important; }
+
+/* пустые состояния и формы */
+.emptyState { border: 1px dashed #23252a !important; border-radius: 10px !important; background: transparent !important; box-shadow: none !important; }
+.emptyIconWrap { border: 1px solid #23252a !important; border-radius: 8px !important; background: #1c1d1f !important; box-shadow: none !important; }
+.emptyTitle { color: #f7f8f8 !important; font-size: 14px !important; font-weight: 510 !important; }
+.emptyDescription { color: #8a8f98 !important; font-size: 13px !important; }
+.formLabel { color: #d0d6e0 !important; font-size: 12.5px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.formInput { height: 34px !important; border: 1px solid #23252a !important; border-radius: 7px !important; background: #101112 !important; color: #f7f8f8 !important; font-size: 13px !important; box-shadow: none !important; }
+.formInput:focus { border-color: #3b82f6 !important; box-shadow: none !important; }
+.heroTitle, .pageTitle { color: #f7f8f8 !important; font-size: 24px !important; font-weight: 590 !important; letter-spacing: -.022em !important; }
+.heroSubtitle, .pageSubtitle { color: #8a8f98 !important; font-size: 14px !important; }
+.eyebrow { color: #8a8f98 !important; font-size: 12.5px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; }
