@@ -2060,3 +2060,24 @@
 .table th { height: 34px !important; }
 .table tbody tr[data-click] { cursor: pointer; }
 .table tbody tr[data-click]:hover { background: rgba(59,130,246,.06) !important; }
+
+/* ===== Linear surfaces ===== */
+.statGrid, .group, .table, .card, .contentSection { border: 1px solid #1d1e22 !important; border-radius: 8px !important; background: transparent !important; box-shadow: none !important; }
+.statGrid::before, .group::before, .group::after, .statGrid::after { display: none !important; }
+.statCard + .statCard { border-left: 1px solid #1d1e22 !important; }
+.statCard { padding: 14px 16px !important; min-height: 0 !important; }
+.statLabel { color: #6b6f76 !important; font-size: 11px !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.statValue { color: #e6e7e9 !important; font-size: 22px !important; font-weight: 560 !important; letter-spacing: -.02em !important; background: none !important; }
+.statHeader { margin-bottom: 8px !important; }
+.groupHeader { background: transparent !important; border-bottom-color: #1d1e22 !important; }
+.table thead { background: transparent !important; }
+.table th { height: 32px !important; color: #6b6f76 !important; font-size: 11px !important; font-weight: 500 !important; border-bottom: 1px solid #1d1e22 !important; }
+.table td { height: 36px !important; color: #c9ccd1 !important; font-size: 12.5px !important; border-bottom: 1px solid rgba(255,255,255,.035) !important; }
+.table td:first-child { color: #e6e7e9 !important; font-weight: 450 !important; }
+.table tbody tr:hover, .table tbody tr[data-click]:hover { background: rgba(255,255,255,.025) !important; }
+.compactTitle { color: #ececee !important; font-size: 15px !important; font-weight: 560 !important; }
+.compactMeta { color: #6b6f76 !important; font-size: 12px !important; }
+.pageBody { padding: 20px 24px 40px !important; }
+.pageBody::before, .pageBody::after { display: none !important; }
+.badge { border-radius: 5px !important; }
+.primaryButton { border-radius: 6px !important; background: #3b82f6 !important; border-color: transparent !important; box-shadow: none !important; }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Bot, Compass, FileText, Globe2, LayoutDashboard, Link2, Plug, ScanSearch, Settings, Sparkles, Tags, Users } from "lucide-react";
 import styles from "./sidebar.module.css";
 
@@ -29,6 +29,8 @@ const sections = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const siteId = useSearchParams().get("websiteId");
+  const withSite = (h: string) => (siteId ? `${h}?websiteId=${encodeURIComponent(siteId)}` : h);
   const isActive = (href: string) => (href === "/dashboard" ? pathname === "/dashboard" : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
@@ -46,7 +48,7 @@ export function Sidebar() {
                 const Icon = item.icon;
                 const active = isActive(item.href);
                 return (
-                  <Link key={item.href} href={item.href} className={styles.navItem} data-active={active ? "true" : "false"} aria-current={active ? "page" : undefined}>
+                  <Link key={item.href} href={withSite(item.href)} className={styles.navItem} data-active={active ? "true" : "false"} aria-current={active ? "page" : undefined}>
                     <Icon size={17} strokeWidth={1.65} />
                     <span>{item.label}</span>
                   </Link>

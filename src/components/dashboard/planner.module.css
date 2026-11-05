@@ -44,3 +44,20 @@
 .linkBtn{border:0;background:none;color:#93c5fd;font-size:11px;cursor:pointer;padding:0}
 .stat6{grid-template-columns:repeat(6,minmax(0,1fr)) !important}
 @media (max-width:1100px){.stat6{grid-template-columns:repeat(3,minmax(0,1fr)) !important}}
+
+/* ===== Linear controls ===== */
+.tabs { gap: 2px !important; margin: 16px 0 10px !important; border-bottom: 0 !important; }
+.tab { height: 28px !important; padding: 0 10px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; box-shadow: none !important; color: #8a8f98 !important; font-size: 12.5px !important; }
+.tab:hover { background: rgba(255,255,255,.04) !important; color: #e6e7e9 !important; }
+.tab[data-on="true"] { background: rgba(255,255,255,.07) !important; color: #f1f2f3 !important; box-shadow: none !important; }
+.tab[data-on="true"]::after { display: none !important; }
+.toolbar { border-bottom: 1px solid #1d1e22 !important; }
+.chip { height: 26px !important; padding: 0 9px !important; border: 1px solid #26282c !important; border-radius: 6px !important; background: transparent !important; box-shadow: none !important; color: #a5a9b0 !important; font-size: 12px !important; }
+.chip:hover { background: rgba(255,255,255,.04) !important; color: #e6e7e9 !important; }
+.chip[data-on="true"] { border-color: rgba(59,130,246,.55) !important; background: rgba(59,130,246,.12) !important; color: #bfdbfe !important; box-shadow: none !important; }
+.ghost { height: 30px !important; border: 1px solid #26282c !important; border-radius: 6px !important; background: #141518 !important; box-shadow: none !important; color: #c9ccd1 !important; }
+.ghost:hover { border-color: #34373c !important; color: #fff !important; }
+.run { height: 30px !important; border: 0 !important; border-radius: 6px !important; background: #3b82f6 !important; box-shadow: none !important; }
+.run:hover:not(:disabled) { background: #4f8ff7 !important; }
+.search { height: 28px !important; border: 1px solid #26282c !important; border-radius: 6px !important; background: #0b0c0d !important; font-size: 12px !important; }
+.note, .err { border-radius: 6px !important; }
