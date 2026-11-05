@@ -77,6 +77,63 @@ function Breakdown({ c }: { c: Tracked }) {
   );
 }
 
+interface Mine { keyword: string; volume: number | null; position: number | null; tracked: boolean }
+
+function Matrix({ mine, comps }: { mine: Mine[]; comps: Tracked[] }) {
+  const [filter, setFilter] = useState<"all" | "beat" | "missing" | "tracked">("all");
+  const [page, setPage] = useState(0);
+  const maps = useMemo(() => comps.map((c) => new Map(c.keywords.map((k) => [k.keyword.toLowerCase(), k.their]))), [comps]);
+  const rows = useMemo(() => mine.filter((m) => {
+    const theirs = maps.map((mp) => mp.get(m.keyword) ?? null);
+    if (filter === "tracked") return m.tracked;
+    if (filter === "missing") return m.position === null;
+    if (filter === "beat") return theirs.some((t) => (t === null ? false : m.position === null || t < m.position));
+    return true;
+  }), [mine, maps, filter]);
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  const cur = Math.min(page, pages - 1);
+  const host = (d: string) => d.replace(/^www\./, "").split(".").slice(0, -1).join(".") || d;
+  return (
+    <>
+      <div className={u.compactHeader} style={{ marginTop: 22 }}>
+        <div>
+          <h2 className={u.compactTitle} style={{ fontSize: 13 }}>Your keywords vs competitors</h2>
+          <div className={u.compactMeta}>Every Keyword Planner keyword, with your position and each tracked competitor&apos;s position</div>
+        </div>
+      </div>
+      <div className={u.group}>
+        <div className={p.toolbar}>
+          {([["all", "All"], ["beat", "They beat you"], ["missing", "You're not ranking"], ["tracked", "Tracked"]] as const).map(([id, label]) => (
+            <button key={id} className={p.chip} data-on={filter === id ? "true" : "false"} onClick={() => { setFilter(id); setPage(0); }}>{label}</button>
+          ))}
+          <span className={p.count} style={{ marginLeft: "auto" }}>{rows.length} keywords</span>
+        </div>
+        {mine.length === 0 ? <div className={p.empty}>No keywords yet. Run Analyze site in Keyword Planner first.</div> : (
+          <>
+            <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
+              <thead><tr><th>Keyword</th><th>Volume</th><th>You</th>{comps.map((c) => <th key={c.domain} title={c.domain}>{host(c.domain)}</th>)}</tr></thead>
+              <tbody>{rows.slice(cur * PAGE, cur * PAGE + PAGE).map((m) => (
+                <tr key={m.keyword}>
+                  <td>{m.keyword}{m.tracked ? <span className={p.src} style={{ marginLeft: 6 }}>Tracked</span> : null}</td>
+                  <td className={p.num}>{fmt(m.volume)}</td>
+                  <td className={m.position === null ? p.dim : p.num}>{m.position ?? "—"}</td>
+                  {maps.map((mp, i) => {
+                    const t = mp.get(m.keyword) ?? null;
+                    const cls = t === null ? p.dim : m.position === null || t < m.position ? p.down : p.up;
+                    return <td key={comps[i].domain} className={cls}>{t ?? "—"}</td>;
+                  })}
+                </tr>
+              ))}</tbody>
+            </table>
+            {pages > 1 ? <div className={p.pager}><button disabled={cur === 0} onClick={() => setPage(cur - 1)}>← Prev</button><span>{cur + 1} / {pages}</span><button disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next →</button></div> : null}
+          </>
+        )}
+        {comps.length === 0 && mine.length > 0 ? <div className={p.empty} style={{ paddingTop: 12 }}>Track competitors above to see their positions next to yours.</div> : null}
+      </div>
+    </>
+  );
+}
+
 export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; domain: string }) {
   const [tracked, setTracked] = useState<Tracked[] | null>(null);
   const [suggest, setSuggest] = useState<Suggest[] | null>(null);
@@ -85,6 +142,7 @@ export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; d
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const [mine, setMine] = useState<Mine[]>([]);
 
   const load = useCallback(async () => {
     setBusy(true); setError(null);
@@ -93,6 +151,7 @@ export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; d
       const json = await res.json();
       if (res.ok === false) throw new Error(json.error ?? "Could not load competitors.");
       setTracked(json.tracked);
+      setMine(json.mine ?? []);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }, [websiteId]);
   useEffect(() => { void load(); }, [load]);
@@ -173,6 +232,7 @@ export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; d
       </div>
 
       {current ? <Breakdown key={current.domain} c={current} /> : null}
+      <Matrix mine={mine} comps={list} />
 
       <div className={u.compactHeader} style={{ marginTop: 22 }}>
         <div>

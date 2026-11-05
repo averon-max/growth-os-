@@ -37,7 +37,7 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
   );
 }
 
-function KeywordTable({ rows, websiteId, showWrite, onOpen }: { rows: PlannerKeyword[]; websiteId: string; showWrite?: boolean; onOpen?: (k: PlannerKeyword) => void }) {
+function KeywordTable({ rows, websiteId, showWrite, onOpen, onTrack }: { rows: PlannerKeyword[]; websiteId: string; showWrite?: boolean; onOpen?: (k: PlannerKeyword) => void; onTrack?: (k: string[]) => void }) {
   const [sort, setSort] = useState<SortKey>("volume");
   const [dir, setDir] = useState<1 | -1>(-1);
   const [page, setPage] = useState(0);
@@ -56,7 +56,7 @@ function KeywordTable({ rows, websiteId, showWrite, onOpen }: { rows: PlannerKey
   return (
     <>
       <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
-        <thead><tr><th>Keyword</th><th>Intent</th>{th("volume", "Volume")}{th("kd", "KD")}{th("cpc", "CPC")}{th("position", "Position")}{th("clicks", "Clicks")}{th("impressions", "Impr.")}<th>Page</th><th>Source</th>{showWrite ? <th /> : null}</tr></thead>
+        <thead><tr><th>Keyword</th><th>Intent</th>{th("volume", "Volume")}{th("kd", "KD")}{th("cpc", "CPC")}{th("position", "Position")}{th("clicks", "Clicks")}{th("impressions", "Impr.")}<th>Page</th><th>Source</th>{showWrite ? <th /> : null}<th /></tr></thead>
         <tbody>
           {sorted.slice(cur * PAGE, cur * PAGE + PAGE).map((k) => (
             <tr key={k.keyword} data-click="" onClick={() => onOpen?.(k)}>
@@ -71,6 +71,7 @@ function KeywordTable({ rows, websiteId, showWrite, onOpen }: { rows: PlannerKey
               <td>{k.page ? <a onClick={(e) => e.stopPropagation()} className={p.page} href={k.page} target="_blank" rel="noreferrer">{short(k.page)}</a> : <span className={p.dim}>No page</span>}</td>
               <td>{k.sources.map((s) => <span key={s} className={p.src}>{s}</span>)}</td>
               {showWrite ? <td onClick={(e) => e.stopPropagation()}><WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write" compact /></td> : null}
+              <td onClick={(e) => e.stopPropagation()}>{k.sources.includes("Tracked") ? <span className={p.up} title="Tracked">✓</span> : <button className={p.linkBtn} title="Track this keyword" onClick={() => onTrack?.([k.keyword])}>+</button>}</td>
             </tr>
           ))}
         </tbody>
@@ -86,17 +87,40 @@ function KeywordTable({ rows, websiteId, showWrite, onOpen }: { rows: PlannerKey
   );
 }
 
-function Research({ workspaceId, onAdd }: { workspaceId: string; onAdd: (k: string[]) => void }) {
+function Research({ workspaceId, websiteId, seeds, onAdd }: { workspaceId: string; websiteId: string; seeds: string[]; onAdd: (k: string[]) => void }) {
   const [seed, setSeed] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Suggestion[] | null>(null);
+  type Gap = { keyword: string; volume: number | null; kd: number | null; from: string; their: number | null };
+  const [gaps, setGaps] = useState<Gap[] | null>(null);
+  useEffect(() => {
+    let off = false;
+    fetch(`/api/competitors/tracked?websiteId=${encodeURIComponent(websiteId)}`)
+      .then((r) => r.json())
+      .then((d: { tracked?: { domain: string; keywords: { keyword: string; volume: number | null; kd: number | null; their: number | null; ours: number | null }[] }[] }) => {
+        if (off) return;
+        const best = new Map<string, Gap>();
+        for (const c of d.tracked ?? []) for (const k of c.keywords) {
+          const gap = (k.their === null ? false : k.their <= 10) && (k.ours === null || k.ours > 20);
+          if (gap && best.has(k.keyword) === false) best.set(k.keyword, { keyword: k.keyword, volume: k.volume, kd: k.kd, from: c.domain, their: k.their });
+        }
+        setGaps([...best.values()].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0)).slice(0, 40));
+      })
+      .catch(() => { if (off === false) setGaps([]); });
+    return () => { off = true; };
+  }, [websiteId]);
   async function run(e: React.FormEvent) {
     e.preventDefault();
-    if (seed.trim() === "") return;
+    await runSeed(seed);
+  }
+  async function runSeed(value: string) {
+    const sd = value.trim();
+    if (sd === "") return;
+    setSeed(sd);
     setBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/keywords/explore?workspaceId=${encodeURIComponent(workspaceId)}&seed=${encodeURIComponent(seed.trim())}&limit=50`);
+      const res = await fetch(`/api/keywords/explore?workspaceId=${encodeURIComponent(workspaceId)}&seed=${encodeURIComponent(sd)}&limit=50`);
       const data = await res.json();
       if (res.ok === false) throw new Error(data.error ?? "Research failed.");
       setRows(data.suggestions ?? []);
@@ -110,7 +134,26 @@ function Research({ workspaceId, onAdd }: { workspaceId: string; onAdd: (k: stri
         <button className={p.run} disabled={busy || seed.trim() === ""}>{busy ? <Loader2 size={13} className={p.spin} /> : null}Research</button>
       </form>
       {error ? <div className={p.err} style={{ margin: 12 }}>{error}</div> : null}
-      {rows === null ? <div className={p.empty}>Enter a seed to get related keywords with real volume, 12-month trend, KD and CPC.</div> : rows.length === 0 ? <div className={p.empty}>No related keywords found.</div> : (
+      {rows === null ? (
+        <div>
+          {seeds.length > 0 ? <div className={p.toolbar}><span className={p.count} style={{ marginRight: 4 }}>Suggested seeds</span>{seeds.map((s) => <button key={s} className={p.chip} onClick={() => void runSeed(s)}>{s}</button>)}</div> : null}
+          {gaps === null ? <div className={p.empty}>Loading competitor gap suggestions…</div> : gaps.length === 0 ? <div className={p.empty}>Enter a seed or click a suggestion. Track competitors on the Competitors page to get gap keywords here.</div> : (
+            <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
+              <thead><tr><th>Suggested from competitors</th><th>Volume</th><th>KD</th><th>Competitor</th><th>Their position</th><th /></tr></thead>
+              <tbody>{gaps.map((g) => (
+                <tr key={g.keyword} data-click="" onClick={() => void runSeed(g.keyword)}>
+                  <td>{g.keyword}</td>
+                  <td className={p.num}>{fmt(g.volume)}</td>
+                  <td>{g.kd === null ? <span className={p.dim}>—</span> : <span className={p.kd} data-l={kdLevel(g.kd)}>{g.kd}</span>}</td>
+                  <td className={p.dim}>{g.from}</td>
+                  <td className={p.num}>{g.their ?? "—"}</td>
+                  <td onClick={(e) => e.stopPropagation()}><button className={p.chip} onClick={() => onAdd([g.keyword])}>+ Track</button></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </div>
+      ) : rows.length === 0 ? <div className={p.empty}>No related keywords found.</div> : (
         <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
           <thead><tr><th>Keyword</th><th>Volume</th><th>12 months</th><th>Trend (yr)</th><th>KD</th><th>CPC</th><th>Competition</th><th /></tr></thead>
           <tbody>
@@ -176,7 +219,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
   const [adding, setAdding] = useState(false);
   async function addKeywords(list: string[]) {
     const kws = list.map((x) => x.trim()).filter(Boolean);
-    if (kws.length === 0) return;
+    if (kws.length === 0) { setError("Type one or more keywords, separated by commas, then press Track."); return; }
     setAdding(true); setError(null);
     try {
       const res = await fetch("/api/planner/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId, keywords: kws }) });
@@ -231,7 +274,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
         <div style={{ display: "flex", gap: 8 }}>
           <form style={{ display: "flex", gap: 6 }} onSubmit={(e) => { e.preventDefault(); void addKeywords(addText.split(/[,\n]/)); }}>
             <input className={p.search} style={{ marginLeft: 0, minWidth: 260 }} value={addText} onChange={(e) => setAddText(e.target.value)} placeholder="Add keywords, comma separated" />
-            <button className={p.ghost} disabled={adding || addText.trim() === ""}>{adding ? <Loader2 size={13} className={p.spin} /> : <Plus size={13} />}Track</button>
+            <button className={p.ghost} disabled={adding}>{adding ? <Loader2 size={13} className={p.spin} /> : <Plus size={13} />}Track</button>
           </form>
           {report ? <button className={p.ghost} disabled={busy} onClick={() => analyze(true)}><RefreshCw size={13} className={busy ? p.spin : undefined} />Refresh</button> : null}
           {report === null ? <button className={p.run} disabled={busy} onClick={() => analyze(false)}>{busy ? <Loader2 size={13} className={p.spin} /> : <Sparkles size={13} />}{busy ? "Analyzing site…" : "Analyze site"}</button> : null}
@@ -259,7 +302,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       </div>
 
       <div className={u.group}>
-        {tab === "research" ? <Research workspaceId={workspaceId} onAdd={(k) => void addKeywords(k)} /> : report === null ? (
+        {tab === "research" ? <Research workspaceId={workspaceId} websiteId={websiteId} seeds={[...new Set([...(report?.clusters ?? []).slice(0, 10).map((c) => c.name), ...(report?.keywords ?? []).slice(0, 10).map((k) => k.keyword)])]} onAdd={(k) => void addKeywords(k)} /> : report === null ? (
           <div className={p.empty}>{busy ? "Fetching sitemap, Search Console data, Google rankings and global metrics…" : "Click Analyze site to fetch every page and keyword of the site."}</div>
         ) : tab === "keywords" ? (
           <>
@@ -268,10 +311,10 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
               <input className={p.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter keywords…" />
               <span className={p.count}>{filtered.length}</span>
             </div>
-            <KeywordTable key={chips.join() + q} rows={filtered} websiteId={websiteId} onOpen={openKw} />
+            <KeywordTable key={chips.join() + q} rows={filtered} websiteId={websiteId} onOpen={openKw} onTrack={(k) => void addKeywords(k)} />
           </>
-        ) : tab === "wins" ? <KeywordTable rows={wins} websiteId={websiteId} onOpen={openKw} />
-          : tab === "gaps" ? <KeywordTable rows={gaps} websiteId={websiteId} onOpen={openKw} showWrite />
+        ) : tab === "wins" ? <KeywordTable rows={wins} websiteId={websiteId} onOpen={openKw} onTrack={(k) => void addKeywords(k)} />
+          : tab === "gaps" ? <KeywordTable rows={gaps} websiteId={websiteId} onOpen={openKw} onTrack={(k) => void addKeywords(k)} showWrite />
           : tab === "cannibal" ? (
             cannibal.length === 0 ? <div className={p.empty}>No keyword is split across several pages.</div> : (
               <table className={u.table} style={{ border: 0, borderRadius: 0 }}>

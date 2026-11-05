@@ -54,3 +54,8 @@ export async function competitorStats(domain: string, ours: Map<string, number |
     return { domain, overview: EMPTY, shared: 0, gaps: 0, beats: 0, wins: 0, keywords: [], error: (e as Error).message };
   }
 }
+
+export async function ourKeywordList(websiteId: string, workspaceId: string, siteUrl: string) {
+  const report = getCachedPlannerReport(websiteId) ?? (await analyzeSite({ websiteId, workspaceId, siteUrl }));
+  return report.keywords.map((k) => ({ keyword: k.keyword, volume: k.volume, position: k.position, tracked: k.sources.includes("Tracked") }));
+}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
-import { competitorStats, normalizeDomain, ourPositions, type CompStats } from "@/lib/competitors/tracker";
+import { competitorStats, normalizeDomain, ourKeywordList, ourPositions, type CompStats } from "@/lib/competitors/tracker";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -20,11 +20,12 @@ export async function GET(req: NextRequest) {
     if (websiteId === "") return NextResponse.json({ error: "websiteId is required." }, { status: 400 });
     const { website, ours } = await ctx(websiteId);
     const rows = await prisma.competitor.findMany({ where: { websiteId }, orderBy: { addedAt: "asc" }, take: MAX_TRACKED });
-    if (rows.length === 0) return NextResponse.json({ domain: ours, tracked: [] });
+    const mine = (await ourKeywordList(websiteId, website.business.workspaceId, website.url)).sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0)).slice(0, 500);
+    if (rows.length === 0) return NextResponse.json({ domain: ours, tracked: [], mine });
     const pos = await ourPositions(websiteId, website.business.workspaceId, website.url);
     const stats: CompStats[] = [];
     for (let i = 0; i < rows.length; i += 3) stats.push(...(await Promise.all(rows.slice(i, i + 3).map((r) => competitorStats(r.domain, pos)))));
-    return NextResponse.json({ domain: ours, tracked: rows.map((r, i) => ({ id: r.id, name: r.name, addedAt: r.addedAt, ...stats[i] })) });
+    return NextResponse.json({ domain: ours, tracked: rows.map((r, i) => ({ id: r.id, name: r.name, addedAt: r.addedAt, ...stats[i] })), mine });
   } catch (err) {
     console.error("[competitors/tracked GET]", err);
     const { status, body } = authErrorResponse(err);
