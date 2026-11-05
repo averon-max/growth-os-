@@ -226,3 +226,17 @@
 /* ===== blue accent ===== */
 .navItem[data-active="true"] { background: rgba(59,130,246,.13) !important; color: #e8f0ff !important; }
 .navItem[data-active="true"] svg { color: #60a5fa !important; }
+
+/* nav-badge v13 */
+.brand { text-decoration: none; }
+.navLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navBadge {
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid rgba(242, 201, 76, 0.35);
+  border-radius: 4px;
+  color: #f2c94c;
+  font-size: 10px;
+  font-weight: 510;
+  line-height: 15px;
+}

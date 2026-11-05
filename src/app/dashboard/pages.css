@@ -1,0 +1,192 @@
+/*
+ * Общий слой стиля для всех страниц дашборда (Linear).
+ * Правила в :where() имеют нулевую специфичность — стили конкретной страницы
+ * всегда сильнее, а то, что страница не задала, берётся отсюда.
+ */
+
+.page-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-feature-settings: "cv01", "ss03";
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-content {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+/* ---------- типографика ---------- */
+
+.page-content h1 {
+  color: #f7f8f8;
+  font-weight: 590;
+  letter-spacing: -0.022em;
+}
+
+:where(.page-content) :where(h2, h3, h4) {
+  color: #f7f8f8;
+  font-weight: 590;
+  letter-spacing: -0.012em;
+}
+
+:where(.page-content) :where(p) {
+  color: #8a8f98;
+}
+
+:where(.page-content) :where(a) {
+  color: inherit;
+}
+
+:where(.page-content) :where(code, kbd) {
+  padding: 1px 5px;
+  border: 1px solid #23252a;
+  border-radius: 4px;
+  background: #141516;
+  color: #d0d6e0;
+  font-size: 0.92em;
+}
+
+:where(.page-content) :where(hr) {
+  border: 0;
+  border-top: 1px solid #1d1e21;
+}
+
+/* ---------- таблицы ---------- */
+
+:where(.page-content) :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+:where(.page-content) :where(th) {
+  padding: 9px 12px;
+  border-bottom: 1px solid #1d1e21;
+  color: #62666d;
+  font-size: 12px;
+  font-weight: 510;
+  text-align: left;
+  white-space: nowrap;
+}
+
+:where(.page-content) :where(td) {
+  padding: 10px 12px;
+  border-bottom: 1px solid #1d1e21;
+  color: #d0d6e0;
+  font-size: 13px;
+}
+
+:where(.page-content) :where(tbody tr) {
+  transition: background 100ms ease;
+}
+
+:where(.page-content) :where(tbody tr:hover) {
+  background: #141516;
+}
+
+/* ---------- поля ввода ---------- */
+
+:where(.page-content) :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea) {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #23252a;
+  border-radius: 6px;
+  outline: 0;
+  background: #101112;
+  color: #f7f8f8;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+:where(.page-content) :where(textarea) {
+  padding: 8px 10px;
+}
+
+:where(.page-content) :where(input, select, textarea):focus {
+  border-color: #3b82f6;
+}
+
+:where(.page-content) :where(input, textarea)::placeholder {
+  color: #62666d;
+}
+
+:where(.page-content) :where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: #3b82f6;
+}
+
+:where(.page-shell) :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline-offset: 2px;
+}
+
+/* ---------- графики recharts ---------- */
+
+.page-content .recharts-cartesian-grid line {
+  stroke: #1d1e21;
+}
+
+.page-content .recharts-cartesian-axis-line,
+.page-content .recharts-cartesian-axis-tick-line {
+  stroke: #23252a;
+}
+
+.page-content .recharts-cartesian-axis-tick-value,
+.page-content .recharts-text {
+  fill: #62666d;
+  font-size: 11px;
+}
+
+.page-content .recharts-legend-item-text {
+  color: #8a8f98 !important;
+  font-size: 12px;
+}
+
+.page-content .recharts-default-tooltip {
+  padding: 8px 10px !important;
+  border: 1px solid #23252a !important;
+  border-radius: 8px !important;
+  background: #141516 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: #d0d6e0;
+  font-size: 12px;
+}
+
+.page-content .recharts-tooltip-label {
+  margin-bottom: 4px !important;
+  color: #f7f8f8 !important;
+  font-weight: 510;
+}
+
+.page-content .recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.03);
+  stroke: #34343a;
+}
+
+/* ---------- мелочи ---------- */
+
+.page-shell ::selection {
+  background: rgba(59, 130, 246, 0.35);
+  color: #f7f8f8;
+}
+
+.page-shell * {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2c31 transparent;
+}
+
+.page-shell ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.page-shell ::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #2a2c31 padding-box;
+}
+
+.page-shell ::-webkit-scrollbar-track {
+  background: transparent;
+}

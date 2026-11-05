@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import styles from "./layout.module.css";
+import { AppFooter } from "@/components/dashboard/app-footer";
+import "./pages.css";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -13,7 +15,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className={styles.shell}>
       <Sidebar />
-      <div className={styles.main}>{children}</div>
+      <div className={styles.main}><div className="page-shell">
+        <div className="page-content">{children}</div>
+        <AppFooter />
+      </div></div>
     </div>
   );
 }
