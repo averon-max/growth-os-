@@ -74,6 +74,7 @@ model Website {
   keywordOutcomeActions    KeywordOutcomeAction[]
 
   backlinkTargets BacklinkTarget[]
+  trackedKeywords TrackedKeyword[]
 
   @@index([businessId])
 }
@@ -910,4 +911,15 @@ model BacklinkObservation {
   @@index([snapshotId])
   @@index([sourceDomain])
   @@index([normalizedTargetUrl])
+}
+
+model TrackedKeyword {
+  id        String   @id @default(cuid())
+  websiteId String
+  website   Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  keyword   String
+  addedAt   DateTime @default(now())
+
+  @@unique([websiteId, keyword])
+  @@index([websiteId])
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
 import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
@@ -18,6 +18,7 @@ const short = (url: string) => { try { const x = new URL(url); return x.pathname
 const PAGE = 50;
 
 const CHIPS: { id: string; label: string; test: (k: PlannerKeyword) => boolean }[] = [
+  { id: "tracked", label: "Tracked", test: (k) => k.sources.includes("Tracked") },
   { id: "kd", label: "KD < 30", test: (k) => (k.kd === null ? false : k.kd < 30) },
   { id: "vol", label: "Vol > 1K", test: (k) => (k.volume ?? 0) > 1000 },
   { id: "cpc", label: "CPC > $2", test: (k) => (k.cpc ?? 0) > 2 },
@@ -85,7 +86,7 @@ function KeywordTable({ rows, websiteId, showWrite, onOpen }: { rows: PlannerKey
   );
 }
 
-function Research({ workspaceId }: { workspaceId: string }) {
+function Research({ workspaceId, onAdd }: { workspaceId: string; onAdd: (k: string[]) => void }) {
   const [seed, setSeed] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +112,7 @@ function Research({ workspaceId }: { workspaceId: string }) {
       {error ? <div className={p.err} style={{ margin: 12 }}>{error}</div> : null}
       {rows === null ? <div className={p.empty}>Enter a seed to get related keywords with real volume, 12-month trend, KD and CPC.</div> : rows.length === 0 ? <div className={p.empty}>No related keywords found.</div> : (
         <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
-          <thead><tr><th>Keyword</th><th>Volume</th><th>12 months</th><th>Trend (yr)</th><th>KD</th><th>CPC</th><th>Competition</th></tr></thead>
+          <thead><tr><th>Keyword</th><th>Volume</th><th>12 months</th><th>Trend (yr)</th><th>KD</th><th>CPC</th><th>Competition</th><th /></tr></thead>
           <tbody>
             {rows.map((r) => {
               const pts = r.monthlySearches.slice(0, 12).reverse();
@@ -126,6 +127,7 @@ function Research({ workspaceId }: { workspaceId: string }) {
                   <td>{r.keywordDifficulty === null ? <span className={p.dim}>—</span> : <span className={p.kd} data-l={kdLevel(r.keywordDifficulty)}>{r.keywordDifficulty}</span>}</td>
                   <td className={p.num}>{money(r.cpc)}</td>
                   <td className={p.dim}>{r.competitionLevel ?? "—"}</td>
+                  <td><button className={p.chip} onClick={() => onAdd([r.keyword])}>+ Track</button></td>
                 </tr>
               );
             })}
@@ -167,9 +169,28 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
     title: k.keyword, serpFor: { keyword: k.keyword, volume: k.volume ?? 0 }, subtitle: `${k.intent} · cluster “${k.cluster}”`,
     fields: [["Volume / mo", fmt(k.volume)], ["Difficulty", k.kd === null ? "—" : String(k.kd)], ["CPC", money(k.cpc)], ["Position", k.position === null ? "—" : String(k.position)], ["Clicks · 28d", fmt(k.clicks)], ["Impressions · 28d", fmt(k.impressions)], ["Sources", k.sources.join(", ")]],
     itemsTitle: `Ranking pages · ${k.pages.length}`, items: k.pages.map((x) => ({ primary: short(x), href: x })),
-    actions: <><WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write article" compact /><a className={p.ghost} href={`https://www.google.com/search?q=${encodeURIComponent(k.keyword)}`} target="_blank" rel="noreferrer">Google SERP</a><button className={p.ghost} onClick={() => { setQ(k.cluster); setChips([]); setTab("keywords"); setSel(null); }}>Show cluster</button></>,
+    actions: <>{k.sources.includes("Tracked") ? <button className={p.ghost} onClick={() => void removeKeyword(k.keyword)}>Stop tracking</button> : <button className={p.ghost} onClick={() => void addKeywords([k.keyword])}>Track</button>}<WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write article" compact /><a className={p.ghost} href={`https://www.google.com/search?q=${encodeURIComponent(k.keyword)}`} target="_blank" rel="noreferrer">Google SERP</a><button className={p.ghost} onClick={() => { setQ(k.cluster); setChips([]); setTab("keywords"); setSel(null); }}>Show cluster</button></>,
   });
 
+  const [addText, setAddText] = useState("");
+  const [adding, setAdding] = useState(false);
+  async function addKeywords(list: string[]) {
+    const kws = list.map((x) => x.trim()).filter(Boolean);
+    if (kws.length === 0) return;
+    setAdding(true); setError(null);
+    try {
+      const res = await fetch("/api/planner/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId, keywords: kws }) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok === false) throw new Error(data.error ?? "Could not add keywords.");
+      setAddText("");
+      await analyze(false);
+    } catch (err) { setError((err as Error).message); } finally { setAdding(false); }
+  }
+  async function removeKeyword(keyword: string) {
+    await fetch("/api/planner/keywords", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId, keyword }) });
+    setSel(null);
+    await analyze(false);
+  }
   async function analyze(refresh: boolean) {
     setBusy(true); setError(null);
     try {
@@ -208,6 +229,10 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <form style={{ display: "flex", gap: 6 }} onSubmit={(e) => { e.preventDefault(); void addKeywords(addText.split(/[,\n]/)); }}>
+            <input className={p.search} style={{ marginLeft: 0, minWidth: 260 }} value={addText} onChange={(e) => setAddText(e.target.value)} placeholder="Add keywords, comma separated" />
+            <button className={p.ghost} disabled={adding || addText.trim() === ""}>{adding ? <Loader2 size={13} className={p.spin} /> : <Plus size={13} />}Track</button>
+          </form>
           {report ? <button className={p.ghost} disabled={busy} onClick={() => analyze(true)}><RefreshCw size={13} className={busy ? p.spin : undefined} />Refresh</button> : null}
           {report === null ? <button className={p.run} disabled={busy} onClick={() => analyze(false)}>{busy ? <Loader2 size={13} className={p.spin} /> : <Sparkles size={13} />}{busy ? "Analyzing site…" : "Analyze site"}</button> : null}
         </div>
@@ -234,7 +259,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       </div>
 
       <div className={u.group}>
-        {tab === "research" ? <Research workspaceId={workspaceId} /> : report === null ? (
+        {tab === "research" ? <Research workspaceId={workspaceId} onAdd={(k) => void addKeywords(k)} /> : report === null ? (
           <div className={p.empty}>{busy ? "Fetching sitemap, Search Console data, Google rankings and global metrics…" : "Click Analyze site to fetch every page and keyword of the site."}</div>
         ) : tab === "keywords" ? (
           <>

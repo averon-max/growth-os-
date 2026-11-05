@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { fetchRankedKeywords, fetchSearchVolume, fetchKeywordDifficulty } from "@/lib/keywords/dataforseo-provider";
 import { fetchSitemapUrls } from "./sitemap";
+import { dfs, num, str, rec } from "@/lib/dataforseo/client";
 
-export type KeywordSource = "GSC" | "Ranked" | "Article";
+export type KeywordSource = "GSC" | "Ranked" | "Article" | "Tracked";
 export interface PlannerKeyword {
   keyword: string; sources: KeywordSource[]; volume: number | null; kd: number | null; cpc: number | null;
   competition: number | null; position: number | null; impressions: number; clicks: number;
@@ -53,7 +54,7 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
     return k;
   };
 
-  const [sitemap, gsc, articles] = await Promise.all([
+  const [sitemap, gsc, articles, tracked] = await Promise.all([
     fetchSitemapUrls(opts.siteUrl).catch(() => ({ urls: [] as string[], sitemaps: [] as string[], source: "none" as const })),
     prisma.keyword.findMany({
       where: { workspaceId: opts.workspaceId },
@@ -61,6 +62,7 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
       select: { text: true, volume: true, difficulty: true, cpc: true, snapshots: { where: { date: { gte: new Date(Date.now() - 28 * 864e5) } }, select: { position: true, clicks: true, impressions: true, pageUrl: true } } },
     }),
     prisma.contentArticle.findMany({ where: { brief: { websiteId: opts.websiteId } }, select: { publishedUrl: true, brief: { select: { primaryKeyword: true } } } }),
+    prisma.trackedKeyword.findMany({ where: { websiteId: opts.websiteId }, select: { keyword: true } }),
   ]);
   if (sitemap.sitemaps.length === 0) warnings.push("No sitemap found via robots.txt, /sitemap.xml or /sitemap_index.xml.");
 
@@ -107,6 +109,25 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
   for (const a of articles) {
     const k = upsert(a.brief.primaryKeyword, "Article");
     if (k.page === null && a.publishedUrl) { k.page = a.publishedUrl; k.pages = [a.publishedUrl]; }
+  }
+
+  // 3b. Keywords the user tracks: look up the live Google position for those without one (top 30).
+  for (const t of tracked) upsert(t.keyword, "Tracked");
+  const needPos = [...map.values()].filter((k) => k.sources.includes("Tracked") && k.position === null).slice(0, 30);
+  for (let i = 0; i < needPos.length; i += 5) {
+    await Promise.all(needPos.slice(i, i + 5).map(async (k) => {
+      try {
+        const res = await dfs("serp/google/organic/live/regular", { keyword: k.keyword, location_name: "United States", language_name: "English", depth: 30 });
+        const hit = ((rec(res[0]).items as unknown[] | undefined) ?? []).map(rec).find((x) => x.type === "organic" && (str(x.domain) ?? "").replace(/^www\./, "").endsWith(domain));
+        if (hit) {
+          k.position = num(hit.rank_group);
+          const u = str(hit.url);
+          if (u && k.page === null) { k.page = u; k.pages = [u]; }
+        }
+      } catch {
+        // position stays unknown
+      }
+    }));
   }
 
   // 4. Fill missing global metrics.
@@ -183,4 +204,8 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
 
 export function getCachedPlannerReport(websiteId: string): PlannerReport | null {
   return cache.get(websiteId)?.report ?? null;
+}
+
+export function invalidatePlannerReport(websiteId: string) {
+  cache.delete(websiteId);
 }
