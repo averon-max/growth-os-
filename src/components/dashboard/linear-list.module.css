@@ -1,3 +1,4 @@
+/* linear-v14 */
 .gh{display:flex;align-items:center;gap:9px;height:36px;padding:0 16px;background:#1c1d1f;border-bottom:1px solid #23252a;color:#f7f8f8;font-size:13px;font-weight:510}
 .gh .n{color:#62666d;font-weight:400}
 .r{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-bottom:1px solid #1d1e21;color:#8a8f98;font-size:13px;cursor:pointer;text-decoration:none}
@@ -19,5 +20,5 @@
 .btn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid #23252a;border-radius:7px;background:#1c1d1f;color:#f7f8f8;font-size:12px;font-weight:510;cursor:pointer;text-decoration:none}
 .btn:hover{border-color:rgba(59,130,246,.4)}
 .btn:disabled{opacity:.5;cursor:default}
-.blue{border-color:transparent;background:#3b82f6;color:#fff}
+.blue{border-color:transparent;background:#3b82f6;color:#f7f8f8}
 .blue:hover{background:#4f8ff7}

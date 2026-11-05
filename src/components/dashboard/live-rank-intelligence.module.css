@@ -1,3 +1,4 @@
+/* linear-v14 */
 .shell {
   margin-bottom: 16px;
   border: 1px solid var(--border);
@@ -16,37 +17,37 @@
 .eyebrow {
   margin: 0 0 5px;
   color: var(--secondary);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .title {
   margin: 0;
   color: var(--primary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 590;
 }
 
 .copy {
   max-width: 720px;
   margin: 5px 0 0;
   color: var(--secondary);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .button {
   flex-shrink: 0;
-  min-height: 30px;
+  min-height: 33px;
   padding: 0 11px;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--elevated);
   color: var(--primary);
   font: inherit;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -62,7 +63,7 @@
 .state {
   padding: 18px 16px;
   color: var(--secondary);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -70,7 +71,7 @@
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   color: #df7c7c;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .summary {
@@ -91,15 +92,15 @@
 .statValue {
   display: block;
   color: var(--primary);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 590;
 }
 
 .statLabel {
   display: block;
   margin-top: 3px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .tableWrap {
@@ -117,8 +118,8 @@
   border-bottom: 1px solid var(--border);
   background: var(--background);
   color: var(--secondary);
-  font-size: 9px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 510;
   text-align: left;
 }
 
@@ -126,7 +127,7 @@
   padding: 10px;
   border-bottom: 1px solid var(--border);
   color: var(--secondary);
-  font-size: 10px;
+  font-size: 12px;
   vertical-align: top;
 }
 
@@ -136,12 +137,12 @@
 
 .keyword {
   color: var(--primary);
-  font-weight: 500;
+  font-weight: 510;
 }
 
 .rank {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 590;
 }
 
 .good {
@@ -163,8 +164,8 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--secondary);
-  font-size: 8px;
-  text-transform: uppercase;
+  font-size: 11px;
+  text-transform: none;
 }
 
 .explanation {
@@ -175,7 +176,7 @@
 .details {
   margin-top: 6px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .details summary {
@@ -207,7 +208,7 @@
   border-top: 1px solid var(--border);
   background: var(--background);
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -238,7 +239,7 @@
   background: var(--elevated);
   color: var(--primary);
   font: inherit;
-  font-size: 9px;
+  font-size: 12px;
   cursor: pointer;
 }
 

@@ -1711,7 +1711,7 @@ export function TrafficIntelligence({
                     tick={{
                       fill:
                         "var(--secondary)",
-                      fontSize: 10,
+                      fontSize: 11,
                     }}
                   />
 
@@ -1722,7 +1722,7 @@ export function TrafficIntelligence({
                     tick={{
                       fill:
                         "var(--secondary)",
-                      fontSize: 10,
+                      fontSize: 11,
                     }}
                   />
 

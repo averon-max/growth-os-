@@ -108,7 +108,7 @@ export function KeywordCard({ keyword, workspaceId, websiteId, tracked, onChange
               <div className={s.label}>Monthly volume</div>
               <ResponsiveContainer width="100%" height={120}>
                 <BarChart data={chart} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: "#6b7079" }} axisLine={false} tickLine={false} interval={1} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7079" }} axisLine={false} tickLine={false} interval={1} />
                   <Tooltip cursor={{ fill: "rgba(255,255,255,.03)" }} contentStyle={{ background: "#141618", border: "1px solid #2a2d31", borderRadius: 6, fontSize: 11 }} formatter={(v) => [typeof v === "number" ? v.toLocaleString() : v, "searches"]} />
                   <Bar dataKey="volume" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                 </BarChart>

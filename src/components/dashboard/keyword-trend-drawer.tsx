@@ -88,8 +88,8 @@ export function KeywordTrendDrawer({
                 <ResponsiveContainer width="100%" height={180}>
                   <LineChart data={data.snapshots} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--secondary)" }} />
-                    <YAxis reversed tick={{ fontSize: 10, fill: "var(--secondary)" }} width={28} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--secondary)" }} />
+                    <YAxis reversed tick={{ fontSize: 11, fill: "var(--secondary)" }} width={28} />
                     <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", fontSize: 12 }} />
                     <Line type="monotone" dataKey="position" stroke="var(--accent)" dot={false} strokeWidth={2} connectNulls />
                   </LineChart>
@@ -101,8 +101,8 @@ export function KeywordTrendDrawer({
                 <ResponsiveContainer width="100%" height={180}>
                   <LineChart data={data.snapshots} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--secondary)" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "var(--secondary)" }} width={28} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--secondary)" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "var(--secondary)" }} width={28} />
                     <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", fontSize: 12 }} />
                     <Line type="monotone" dataKey="impressions" stroke="var(--secondary)" dot={false} strokeWidth={2} connectNulls />
                     <Line type="monotone" dataKey="clicks" stroke="var(--success)" dot={false} strokeWidth={2} connectNulls />

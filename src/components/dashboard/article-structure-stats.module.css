@@ -1,3 +1,4 @@
+/* linear-v14 */
 .panel {
   overflow: hidden;
   margin-bottom: 16px;
@@ -18,29 +19,29 @@
 .header h2 {
   margin: 2px 0 0;
   color: var(--primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 590;
 }
 
 .eyebrow {
   color: #93c5fd;
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
+  min-height: 26px;
   padding: 0 8px;
   border: 1px solid rgba(59, 130, 246, .34);
   border-radius: 999px;
   background: var(--accent-soft);
   color: #93c5fd;
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
 }
 
 
@@ -49,13 +50,13 @@
   border-bottom: 1px solid rgba(245, 158, 11, .25);
   background: rgba(245, 158, 11, .07);
   color: #fcd34d;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 .editorialWarning strong {
   color: #fde68a;
-  font-weight: 650;
+  font-weight: 590;
 }
 
 .metrics {
@@ -98,17 +99,17 @@
   overflow: hidden;
   margin-bottom: 3px;
   color: var(--secondary);
-  font-size: 8px;
-  letter-spacing: .04em;
+  font-size: 11px;
+  letter-spacing: 0;
   text-overflow: ellipsis;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
 }
 
 .metric strong {
   color: #93c5fd;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 13px;
+  font-weight: 590;
 }
 
 .keywordArea {
@@ -118,10 +119,10 @@
 .keywordTitle {
   margin-bottom: 9px;
   color: var(--secondary);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .keywords {
@@ -139,15 +140,15 @@
   border-radius: 5px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
   line-height: 1.2;
 }
 
 .keyword small {
   color: #93c5fd;
-  font-size: 8px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 590;
 }
 
 @media (max-width: 1200px) {

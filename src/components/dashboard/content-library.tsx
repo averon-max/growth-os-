@@ -63,7 +63,7 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
   }
 
   const row = (a: LibraryArticle, i: number): LRow => ({
-    key: a.id, id: `ART-${cur * PAGE + i + 1}`, status: META[group(a.status)].status, title: a.title || "Untitled article",
+    key: a.id, id: `ART-${articles.indexOf(a) + 1 || i + 1}`, status: META[group(a.status)].status, title: a.title || "Untitled article",
     hint: a.publishError ? a.publishError : a.keyword,
     pills: [{ label: a.intent }],
     metrics: [`${a.words.toLocaleString()} w`], date: a.updated,

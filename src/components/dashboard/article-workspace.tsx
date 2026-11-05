@@ -2331,13 +2331,13 @@ ${article.bodyMarkdown}`
                       >
                         <stop
                           offset="0%"
-                          stopColor="#6974d8"
+                          stopColor="#3b82f6"
                           stopOpacity={0.24}
                         />
 
                         <stop
                           offset="100%"
-                          stopColor="#6974d8"
+                          stopColor="#3b82f6"
                           stopOpacity={0}
                         />
                       </linearGradient>
@@ -2413,7 +2413,7 @@ ${article.bodyMarkdown}`
                     <Area
                       type="monotone"
                       dataKey="impressions"
-                      stroke="#7983de"
+                      stroke="#60a5fa"
                       fill="url(#impressionsFill)"
                       strokeWidth={1.5}
                     />
@@ -3378,7 +3378,7 @@ ${article.bodyMarkdown}`
                       type="monotone"
                       dataKey="uniqueVisitors"
                       name="Unique visitors"
-                      stroke="#8b93e5"
+                      stroke="#93c5fd"
                       dot={
                         false
                       }

@@ -290,7 +290,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
 
       <div className={`${u.statGrid} ${p.stat6}`}>
         <Stat label="Keywords" value={t ? fmt(t.keywords) : "—"} color="#3b82f6" />
-        <Stat label="Search volume / mo" value={t ? fmt(t.volume) : "—"} color="#2599a8" />
+        <Stat label="Search volume / mo" value={t ? fmt(t.volume) : "—"} color="#60a5fa" />
         <Stat label="Clicks · 28d" value={t ? fmt(t.clicks) : "—"} color="#4daf6d" />
         <Stat label="Impressions · 28d" value={t ? fmt(t.impressions) : "—"} color="#93c5fd" />
         <Stat label="Top 10" value={t ? `${t.top10}` : "—"} color="#7dd3a0" />

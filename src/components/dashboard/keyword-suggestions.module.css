@@ -1,3 +1,4 @@
+/* linear-v14 */
 .container {
   position: relative;
 
@@ -9,11 +10,6 @@
   border-radius: 10px;
 
   background:
-    radial-gradient(
-      560px 210px at 8% -130px,
-      rgba(150,154,171,.045),
-      transparent 70%
-    ),
     var(--surface);
 }
 
@@ -32,22 +28,22 @@
 .icon {
   flex-shrink: 0;
 
-  color: #8a85de;
+  color: #83a7e0;
 }
 
 .title {
-  color: #c8c9cd;
+  color: #d0d6e0;
 
-  font-size: 12px;
-  font-weight: 580;
+  font-size: 13px;
+  font-weight: 590;
 }
 
 .subtitle {
   margin-top: 3px;
 
-  color: #70747b;
+  color: #62666d;
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .searchRow {
@@ -76,11 +72,11 @@
   border: 1px solid var(--border);
   border-radius: 6px;
 
-  background: #0e1011;
+  background: #101112;
 }
 
 .searchIcon {
-  color: #6d7077;
+  color: #62666d;
 }
 
 .searchInput {
@@ -94,7 +90,7 @@
   background: transparent;
   color: var(--primary);
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .searchInput::placeholder {
@@ -102,18 +98,18 @@
 }
 
 .exploreButton {
-  height: 32px;
+  height: 35px;
 
   padding: 0 13px;
 
-  border: 1px solid rgba(255,255,255,.08);
+  border: 1px solid #23252a;
   border-radius: 6px;
 
-  background: #6563c8;
+  background: #5687d5;
   color: white;
 
-  font-size: 10px;
-  font-weight: 620;
+  font-size: 12px;
+  font-weight: 590;
 
   cursor: pointer;
 }
@@ -131,7 +127,7 @@
 
   border-bottom: 1px solid var(--border);
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .error {
@@ -163,7 +159,7 @@
 
   padding: 0 14px;
 
-  border-bottom: 1px solid rgba(255,255,255,.038);
+  border-bottom: 1px solid #1d1e21;
 }
 
 .trendingTitle {
@@ -171,10 +167,10 @@
   align-items: center;
   gap: 7px;
 
-  color: #afb1b6;
+  color: #8a8f98;
 
-  font-size: 10px;
-  font-weight: 570;
+  font-size: 12px;
+  font-weight: 590;
 }
 
 .trendingIcon {
@@ -189,7 +185,7 @@
   background: rgba(77,175,109,.06);
   color: #64b879;
 
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .trendColumns {
@@ -202,22 +198,22 @@
 }
 
 .trendColumnLabel {
-  height: 32px;
+  height: 36px;
 
   display: flex;
   align-items: center;
 
   padding: 0 14px;
 
-  border-bottom: 1px solid rgba(255,255,255,.032);
+  border-bottom: 1px solid #1d1e21;
 
-  color: #60646b;
+  color: #62666d;
 
-  font-size: 8px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 590;
 
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .trendList {
@@ -244,30 +240,30 @@
 }
 
 .trendRank {
-  color: #52555c;
+  color: #62666d;
 
   font-family: var(--font-mono);
 
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .trendName {
   overflow: hidden;
 
-  color: #8f9299;
+  color: #8a8f98;
 
-  font-size: 9px;
+  font-size: 12px;
 
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .trendValue {
-  color: #666a71;
+  color: #62666d;
 
   font-family: var(--font-mono);
 
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .risingValue {
@@ -277,7 +273,7 @@
 .resultCount {
   color: var(--secondary);
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .clickableRow {
@@ -295,7 +291,7 @@
 
   font-family: var(--font-mono);
 
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .trendUp {
@@ -315,7 +311,7 @@
 
 .difficultyBadge {
   min-width: 22px;
-  min-height: 18px;
+  min-height: 22px;
 
   display: inline-flex;
   align-items: center;
@@ -325,8 +321,8 @@
 
   border-radius: 4px;
 
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
 }
 
 .difficultyBadge[data-tone="success"] {
@@ -360,7 +356,7 @@
 
   font-family: var(--font-mono);
 
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .sourceCache {
@@ -390,19 +386,9 @@
 .container {
   position: relative;
 
-  border-color: rgba(255,255,255,.066);
+  border-color: #23252a;
 
   background:
-    radial-gradient(
-      620px 230px at 15% -140px,
-      rgba(148,153,177,.06),
-      transparent 68%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.012),
-      transparent 160px
-    ),
     var(--surface);
 
   box-shadow:
@@ -422,24 +408,14 @@
   height: 1px;
 
   background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(177,180,199,.15),
-      rgba(63,123,139,.08),
-      transparent
-    );
+    rgba(148,179,228,.15);
 }
 
 .trendingBlock {
   position: relative;
 
   background:
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.008),
-      rgba(255,255,255,.001)
-    );
+    rgba(255,255,255,.008);
 }
 
 .trendColumns {
@@ -448,24 +424,16 @@
 
 .trendColumn:first-child {
   background:
-    radial-gradient(
-      420px 170px at 0% 0%,
-      rgba(119,72,82,.055),
-      transparent 70%
-    );
+    rgba(119,72,82,.055);
 }
 
 .trendColumn:last-child {
   background:
-    radial-gradient(
-      420px 170px at 100% 0%,
-      rgba(40,91,102,.055),
-      transparent 70%
-    );
+    rgba(28,61,114,.055);
 }
 
 .trendColumnLabel {
-  color: #71757c;
+  color: #62666d;
 
   background:
     rgba(255,255,255,.005);
@@ -481,44 +449,32 @@
 
 .trendRow:hover {
   background:
-    linear-gradient(
-      90deg,
-      rgba(255,255,255,.025),
-      rgba(255,255,255,.006)
-    );
+    rgba(255,255,255,.025);
 }
 
 .trendRow:first-child {
   min-height: 38px;
 
   background:
-    linear-gradient(
-      90deg,
-      rgba(255,255,255,.023),
-      transparent 78%
-    );
+    rgba(255,255,255,.023);
 }
 
 .trendRow:first-child .trendName {
-  color: #c7c9cd;
-  font-weight: 540;
+  color: #d0d6e0;
+  font-weight: 510;
 }
 
 .trendRow:first-child .trendRank {
-  color: #858890;
+  color: #8a8f98;
 }
 
 .trendRow:first-child .trendValue {
-  font-weight: 570;
+  font-weight: 590;
 }
 
 .trendingHeader {
   background:
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.010),
-      transparent
-    );
+    rgba(255,255,255,.010);
 }
 
 .risingValue {

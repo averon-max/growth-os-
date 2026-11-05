@@ -1,6 +1,10 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
+
+import { NAV, isActivePath, navItemFor } from "@/lib/nav";
+
 import { WebsiteSwitcher } from "./website-switcher";
 import styles from "./topbar.module.css";
 
@@ -15,13 +19,30 @@ interface Props {
 
 export function Topbar({ title, subtitle, websiteSwitcher }: Props) {
   const { data: session } = useSession();
+  const pathname = usePathname() ?? "";
   const email = session?.user?.email ?? null;
   const initial = email?.charAt(0).toUpperCase() ?? "G";
+
+  const item = navItemFor(pathname);
+  const section = item ? NAV.find((s) => s.items.some((i) => isActivePath(pathname, i) && i.href === item.href)) : undefined;
+  const Icon = item?.icon;
 
   return (
     <div className={styles.topbar}>
       <div className={styles.titleBlock}>
-        <span className={styles.contextDot} />
+        {Icon ? (
+          <span className={styles.pageIcon}>
+            <Icon size={15} strokeWidth={1.7} />
+          </span>
+        ) : null}
+
+        {section ? (
+          <>
+            <span className={styles.section}>{section.label}</span>
+            <span className={styles.separator}>/</span>
+          </>
+        ) : null}
+
         <span className={styles.title}>{title}</span>
 
         {subtitle && (
@@ -42,7 +63,7 @@ export function Topbar({ title, subtitle, websiteSwitcher }: Props) {
           </div>
         )}
 
-        <div className={styles.avatar} aria-label={email ?? "Account"}>
+        <div className={styles.avatar} title={email ?? "Account"} aria-label={email ?? "Account"}>
           {initial}
         </div>
       </div>

@@ -1,3 +1,4 @@
+/* linear-v14 */
 .overlay {
   position: fixed;
   inset: 0;
@@ -18,7 +19,7 @@
 }
 
 .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-.title { font-size: 0.95rem; font-weight: 600; color: var(--primary); }
+.title { font-size: 0.95rem; font-weight: 590; color: var(--primary); }
 .subtitle { font-size: 0.75rem; color: var(--secondary); margin-top: 2px; }
 
 .closeButton {
@@ -36,23 +37,13 @@
 .statusError { font-size: 0.8rem; color: var(--danger); padding: 16px 0; }
 
 .chartBlock { margin-bottom: 24px; }
-.chartLabel { font-size: 0.72rem; color: var(--secondary); margin-bottom: 8px; font-weight: 500; }
+.chartLabel { font-size: 0.72rem; color: var(--secondary); margin-bottom: 8px; font-weight: 510; }
 
 /* LINEAR_DRAWER_V2 */
 
 .drawer,
 .panel {
   background:
-    radial-gradient(
-      480px 240px at 20% -80px,
-      rgba(122,128,154,.065),
-      transparent 70%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.018),
-      rgba(255,255,255,.003)
-    ),
     var(--surface) !important;
 
   border-color: var(--border) !important;

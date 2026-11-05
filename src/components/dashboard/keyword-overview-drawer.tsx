@@ -166,8 +166,8 @@ export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, 
                 <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Monthly Search Volume</div>
                 <ResponsiveContainer width="100%" height={160}>
                   <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 9, fill: "var(--secondary)" }} />
-                    <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 9, fill: "var(--secondary)" }} width={40} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--secondary)" }} />
+                    <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: "var(--secondary)" }} width={40} />
                     <Tooltip
                       contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", fontSize: 11 }}
                       formatter={(v) => [typeof v === "number" ? v.toLocaleString() : v, "volume"]}

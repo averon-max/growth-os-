@@ -38,7 +38,7 @@ export function Sidebar() {
     <aside className={styles.sidebar}>
       <Link href={withSite("/dashboard", site)} className={styles.brand}>
         <div className={styles.brandMark}>
-          <span />
+          <span>G</span>
         </div>
         <span className={styles.brandName}>Growth OS</span>
       </Link>

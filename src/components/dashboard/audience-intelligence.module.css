@@ -1,3 +1,4 @@
+/* linear-v14 */
 .root {
   width: 100%;
 
@@ -23,27 +24,12 @@
   overflow: hidden;
 
   border:
-    1px solid rgba(255,255,255,.065);
+    1px solid #23252a;
 
   border-radius: 12px;
 
   background:
-    radial-gradient(
-      620px 260px at 7% -55%,
-      rgba(103,100,211,.14),
-      transparent 67%
-    ),
-    radial-gradient(
-      560px 240px at 96% -55%,
-      rgba(45,137,154,.09),
-      transparent 68%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.022),
-      rgba(255,255,255,.005)
-    ),
-    #111214;
+    #101112;
 }
 
 .hero::after {
@@ -68,22 +54,22 @@
 .eyebrow {
   margin-bottom: 7px;
 
-  color: #757981;
+  color: #62666d;
 
-  font-size: 9px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 590;
 
-  letter-spacing: .08em;
+  letter-spacing: 0;
 
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .title {
   margin: 0;
 
-  color: #e9e9eb;
+  color: #f7f8f8;
 
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 590;
 
   letter-spacing: -.035em;
@@ -94,9 +80,9 @@
 
   margin: 7px 0 0;
 
-  color: #82868e;
+  color: #8a8f98;
 
-  font-size: 11px;
+  font-size: 13px;
 
   line-height: 1.55;
 }
@@ -113,7 +99,7 @@
 
 .source,
 .syncStatus {
-  height: 25px;
+  height: 29px;
 
   display: inline-flex;
   align-items: center;
@@ -123,32 +109,32 @@
   padding: 0 8px;
 
   border:
-    1px solid rgba(255,255,255,.05);
+    1px solid #1d1e21;
 
   border-radius: 6px;
 
   background:
     rgba(255,255,255,.015);
 
-  color: #878b93;
+  color: #8a8f98;
 
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .syncStatus {
-  color: #747880;
+  color: #62666d;
 }
 
 .liveDot {
-  width: 5px;
-  height: 5px;
+  width: 3px;
+  height: 12px;
 
-  border-radius: 50%;
+  border-radius: 2px;
 
   background: #59b777;
 
   box-shadow:
-    0 0 8px rgba(89,183,119,.32);
+    none;
 }
 
 .controls {
@@ -172,7 +158,7 @@
   padding: 3px;
 
   border:
-    1px solid rgba(255,255,255,.065);
+    1px solid #23252a;
 
   border-radius: 7px;
 
@@ -180,7 +166,7 @@
 }
 
 .rangeButton {
-  height: 28px;
+  height: 32px;
 
   min-width: 39px;
 
@@ -191,30 +177,26 @@
 
   background: transparent;
 
-  color: #676b73;
+  color: #62666d;
 
-  font-size: 9px;
-  font-weight: 570;
+  font-size: 12px;
+  font-weight: 590;
 
   cursor: pointer;
 }
 
 .rangeButton:hover {
-  color: #b8bbc0;
+  color: #d0d6e0;
 
   background:
     rgba(255,255,255,.025);
 }
 
 .rangeButtonActive {
-  color: #e3e4e6;
+  color: #d0d6e0;
 
   background:
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.09),
-      rgba(255,255,255,.04)
-    );
+    rgba(255,255,255,.09);
 
   box-shadow:
     inset 0 0 0 1px
@@ -223,7 +205,7 @@
 
 .actionButton,
 .iconButton {
-  height: 34px;
+  height: 38px;
 
   display: inline-flex;
   align-items: center;
@@ -234,17 +216,17 @@
   padding: 0 10px;
 
   border:
-    1px solid rgba(255,255,255,.065);
+    1px solid #23252a;
 
   border-radius: 7px;
 
   background:
     rgba(255,255,255,.018);
 
-  color: #858991;
+  color: #8a8f98;
 
-  font-size: 9px;
-  font-weight: 570;
+  font-size: 12px;
+  font-weight: 590;
 
   text-decoration: none;
 
@@ -253,39 +235,31 @@
 
 .actionButton:hover,
 .iconButton:hover {
-  color: #ced0d4;
+  color: #d0d6e0;
 
   border-color:
-    rgba(255,255,255,.10);
+    #23252a;
 
   background:
     rgba(255,255,255,.035);
 }
 
 .syncButton {
-  color: #d8d9dc;
+  color: #d0d6e0;
 
   border-color:
-    rgba(111,108,216,.18);
+    rgba(106,149,218,.18);
 
   background:
-    linear-gradient(
-      180deg,
-      rgba(111,108,216,.19),
-      rgba(111,108,216,.10)
-    );
+    rgba(106,149,218,.19);
 }
 
 .syncButton:hover {
   border-color:
-    rgba(111,108,216,.28);
+    rgba(106,149,218,.28);
 
   background:
-    linear-gradient(
-      180deg,
-      rgba(111,108,216,.25),
-      rgba(111,108,216,.13)
-    );
+    rgba(106,149,218,.25);
 }
 
 .actionButton:disabled {

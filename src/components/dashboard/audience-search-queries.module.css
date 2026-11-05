@@ -1,8 +1,9 @@
+/* linear-v14 */
 .surface {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #0d0f11;
+  background: #101112;
 }
 
 .header {
@@ -13,7 +14,7 @@
   gap: 12px;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
-  background: #101214;
+  background: #101112;
 }
 
 .titleLine {
@@ -26,8 +27,8 @@
 
 .titleLine strong {
   color: var(--primary);
-  font-size: 10px;
-  font-weight: 550;
+  font-size: 12px;
+  font-weight: 510;
 }
 
 .sourceBadge {
@@ -36,7 +37,7 @@
   border-radius: 4px;
   background: rgba(91, 171, 118, .045);
   color: #72a983;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .headerRight {
@@ -49,8 +50,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #646972;
-  font-size: 7px;
+  color: #62666d;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -67,13 +68,13 @@
   justify-content: center;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #0c0e10;
+  background: #101112;
   color: var(--secondary);
   cursor: pointer;
 }
 
 .refresh:hover {
-  background: #15171a;
+  background: #141516;
   color: var(--primary);
 }
 
@@ -89,13 +90,13 @@
   align-items: center;
   gap: 10px;
   padding: 9px 11px;
-  background: #0d0f11;
+  background: #101112;
 }
 
 .compactState > i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
   background: #656a73;
 }
 
@@ -114,8 +115,8 @@
 .stateCopy strong {
   display: block;
   color: var(--primary);
-  font-size: 9px;
-  font-weight: 540;
+  font-size: 12px;
+  font-weight: 510;
 }
 
 .stateCopy span {
@@ -123,29 +124,29 @@
   margin-top: 3px;
   overflow: hidden;
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .stateAction {
-  height: 26px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0 8px;
-  border: 1px solid rgba(133, 117, 220, .22);
+  border: 1px solid rgba(117,156,220,.22);
   border-radius: 4px;
-  background: rgba(133, 117, 220, .07);
-  color: #b9afe9;
-  font-size: 8px;
+  background: rgba(117,156,220,.07);
+  color: #adc5eb;
+  font-size: 11px;
   text-decoration: none;
   cursor: pointer;
 }
 
 .stateAction:hover {
-  background: rgba(133, 117, 220, .11);
+  background: rgba(117,156,220,.11);
 }
 
 .metrics {
@@ -169,10 +170,10 @@
   align-items: center;
   gap: 5px;
   color: var(--secondary);
-  font-size: 7px;
-  font-weight: 600;
-  letter-spacing: .045em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .metric strong {
@@ -180,7 +181,7 @@
   margin-top: 7px;
   color: var(--primary);
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 510;
   letter-spacing: -.035em;
 }
 
@@ -195,13 +196,13 @@
 
 .tableHeader strong {
   color: var(--primary);
-  font-size: 8px;
-  font-weight: 550;
+  font-size: 11px;
+  font-weight: 510;
 }
 
 .tableHeader span {
-  color: #5b6068;
-  font-size: 7px;
+  color: #62666d;
+  font-size: 11px;
 }
 
 .tableViewport {
@@ -219,13 +220,13 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  height: 29px;
+  height: 35px;
   padding: 0 9px;
   border-bottom: 1px solid var(--border);
-  background: #0f1113;
-  color: #626770;
-  font-size: 7px;
-  font-weight: 500;
+  background: #101112;
+  color: #62666d;
+  font-size: 11px;
+  font-weight: 510;
   text-align: left;
 }
 
@@ -245,11 +246,11 @@
 }
 
 .table td {
-  height: 34px;
+  height: 38px;
   padding: 0 9px;
-  border-bottom: 1px solid rgba(255,255,255,.04);
+  border-bottom: 1px solid #1d1e21;
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .table tbody tr:hover {
@@ -266,8 +267,8 @@
 .queryCell strong {
   overflow: hidden;
   color: var(--primary);
-  font-size: 8px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 510;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -275,12 +276,12 @@
 .rank {
   flex: 0 0 auto;
   color: #454a52;
-  font-size: 7px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 .number {
-  color: #b6b9be !important;
+  color: #d0d6e0 !important;
   font-variant-numeric: tabular-nums;
 }
 
@@ -289,7 +290,7 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-  color: #898e97;
+  color: #8a8f98;
   text-decoration: none;
 }
 
@@ -304,7 +305,7 @@
 }
 
 .muted {
-  color: #4e535b;
+  color: #62666d;
 }
 
 .spin {

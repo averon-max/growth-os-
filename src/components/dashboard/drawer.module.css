@@ -1,3 +1,4 @@
+/* linear-v14 */
 .overlay {
   position: fixed;
   inset: 0;
@@ -31,7 +32,7 @@
   flex-shrink: 0;
 }
 
-.title { font-weight: 600; font-size: 0.92rem; color: var(--primary); margin: 0; }
+.title { font-weight: 590; font-size: 0.92rem; color: var(--primary); margin: 0; }
 
 .closeButton {
   background: none;
@@ -59,16 +60,6 @@
 .drawer,
 .panel {
   background:
-    radial-gradient(
-      480px 240px at 20% -80px,
-      rgba(122,128,154,.065),
-      transparent 70%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.018),
-      rgba(255,255,255,.003)
-    ),
     var(--surface) !important;
 
   border-color: var(--border) !important;

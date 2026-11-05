@@ -1,8 +1,9 @@
+/* linear-v14 */
 .shell {
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
-  background: #0d0f11;
+  background: #101112;
 }
 
 .header {
@@ -13,7 +14,7 @@
   gap: 14px;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
-  background: #101214;
+  background: #101112;
 }
 
 .headerTitle {
@@ -22,17 +23,17 @@
   gap: 8px;
   min-width: 0;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .headerTitle strong {
   color: var(--primary);
-  font-size: 10px;
-  font-weight: 550;
+  font-size: 12px;
+  font-weight: 510;
 }
 
 .headerTitle span {
-  color: #60656d;
+  color: #62666d;
 }
 
 .metricSwitch {
@@ -45,18 +46,18 @@
 }
 
 .metricSwitch button {
-  height: 24px;
+  height: 28px;
   padding: 0 8px;
   border: 0;
   border-radius: 3px;
   background: transparent;
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
   cursor: pointer;
 }
 
 .metricSwitch button[data-active="true"] {
-  background: #1a1c20;
+  background: #1c1d1f;
   color: var(--primary);
 }
 
@@ -73,7 +74,7 @@
   gap: 14px;
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
-  background: rgba(112,91,188,.045);
+  background: rgba(70,123,209,.045);
 }
 
 .integrationBar > div:first-child {
@@ -81,20 +82,20 @@
   align-items: center;
   gap: 7px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .integrationBar button {
-  height: 27px;
+  height: 31px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0 9px;
-  border: 1px solid rgba(137,117,218,.25);
+  border: 1px solid rgba(115,155,220,.25);
   border-radius: 4px;
-  background: rgba(137,117,218,.09);
-  color: #c9c1ed;
-  font-size: 8px;
+  background: rgba(115,155,220,.09);
+  color: #bfd1ef;
+  font-size: 11px;
   cursor: pointer;
 }
 
@@ -106,14 +107,14 @@
 .propertyPicker select,
 .propertyPicker input {
   min-width: 220px;
-  height: 27px;
+  height: 31px;
   padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
   outline: none;
   background: #0b0d0f;
   color: var(--primary);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .error {
@@ -121,7 +122,7 @@
   border-bottom: 1px solid rgba(201,112,120,.16);
   background: rgba(201,112,120,.045);
   color: #c9797f;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .gaMetrics {
@@ -145,17 +146,17 @@
   align-items: center;
   gap: 5px;
   color: var(--secondary);
-  font-size: 7px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .metric span i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
   background: #65ad7d;
-  box-shadow: 0 0 0 4px rgba(101,173,125,.055);
+  box-shadow: none;
 }
 
 .metric strong {
@@ -163,7 +164,7 @@
   margin-top: 7px;
   color: var(--primary);
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 510;
   letter-spacing: -.035em;
 }
 
@@ -179,14 +180,14 @@
 }
 
 .mapMeta {
-  min-height: 32px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
-  color: #626770;
-  font-size: 7px;
+  color: #62666d;
+  font-size: 11px;
 }
 
 .mapMeta span {
@@ -200,9 +201,7 @@
   height: 375px;
   overflow: hidden;
   background:
-    linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px),
-    radial-gradient(circle at 45% 45%, rgba(119,98,186,.05), transparent 50%);
+    rgba(255,255,255,.012);
   background-size: 28px 28px, 28px 28px, auto;
 }
 
@@ -217,38 +216,38 @@
   right: 10px;
   width: 165px;
   padding: 9px;
-  border: 1px solid rgba(255,255,255,.09);
+  border: 1px solid #23252a;
   border-radius: 5px;
   background: rgba(12,14,16,.94);
   box-shadow: 0 10px 30px rgba(0,0,0,.28);
-  backdrop-filter: blur(16px);
+  backdrop-filter: none;
 }
 
 .hoverCard > strong {
   display: block;
   margin-bottom: 7px;
   color: var(--primary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .hoverCard > div {
-  min-height: 20px;
+  min-height: 26px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid rgba(255,255,255,.04);
+  border-top: 1px solid #1d1e21;
   color: var(--secondary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .hoverCard b {
   color: var(--primary);
-  font-weight: 520;
+  font-weight: 510;
 }
 
 .sidePanel {
   min-width: 0;
-  background: #0e1012;
+  background: #101112;
 }
 
 .sideHeader {
@@ -262,13 +261,13 @@
 
 .sideHeader strong {
   color: var(--primary);
-  font-size: 9px;
-  font-weight: 550;
+  font-size: 12px;
+  font-weight: 510;
 }
 
 .sideHeader span {
   color: var(--secondary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .countryRows {
@@ -296,19 +295,19 @@
 }
 
 .rank {
-  color: #4d525a;
-  font-size: 7px;
+  color: #62666d;
+  font-size: 11px;
 }
 
 .flag {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .countryRow > strong {
   overflow: hidden;
   color: var(--primary);
-  font-size: 8px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 510;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -320,15 +319,15 @@
 .countryRow b {
   display: block;
   color: var(--primary);
-  font-size: 8px;
-  font-weight: 520;
+  font-size: 11px;
+  font-weight: 510;
 }
 
 .countryRow small {
   display: block;
   margin-top: 2px;
-  color: #5b6068;
-  font-size: 6px;
+  color: #62666d;
+  font-size: 11px;
 }
 
 .countryHero {
@@ -341,21 +340,21 @@
 }
 
 .countryHero > span {
-  font-size: 23px;
+  font-size: 22px;
 }
 
 .countryHero strong {
   display: block;
   color: var(--primary);
-  font-size: 11px;
-  font-weight: 560;
+  font-size: 13px;
+  font-weight: 590;
 }
 
 .countryHero small {
   display: block;
   margin-top: 3px;
   color: var(--secondary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .countryStats {
@@ -378,15 +377,15 @@
 .countryStats span {
   display: block;
   color: var(--secondary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .countryStats b {
   display: block;
   margin-top: 5px;
   color: var(--primary);
-  font-size: 14px;
-  font-weight: 550;
+  font-size: 15px;
+  font-weight: 510;
 }
 
 .liveValue {
@@ -398,16 +397,16 @@
 }
 
 .miniHeader {
-  height: 29px;
+  height: 35px;
   display: flex;
   align-items: center;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
   color: var(--secondary);
-  font-size: 7px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .miniRow {
@@ -417,21 +416,21 @@
   align-items: center;
   gap: 7px;
   padding: 0 10px;
-  border-bottom: 1px solid rgba(255,255,255,.035);
+  border-bottom: 1px solid #1d1e21;
 }
 
 .miniRow > span {
   overflow: hidden;
-  color: #a5a8ae;
-  font-size: 7px;
+  color: #8a8f98;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .miniRow > b {
   color: var(--primary);
-  font-size: 7px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 510;
   text-align: right;
 }
 
@@ -444,13 +443,13 @@
 .miniTrack i {
   height: 100%;
   display: block;
-  background: #7f6bc1;
+  background: #5787d5;
 }
 
 .empty {
   padding: 14px 10px;
-  color: #5b6068;
-  font-size: 7px;
+  color: #62666d;
+  font-size: 11px;
 }
 
 @media (max-width: 1100px) {
@@ -509,8 +508,8 @@
 }
 
 .geoPath:hover {
-  fill: #9682d6 !important;
-  stroke: #d7d4ea !important;
+  fill: #7aa0de !important;
+  stroke: #ccdbf2 !important;
   stroke-width: .8 !important;
 }
 

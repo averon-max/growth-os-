@@ -1,3 +1,4 @@
+/* linear-v14 */
 .panel {
   border-top: 1px solid var(--border);
   background: var(--background);
@@ -15,24 +16,24 @@
 .eyebrow {
   margin: 0 0 4px;
   color: var(--secondary);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .title {
   margin: 0;
   color: var(--primary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 590;
 }
 
 .subtitle {
   max-width: 650px;
   margin: 5px 0 0;
   color: var(--secondary);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -44,14 +45,14 @@
   color: var(--secondary);
   padding: 5px 8px;
   font: inherit;
-  font-size: 9px;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .state {
   padding: 20px 16px;
   color: var(--secondary);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .error {
@@ -75,17 +76,17 @@
   align-items: center;
   justify-content: center;
   min-width: 54px;
-  height: 24px;
+  height: 28px;
   padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 590;
   letter-spacing: .06em;
 }
 
 .create {
-  color: #9aa5ff;
+  color: #9ac1ff;
   border-color: rgba(59, 130, 246, .6);
   background: rgba(59, 130, 246, .1);
 }
@@ -104,21 +105,21 @@
 
 .decisionTitle {
   color: var(--primary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 590;
 }
 
 .decisionKeyword {
   margin-top: 2px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .rationale {
   max-width: 900px;
   margin: 10px 0 0;
   color: var(--secondary);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -140,15 +141,15 @@
 .metaValue {
   display: block;
   color: var(--primary);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 590;
 }
 
 .metaLabel {
   display: block;
   margin-top: 3px;
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .grid {
@@ -168,8 +169,8 @@
 .sectionTitle {
   margin: 0 0 10px;
   color: var(--primary);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 590;
 }
 
 .evidenceList {
@@ -182,16 +183,16 @@
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .evidenceDot {
-  width: 5px;
-  height: 5px;
+  width: 3px;
+  height: 12px;
   margin-top: 5px;
   flex: 0 0 auto;
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--accent);
 }
 
@@ -205,16 +206,16 @@
 
 .contextLabel {
   color: var(--secondary);
-  font-size: 8px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .contextValue {
   overflow: hidden;
   margin-top: 5px;
   color: var(--primary);
-  font-size: 9px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -222,7 +223,7 @@
 .contextSub {
   margin-top: 4px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .emptyEvidence {
@@ -230,7 +231,7 @@
   border: 1px dashed var(--border);
   border-radius: 4px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -242,14 +243,14 @@
 
 .itemTitle {
   color: var(--primary);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
 }
 
 .body {
   margin-top: 4px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -259,12 +260,12 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--primary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .readOk,
 .readNo {
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .readOk {
@@ -295,38 +296,38 @@
   align-items: center;
   justify-content: center;
   width: 20px;
-  height: 20px;
+  height: 24px;
   flex: 0 0 auto;
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--primary);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .stepTitle {
   color: var(--primary);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
 }
 
 .stepType {
   margin-top: 2px;
   color: var(--secondary);
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: .05em;
 }
 
 .stepBody {
   margin: 7px 0 0 28px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .stepEvidence {
   margin: 6px 0 0 28px;
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.55;
 }
 
@@ -340,8 +341,8 @@
 
 .measurementTitle {
   color: var(--primary);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
 }
 
 .checkpoints {
@@ -355,13 +356,13 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .advanced {
   margin-top: 12px;
   color: var(--secondary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .advanced summary {
@@ -402,15 +403,15 @@
 }
 
 .startButton {
-  min-height: 30px;
+  min-height: 34px;
   padding: 0 12px;
   border: 1px solid rgba(59, 130, 246, .65);
   border-radius: 4px;
   background: rgba(59, 130, 246, .14);
   color: var(--primary);
   font: inherit;
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 590;
   cursor: pointer;
 }
 
@@ -430,13 +431,13 @@
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
 .startStatus strong {
   color: var(--primary);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .startStatus span {
@@ -445,7 +446,7 @@
 
 .startStatus code {
   color: var(--secondary);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .startBlocked {
@@ -461,7 +462,7 @@
 .startError {
   padding: 7px 9px;
   color: #df7c7c;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 
@@ -474,8 +475,8 @@
   border-radius: 4px;
   background: var(--surface);
   color: var(--primary);
-  font-size: 8px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 590;
   line-height: 1;
   text-decoration: none;
 }
@@ -506,10 +507,10 @@
 
 .createSuccess strong {
   color: var(--primary);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .createSuccess span {
   color: var(--secondary);
-  font-size: 8px;
+  font-size: 11px;
 }

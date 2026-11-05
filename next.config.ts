@@ -13,7 +13,8 @@ const csp = [
   "form-action 'self'",
   "object-src 'none'",
 ].join("; ");
-const noindex = { key: "X-Robots-Tag", value: "noindex, nofollow" };
+const noindex = {
+  devIndicators: { position: "bottom-right" }, key: "X-Robots-Tag", value: "noindex, nofollow" };
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

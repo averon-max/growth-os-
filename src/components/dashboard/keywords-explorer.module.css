@@ -1,3 +1,4 @@
+/* linear-v14 */
 .workspace {
   position: relative;
 
@@ -9,11 +10,6 @@
   border-radius: 10px;
 
   background:
-    radial-gradient(
-      580px 200px at 15% -140px,
-      rgba(150,154,171,.042),
-      transparent 70%
-    ),
     var(--surface);
 }
 
@@ -39,7 +35,7 @@
 
   color: var(--secondary);
 
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .filters {
@@ -51,7 +47,7 @@
 }
 
 .select {
-  min-height: 30px;
+  min-height: 33px;
 
   padding: 0 9px;
 
@@ -61,9 +57,9 @@
   border-radius: 5px;
 
   background: rgba(255,255,255,.016);
-  color: #989ba2;
+  color: #8a8f98;
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .select:hover {
@@ -84,11 +80,11 @@
   border: 1px solid var(--border);
   border-radius: 5px;
 
-  background: #0e1011;
+  background: #101112;
 }
 
 .searchIcon {
-  color: #686b72;
+  color: #62666d;
 }
 
 .searchInput {
@@ -102,7 +98,7 @@
   background: transparent;
   color: var(--primary);
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .searchInput::placeholder {
@@ -131,27 +127,27 @@
   border: 0;
 
   background: transparent;
-  color: #7d8087;
+  color: #8a8f98;
 
-  font-size: 10px;
+  font-size: 12px;
 
   cursor: pointer;
 }
 
 .pageButton:hover {
-  color: #d8d9db;
+  color: #d0d6e0;
 }
 
 .pageButton:disabled {
-  color: #4d5056;
+  color: #62666d;
 }
 
 .pageLabel {
-  color: #5f6269;
+  color: #62666d;
 
   font-family: var(--font-mono);
 
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .emptyRow {
@@ -168,19 +164,9 @@
 .workspace {
   position: relative;
 
-  border-color: rgba(255,255,255,.068);
+  border-color: #23252a;
 
   background:
-    radial-gradient(
-      650px 210px at 16% -130px,
-      rgba(145,151,175,.055),
-      transparent 70%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(255,255,255,.012),
-      transparent 130px
-    ),
     var(--surface);
 
   box-shadow:
@@ -200,12 +186,7 @@
   height: 1px;
 
   background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(162,166,188,.16),
-      transparent
-    );
+    rgba(127,164,223,.16);
 }
 
 .filters {
@@ -221,12 +202,12 @@
 }
 
 .select:hover {
-  color: #bfc1c6;
+  color: #d0d6e0;
 }
 
 .searchBox:focus-within {
   border-color: rgba(59,130,246,.28);
 
   box-shadow:
-    0 0 0 3px rgba(59,130,246,.04);
+    none;
 }

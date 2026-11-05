@@ -1276,7 +1276,7 @@ export function AudienceGeoIntelligence({
                             }
                             stroke={
                               isSelected
-                                ? "#d7d4ea"
+                                ? "#d0d6e0"
                                 : "#25282d"
                             }
                             strokeWidth={

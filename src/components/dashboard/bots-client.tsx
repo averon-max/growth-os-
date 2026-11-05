@@ -70,7 +70,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
           <div className={`${u.statGrid} ${p.stat6}`}>
             <Stat label="Requests" value={t ? fmt(t.total) : "—"} color="#93c5fd" />
             <Stat label="Verified bot requests" value={t ? fmt(t.bots) : "—"} color="#3b82f6" />
-            <Stat label="Bot share" value={t ? `${t.share}%` : "—"} color="#2599a8" />
+            <Stat label="Bot share" value={t ? `${t.share}%` : "—"} color="#60a5fa" />
             <Stat label="Search engines" value={data ? fmt(g["Search engines"] ?? 0) : "—"} color="#4daf6d" />
             <Stat label="AI crawlers" value={data ? fmt(g["AI crawlers & assistants"] ?? 0) : "—"} color="#c9a644" />
             <Stat label="SEO tools" value={data ? fmt(g["SEO tools"] ?? 0) : "—"} color="#d46670" />
