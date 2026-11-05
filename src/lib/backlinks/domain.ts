@@ -18,6 +18,7 @@ async function call(endpoint: string, task: Rec): Promise<Rec[]> {
   const json = (await res.json().catch(() => ({}))) as Rec;
   const t = ((json.tasks as Rec[] | undefined) ?? [])[0] ?? {};
   const code = num(t.status_code) ?? num(json.status_code) ?? 0;
+  if (code === 40200) throw new BacklinksAccessError("DataForSEO balance is empty. Top up at app.dataforseo.com, then press Refresh.");
   if (code === 40204 || code === 40201 || code === 40104) throw new BacklinksAccessError("Your DataForSEO plan does not include the Backlinks API. Activate it in the DataForSEO dashboard.");
   if (code >= 40000) throw new Error(str(t.status_message) ?? str(json.status_message) ?? `DataForSEO error ${code}`);
   return ((t.result as Rec[] | undefined) ?? []);
