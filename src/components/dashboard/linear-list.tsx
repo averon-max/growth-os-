@@ -1,8 +1,9 @@
 "use client";
+import type { ReactNode } from "react";
 import s from "./linear-list.module.css";
 
 export type LStatus = "red" | "green" | "yellow" | "gray" | "blue";
-export interface LRow { key: string; id?: string; status: LStatus; title: string; hint?: string; pills?: { label: string; dot?: string }[]; metrics?: string[]; date?: string; onClick?: () => void }
+export interface LRow { key: string; id?: string; status: LStatus; title: string; hint?: string; pills?: { label: string; dot?: string }[]; metrics?: string[]; date?: string; onClick?: () => void; actions?: ReactNode }
 export interface LGroup { title: string; count: number; status: LStatus; rows: LRow[] }
 
 const COLOR: Record<LStatus, string> = { red: "#eb5757", green: "#4cb782", yellow: "#f2c94c", gray: "#62666d", blue: "#5e6ad2" };
@@ -29,6 +30,7 @@ export function LinearList({ groups, empty = "Nothing here." }: { groups: LGroup
               {(r.pills ?? []).map((p) => <span key={p.label} className={s.pill} style={p.dot ? { color: p.dot, borderColor: p.dot + "55" } : undefined}>{p.label}</span>)}
               {(r.metrics ?? []).map((m, i) => <span key={i} className={s.m}>{m}</span>)}
               {r.date ? <span className={s.d}>{r.date}</span> : null}
+              {r.actions ? <span className={s.a} onClick={(e) => e.stopPropagation()}>{r.actions}</span> : null}
             </div>
           ))}
         </div>

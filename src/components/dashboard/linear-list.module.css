@@ -15,3 +15,9 @@
 .empty{padding:36px 16px;color:#62666d;text-align:center}
 .r:hover .tt{color:#93c5fd}
 .dot{display:none}
+.a{display:flex;gap:6px;flex:0 0 auto}
+.btn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid #23252a;border-radius:7px;background:#1c1d1f;color:#f7f8f8;font-size:12px;font-weight:510;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:rgba(59,130,246,.4)}
+.btn:disabled{opacity:.5;cursor:default}
+.blue{border-color:transparent;background:#3b82f6;color:#fff}
+.blue:hover{background:#4f8ff7}
