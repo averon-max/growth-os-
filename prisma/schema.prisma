@@ -936,3 +936,22 @@ model ApiCache {
 
   @@index([endpoint])
 }
+
+/// Бесплатные бэклинки: импорт CSV (GSC / Ahrefs / Bing) и Bing Webmaster API
+model SiteBacklink {
+  id           String    @id @default(cuid())
+  websiteId    String
+  source       String
+  sourceUrl    String
+  sourceDomain String
+  targetUrl    String
+  anchor       String?
+  linkCount    Int?
+  firstSeen    DateTime?
+  lastSeen     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([websiteId, source, sourceDomain, sourceUrl, targetUrl])
+  @@index([websiteId])
+}

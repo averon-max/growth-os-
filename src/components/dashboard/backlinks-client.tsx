@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Upload } from "lucide-react";
 import type { BacklinksReport } from "@/lib/backlinks/domain";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import { LinearList, type LRow } from "./linear-list";
@@ -17,6 +17,38 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className={u.statCard}>
       <div className={u.statHeader}><p className={u.statLabel}>{label}</p></div>
       <p className={u.statValue}>{value}</p>
+    </div>
+  );
+}
+
+function FreeBanner({ notice, websiteId, onImported }: { notice: string; websiteId: string; onImported: () => void }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function onFiles(files: FileList | null) {
+    if (files == null || files.length === 0) return;
+    setBusy(true); setMsg(null);
+    const notes: string[] = [];
+    try {
+      for (const f of Array.from(files)) {
+        const res = await fetch(`/api/backlinks/import?websiteId=${encodeURIComponent(websiteId)}&name=${encodeURIComponent(f.name)}`, {
+          method: "POST", headers: { "content-type": "text/csv" }, body: await f.text(),
+        });
+        const j = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+        if (res.ok === false) throw new Error(j.error ?? `Import of ${f.name} failed.`);
+        notes.push(j.message ?? f.name);
+      }
+      setMsg(notes.join(" "));
+      onImported();
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "0 0 18px", padding: "10px 14px", border: "1px solid rgba(242,201,76,.28)", borderRadius: 10, background: "rgba(242,201,76,.06)", color: "#d0d6e0", fontSize: 13, lineHeight: 1.45 }}>
+      <span style={{ color: "#f2c94c", fontWeight: 510, whiteSpace: "nowrap" }}>Free mode</span>
+      <span style={{ flex: 1, minWidth: 0 }}>{msg ?? notice.replace(/^Free mode — /, "")}</span>
+      <label className={p.ghost} style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
+        {busy ? <Loader2 size={13} className={p.spin} /> : <Upload size={13} />}Import CSV
+        <input type="file" accept=".csv,.tsv,.txt" multiple hidden onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} />
+      </label>
     </div>
   );
 }
@@ -73,7 +105,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const linkRow = (l: Link, i: number): LRow => {
     const tox = linkToxic(l);
     return { key: l.from + l.to + i, id: `BL-${pg * 100 + i + 1}`, status: l.isLost ? "gray" : tox ? "red" : "green", title: l.fromDomain || short(l.from), hint: l.anchor || "no anchor",
-      pills: [tox ? { label: "PBN", dot: "#eb5757" } : { label: l.dofollow ? "dofollow" : "nofollow" }, ...(l.isNew ? [{ label: "New", dot: "#f2c94c" }] : []), ...(l.isLost ? [{ label: "Lost" }] : [])],
+      pills: [tox ? { label: "PBN", dot: "#eb5757" } : (l.source ? { label: l.source } : { label: l.dofollow ? "dofollow" : "nofollow" }), ...(l.isNew ? [{ label: "New", dot: "#f2c94c" }] : []), ...(l.isLost ? [{ label: "Lost" }] : [])],
       metrics: [short(l.to)], date: mon(l.firstSeen), onClick: () => openLink(l) };
   };
   const pd = page(domains);
@@ -99,6 +131,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
       </div>
 
       {error ? <div className={p.err}>{error}</div> : null}
+      {data?.mode === "free" ? <FreeBanner notice={data.notice ?? ""} websiteId={websiteId} onImported={() => void load(false)} /> : null}
 
       <div className={`${u.statGrid} ${p.stat6}`}>
         <Stat label="Domain rank" value={fmt(s?.rank ?? null)} />

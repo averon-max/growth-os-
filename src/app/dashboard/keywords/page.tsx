@@ -70,6 +70,7 @@ export default async function KeywordsPage({ searchParams }: { searchParams: Pro
 
         <KeywordRankIntelligence
           workspaceId={workspaceId}
+          websiteId={website?.id ?? null}
         />
 
         <KeywordsPageClient

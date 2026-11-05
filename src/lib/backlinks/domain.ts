@@ -4,6 +4,7 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : n
 const str = (v: unknown) => (typeof v === "string" ? v : null);
 
 export class BacklinksAccessError extends Error {}
+export class BacklinksPaymentError extends BacklinksAccessError {}
 
 async function call(endpoint: string, task: Rec): Promise<Rec[]> {
   const login = process.env.DATAFORSEO_LOGIN ?? "";
@@ -18,7 +19,7 @@ async function call(endpoint: string, task: Rec): Promise<Rec[]> {
   const json = (await res.json().catch(() => ({}))) as Rec;
   const t = ((json.tasks as Rec[] | undefined) ?? [])[0] ?? {};
   const code = num(t.status_code) ?? num(json.status_code) ?? 0;
-  if (code === 40200) throw new BacklinksAccessError("DataForSEO balance is empty. Top up at app.dataforseo.com, then press Refresh.");
+  if (code === 40200) throw new BacklinksPaymentError("DataForSEO balance is empty. Top up at app.dataforseo.com, then press Refresh.");
   if (code === 40204 || code === 40201 || code === 40104) throw new BacklinksAccessError("Your DataForSEO plan does not include the Backlinks API. Activate it in the DataForSEO dashboard.");
   if (code >= 40000) throw new Error(str(t.status_message) ?? str(json.status_message) ?? `DataForSEO error ${code}`);
   return ((t.result as Rec[] | undefined) ?? []);
@@ -39,10 +40,10 @@ async function callAll(endpoint: string, task: Rec): Promise<Rec[]> {
 }
 
 export interface BacklinksReport {
-  domain: string; generatedAt: string;
+  domain: string; generatedAt: string; mode?: "paid" | "free"; notice?: string;
   summary: { rank: number | null; backlinks: number | null; referringDomains: number | null; referringIps: number | null; brokenBacklinks: number | null; spamScore: number | null; dofollowShare: number | null };
   domains: { domain: string; rank: number | null; backlinks: number | null; firstSeen: string | null; spamScore: number | null }[];
-  links: { from: string; fromDomain: string; title: string | null; to: string; anchor: string | null; dofollow: boolean; rank: number | null; firstSeen: string | null; isNew: boolean; isLost: boolean }[];
+  links: { from: string; fromDomain: string; title: string | null; to: string; anchor: string | null; dofollow: boolean; rank: number | null; firstSeen: string | null; isNew: boolean; isLost: boolean; source?: string }[];
   anchors: { anchor: string; backlinks: number | null; domains: number | null; firstSeen: string | null }[];
 }
 
