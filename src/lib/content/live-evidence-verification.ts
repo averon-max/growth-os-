@@ -677,16 +677,18 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
       0;
 
 
-    for (
-      const query
-      of queries
-    ) {
-      if (
-        sourcesForClaim >=
-        MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM
-      ) {
+    for (const [queryIndex, query] of queries.entries()) {
+      if (sourcesForClaim >= MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM) {
         break;
       }
+
+      const remainingQueries = queries.length - queryIndex - 1;
+      const querySourceBudget = Math.max(
+        1,
+        MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM -
+          sourcesForClaim -
+          remainingQueries
+      );
 
 
       let results:
@@ -733,16 +735,12 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
       }
 
 
-      for (
-        const result
-        of results.slice(
-          0,
-          10
-        )
-      ) {
+      let sourcesFromQuery = 0;
+
+      for (const result of results.slice(0, 10)) {
         if (
-          sourcesForClaim >=
-          MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM
+          sourcesForClaim >= MAX_EVIDENCE_FALLBACK_SOURCES_PER_CLAIM ||
+          sourcesFromQuery >= querySourceBudget
         ) {
           break;
         }
@@ -815,8 +813,8 @@ export async function discoverClaimEvidenceFallbackSourcesV1({
         });
 
 
-        sourcesForClaim +=
-          1;
+        sourcesForClaim += 1;
+        sourcesFromQuery += 1;
       }
     }
 

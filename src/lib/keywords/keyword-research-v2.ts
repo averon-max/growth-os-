@@ -342,7 +342,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
   if (input.useGptDecision && eligibleForGpt.length) {
     const { default: OpenAI } = await import("openai");
     if (!process.env.OPENAI_API_KEY) throw new Error("KEYWORD_V2_OPENAI_KEY_REQUIRED");
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new OpenAI({ maxRetries: 5, timeout: 180000,  apiKey: process.env.OPENAI_API_KEY });
     const completion = await client.chat.completions.create({
       model: process.env.OPENAI_CONTENT_MODEL || "gpt-5.6-luna",
       response_format: { type: "json_object" },

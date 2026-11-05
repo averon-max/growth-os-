@@ -223,9 +223,18 @@ export function detectHighConfidenceEditorialRepetitionV1(
  * only actual Markdown H2 boundaries (never synthetic planner labels).
  * This gives Approve and Publish the same cheap editorial protection.
  */
+function stripCitationNoiseV2(md: string): string {
+  return md
+    .replace(/\(\s*\[[^\]]*\]\([^)]*\)\s*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "")
+    .replace(/\b[A-Z][\w.&-]*(?:\s+[A-Z][\w.&-]*)*[’']s\s+(?:[\w-]+\s+){0,2}(?:guidance|documentation|docs|guide|guidelines)\b/g, "")
+    .replace(/\(\s*\)/g, "");
+}
+
 export function detectPersistedArticleEditorialRepetitionV1(
   bodyMarkdown:string
 ):readonly EditorialRepetitionFindingV1[]{
+  bodyMarkdown = stripCitationNoiseV2(bodyMarkdown);
   const sections:{heading:string;bodyMarkdown:string}[]=[];
   const lines=bodyMarkdown.split(/\r?\n/);
   const fenceChar=String.fromCharCode(96);

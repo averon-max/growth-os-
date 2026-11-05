@@ -1619,6 +1619,25 @@ function inspectStagePlanCompleteness(
         "Your previous response was valid JSON but did not satisfy the complete production Stage Plan contract.",
 
         `Missing or invalid fields: ${missingStagePlanFields.join(", ")}`,
+
+        "CLAIM_OWNER_RECONCILIATION_V1:",
+        "Use the current plan as recovery context, not as a requirement to preserve flawed assignments.",
+        "Current claim inventory and factual hypotheses: " + JSON.stringify(plan.claims),
+        "Current section missions and claim assignments: " + JSON.stringify(plan.sections.map((section, index) => ({
+          sectionIndex: index,
+          heading: section.heading,
+          mission: section.mission,
+          topics: section.topics,
+          questions: section.questions,
+          roles: section.roles,
+          requiredClaimIds: section.requiredClaimIds,
+        }))),
+        "Before returning JSON, construct one ownership map from claim ID to section index.",
+        "A claim ID may appear in requiredClaimIds in AT MOST ONE section across the entire output.",
+        "Assign each claim to the single section whose information job requires the whole proposition. Do not reuse an ID because multiple sections discuss the same broad subject.",
+        "Use a distinct atomic claim with a unique ID for a genuinely different factual hypothesis only. Never clone or rename the same proposition to evade ownership validation.",
+        "If a section needs no material factual claim, use requiredClaimIds: []. If an evidence-sensitive role requires a claim, plan a distinct supportable claim or revise that section honestly instead of duplicating another section's claim.",
+        "Final self-check: every requiredClaimIds entry exists in claims[].id, and each claim ID is referenced by at most one section.",
         /*
          * A generic full retry kept reproducing one broad claim per H2
          * even after consuming a second paid planner call.
@@ -1627,7 +1646,7 @@ function inspectStagePlanCompleteness(
          * this one existing regeneration re-architects the real reader
          * jobs; no invented claim is ever marked verified.
          */
-        ...(missingStagePlanFields.includes("sections[].informationGainClaimBreadth")?
+        ...(missingStagePlanFields.includes("sections[].informationGainClaimBreadth") || missingStagePlanFields.includes("sections[].comprehensiveReaderJobs")?
           [buildStagePlanInformationGainRetryV1({
             sections:plan.sections,
             claims:plan.claims,

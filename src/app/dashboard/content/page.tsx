@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
 import { ContentExplorer } from "@/components/dashboard/content-explorer";
-import { ContentCreateButton } from "@/components/dashboard/content-create-button";
+import { WriterButton } from "@/components/dashboard/writer-button";
 
 export default async function ContentPage({
   searchParams,
@@ -48,20 +48,16 @@ export default async function ContentPage({
         subtitle={workspace?.name ?? ""}
         websiteSwitcher={
           workspace && activeWebsiteId
-            ? {
-                workspaceId: workspace.id,
-                currentWebsiteId: activeWebsiteId,
-              }
+            ? { workspaceId: workspace.id, currentWebsiteId: activeWebsiteId }
             : undefined
         }
       />
       {activeWebsiteId ? (
-        <ContentCreateButton websiteId={activeWebsiteId} />
+        <div style={{ padding: "12px 24px", borderBottom: "1px solid #1e2330" }}>
+          <WriterButton websiteId={activeWebsiteId} />
+        </div>
       ) : null}
-      <ContentExplorer
-        websiteId={activeWebsiteId}
-        opportunities={opportunities}
-      />
+      <ContentExplorer websiteId={activeWebsiteId} opportunities={opportunities} />
     </div>
   );
 }

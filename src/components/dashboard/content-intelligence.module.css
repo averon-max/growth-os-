@@ -781,3 +781,24 @@
     min-width: calc(100% - 30px);
   }
 }
+
+.editButton {
+  height: 28px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #2a2e33;
+  border-radius: 6px;
+  background: #17191c;
+  color: #d0d2d6;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
+}
+
+.editButton:hover {
+  background: #1e2124;
+  border-color: #363b41;
+  color: #f1f2f3;
+}

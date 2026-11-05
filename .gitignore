@@ -67,3 +67,8 @@ next-env.d.ts
 /security-audit-context_*.txt
 /1э=
 /....
+
+writer-logs/
+*.bak
+*.bak2
+*.backup-*

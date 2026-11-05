@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { authErrorResponse, requireUser, requireWebsiteAccess } from "@/lib/auth-helpers";
 import { getContentArticleById } from "@/lib/content/repository";
+import { extractArticleHeadings } from "@/lib/content/article-analyzer";
 import { prisma } from "@/lib/prisma";
 
 const UpdateArticleSchema = z.object({
@@ -63,6 +64,23 @@ export async function PATCH(
     const parsed = UpdateArticleSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const candidateBodyMarkdown =
+      parsed.data.bodyMarkdown ?? article.bodyMarkdown;
+
+    if (
+      extractArticleHeadings(candidateBodyMarkdown).some(
+        (heading) => heading.level === 1
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The article body must not contain an H1. Use the separate H1 field and keep the body starting with H2.",
+        },
+        { status: 400 }
+      );
     }
 
     const data: {

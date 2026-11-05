@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import {
   Badge,
@@ -620,22 +621,32 @@ function ArticlePreviewModal({
             </p>
           </div>
 
-          <button
-            type="button"
-            className={
-              styles.iconButton
-            }
-            onClick={
-              onClose
-            }
-            aria-label="Close preview"
-          >
-            <X
-              size={
-                16
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <a
+              href={`/dashboard/content/articles/${article.id}`}
+              className={styles.editButton}
+              onClick={onClose}
+            >
+              Edit
+            </a>
+
+            <button
+              type="button"
+              className={
+                styles.iconButton
               }
-            />
-          </button>
+              onClick={
+                onClose
+              }
+              aria-label="Close preview"
+            >
+              <X
+                size={
+                  16
+                }
+              />
+            </button>
+          </div>
         </div>
 
         {
@@ -662,7 +673,7 @@ function ArticlePreviewModal({
             article
               .bodyMarkdown
               ? (
-                <ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {
                     article.bodyMarkdown
                   }
@@ -1208,6 +1219,16 @@ export function ContentExplorer({
         }
 
         await loadBriefs();
+
+        setBriefs((prev) => {
+          if (!prev) return prev;
+          const brief = prev.find((b) => b.id === briefId);
+          const article = brief?.articles?.[0];
+          if (article?.bodyMarkdown) {
+            setPreviewArticle(article);
+          }
+          return prev;
+        });
       } catch {
         setError(
           "Network error."
