@@ -2054,3 +2054,9 @@
 .statGrid, .group, .table, .card { border-color: rgba(255,255,255,.07) !important; }
 .table tbody tr:hover, .dataRow:hover, .issueRow:hover, .issueTableRow:hover, .opportunityRow:hover { background: rgba(59,130,246,.05) !important; }
 .formInput:focus { border-color: rgba(59,130,246,.45) !important; box-shadow: 0 0 0 3px rgba(59,130,246,.10) !important; }
+
+/* ===== Linear-style rows: even height, single line, clickable ===== */
+.table td { height: 38px !important; padding-top: 0 !important; padding-bottom: 0 !important; max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table th { height: 34px !important; }
+.table tbody tr[data-click] { cursor: pointer; }
+.table tbody tr[data-click]:hover { background: rgba(59,130,246,.06) !important; }

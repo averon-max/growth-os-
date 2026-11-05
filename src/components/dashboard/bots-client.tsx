@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
+import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -29,6 +30,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("categories");
+  const [sel, setSel] = useState<DrawerData | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true); setError(null);
@@ -85,7 +87,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
                   <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
                     <thead><tr><th>Category</th><th>Group</th><th>Requests</th><th /><th>Share of bots</th></tr></thead>
                     <tbody>{(data.categories ?? []).map((c) => (
-                      <tr key={c.category}><td>{c.category}</td><td className={p.dim}>{c.group}</td><td className={p.num}>{fmt(c.requests)}</td>
+                      <tr key={c.category} data-click="" onClick={() => { const pg = (data?.pages ?? []).filter((x) => x.top === c.category); setSel({ title: c.category, subtitle: c.group, fields: [["Requests", fmt(c.requests)], ["Share of bots", t && t.bots ? `${Math.round((c.requests / t.bots) * 1000) / 10}%` : "—"]], itemsTitle: `Pages where it is the top bot · ${pg.length}`, items: pg.map((x) => ({ primary: x.path, secondary: `${fmt(x.bots)} bot requests · ${fmt(x.total)} total` })) }); }}><td>{c.category}</td><td className={p.dim}>{c.group}</td><td className={p.num}>{fmt(c.requests)}</td>
                         <td><div className={p.bar}><div className={p.barFill} style={{ width: `${(c.requests / maxCat) * 100}%` }} /></div></td>
                         <td className={p.num}>{t && t.bots ? `${Math.round((c.requests / t.bots) * 1000) / 10}%` : "—"}</td></tr>
                     ))}</tbody>
@@ -114,6 +116,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
           </div>
         </>
       )}
+      {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
     </>
   );
 }

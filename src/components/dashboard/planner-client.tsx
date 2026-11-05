@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
+import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -35,7 +36,7 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
   );
 }
 
-function KeywordTable({ rows, websiteId, showWrite }: { rows: PlannerKeyword[]; websiteId: string; showWrite?: boolean }) {
+function KeywordTable({ rows, websiteId, showWrite, onOpen }: { rows: PlannerKeyword[]; websiteId: string; showWrite?: boolean; onOpen?: (k: PlannerKeyword) => void }) {
   const [sort, setSort] = useState<SortKey>("volume");
   const [dir, setDir] = useState<1 | -1>(-1);
   const [page, setPage] = useState(0);
@@ -57,7 +58,7 @@ function KeywordTable({ rows, websiteId, showWrite }: { rows: PlannerKeyword[]; 
         <thead><tr><th>Keyword</th><th>Intent</th>{th("volume", "Volume")}{th("kd", "KD")}{th("cpc", "CPC")}{th("position", "Position")}{th("clicks", "Clicks")}{th("impressions", "Impr.")}<th>Page</th><th>Source</th>{showWrite ? <th /> : null}</tr></thead>
         <tbody>
           {sorted.slice(cur * PAGE, cur * PAGE + PAGE).map((k) => (
-            <tr key={k.keyword}>
+            <tr key={k.keyword} data-click="" onClick={() => onOpen?.(k)}>
               <td>{k.keyword}</td>
               <td className={p.dim}>{k.intent}</td>
               <td className={p.num}>{fmt(k.volume)}</td>
@@ -66,9 +67,9 @@ function KeywordTable({ rows, websiteId, showWrite }: { rows: PlannerKeyword[]; 
               <td className={p.num}>{k.position === null ? <span className={p.dim}>—</span> : k.position}</td>
               <td className={p.num}>{k.clicks ? fmt(k.clicks) : <span className={p.dim}>0</span>}</td>
               <td className={p.num}>{k.impressions ? fmt(k.impressions) : <span className={p.dim}>0</span>}</td>
-              <td>{k.page ? <a className={p.page} href={k.page} target="_blank" rel="noreferrer">{short(k.page)}</a> : <span className={p.dim}>No page</span>}</td>
+              <td>{k.page ? <a onClick={(e) => e.stopPropagation()} className={p.page} href={k.page} target="_blank" rel="noreferrer">{short(k.page)}</a> : <span className={p.dim}>No page</span>}</td>
               <td>{k.sources.map((s) => <span key={s} className={p.src}>{s}</span>)}</td>
-              {showWrite ? <td><WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write" compact /></td> : null}
+              {showWrite ? <td onClick={(e) => e.stopPropagation()}><WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write" compact /></td> : null}
             </tr>
           ))}
         </tbody>
@@ -142,6 +143,13 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
   const [tab, setTab] = useState<Tab>("keywords");
   const [chips, setChips] = useState<string[]>([]);
   const [q, setQ] = useState("");
+  const [sel, setSel] = useState<DrawerData | null>(null);
+  const openKw = (k: PlannerKeyword) => setSel({
+    title: k.keyword, subtitle: `${k.intent} · cluster “${k.cluster}”`,
+    fields: [["Volume / mo", fmt(k.volume)], ["Difficulty", k.kd === null ? "—" : String(k.kd)], ["CPC", money(k.cpc)], ["Position", k.position === null ? "—" : String(k.position)], ["Clicks · 28d", fmt(k.clicks)], ["Impressions · 28d", fmt(k.impressions)], ["Sources", k.sources.join(", ")]],
+    itemsTitle: `Ranking pages · ${k.pages.length}`, items: k.pages.map((x) => ({ primary: short(x), href: x })),
+    actions: <><WriterButton websiteId={websiteId} initialKeyword={k.keyword} label="Write article" compact /><a className={p.ghost} href={`https://www.google.com/search?q=${encodeURIComponent(k.keyword)}`} target="_blank" rel="noreferrer">Google SERP</a><button className={p.ghost} onClick={() => { setQ(k.cluster); setChips([]); setTab("keywords"); setSel(null); }}>Show cluster</button></>,
+  });
 
   async function analyze(refresh: boolean) {
     setBusy(true); setError(null);
@@ -216,10 +224,10 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
               <input className={p.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter keywords…" />
               <span className={p.count}>{filtered.length}</span>
             </div>
-            <KeywordTable key={chips.join() + q} rows={filtered} websiteId={websiteId} />
+            <KeywordTable key={chips.join() + q} rows={filtered} websiteId={websiteId} onOpen={openKw} />
           </>
-        ) : tab === "wins" ? <KeywordTable rows={wins} websiteId={websiteId} />
-          : tab === "gaps" ? <KeywordTable rows={gaps} websiteId={websiteId} showWrite />
+        ) : tab === "wins" ? <KeywordTable rows={wins} websiteId={websiteId} onOpen={openKw} />
+          : tab === "gaps" ? <KeywordTable rows={gaps} websiteId={websiteId} onOpen={openKw} showWrite />
           : tab === "cannibal" ? (
             cannibal.length === 0 ? <div className={p.empty}>No keyword is split across several pages.</div> : (
               <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
@@ -261,6 +269,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
             )
           )}
       </div>
+      {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
     </>
   );
 }

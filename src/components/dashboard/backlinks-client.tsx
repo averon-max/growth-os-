@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import type { BacklinksReport } from "@/lib/backlinks/domain";
+import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -26,6 +27,19 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const [tab, setTab] = useState<Tab>("domains");
   const [q, setQ] = useState("");
   const [only, setOnly] = useState<"all" | "dofollow" | "new" | "lost">("all");
+  const [sel, setSel] = useState<DrawerData | null>(null);
+  type Link = BacklinksReport["links"][number];
+  const linkItems = (ls: Link[]) => ls.map((l) => ({ primary: short(l.from), secondary: `${l.anchor || "(no anchor)"} → ${short(l.to)} · ${l.dofollow ? "dofollow" : "nofollow"}`, href: l.from }));
+  const openDomain = (d: string) => {
+    const ls = (data?.links ?? []).filter((l) => l.fromDomain === d || l.fromDomain.endsWith("." + d));
+    const info = data?.domains.find((x) => x.domain === d);
+    setSel({ title: d, subtitle: "Referring domain", fields: [["Rank", fmt(info?.rank ?? null)], ["Backlinks", fmt(info?.backlinks ?? null)], ["Spam score", String(info?.spamScore ?? "—")], ["First seen", day(info?.firstSeen ?? null)]], itemsTitle: `Links from this domain · ${ls.length} in sample`, items: linkItems(ls), actions: <a className={p.ghost} href={`https://${d}`} target="_blank" rel="noreferrer">Open site</a> });
+  };
+  const openLink = (l: Link) => setSel({ title: short(l.from), subtitle: l.title ?? "Backlink", fields: [["Anchor", l.anchor || "(no anchor)"], ["Target", short(l.to)], ["Type", l.dofollow ? "dofollow" : "nofollow"], ["Rank", fmt(l.rank)], ["First seen", day(l.firstSeen)], ["Status", l.isLost ? "Lost" : l.isNew ? "New" : "Live"]], actions: <a className={p.ghost} href={l.from} target="_blank" rel="noreferrer">Open source page</a> });
+  const openAnchor = (a: string) => {
+    const ls = (data?.links ?? []).filter((l) => (l.anchor || "(empty)") === a);
+    setSel({ title: a, subtitle: "Anchor text", itemsTitle: `Links with this anchor · ${ls.length} in sample`, items: linkItems(ls) });
+  };
 
   const load = useCallback(async (refresh: boolean) => {
     setBusy(true); setError(null);
@@ -85,7 +99,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Domain</th><th>Rank</th><th>Backlinks</th><th>Spam score</th><th>First seen</th></tr></thead>
               <tbody>{domains.map((d) => (
-                <tr key={d.domain}><td><a className={p.page} href={`https://${d.domain}`} target="_blank" rel="noreferrer">{d.domain}</a></td>
+                <tr key={d.domain} data-click="" onClick={() => openDomain(d.domain)}><td><a onClick={(e) => e.stopPropagation()} className={p.page} href={`https://${d.domain}`} target="_blank" rel="noreferrer">{d.domain}</a></td>
                   <td className={p.num}>{fmt(d.rank)}</td><td className={p.num}>{fmt(d.backlinks)}</td>
                   <td className={(d.spamScore ?? 0) >= 50 ? p.down : p.num}>{d.spamScore ?? "—"}</td><td className={p.dim}>{day(d.firstSeen)}</td></tr>
               ))}</tbody>
@@ -94,8 +108,8 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Source page</th><th>Anchor</th><th>Target</th><th>Type</th><th>Rank</th><th>First seen</th><th>Status</th></tr></thead>
               <tbody>{links.map((l, i) => (
-                <tr key={l.from + l.to + i}>
-                  <td><a className={p.page} href={l.from} target="_blank" rel="noreferrer" title={l.title ?? undefined}>{short(l.from)}</a></td>
+                <tr key={l.from + l.to + i} data-click="" onClick={() => openLink(l)}>
+                  <td><a onClick={(e) => e.stopPropagation()} className={p.page} href={l.from} target="_blank" rel="noreferrer" title={l.title ?? undefined}>{short(l.from)}</a></td>
                   <td className={l.anchor ? undefined : p.dim}>{l.anchor || "(no anchor)"}</td>
                   <td><span className={p.page}>{short(l.to)}</span></td>
                   <td>{l.dofollow ? <span className={`${u.badge} ${u.badgeSuccess}`}>dofollow</span> : <span className={u.badge}>nofollow</span>}</td>
@@ -108,11 +122,12 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Anchor</th><th>Backlinks</th><th>Referring domains</th><th>First seen</th></tr></thead>
               <tbody>{anchors.map((a) => (
-                <tr key={a.anchor}><td>{a.anchor}</td><td className={p.num}>{fmt(a.backlinks)}</td><td className={p.num}>{fmt(a.domains)}</td><td className={p.dim}>{day(a.firstSeen)}</td></tr>
+                <tr key={a.anchor} data-click="" onClick={() => openAnchor(a.anchor)}><td>{a.anchor}</td><td className={p.num}>{fmt(a.backlinks)}</td><td className={p.num}>{fmt(a.domains)}</td><td className={p.dim}>{day(a.firstSeen)}</td></tr>
               ))}</tbody>
             </table>
           ))}
       </div>
+      {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
     </>
   );
 }
