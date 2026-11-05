@@ -18,7 +18,7 @@ export default async function CompetitorsPage({ searchParams }: { searchParams: 
     <>
       <Topbar title="Competitors" websiteSwitcher={membership && website ? { workspaceId: membership.workspaceId, currentWebsiteId: website.id } : undefined} />
       <div className={styles.pageBody}>
-        {website ? <CompetitorsTracker key={website.id} websiteId={website.id} domain={new URL(website.url).hostname} />
+        {website ? <CompetitorsTracker key={website.id} websiteId={website.id} workspaceId={membership?.workspaceId ?? ""} domain={new URL(website.url).hostname} />
           : <EmptyState icon={Globe} title="No website yet" description="Add a website to track competitors." actionLabel="Add website" actionHref="/dashboard/add-website" />}
       </div>
     </>

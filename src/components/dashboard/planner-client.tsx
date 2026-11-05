@@ -4,6 +4,7 @@ import { Loader2, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
 import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
+import { KeywordCard } from "./keyword-card";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -87,7 +88,7 @@ function KeywordTable({ rows, websiteId, showWrite, onOpen, onTrack }: { rows: P
   );
 }
 
-function Research({ workspaceId, websiteId, seeds, onAdd }: { workspaceId: string; websiteId: string; seeds: string[]; onAdd: (k: string[]) => void }) {
+function Research({ workspaceId, websiteId, seeds, onAdd, onOpen }: { workspaceId: string; websiteId: string; seeds: string[]; onAdd: (k: string[]) => void; onOpen: (k: string) => void }) {
   const [seed, setSeed] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,7 +164,7 @@ function Research({ workspaceId, websiteId, seeds, onAdd }: { workspaceId: strin
               const max = Math.max(1, ...pts.map((x) => x.searchVolume));
               const yr = r.trend?.yearly ?? null;
               return (
-                <tr key={r.keyword}>
+                <tr key={r.keyword} data-click="" onClick={() => onOpen(r.keyword)}>
                   <td>{r.keyword}</td>
                   <td className={p.num}>{fmt(r.searchVolume)}</td>
                   <td><span className={p.spark}>{pts.map((x, i) => <span key={i} style={{ height: `${Math.max(8, (x.searchVolume / max) * 100)}%` }} />)}</span></td>
@@ -171,7 +172,7 @@ function Research({ workspaceId, websiteId, seeds, onAdd }: { workspaceId: strin
                   <td>{r.keywordDifficulty === null ? <span className={p.dim}>—</span> : <span className={p.kd} data-l={kdLevel(r.keywordDifficulty)}>{r.keywordDifficulty}</span>}</td>
                   <td className={p.num}>{money(r.cpc)}</td>
                   <td className={p.dim}>{r.competitionLevel ?? "—"}</td>
-                  <td><button className={p.chip} onClick={() => onAdd([r.keyword])}>+ Track</button></td>
+                  <td onClick={(e) => e.stopPropagation()}><button className={p.chip} onClick={() => onAdd([r.keyword])}>+ Track</button></td>
                 </tr>
               );
             })}
@@ -209,7 +210,9 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       .catch(() => { if (off === false) setSel((s) => (s ? { ...s, extraLoading: false, extra: [], extraTitle: "Top results unavailable" } : s)); });
     return () => { off = true; };
   }, [sel?.serpFor, websiteId]);
-  const openKw = (k: PlannerKeyword) => setSel({
+  const [card, setCard] = useState<string | null>(null);
+  const openKw = (k: PlannerKeyword) => setCard(k.keyword);
+  const openKwDetails = (k: PlannerKeyword) => setSel({
     title: k.keyword, serpFor: { keyword: k.keyword, volume: k.volume ?? 0 }, subtitle: `${k.intent} · cluster “${k.cluster}”`,
     fields: [["Volume / mo", fmt(k.volume)], ["Difficulty", k.kd === null ? "—" : String(k.kd)], ["CPC", money(k.cpc)], ["Position", k.position === null ? "—" : String(k.position)], ["Clicks · 28d", fmt(k.clicks)], ["Impressions · 28d", fmt(k.impressions)], ["Sources", k.sources.join(", ")]],
     itemsTitle: `Ranking pages · ${k.pages.length}`, items: k.pages.map((x) => ({ primary: short(x), href: x })),
@@ -303,7 +306,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       </div>
 
       <div className={u.group}>
-        {tab === "research" ? <Research workspaceId={workspaceId} websiteId={websiteId} seeds={[...new Set([...(report?.clusters ?? []).slice(0, 10).map((c) => c.name), ...(report?.keywords ?? []).slice(0, 10).map((k) => k.keyword)])]} onAdd={(k) => void addKeywords(k)} /> : report === null ? (
+        {tab === "research" ? <Research workspaceId={workspaceId} websiteId={websiteId} seeds={[...new Set([...(report?.clusters ?? []).slice(0, 10).map((c) => c.name), ...(report?.keywords ?? []).slice(0, 10).map((k) => k.keyword)])]} onAdd={(k) => void addKeywords(k)} onOpen={setCard} /> : report === null ? (
           <div className={p.empty}>{busy ? "Fetching sitemap, Search Console data, Google rankings and global metrics…" : "Click Analyze site to fetch every page and keyword of the site."}</div>
         ) : tab === "keywords" ? (
           <>
@@ -358,6 +361,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
           )}
       </div>
       {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
+      {card ? <KeywordCard keyword={card} workspaceId={workspaceId} websiteId={websiteId} tracked={report?.keywords.find((x) => x.keyword === card)?.sources.includes("Tracked") ?? false} onChanged={() => void analyze(false)} onClose={() => setCard(null)} /> : null}
     </>
   );
 }

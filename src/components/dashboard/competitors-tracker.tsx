@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import type { CompKw, CompStats } from "@/lib/competitors/tracker";
 import { CompetitorsLandscape } from "./competitors-landscape";
+import { KeywordCard } from "./keyword-card";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -32,7 +33,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Breakdown({ c }: { c: Tracked }) {
+function Breakdown({ c, onOpen }: { c: Tracked; onOpen: (k: string) => void }) {
   const [chips, setChips] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
@@ -58,7 +59,7 @@ function Breakdown({ c }: { c: Tracked }) {
             <tbody>{rows.slice(cur * PAGE, cur * PAGE + PAGE).map((k) => {
               const diff = k.their === null || k.ours === null ? null : k.ours - k.their;
               return (
-                <tr key={k.keyword}>
+                <tr key={k.keyword} data-click="" onClick={() => onOpen(k.keyword)}>
                   <td>{k.keyword}</td>
                   <td className={p.num}>{fmt(k.volume)}</td>
                   <td>{k.kd === null ? <span className={p.dim}>—</span> : <span className={p.kd} data-l={kdLevel(k.kd)}>{k.kd}</span>}</td>
@@ -135,7 +136,8 @@ function Matrix({ mine, comps }: { mine: Mine[]; comps: Tracked[] }) {
   );
 }
 
-export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; domain: string }) {
+export function CompetitorsTracker({ websiteId, workspaceId, domain }: { websiteId: string; workspaceId: string; domain: string }) {
+  const [card, setCard] = useState<string | null>(null);
   const [tracked, setTracked] = useState<Tracked[] | null>(null);
   const [suggest, setSuggest] = useState<Suggest[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -232,8 +234,9 @@ export function CompetitorsTracker({ websiteId, domain }: { websiteId: string; d
         )}
       </div>
 
-      {current ? <Breakdown key={current.domain} c={current} /> : null}
-      <CompetitorsLandscape websiteId={websiteId} tracked={isTracked} onTrack={(d) => void add(d)} />
+      {current ? <Breakdown key={current.domain} c={current} onOpen={setCard} /> : null}
+      {card ? <KeywordCard keyword={card} workspaceId={workspaceId} websiteId={websiteId} onClose={() => setCard(null)} /> : null}
+      <CompetitorsLandscape websiteId={websiteId} tracked={isTracked} onTrack={(d) => void add(d)} onOpen={setCard} />
 
       <div className={u.compactHeader} style={{ marginTop: 22 }}>
         <div>

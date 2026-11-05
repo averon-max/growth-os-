@@ -28,7 +28,7 @@ function Cell({ h, ours }: { h: SerpHit | undefined; ours: string }) {
   );
 }
 
-export function CompetitorsLandscape({ websiteId, tracked, onTrack }: { websiteId: string; tracked: Set<string>; onTrack: (domain: string) => void }) {
+export function CompetitorsLandscape({ websiteId, tracked, onTrack, onOpen }: { websiteId: string; tracked: Set<string>; onTrack: (domain: string) => void; onOpen: (keyword: string) => void }) {
   const [data, setData] = useState<Landscape | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export function CompetitorsLandscape({ websiteId, tracked, onTrack }: { websiteI
             <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
               <thead><tr><th>Keyword</th><th>Volume</th><th>KD</th><th>You</th><th>#1</th><th>#2</th><th>#3</th><th>#4</th><th>#5</th><th>#1 value / mo</th></tr></thead>
               <tbody>{ks.map((k) => (
-                <tr key={k.keyword}>
+                <tr key={k.keyword} data-click="" onClick={() => onOpen(k.keyword)}>
                   <td>{k.keyword}</td>
                   <td className={p.num}>{fmt(k.volume)}</td>
                   <td>{k.kd === null ? <span className={p.dim}>—</span> : <span className={p.kd} data-l={kdLevel(k.kd)}>{k.kd}</span>}</td>
