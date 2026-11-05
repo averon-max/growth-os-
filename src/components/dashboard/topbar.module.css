@@ -155,3 +155,7 @@
 
 /* ===== Linear topbar ===== */
 .topbar { background: transparent !important; border-bottom: 1px solid #1d1e22 !important; backdrop-filter: none !important; box-shadow: none !important; }
+
+/* ===== LINEAR v2 topbar ===== */
+.topbar { height: 48px !important; min-height: 48px !important; background: transparent !important; border-bottom: 1px solid #1d1e21 !important; box-shadow: none !important; backdrop-filter: none !important; }
+.pageDot { display: none !important; }

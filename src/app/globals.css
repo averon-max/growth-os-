@@ -114,3 +114,7 @@ a {
     transition-duration: .001ms !important;
   }
 }
+
+/* ===== LINEAR v2 tokens ===== */
+html, body { background: #08090a !important; color: #d0d6e0; font-feature-settings: "cv01", "ss03"; }
+body::before { display: none !important; }

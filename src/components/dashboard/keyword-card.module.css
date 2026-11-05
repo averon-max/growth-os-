@@ -33,3 +33,11 @@
 .btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #2a2d31;border-radius:7px;background:#141618;color:#c9ccd1;font-size:12px;text-decoration:none;cursor:pointer}
 .btn:hover{border-color:#3a3e44;color:#fff}
 .btnOn{border-color:rgba(125,211,160,.35);color:#7dd3a0}
+
+/* ===== LINEAR v2 floating peek ===== */
+.overlay { background: rgba(0,0,0,.18) !important; }
+.panel { top: 10px !important; right: 10px !important; bottom: 10px !important; border: 1px solid #23252a !important; border-radius: 12px !important; background: #141516 !important; box-shadow: 0 20px 60px rgba(0,0,0,.45) !important; overflow: hidden !important; }
+.head { border-bottom: 1px solid #1d1e21 !important; }
+.title { color: #f7f8f8 !important; font-weight: 590 !important; }
+.label { color: #8a8f98 !important; font-weight: 510 !important; }
+.actions { border-top: 1px solid #1d1e21 !important; }

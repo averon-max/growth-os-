@@ -207,3 +207,18 @@
 .navItem[data-active="true"] svg { color: #e6e7e9 !important; }
 .navItem[data-active="true"]::before { display: none !important; }
 .footer { border-top: 0 !important; }
+
+/* ===== LINEAR v2 sidebar ===== */
+.sidebar { width: 232px !important; padding: 0 4px !important; border-right: 0 !important; background: #08090a !important; box-shadow: none !important; }
+.brand { height: 48px !important; padding: 0 14px !important; }
+.brandName { color: #f7f8f8 !important; font-size: 14px !important; font-weight: 590 !important; letter-spacing: -.01em !important; }
+.navigation { padding: 4px 8px 12px !important; }
+.section { margin-bottom: 14px !important; }
+.sectionLabel { height: 28px !important; padding: 0 8px !important; color: #8a8f98 !important; font-size: 12px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.navItem { min-height: 30px !important; padding: 0 8px !important; gap: 10px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; box-shadow: none !important; color: #d0d6e0 !important; font-size: 13px !important; font-weight: 510 !important; }
+.navItem svg { width: 16px !important; height: 16px !important; color: #8a8f98 !important; }
+.navItem:hover { background: rgba(255,255,255,.04) !important; color: #f7f8f8 !important; }
+.navItem[data-active="true"] { background: rgba(255,255,255,.07) !important; color: #f7f8f8 !important; box-shadow: none !important; border: 0 !important; }
+.navItem[data-active="true"] svg { color: #f7f8f8 !important; }
+.navItem[data-active="true"]::before { display: none !important; }
+.footer { border-top: 0 !important; padding: 8px !important; }
