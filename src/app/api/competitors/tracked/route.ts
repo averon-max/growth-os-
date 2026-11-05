@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
-import { competitorStats, normalizeDomain, ourPositions } from "@/lib/competitors/tracker";
+import { competitorStats, normalizeDomain, ourPositions, type CompStats } from "@/lib/competitors/tracker";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const rows = await prisma.competitor.findMany({ where: { websiteId }, orderBy: { addedAt: "asc" }, take: MAX_TRACKED });
     if (rows.length === 0) return NextResponse.json({ domain: ours, tracked: [] });
     const pos = await ourPositions(websiteId, website.business.workspaceId, website.url);
-    const stats = [];
+    const stats: CompStats[] = [];
     for (let i = 0; i < rows.length; i += 3) stats.push(...(await Promise.all(rows.slice(i, i + 3).map((r) => competitorStats(r.domain, pos)))));
     return NextResponse.json({ domain: ours, tracked: rows.map((r, i) => ({ id: r.id, name: r.name, addedAt: r.addedAt, ...stats[i] })) });
   } catch (err) {
