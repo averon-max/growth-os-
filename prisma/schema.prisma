@@ -7,13 +7,15 @@ datasource db {
 }
 
 model User {
-  id           String            @id @default(cuid())
-  email        String            @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  memberships  WorkspaceMember[]
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String?
+  passwordHash        String
+  isAdmin             Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  memberships         WorkspaceMember[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Workspace {
@@ -26,6 +28,7 @@ model Workspace {
   keywords              Keyword[]
   providerConnections   ProviderConnection[]
   keywordOutcomeActions KeywordOutcomeAction[]
+  subscription          Subscription?
 }
 
 model WorkspaceMember {
@@ -461,22 +464,22 @@ model BusinessFactEvent {
 }
 
 model ContentEvidenceSnapshot {
-  id             String       @id @default(cuid())
-  briefId        String       @unique
-  brief          ContentBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
-  websiteId      String
-  website        Website      @relation(fields: [websiteId], references: [id], onDelete: Cascade)
-  topic          String
-  primaryKeyword String
-  searchIntent   String
-  plan           Json
+  id                String                    @id @default(cuid())
+  briefId           String                    @unique
+  brief             ContentBrief              @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  websiteId         String
+  website           Website                   @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  topic             String
+  primaryKeyword    String
+  searchIntent      String
+  plan              Json
   queryOwnerReviews ContentQueryOwnerReview[]
-  businessFacts  Json
-  keywordContext Json?
-  plannerVersion String
-  gateVersion    String
-  generatorModel String
-  createdAt      DateTime     @default(now())
+  businessFacts     Json
+  keywordContext    Json?
+  plannerVersion    String
+  gateVersion       String
+  generatorModel    String
+  createdAt         DateTime                  @default(now())
 
   @@index([websiteId, createdAt])
 }
@@ -523,22 +526,22 @@ enum ContentArticleStatus {
 }
 
 model ContentArticle {
-  id                  String               @id @default(cuid())
+  id                  String                    @id @default(cuid())
   briefId             String
-  brief               ContentBrief         @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  brief               ContentBrief              @relation(fields: [briefId], references: [id], onDelete: Cascade)
   title               String
   metaDescription     String
   h1                  String
   bodyMarkdown        String
-  status              ContentArticleStatus @default(GENERATING)
+  status              ContentArticleStatus      @default(GENERATING)
   generatedBy         String
   publishedUrl        String?
   publishedAt         DateTime?
   publishError        String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
   serpReplayArtifacts SerpReplayArtifact[]
-  queryOwnerReviews ContentQueryOwnerReview[]
+  queryOwnerReviews   ContentQueryOwnerReview[]
 
   backlinkTarget BacklinkTarget?
 
@@ -589,28 +592,27 @@ model SerpReplayArtifact {
   @@index([replayStatus])
 }
 
-
 // Append-only human-reviewed owner of an existing observed query.
 // Does not change research, article Markdown or any SERP replay.
 model ContentQueryOwnerReview {
-  id                            String @id @default(cuid())
-  contentArticleId              String
-  contentArticle                ContentArticle @relation(fields: [contentArticleId], references: [id], onDelete: Cascade, map: "cqor_article_fk")
-  evidenceSnapshotId            String
-  evidenceSnapshot              ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade, map: "cqor_evidence_fk")
-  queryNodeId                   String
-  observedQuery                 String
-  ownerSectionIndex             Int
-  ownerHeading                  String
-  sourceArticleFingerprint      String
-  sourceQueryGraphSha256        String
-  sourceSectionBlueprintSha256  String
-  sourceExecutionPlanSha256     String
-  sourceReplayArtifactId        String
-  decisionVersion               String @default("QUERY_OWNER_HUMAN_APPROVAL_V1")
-  decision                     String @default("APPROVED")
-  reviewerAttestation           String
-  createdAt                     DateTime @default(now())
+  id                           String                  @id @default(cuid())
+  contentArticleId             String
+  contentArticle               ContentArticle          @relation(fields: [contentArticleId], references: [id], onDelete: Cascade, map: "cqor_article_fk")
+  evidenceSnapshotId           String
+  evidenceSnapshot             ContentEvidenceSnapshot @relation(fields: [evidenceSnapshotId], references: [id], onDelete: Cascade, map: "cqor_evidence_fk")
+  queryNodeId                  String
+  observedQuery                String
+  ownerSectionIndex            Int
+  ownerHeading                 String
+  sourceArticleFingerprint     String
+  sourceQueryGraphSha256       String
+  sourceSectionBlueprintSha256 String
+  sourceExecutionPlanSha256    String
+  sourceReplayArtifactId       String
+  decisionVersion              String                  @default("QUERY_OWNER_HUMAN_APPROVAL_V1")
+  decision                     String                  @default("APPROVED")
+  reviewerAttestation          String
+  createdAt                    DateTime                @default(now())
 
   @@unique([contentArticleId, queryNodeId, sourceArticleFingerprint, sourceQueryGraphSha256], map: "uq_cqor_article_node_fingerprint_graph")
   @@index([contentArticleId, createdAt], map: "ix_cqor_article_created")
@@ -954,4 +956,42 @@ model SiteBacklink {
 
   @@unique([websiteId, source, sourceDomain, sourceUrl, targetUrl])
   @@index([websiteId])
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  workspaceId          String    @unique
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  plan                 String    @default("FREE")
+  status               String    @default("active")
+  source               String    @default("stripe")
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  grantedByUserId      String?
+  note                 String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model StripeEvent {
+  id         String   @id
+  type       String
+  receivedAt DateTime @default(now())
 }

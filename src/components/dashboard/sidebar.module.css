@@ -244,3 +244,57 @@
 /* brand v14 */
 .brandMark { border-color: #34343a !important; background: #141516 !important; }
 .brandMark span { width: auto !important; height: auto !important; border-radius: 0 !important; background: none !important; color: #93c5fd; font-size: 10.5px; font-weight: 590; line-height: 1; }
+
+/* --- сворачивание меню --- */
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.collapseToggle:hover {
+  opacity: 1;
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.sidebar[data-collapsed="true"] {
+  width: 68px;
+  min-width: 68px;
+}
+
+.sidebar[data-collapsed="true"] .brandRow {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar[data-collapsed="true"] .navLabel,
+.sidebar[data-collapsed="true"] .sectionLabel,
+.sidebar[data-collapsed="true"] .brandName,
+.sidebar[data-collapsed="true"] .navBadge,
+.sidebar[data-collapsed="true"] .workspaceText {
+  display: none;
+}
+
+.sidebar[data-collapsed="true"] .navItem,
+.sidebar[data-collapsed="true"] .brand,
+.sidebar[data-collapsed="true"] .workspace {
+  justify-content: center;
+}

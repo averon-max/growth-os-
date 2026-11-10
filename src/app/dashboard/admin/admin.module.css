@@ -1,0 +1,272 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1080px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: 25px;
+}
+
+.lede {
+  margin: 0;
+  max-width: 640px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.search {
+  display: flex;
+  gap: 8px;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 420px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 510;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.button:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-2);
+}
+
+.buttonPrimary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.buttonPrimary:hover {
+  border-color: transparent;
+  background: #2f74e0;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardTitle {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cardName {
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.cardMeta {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--secondary);
+  font-size: 11.5px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.badgePaid {
+  background: var(--accent-soft);
+  color: #7eacf5;
+}
+
+.note {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 12.5px;
+}
+
+.divider {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldGrow {
+  min-width: 180px;
+  flex: 1;
+}
+
+.label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.months {
+  width: 92px;
+}
+
+.error {
+  width: 100%;
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.rows {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.rowMain {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowTitle {
+  overflow: hidden;
+  color: var(--primary);
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.empty {
+  margin: 0;
+  padding: 18px;
+  color: var(--secondary);
+  font-size: 13.5px;
+}
+
+.toggle {
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--secondary);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 510;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  border-color: var(--border-hover);
+  color: var(--primary);
+}
+
+.toggleOn {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: #7eacf5;
+}
+
+.self {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: #7eacf5;
+  font-size: 11.5px;
+  font-weight: 550;
+}

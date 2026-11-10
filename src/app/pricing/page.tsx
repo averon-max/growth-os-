@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import SubscribeButton from "@/components/subscribe-button";
 
 export default function PricingPage() {
   return (
@@ -21,9 +21,9 @@ export default function PricingPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 20, overflow: "hidden" }}>
           {[
-            { name: "Starter", price: 49, features: ["Website monitoring", "SEO analysis", "Keyword intelligence", "Opportunity tracking", "Monthly reports"], pop: false },
-            { name: "Growth", price: 99, features: ["Everything in Starter", "Search Console integration", "Audience analytics", "Content opportunities", "Competitor monitoring", "Automations"], pop: true },
-            { name: "Autopilot", price: 199, features: ["Everything in Growth", "Advanced automation", "Content workflows", "Advanced competitors", "Continuous optimization", "Priority processing"], pop: false },
+            { name: "Starter", plan: "STARTER" as const, price: 49, features: ["Website monitoring", "SEO analysis", "Keyword intelligence", "Opportunity tracking", "Monthly reports"], pop: false },
+            { name: "Growth", plan: "GROWTH" as const, price: 99, features: ["Everything in Starter", "Search Console integration", "Audience analytics", "Content opportunities", "Competitor monitoring", "Automations"], pop: true },
+            { name: "Autopilot", plan: "AUTOPILOT" as const, price: 199, features: ["Everything in Growth", "Advanced automation", "Content workflows", "Advanced competitors", "Continuous optimization", "Priority processing"], pop: false },
           ].map((p, i) => (
             <div key={p.name} style={{ padding: "48px 40px", borderLeft: i > 0 ? "1px solid rgba(0,0,0,0.08)" : "none", background: p.pop ? "#0a0a0a" : "#fff", display: "flex", flexDirection: "column" }}>
               {p.pop && <div style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#d4a030", marginBottom: 16 }}>— Most popular</div>}
@@ -39,9 +39,7 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/signup" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 100, textDecoration: "none", fontWeight: 600, fontSize: "0.85rem", background: p.pop ? "#d4a030" : "#0a0a0a", color: p.pop ? "#0a0a0a" : "#f2f1ed" }}>
-                Start Free <ArrowRight size={14} />
-              </Link>
+              <SubscribeButton plan={p.plan} label="Start Free" variant={p.pop ? "gold" : "dark"} />
             </div>
           ))}
         </div>

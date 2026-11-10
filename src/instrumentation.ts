@@ -40,8 +40,12 @@ function jsonResponse(json: Json, source: string): Response {
 }
 
 async function sha256(text: string): Promise<string> {
-  const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(text).digest("hex");
+  // Web Crypto работает и в Node, и в Edge — без импорта node:crypto.
+  const data = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function register() {

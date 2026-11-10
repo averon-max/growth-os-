@@ -10,6 +10,7 @@ import {
   Plus,
   ScanSearch,
   Settings,
+  ShieldCheck,
   Tags,
   Target,
   Users,
@@ -82,6 +83,15 @@ export const NAV: NavSection[] = [
 export const NAV_BOTTOM: NavItem[] = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings, description: "Workspace settings" },
 ];
+
+/* Пункт только для администраторов. Сайдбар рисует его, если isAdmin. */
+export const NAV_ADMIN: NavItem = {
+  label: "Админка",
+  href: "/dashboard/admin",
+  icon: ShieldCheck,
+  description: "Пользователи, тарифы и выдача доступа",
+  keepSite: false,
+};
 
 /* Дополнительные колонки футера (в сайдбаре их нет). */
 export const FOOTER_EXTRA: NavSection[] = [

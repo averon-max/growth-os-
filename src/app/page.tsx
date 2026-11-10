@@ -15,6 +15,7 @@ import {
 
 import { LandingReveal } from "@/components/marketing/landing-reveal";
 import styles from "./landing.module.css";
+import SubscribeButton from "@/components/subscribe-button";
 
 export default function HomePage() {
   return (
@@ -43,9 +44,7 @@ export default function HomePage() {
               Log in
             </Link>
 
-            <Link href="/signup" className={styles.signup}>
-              Sign up
-            </Link>
+            <SubscribeButton plan="GROWTH" label="Sign up" variant="dark" size="md" />
           </div>
         </div>
       </header>
@@ -68,10 +67,7 @@ export default function HomePage() {
           </p>
 
           <div className={styles.heroActions}>
-            <Link href="/signup" className={styles.primaryButton}>
-              Get started
-              <ArrowRight size={12} />
-            </Link>
+            <SubscribeButton plan="GROWTH" label="Get started" variant="gold" size="lg" />
 
             <a href="#keywords" className={styles.textButton}>
               Explore the product
@@ -344,10 +340,7 @@ export default function HomePage() {
           </p>
 
           <div>
-            <Link href="/signup" className={styles.primaryButton}>
-              Start growing
-              <ArrowRight size={12} />
-            </Link>
+            <SubscribeButton plan="GROWTH" label="Start growing" variant="gold" size="lg" />
 
             <Link href="/pricing" className={styles.secondaryButton}>
               Pricing

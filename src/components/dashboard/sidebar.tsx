@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { NAV, NAV_BOTTOM, isActivePath, withSite, type NavItem } from "@/lib/nav";
+import { NAV, NAV_ADMIN, NAV_BOTTOM, isActivePath, withSite, type NavItem } from "@/lib/nav";
 
 import styles from "./sidebar.module.css";
 
@@ -29,19 +31,45 @@ function NavLink({ item, pathname, site }: { item: NavItem; pathname: string; si
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname() ?? "";
   const params = useSearchParams();
   const site = params?.get("websiteId") ?? null;
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Состояние живёт между переходами и перезагрузками.
+  useEffect(() => {
+    setCollapsed(window.localStorage.getItem("sidebar-collapsed") === "1");
+  }, []);
+
+  function toggle() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
+      return next;
+    });
+  }
 
   return (
-    <aside className={styles.sidebar}>
-      <Link href={withSite("/dashboard", site)} className={styles.brand}>
-        <div className={styles.brandMark}>
-          <span>G</span>
-        </div>
-        <span className={styles.brandName}>Growth OS</span>
-      </Link>
+    <aside className={styles.sidebar} data-collapsed={collapsed ? "true" : "false"}>
+      <div className={styles.brandRow}>
+        <Link href={withSite("/dashboard", site)} className={styles.brand}>
+          <div className={styles.brandMark}>
+            <span>G</span>
+          </div>
+          <span className={styles.brandName}>Growth OS</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={toggle}
+          className={styles.collapseToggle}
+          aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
+          title={collapsed ? "Развернуть меню" : "Свернуть меню"}
+        >
+          {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.7} /> : <PanelLeftClose size={16} strokeWidth={1.7} />}
+        </button>
+      </div>
 
       <nav className={styles.navigation} aria-label="Main">
         {NAV.map((section) => {
@@ -62,6 +90,8 @@ export function Sidebar() {
       </nav>
 
       <div className={styles.footer}>
+        {isAdmin ? <NavLink item={NAV_ADMIN} pathname={pathname} site={site} /> : null}
+
         {NAV_BOTTOM.filter((item) => item.sidebar !== false).map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} site={site} />
         ))}

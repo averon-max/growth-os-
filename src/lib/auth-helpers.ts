@@ -30,6 +30,53 @@ export async function requireUser(): Promise<{ id: string; email: string }> {
   };
 }
 
+export async function isUserAdmin(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isAdmin: true, email: true },
+  });
+
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  return (
+    Boolean(user?.isAdmin) ||
+    (user?.email ? adminEmails.includes(user.email.toLowerCase()) : false)
+  );
+}
+
+export async function requireAdmin(): Promise<{ id: string; email: string }> {
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+
+  if (!session?.user || !userId) {
+    throw new UnauthorizedError();
+  }
+
+  // Флаг из сессии не доверяем как единственному источнику — сверяем с базой.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isAdmin: true, email: true },
+  });
+
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  const isAdmin =
+    Boolean(user?.isAdmin) ||
+    (user?.email ? adminEmails.includes(user.email.toLowerCase()) : false);
+
+  if (!isAdmin) {
+    throw new ForbiddenError("Admin access required");
+  }
+
+  return { id: userId, email: user?.email ?? "" };
+}
+
 export async function requireWorkspaceAccess(
   userId: string,
   workspaceId: string

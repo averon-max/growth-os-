@@ -46,24 +46,44 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+          .split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean);
+
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? undefined,
+          isAdmin: user.isAdmin || adminEmails.includes(user.email.toLowerCase()),
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.userId = user.id;
+        token.isAdmin = Boolean((user as { isAdmin?: boolean }).isAdmin);
       }
+
+      // Права админа могли измениться — перечитываем при явном обновлении сессии.
+      if (trigger === "update" && token.userId) {
+        const fresh = await prisma.user.findUnique({
+          where: { id: token.userId as string },
+          select: { isAdmin: true },
+        });
+        if (fresh) token.isAdmin = fresh.isAdmin;
+      }
+
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.userId) {
-        (session.user as { id?: string }).id = token.userId as string;
+      if (session.user) {
+        if (token.userId) {
+          (session.user as { id?: string }).id = token.userId as string;
+        }
+        (session.user as { isAdmin?: boolean }).isAdmin = Boolean(token.isAdmin);
       }
       return session;
     },
