@@ -1,0 +1,5 @@
+.env*
+*.pem
+*.key
+cookies*.txt
+writer-logs/
