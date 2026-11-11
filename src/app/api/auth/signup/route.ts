@@ -1,93 +1,59 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { rateLimit, ipFrom } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
+import { checkRequest, clientIp, limit, normalizeEmail, passwordProblem } from "@/lib/auth-guard";
 
-const MIN_PASSWORD_LENGTH = 8;
+export async function POST(req: Request) {
+  const bad = checkRequest(req);
+  if (bad) return NextResponse.json({ error: bad }, { status: 400 });
 
-export async function POST(req: NextRequest) {
+  const ip = clientIp(req.headers);
+  if (!(await limit("signup-ip:" + ip, 5, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "Too many attempts. Try again in an hour." }, { status: 429 });
+  }
+
+  let body: Record<string, unknown>;
   try {
-    if (rateLimit("signup:" + ipFrom(req.headers.get("x-forwarded-for")), 5, 60 * 60 * 1000) === false) {
-      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
-    }
-    const body = await req.json();
-    const { email, password, name } = body as {
-      email?: string;
-      password?: string;
-      name?: string;
-    };
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required." },
-        { status: 400 }
-      );
-    }
+  // Honeypot: real people never see or fill this field; bots fill everything.
+  if (typeof body.company === "string" && body.company.length > 0) {
+    return NextResponse.json({ ok: true }, { status: 201 });
+  }
 
-    const normalizedEmail = email.toLowerCase().trim();
+  const email = normalizeEmail(body.email);
+  const password = typeof body.password === "string" ? body.password : "";
+  const name = typeof body.name === "string" ? body.name.replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, 80) : "";
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return NextResponse.json(
-        { error: "Invalid email address." },
-        { status: 400 }
-      );
-    }
+  if (!email) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
 
-    if (password.length < MIN_PASSWORD_LENGTH || password.length > 200) {
-      return NextResponse.json(
-        { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` },
-        { status: 400 }
-      );
-    }
+  const problem = await passwordProblem(password, email);
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
-    const existing = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "Unable to create account." },
-        { status: 400 }
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          name: name?.trim() || null,
-          passwordHash,
-        },
-      });
-
-      const workspace = await tx.workspace.create({
-        data: {
-          name: name ? `${name}'s Workspace` : "My Workspace",
-        },
-      });
-
-      await tx.workspaceMember.create({
-        data: {
-          userId: user.id,
-          workspaceId: workspace.id,
-          role: "OWNER",
-        },
-      });
-
-      return { user, workspace };
-    });
-
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing) {
+    await bcrypt.hash(password, 12); // keep timing the same as a real signup
     return NextResponse.json(
-      {
-        user: { id: result.user.id, email: result.user.email },
-        workspace: { id: result.workspace.id, name: result.workspace.name },
-      },
-      { status: 201 }
+      { error: "Couldn't create an account with that email. If it's yours, log in or reset your password." },
+      { status: 400 },
     );
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, 12);
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { email, name: name || null, passwordHash, passwordChangedAt: new Date(0) },
+      });
+      const workspace = await tx.workspace.create({ data: { name: name ? `${name}'s Workspace` : "My Workspace" } });
+      await tx.workspaceMember.create({ data: { userId: user.id, workspaceId: workspace.id, role: "OWNER" } });
+    });
+    return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {
-    console.error("signup error", err);
-    return NextResponse.json({ error: "Server error." }, { status: 500 });
+    console.error("[signup]", err);
+    return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
   }
 }

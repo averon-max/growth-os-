@@ -1,16 +1,12 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { rateLimit, ipFrom } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
+import { burnBcryptTime, clientIp, limit, normalizeEmail } from "@/lib/auth-guard";
 
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-  },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -19,32 +15,23 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        const email = normalizeEmail(credentials?.email);
+        const password = credentials?.password ?? "";
+        if (!email || !password || password.length > 200) return null;
 
-        const ip = ipFrom((req?.headers as Record<string, unknown> | undefined)?.["x-forwarded-for"]);
-        const em = credentials.email.toLowerCase().trim();
-        if (rateLimit("login:" + em, 10, 15 * 60 * 1000) === false || rateLimit("login-ip:" + ip, 30, 15 * 60 * 1000) === false) {
-          return null;
-        }
+        const ip = clientIp(req?.headers as Record<string, unknown> | undefined);
+        const okEmail = await limit("login:" + email, 8, 15 * 60 * 1000);
+        const okIp = await limit("login-ip:" + ip, 40, 15 * 60 * 1000);
+        if (!okEmail || !okIp) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
-        });
-
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
+          await burnBcryptTime(password); // same response time as a wrong password
           return null;
         }
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
-
-        if (!isValid) {
-          return null;
-        }
+        const isValid = await bcrypt.compare(password, user.passwordHash);
+        if (!isValid) return null;
 
         const adminEmails = (process.env.ADMIN_EMAILS ?? "")
           .split(",")
@@ -56,6 +43,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name ?? undefined,
           isAdmin: user.isAdmin || adminEmails.includes(user.email.toLowerCase()),
+          pwdAt: user.passwordChangedAt?.getTime() ?? 0,
         };
       },
     }),
@@ -65,27 +53,40 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.userId = user.id;
         token.isAdmin = Boolean((user as { isAdmin?: boolean }).isAdmin);
+        token.pwdAt = (user as { pwdAt?: number }).pwdAt ?? 0;
+        return token;
       }
 
-      // Права админа могли измениться — перечитываем при явном обновлении сессии.
-      if (trigger === "update" && token.userId) {
-        const fresh = await prisma.user.findUnique({
-          where: { id: token.userId as string },
-          select: { isAdmin: true },
-        });
-        if (fresh) token.isAdmin = fresh.isAdmin;
-      }
+      if (!token.userId) return token;
 
+      // Every request: sessions die when the password changes, the account is deleted, or admin rights change.
+      const fresh = await prisma.user.findUnique({
+        where: { id: token.userId as string },
+        select: { isAdmin: true, passwordChangedAt: true },
+      });
+      if (!fresh) return {};
+      if ((fresh.passwordChangedAt?.getTime() ?? 0) > ((token.pwdAt as number | undefined) ?? 0)) return {};
+      if (trigger === "update" || fresh.isAdmin !== token.isAdmin) {
+        const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
+        token.isAdmin = fresh.isAdmin || adminEmails.includes(String(token.email ?? "").toLowerCase());
+      }
       return token;
     },
     async session({ session, token }) {
+      if (!token.userId) return { ...session, user: undefined } as typeof session;
       if (session.user) {
-        if (token.userId) {
-          (session.user as { id?: string }).id = token.userId as string;
-        }
+        (session.user as { id?: string }).id = token.userId as string;
         (session.user as { isAdmin?: boolean }).isAdmin = Boolean(token.isAdmin);
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Only ever redirect inside our own site (no open redirects through ?callbackUrl=).
+      if (url.startsWith("/") && !url.startsWith("//")) return baseUrl + url;
+      try {
+        if (new URL(url).origin === baseUrl) return url;
+      } catch {}
+      return baseUrl + "/dashboard";
     },
   },
 };

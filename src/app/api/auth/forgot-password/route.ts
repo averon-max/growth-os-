@@ -1,35 +1,36 @@
 import { NextResponse } from "next/server";
-import { rateLimit, ipFrom } from "@/lib/rate-limit";
 import { requestPasswordReset } from "@/lib/password-reset";
+import { checkRequest, clientIp, limit, normalizeEmail } from "@/lib/auth-guard";
 
-export async function POST(request: Request) {
-  let email = "";
+export async function POST(req: Request) {
+  const bad = checkRequest(req);
+  if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+
+  let raw: unknown;
   try {
-    const body = await request.json();
-    email = typeof body?.email === "string" ? body.email : "";
+    raw = (await req.json())?.email;
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
+  const email = normalizeEmail(raw);
+  if (!email) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
 
-  const normalized = email.toLowerCase().trim();
-  if (!normalized || !normalized.includes("@")) {
-    return NextResponse.json({ error: "Введите корректный email" }, { status: 400 });
+  const ip = clientIp(req.headers);
+  const okEmail = await limit("reset:" + email, 3, 60 * 60 * 1000);
+  const okIp = await limit("reset-ip:" + ip, 15, 60 * 60 * 1000);
+
+  // Over the limit we silently skip sending, but answer exactly the same — no hint about the account.
+  if (okEmail && okIp) {
+    const started = Date.now();
+    try {
+      await requestPasswordReset(email);
+    } catch (error) {
+      console.error("[forgot-password]", error);
+    }
+    // Pad to a steady response time so "email exists" (sends mail) isn't slower than "doesn't exist".
+    const wait = 900 - (Date.now() - started);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   }
 
-  const ip = ipFrom(request.headers.get("x-forwarded-for"));
-  if (
-    rateLimit("reset:" + normalized, 3, 60 * 60 * 1000) === false ||
-    rateLimit("reset-ip:" + ip, 20, 60 * 60 * 1000) === false
-  ) {
-    return NextResponse.json({ error: "Слишком много попыток. Попробуйте позже." }, { status: 429 });
-  }
-
-  try {
-    await requestPasswordReset(normalized);
-  } catch (error) {
-    console.error("[forgot-password]", error);
-  }
-
-  // Ответ одинаковый, есть такой пользователь или нет.
   return NextResponse.json({ ok: true });
 }

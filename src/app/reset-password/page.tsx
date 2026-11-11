@@ -1,35 +1,31 @@
 import Link from "next/link";
-import ResetForm from "./reset-form";
+import type { Metadata } from "next";
+import { AuthShell } from "@/components/auth-shell";
+import { ResetForm } from "@/components/auth-forms";
 
-export default async function ResetPasswordPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ token?: string }>;
-}) {
+export const metadata: Metadata = {
+  title: "New password · Hyprlyx",
+  robots: { index: false, follow: false },
+  referrer: "no-referrer", // the token in the URL never leaks to other sites
+};
+
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;
+  const valid = typeof token === "string" && /^[A-Za-z0-9_-]{20,200}$/.test(token);
 
   return (
-    <main className="min-h-screen bg-[#F4F7FC] flex items-center justify-center p-6">
-      <div className="w-full max-w-[400px] rounded-xl border border-[#E1E7F0] bg-white p-8">
-        <h1 className="text-[22px] font-semibold tracking-tight text-[#15161A]">
-          Новый пароль
-        </h1>
-
-        {token ? (
-          <ResetForm token={token} />
-        ) : (
-          <>
-            <p className="mt-3 text-sm leading-relaxed text-[#5F6672]">
-              Ссылка неполная — в ней нет кода подтверждения. Запросите сброс заново.
-            </p>
-            <p className="mt-6 text-[13px] text-[#5F6672]">
-              <Link href="/forgot-password" className="text-[#1F5FA8]">
-                Запросить ссылку
-              </Link>
-            </p>
-          </>
-        )}
-      </div>
-    </main>
+    <AuthShell
+      title="Choose a new password"
+      subtitle={valid ? "Pick something you don't use anywhere else." : "This link is incomplete or broken. Request a new one."}
+      footer={<Link href="/login">Back to log in</Link>}
+    >
+      {valid ? (
+        <ResetForm token={token} />
+      ) : (
+        <p style={{ marginTop: 24 }}>
+          <Link href="/forgot-password" style={{ color: "#f7f8f8" }}>Request a new link →</Link>
+        </p>
+      )}
+    </AuthShell>
   );
 }

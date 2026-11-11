@@ -28,7 +28,6 @@ export const metadata: Metadata = {
 const SECTIONS = [
   {
     id: "keywords",
-    number: "1.0",
     label: "Keyword research",
     title: "Know what people search for",
     text: "Volume, difficulty, CPC and trend for every keyword, plus rising searches from Google Trends — before you decide what to write.",
@@ -37,7 +36,6 @@ const SECTIONS = [
   },
   {
     id: "visibility",
-    number: "2.0",
     label: "Rankings",
     title: "See where you stand",
     text: "Impressions, clicks and positions straight from Search Console, with the queries closest to page one surfaced first.",
@@ -46,7 +44,6 @@ const SECTIONS = [
   },
   {
     id: "writer",
-    number: "3.0",
     label: "AI writer",
     title: "Write what actually ranks",
     text: "Drafts built from the live search results: competitor structure, People Also Ask and sources you can verify before anything goes live.",
@@ -206,7 +203,7 @@ export default function LandingPage() {
               <div className={styles.blockHead}>
                 <div>
                   <p className={styles.eyebrow}>
-                    <span className={styles.eyebrowNum}>{section.number}</span> {section.label}
+                    <span className={styles.eyebrowNum}></span> {section.label}
                   </p>
                   <h2 className={styles.blockTitle}>{section.title}</h2>
                 </div>
@@ -234,7 +231,7 @@ export default function LandingPage() {
             <div className={styles.blockHead}>
               <div>
                 <p className={styles.eyebrow}>
-                  <span className={styles.eyebrowNum}>4.0</span> Pricing
+                  <span className={styles.eyebrowNum}></span> Pricing
                 </p>
                 <h2 className={styles.blockTitle}>Simple, monthly pricing</h2>
               </div>

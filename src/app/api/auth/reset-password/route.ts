@@ -1,40 +1,32 @@
 import { NextResponse } from "next/server";
-import { rateLimit, ipFrom } from "@/lib/rate-limit";
-import { completePasswordReset, MIN_PASSWORD_LENGTH } from "@/lib/password-reset";
+import { completePasswordReset } from "@/lib/password-reset";
+import { checkRequest, clientIp, limit } from "@/lib/auth-guard";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
+  const bad = checkRequest(req);
+  if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+
   let token = "";
   let password = "";
   try {
-    const body = await request.json();
-    token = typeof body?.token === "string" ? body.token : "";
+    const body = await req.json();
+    token = typeof body?.token === "string" ? body.token.slice(0, 200) : "";
     password = typeof body?.password === "string" ? body.password : "";
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
+  if (!token) return NextResponse.json({ error: "This link is invalid." }, { status: 400 });
 
-  if (!token) {
-    return NextResponse.json({ error: "Ссылка недействительна" }, { status: 400 });
-  }
-
-  const ip = ipFrom(request.headers.get("x-forwarded-for"));
-  if (rateLimit("reset-confirm-ip:" + ip, 20, 60 * 60 * 1000) === false) {
-    return NextResponse.json({ error: "Слишком много попыток. Попробуйте позже." }, { status: 429 });
+  if (!(await limit("reset-confirm-ip:" + clientIp(req.headers), 15, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
 
   const result = await completePasswordReset(token, password);
-
   if (!result.ok) {
     return NextResponse.json(
-      {
-        error:
-          result.reason === "weak"
-            ? `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов`
-            : "Ссылка недействительна или уже использована",
-      },
-      { status: 400 }
+      { error: result.reason === "weak" ? result.message : "This link has expired or was already used. Request a new one." },
+      { status: 400 },
     );
   }
-
   return NextResponse.json({ ok: true });
 }

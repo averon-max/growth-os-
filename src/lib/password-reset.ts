@@ -1,11 +1,11 @@
 import "server-only";
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { passwordProblem } from "@/lib/auth-guard";
 
-const TOKEN_TTL_MS = 60 * 60 * 1000;
-export const MIN_PASSWORD_LENGTH = 8;
+const TOKEN_TTL_MS = 30 * 60 * 1000;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -15,86 +15,69 @@ function appUrl(): string {
   return (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
-/**
- * Создаёт токен и отправляет письмо. Молча выходит, если пользователя нет:
- * ответ наружу одинаковый в обоих случаях, чтобы нельзя было перебирать адреса.
- */
-export async function requestPasswordReset(rawEmail: string): Promise<void> {
-  const email = rawEmail.toLowerCase().trim();
+/** Creates a one-time token and emails it. Silently does nothing for unknown emails — the caller answers the same either way. */
+export async function requestPasswordReset(email: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return;
 
-  // Старые неиспользованные токены этого пользователя больше не нужны.
-  await prisma.passwordResetToken.deleteMany({
-    where: { userId: user.id, usedAt: null },
-  });
+  await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
 
-  const token = randomBytes(32).toString("hex");
-
+  const token = randomBytes(32).toString("base64url");
   await prisma.passwordResetToken.create({
-    data: {
-      tokenHash: hashToken(token),
-      userId: user.id,
-      expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
-    },
+    data: { tokenHash: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + TOKEN_TTL_MS) },
   });
 
   const link = `${appUrl()}/reset-password?token=${token}`;
 
   await sendMail({
     to: user.email,
-    subject: "Сброс пароля в Growth OS",
+    subject: "Reset your Hyprlyx password",
     text: [
-      "Вы запросили сброс пароля в Growth OS.",
+      "Someone asked to reset the password for your Hyprlyx account.",
       "",
-      "Откройте ссылку, чтобы задать новый пароль:",
+      "Set a new password here (the link works once and expires in 30 minutes):",
       link,
       "",
-      "Ссылка действует час и срабатывает один раз.",
-      "Если это были не вы — письмо можно удалить, пароль останется прежним.",
+      "If this wasn't you, ignore this email — your password stays the same.",
     ].join("\n"),
     html: `
-      <div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.6;color:#15161A">
-        <p>Вы запросили сброс пароля в Growth OS.</p>
-        <p><a href="${link}" style="display:inline-block;padding:10px 18px;border-radius:8px;background:#2F6FB5;color:#fff;text-decoration:none;font-weight:600">Задать новый пароль</a></p>
-        <p style="color:#5F6672;font-size:13px">Ссылка действует час и срабатывает один раз.<br>Если это были не вы — письмо можно удалить, пароль останется прежним.</p>
-      </div>
-    `,
+      <div style="background:#08090a;padding:40px 0;font-family:Inter,-apple-system,Segoe UI,sans-serif">
+        <div style="max-width:440px;margin:0 auto;background:#0f1011;border:1px solid #23252a;border-radius:14px;padding:32px;color:#f7f8f8">
+          <div style="font-size:15px;font-weight:600;margin-bottom:24px">Hyprlyx</div>
+          <div style="font-size:20px;font-weight:600;margin-bottom:10px">Reset your password</div>
+          <p style="font-size:14px;line-height:1.6;color:#9ca0a8;margin:0 0 24px">Someone asked to reset the password for your account. The link works once and expires in 30 minutes.</p>
+          <a href="${link}" style="display:inline-block;padding:11px 20px;border-radius:999px;background:#f7f8f8;color:#08090a;text-decoration:none;font-weight:600;font-size:14px">Set a new password</a>
+          <p style="font-size:12px;line-height:1.6;color:#62666e;margin:28px 0 0">If this wasn't you, ignore this email — your password stays the same.</p>
+        </div>
+      </div>`,
   });
 }
 
-export type ResetResult = { ok: true } | { ok: false; reason: "invalid" | "weak" };
+export type ResetResult = { ok: true } | { ok: false; reason: "invalid" | "weak"; message?: string };
 
-export async function completePasswordReset(
-  token: string,
-  newPassword: string
-): Promise<ResetResult> {
-  if (newPassword.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, reason: "weak" };
-  }
-
+export async function completePasswordReset(token: string, newPassword: string): Promise<ResetResult> {
   const record = await prisma.passwordResetToken.findUnique({
     where: { tokenHash: hashToken(token) },
+    include: { user: { select: { email: true } } },
   });
+  if (!record || record.usedAt || record.expiresAt < new Date()) return { ok: false, reason: "invalid" };
 
-  if (!record || record.usedAt || record.expiresAt < new Date()) {
-    return { ok: false, reason: "invalid" };
-  }
+  const problem = await passwordProblem(newPassword, record.user.email);
+  if (problem) return { ok: false, reason: "weak", message: problem };
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
 
+  // Mark the token used atomically: if two requests race with the same link, only one wins.
+  const claimed = await prisma.passwordResetToken.updateMany({
+    where: { id: record.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  if (claimed.count !== 1) return { ok: false, reason: "invalid" };
+
   await prisma.$transaction([
-    prisma.user.update({
-      where: { id: record.userId },
-      data: { passwordHash },
-    }),
-    prisma.passwordResetToken.update({
-      where: { id: record.id },
-      data: { usedAt: new Date() },
-    }),
-    prisma.passwordResetToken.deleteMany({
-      where: { userId: record.userId, usedAt: null },
-    }),
+    // passwordChangedAt signs out every existing session on every device.
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash, passwordChangedAt: new Date() } }),
+    prisma.passwordResetToken.deleteMany({ where: { userId: record.userId, usedAt: null } }),
   ]);
 
   return { ok: true };
