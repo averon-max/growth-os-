@@ -22,8 +22,8 @@ export default function PricingPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 20, overflow: "hidden" }}>
           {[
             { name: "Starter", plan: "STARTER" as const, price: 49, features: ["Website monitoring", "SEO analysis", "Keyword intelligence", "Opportunity tracking", "Monthly reports"], pop: false },
-            { name: "Growth", plan: "GROWTH" as const, price: 99, features: ["Everything in Starter", "Search Console integration", "Audience analytics", "Content opportunities", "Competitor monitoring", "Automations"], pop: true },
-            { name: "Autopilot", plan: "AUTOPILOT" as const, price: 199, features: ["Everything in Growth", "Advanced automation", "Content workflows", "Advanced competitors", "Continuous optimization", "Priority processing"], pop: false },
+            { name: "Growth", plan: "GROWTH" as const, price: 75, features: ["Everything in Starter", "Search Console integration", "Audience analytics", "Content opportunities", "Competitor monitoring", "Automations"], pop: true },
+            { name: "Autopilot", plan: "AUTOPILOT" as const, price: 150, features: ["Everything in Growth", "Advanced automation", "Content workflows", "Advanced competitors", "Continuous optimization", "Priority processing"], pop: false },
           ].map((p, i) => (
             <div key={p.name} style={{ padding: "48px 40px", borderLeft: i > 0 ? "1px solid rgba(0,0,0,0.08)" : "none", background: p.pop ? "#0a0a0a" : "#fff", display: "flex", flexDirection: "column" }}>
               {p.pop && <div style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#d4a030", marginBottom: 16 }}>— Most popular</div>}

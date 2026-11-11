@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -118,3 +119,13 @@ a {
 /* ===== LINEAR v2 tokens ===== */
 html, body { background: #08090a !important; color: #d0d6e0; font-feature-settings: "cv01", "ss03"; }
 body::before { display: none !important; }
+
+/* Hyprlyx font */
+html body, button, input, textarea, select {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Linear-style text */
+html body { font-feature-settings: "cv01", "ss03"; font-optical-sizing: auto; letter-spacing: -0.006em; text-rendering: optimizeLegibility; }
+h1, h2, h3 { font-weight: 510; letter-spacing: -0.022em; }

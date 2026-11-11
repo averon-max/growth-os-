@@ -34,14 +34,14 @@ export const PLANS: Record<PlanId, Plan> = {
   GROWTH: {
     id: "GROWTH",
     name: "Growth",
-    priceMonthlyUsd: 99,
+    priceMonthlyUsd: 75,
     priceEnvVar: "STRIPE_PRICE_GROWTH",
     limits: { websites: 5, articlesPerMonth: 50, keywordRefreshesPerMonth: 400 },
   },
   AUTOPILOT: {
     id: "AUTOPILOT",
     name: "Autopilot",
-    priceMonthlyUsd: 199,
+    priceMonthlyUsd: 150,
     priceEnvVar: "STRIPE_PRICE_AUTOPILOT",
     limits: { websites: 25, articlesPerMonth: 200, keywordRefreshesPerMonth: 1500 },
   },

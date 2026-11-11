@@ -1,488 +1,334 @@
+import type { Metadata } from "next";
+import { Geist_Mono, Inter, Newsreader } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import {
-  Activity,
-  ArrowRight,
-  Bot,
-  CheckCircle2,
-  Globe2,
-  Search,
-  Sparkles,
-  Users,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, Check, Menu } from "lucide-react";
 
-import { LandingReveal } from "@/components/marketing/landing-reveal";
-import styles from "./landing.module.css";
 import SubscribeButton from "@/components/subscribe-button";
+import { PLANS } from "@/lib/billing/plans";
 
-export default function HomePage() {
+import styles from "./landing.module.css";
+
+const display = Newsreader({ subsets: ["latin"], variable: "--font-landing-display", display: "swap" });
+
+const mono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-landing-mono",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Hyprlyx — plan, write and rank in one SEO workspace",
+  description:
+    "Keyword research, Search Console, AI-written articles and backlinks in one workspace, so your team knows what to publish next and why.",
+  alternates: { canonical: "/" },
+};
+
+const SECTIONS = [
+  {
+    id: "keywords",
+    number: "1.0",
+    label: "Keyword research",
+    title: "Know what people search for",
+    text: "Volume, difficulty, CPC and trend for every keyword, plus rising searches from Google Trends — before you decide what to write.",
+    src: "/landing/keywords-v9.webp",
+    alt: "Keyword research: rising and top searches with volume, difficulty and CPC",
+  },
+  {
+    id: "visibility",
+    number: "2.0",
+    label: "Rankings",
+    title: "See where you stand",
+    text: "Impressions, clicks and positions straight from Search Console, with the queries closest to page one surfaced first.",
+    src: "/landing/search-console-v9.webp",
+    alt: "Search Console view with impressions, average position and easiest wins",
+  },
+  {
+    id: "writer",
+    number: "3.0",
+    label: "AI writer",
+    title: "Write what actually ranks",
+    text: "Drafts built from the live search results: competitor structure, People Also Ask and sources you can verify before anything goes live.",
+    src: "/landing/content-v9.webp",
+    alt: "Content library with AI-written drafts, formats and approval status",
+  },
+];
+
+const WORKS_WITH = ["Google Search Console", "Google Analytics 4", "Cloudflare", "DataForSEO", "Google Trends"];
+
+const PLAN_FEATURES = {
+  STARTER: [
+    "Website monitoring",
+    "SEO analysis",
+    "Keyword intelligence",
+    "Opportunity tracking",
+    "Monthly reports",
+  ],
+  GROWTH: [
+    "Everything in Starter",
+    "Search Console integration",
+    "Audience analytics",
+    "Content opportunities",
+    "Competitor monitoring",
+    "Automations",
+  ],
+  AUTOPILOT: [
+    "Everything in Growth",
+    "Advanced automation",
+    "Content workflows",
+    "Advanced competitors",
+    "Continuous optimization",
+    "Priority processing",
+  ],
+} as const;
+
+const PAID = ["STARTER", "GROWTH", "AUTOPILOT"] as const;
+
+const FOOTER = [
+  {
+    title: "Product",
+    links: [
+      { label: "Keyword research", href: "#keywords" },
+      { label: "Rankings", href: "#visibility" },
+      { label: "AI writer", href: "#writer" },
+      { label: "Pricing", href: "#pricing" },
+    ],
+  },
+  {
+    title: "Account",
+    links: [
+      { label: "Sign up", href: "/signup" },
+      { label: "Log in", href: "/login" },
+      { label: "Reset password", href: "/forgot-password" },
+    ],
+  },
+];
+
+function BrandMark() {
   return (
-    <main className={styles.page} data-landing="linear-growth-v6">
-      <LandingReveal />
+    <svg className={styles.brandMark} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#f7f8f8" />
+      <path d="M7 17L12 7L17 17" stroke="#08090a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.4 13.2H14.6" stroke="#08090a" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-      <div className={styles.gridBackground} />
-
-      <header className={styles.header}>
-        <div className={styles.navbar}>
+export default function LandingPage() {
+  return (
+    <div className={`${styles.page} ${display.variable} ${mono.variable}`}>
+      <header className={styles.nav}>
+        <div className={styles.navInner}>
           <Link href="/" className={styles.brand}>
-            <Logo />
-            <span>Growth OS</span>
+            <BrandMark />
+            Hyprlyx
           </Link>
 
-          <nav className={styles.nav}>
-            <a href="#product">Product</a>
-            <a href="#keywords">Keywords</a>
-            <a href="#audience">Audience</a>
-            <a href="#execution">Automations</a>
-            <Link href="/pricing">Pricing</Link>
+          <nav className={styles.navRight} aria-label="Main">
+            <div className={styles.navAnchors}>
+              <a href="#keywords">Product</a>
+              <a href="#pricing">Pricing</a>
+            </div>
+            <Link href="/login" className={styles.navLogin}>Log in</Link>
+            <Link href="/signup" className={styles.pill}>Sign up</Link>
+            <details className={styles.menu}>
+              <summary aria-label="Open menu">
+                <Menu size={24} strokeWidth={1.6} />
+              </summary>
+              <div className={styles.menuPanel}>
+                <a href="#keywords">Product</a>
+                <a href="#pricing">Pricing</a>
+                <Link href="/login">Log in</Link>
+                <Link href="/signup">Sign up</Link>
+              </div>
+            </details>
           </nav>
-
-          <div className={styles.account}>
-            <Link href="/login">
-              Log in
-            </Link>
-
-            <SubscribeButton plan="GROWTH" label="Sign up" variant="dark" size="md" />
-          </div>
         </div>
       </header>
 
-      <section className={styles.hero} id="product">
-        <div className={styles.heroCopy} data-reveal>
-          <div className={styles.eyebrow}>
-            <span className={styles.liveDot} />
-            Growth intelligence for operators
-          </div>
-
-          <h1>
-            Run organic growth
-            <span> like a product team.</span>
-          </h1>
-
-          <p>
-            Connect website intelligence, search demand,
-            audience behavior and execution in one operating system.
-          </p>
-
-          <div className={styles.heroActions}>
-            <SubscribeButton plan="GROWTH" label="Get started" variant="gold" size="lg" />
-
-            <a href="#keywords" className={styles.textButton}>
-              Explore the product
-              <ArrowRight size={11} />
-            </a>
-          </div>
-        </div>
-
-          <div className={styles.productFrame} data-reveal>
-            <Image
-              src="/landing/hero-keywords.png"
-              alt="Growth OS keyword intelligence workspace"
-              fill
-              priority
-              className={styles.productFrameImage}
-            />
-          </div>
-
-          <div className={styles.integrationStrip}>
-          <span>Connected system</span>
-
-          <div>
-            <strong>Crawler</strong>
-            <strong>Search Console</strong>
-            <strong>DataForSEO</strong>
-            <strong>Cloudflare</strong>
-            <strong>CMS</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.statement} data-reveal>
-        <div className={styles.statementIndex}>
-          01
-        </div>
-
-        <div>
-          <span className={styles.sectionEyebrow}>
-            ONE SYSTEM
-          </span>
-
-          <h2>
-            Less reporting.
-            <br />
-            More operating.
-          </h2>
-
-          <p>
-            Growth OS keeps analysis, evidence, priorities and
-            execution in the same workspace instead of spreading
-            them across disconnected tools.
-          </p>
-        </div>
-      </section>
-
-      <section
-        className={styles.featureSection}
-        id="keywords"
-        data-reveal
-      >
-        <div className={styles.featureCopy}>
-          <span className={styles.sectionEyebrow}>
-            02 · KEYWORDS
-          </span>
-
-          <h2>
-            Search signals
-            you can act on.
-          </h2>
-
-          <p>
-            Ranking history becomes a structured queue of
-            opportunities instead of another spreadsheet.
-          </p>
-        </div>
-
-        <div className={styles.featureShot}>
-          <Image
-            src="/landing/feature-keywords.png"
-            alt="Growth OS keyword detail panel with volume, difficulty and trend data"
-            width={2300}
-            height={872}
-            className={styles.featureShotImage}
-          />
-        </div>
-      </section>
-
-      <section
-        className={styles.featureSection}
-        id="audience"
-        data-reveal
-      >
-        <div className={styles.featureCopy}>
-          <span className={styles.sectionEyebrow}>
-            03 · AUDIENCE
-          </span>
-
-          <h2>
-            Understand what
-            reaches the site.
-          </h2>
-
-          <p>
-            Traffic snapshots stay tied to their source,
-            with period controls and real breakdown dimensions.
-          </p>
-        </div>
-
-        <div className={styles.audiencePanel}>
-          <div className={styles.audienceTopbar}>
-            <div>
-              <Activity size={11} />
-              <span>Traffic overview</span>
-            </div>
-
-            <div className={styles.periodControl}>
-              <span className={styles.periodActive}>7</span>
-              <span>15</span>
-              <span>30</span>
-            </div>
-          </div>
-
-          <div className={styles.audienceMetrics}>
-            <AudienceMetric
-              icon={<Activity size={11} />}
-              label="Requests"
-            />
-
-            <AudienceMetric
-              icon={<Users size={11} />}
-              label="Visitor days"
-            />
-
-            <AudienceMetric
-              icon={<Bot size={11} />}
-              label="Verified bots"
-            />
-
-            <AudienceMetric
-              icon={<Globe2 size={11} />}
-              label="Bandwidth"
-            />
-          </div>
-
-          <div className={styles.audienceBody}>
-            <div className={styles.trafficArea}>
-              <div className={styles.trafficHeader}>
-                <div>
-                  <span>Traffic activity</span>
-                  <strong>Requests over time</strong>
-                </div>
-
-                <span>Cloudflare</span>
-              </div>
-
-              <div className={styles.trafficCanvas}>
-                <i />
-                <i />
-                <i />
-                <i />
-
-                <div className={styles.snapshotState}>
-                  <span className={styles.liveDot} />
-                  Synced daily snapshots
-                </div>
-              </div>
-            </div>
-
-            <aside className={styles.breakdowns}>
-              <Breakdown
-                icon={<Globe2 size={11} />}
-                label="Countries"
-              />
-
-              <Breakdown
-                icon={<Users size={11} />}
-                label="Devices"
-              />
-
-              <Breakdown
-                icon={<Bot size={11} />}
-                label="Bot activity"
-              />
-            </aside>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className={styles.executionSection}
-        id="execution"
-        data-reveal
-      >
-        <div className={styles.executionHeader}>
-          <span className={styles.sectionEyebrow}>
-            04 · EXECUTION
-          </span>
-
-          <h2>
-            Close the loop.
-          </h2>
-
-          <p>
-            From connected data to analysis, review,
-            execution and verification.
-          </p>
-        </div>
-
-        <div className={styles.pipeline}>
-          <PipelineStep
-            index="01"
-            icon={<Globe2 size={13} />}
-            title="Connect"
-            detail="Website + sources"
-            tone="accent"
-          />
-
-          <PipelineStep
-            index="02"
-            icon={<Search size={13} />}
-            title="Analyze"
-            detail="Rules + signals"
-            tone="accent"
-          />
-
-          <PipelineStep
-            index="03"
-            icon={<Sparkles size={13} />}
-            title="Prioritize"
-            detail="Opportunity"
-            tone="warning"
-          />
-
-          <PipelineStep
-            index="04"
-            icon={<Zap size={13} />}
-            title="Apply"
-            detail="Approved action"
-            tone="accent"
-          />
-
-          <PipelineStep
-            index="05"
-            icon={<CheckCircle2 size={13} />}
-            title="Verify"
-            detail="Real re-fetch"
-            tone="success"
-            last
-          />
-        </div>
-      </section>
-
-      <section className={styles.final} data-reveal>
-        <div>
-          <span className={styles.sectionEyebrow}>
-            GROWTH OS
-          </span>
-
-          <h2>
-            Understand the signal.
-            <br />
-            Move the work.
-          </h2>
-        </div>
-
-        <div className={styles.finalRight}>
-          <p>
-            One operating system for organic growth,
-            from first signal to verified outcome.
-          </p>
-
-          <div>
-            <SubscribeButton plan="GROWTH" label="Start growing" variant="gold" size="lg" />
-
-            <Link href="/pricing" className={styles.secondaryButton}>
-              Pricing
+      <main>
+        <section className={styles.hero}>
+          <div className={styles.container}>
+            <Link href="/signup" className={styles.news}>
+              <span className={styles.newsTag}>New</span>
+              <span className={styles.newsText}>
+                AI article writer <ArrowRight size={15} />
+              </span>
             </Link>
+
+            <h1 className={styles.heroTitle}>Plan, write and rank in one workspace</h1>
+
+            <p className={styles.heroLede}>
+              Hyprlyx brings keyword research, Search Console, AI-written articles and backlinks
+              together, so your team knows what to publish next and why.
+            </p>
+
+            <div className={styles.heroActions}>
+              <Link href="/signup" className={styles.pill}>Start free</Link>
+              <a href="#pricing" className={styles.textLink}>
+                See pricing <ArrowRight size={15} />
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+
+          <div className={styles.heroStage}>
+          <div className={styles.heroShotWrap}>
+            <div className={styles.heroShot}>
+              <Image
+                src="/landing/planner-v9.webp"
+                alt="Keyword Planner: tracked keywords, pages without content and current rankings"
+                width={3200}
+                height={2000}
+                priority
+                unoptimized
+                sizes="(max-width: 1240px) 100vw, 1200px"
+              />
+            </div>
+          </div>
+          </div>
+        </section>
+
+        <section className={styles.worksWith} aria-label="Works with">
+          <div className={styles.container}>
+            <p className={styles.eyebrow}>Works with</p>
+            <ul className={styles.worksWithList}>
+              {WORKS_WITH.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {SECTIONS.map((section) => (
+          <section key={section.id} id={section.id} className={styles.block}>
+            <div className={styles.container}>
+              <div className={styles.blockHead}>
+                <div>
+                  <p className={styles.eyebrow}>
+                    <span className={styles.eyebrowNum}>{section.number}</span> {section.label}
+                  </p>
+                  <h2 className={styles.blockTitle}>{section.title}</h2>
+                </div>
+                <p className={styles.blockText}>{section.text}</p>
+              </div>
+
+              <div className={styles.blockCard}>
+                <div className={styles.blockShot}>
+                  <Image
+                    src={section.src}
+                    alt={section.alt}
+                    width={3200}
+                    height={2000}
+                    sizes="(max-width: 1240px) 100vw, 1200px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        ))}
+
+        <section id="pricing" className={styles.block}>
+          <div className={styles.container}>
+            <div className={styles.blockHead}>
+              <div>
+                <p className={styles.eyebrow}>
+                  <span className={styles.eyebrowNum}>4.0</span> Pricing
+                </p>
+                <h2 className={styles.blockTitle}>Simple, monthly pricing</h2>
+              </div>
+              <p className={styles.blockText}>
+                Start free with one site. Upgrade when you need more sites, articles and data.
+              </p>
+            </div>
+
+            <div className={styles.plans}>
+              {PAID.map((id) => {
+                const plan = PLANS[id];
+                const popular = id === "GROWTH";
+                return (
+                  <div key={id} className={popular ? `${styles.plan} ${styles.planPopular}` : styles.plan}>
+                    <div className={styles.planHead}>
+                      <h3 className={styles.planName}>{plan.name}</h3>
+                      {popular ? <span className={styles.planTag}>Most popular</span> : null}
+                    </div>
+                    <p className={styles.price}>
+                      ${plan.priceMonthlyUsd}
+                      <span className={styles.per}>/ month</span>
+                    </p>
+                    <ul className={styles.planList}>
+                      {PLAN_FEATURES[id].map((item) => (
+                        <li key={item}>
+                          <Check size={15} strokeWidth={2.2} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <SubscribeButton
+                      plan={id}
+                      label={`Choose ${plan.name}`}
+                      variant={popular ? "accent" : "light"}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.cta}>
+          <div className={styles.container}>
+            <h2 className={styles.ctaTitle}>
+              Start growing your
+              <br />
+              search traffic today
+            </h2>
+            <div className={styles.heroActions}>
+              <Link href="/signup" className={styles.pill}>Start free</Link>
+              <a href="#pricing" className={styles.textLink}>
+                See pricing <ArrowRight size={15} />
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
 
       <footer className={styles.footer}>
-        <Link href="/" className={styles.brand}>
-          <Logo />
-          <span>Growth OS</span>
-        </Link>
+        <div className={styles.container}>
+          <div className={styles.footerGrid}>
+            <div className={styles.footerBrand}>
+              <Link href="/" className={styles.brand}>
+                <BrandMark />
+                Hyprlyx
+              </Link>
+              <p>The SEO workspace for teams that publish.</p>
+            </div>
 
-        <span>
-          SEO intelligence + growth operations
-        </span>
+            {FOOTER.map((column) => (
+              <nav key={column.title} className={styles.footerCol} aria-label={column.title}>
+                <h3>{column.title}</h3>
+                <ul>
+                  {column.links.map((link) => (
+                    <li key={link.label}>
+                      {link.href.startsWith("#") ? (
+                        <a href={link.href}>{link.label}</a>
+                      ) : (
+                        <Link href={link.href}>{link.label}</Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
+          </div>
 
-        <div>
-          <Link href="/pricing">
-            Pricing
-          </Link>
-
-          <Link href="/login">
-            Log in
-          </Link>
+          <div className={styles.footerBottom}>
+            <span>© {new Date().getFullYear()} Hyprlyx</span>
+            <span>hyprlyx.com</span>
+          </div>
         </div>
       </footer>
-    </main>
-  );
-}
-
-function Logo() {
-  return (
-    <span className={styles.logo}>
-      <i />
-      <i />
-      <i />
-    </span>
-  );
-}
-
-function SignalGroup({
-  tone,
-  title,
-  description,
-}: {
-  tone: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className={styles.issueRow}>
-      <span
-        className={styles.statusDot}
-        data-tone={tone}
-      />
-
-      <div>
-        <strong>{title}</strong>
-        <span>{description}</span>
-      </div>
-
-      <ArrowRight size={11} />
-    </div>
-  );
-}
-
-function AudienceMetric({
-  icon,
-  label,
-}: {
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <div className={styles.audienceMetric}>
-      <div>
-        {icon}
-        <span>{label}</span>
-      </div>
-
-      <strong>Connected</strong>
-    </div>
-  );
-}
-
-function Breakdown({
-  icon,
-  label,
-}: {
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <div className={styles.breakdown}>
-      <div>
-        {icon}
-        <strong>{label}</strong>
-      </div>
-
-      <span />
-      <span />
-      <span />
-    </div>
-  );
-}
-
-function PipelineStep({
-  index,
-  icon,
-  title,
-  detail,
-  tone,
-  last = false,
-}: {
-  index: string;
-  icon: ReactNode;
-  title: string;
-  detail: string;
-  tone: string;
-  last?: boolean;
-}) {
-  return (
-    <div className={styles.pipelineStep}>
-      <div className={styles.pipelineMeta}>
-        <span>{index}</span>
-
-        <i data-tone={tone}>
-          {icon}
-        </i>
-      </div>
-
-      <strong>{title}</strong>
-      <span>{detail}</span>
-
-      {!last && (
-        <ArrowRight
-          size={12}
-          className={styles.pipelineArrow}
-        />
-      )}
     </div>
   );
 }
