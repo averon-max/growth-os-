@@ -175,7 +175,7 @@ export function SignupForm() {
       </div>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       <button className={styles.button} disabled={busy}>{busy ? "Creating account…" : "Create account"}</button>
-      <p className={styles.legal}>By creating an account you agree to the Terms and Privacy Policy.</p>
+      <p className={styles.legal}>By creating an account you agree to the <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.</p>
     </form>
   );
 }

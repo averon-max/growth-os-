@@ -325,7 +325,8 @@ export default function LandingPage() {
             <span>hyprlyx.com</span>
           </div>
         </div>
-      </footer>
+      <nav style={{ display: "flex", gap: 20, justifyContent: "center", padding: "20px 0 8px", fontSize: 13 }}><Link href="/terms" style={{ color: "#8a8f98" }}>Terms</Link><Link href="/privacy" style={{ color: "#8a8f98" }}>Privacy</Link><Link href="/cookies" style={{ color: "#8a8f98" }}>Cookies</Link></nav>
+</footer>
     </div>
   );
 }
