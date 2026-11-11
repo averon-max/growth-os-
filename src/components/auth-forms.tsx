@@ -67,6 +67,24 @@ function Meter({ value }: { value: string }) {
   );
 }
 
+export function GoogleButton({ label = "Continue with Google" }: { label?: string }) {
+  const params = useSearchParams();
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.oauth}
+        disabled={busy}
+        onClick={() => { setBusy(true); signIn("google", { callbackUrl: safeNext(params.get("callbackUrl")) }); }}
+      >
+        {busy ? "Opening Google…" : label}
+      </button>
+      <div className={styles.divider}><span>or with email</span></div>
+    </>
+  );
+}
+
 async function postJson(url: string, body: unknown): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -107,6 +125,7 @@ export function LoginForm() {
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate={false}>
       {reset ? <p className={styles.notice} style={{ marginTop: 0 }}>Password changed. Log in with the new one.</p> : null}
+      <GoogleButton />
       <div className={styles.field}>
         <label className={styles.label} htmlFor="email">Email</label>
         <input id="email" name="email" type="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="you@company.com" required autoFocus maxLength={254} />
@@ -156,6 +175,7 @@ export function SignupForm() {
 
   return (
     <form className={styles.form} onSubmit={onSubmit}>
+      <GoogleButton label="Sign up with Google" />
       <div className={styles.field}>
         <label className={styles.label} htmlFor="name">Name</label>
         <input id="name" name="name" className={styles.input} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Your name" maxLength={80} autoFocus />

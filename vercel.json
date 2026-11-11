@@ -4,6 +4,10 @@
     {
       "path": "/api/internal/outcome-checkpoints",
       "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "17 9 * * *"
     }
   ]
 }

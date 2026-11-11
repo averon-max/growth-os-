@@ -220,3 +220,9 @@
   line-height: 1.5;
   color: #62666e;
 }
+
+.oauth { height: 42px; border-radius: 999px; border: 1px solid #2a2d33; background: #111214; color: #f7f8f8; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.oauth:hover { background: #17181b; border-color: #363940; }
+.oauth:disabled { opacity: .6; cursor: progress; }
+.divider { display: flex; align-items: center; gap: 12px; color: #4b4f56; font-size: 12px; margin: 2px 0; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #1f2125; }

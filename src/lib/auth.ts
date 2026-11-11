@@ -1,5 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { burnBcryptTime, clientIp, limit, normalizeEmail } from "@/lib/auth-guard";
@@ -8,6 +10,9 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   pages: { signIn: "/login" },
   providers: [
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [GoogleProvider({ clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET })]
+      : []),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -49,7 +54,36 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      const p = profile as { email?: string; email_verified?: boolean; name?: string } | undefined;
+      const email = normalizeEmail(p?.email);
+      // Only accept emails Google has verified — otherwise someone could claim an address they don't own.
+      if (!email || p?.email_verified !== true) return false;
+      const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (!existing) {
+        // New Google user: random unusable password; they can set a real one later via "Forgot password".
+        const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
+        const name = (p?.name ?? "").replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, 80) || null;
+        await prisma.$transaction(async (tx) => {
+          const user = await tx.user.create({ data: { email, name, passwordHash, passwordChangedAt: new Date(0) } });
+          const ws = await tx.workspace.create({ data: { name: name ? `${name}'s Workspace` : "My Workspace" } });
+          await tx.workspaceMember.create({ data: { userId: user.id, workspaceId: ws.id, role: "OWNER" } });
+        });
+      }
+      return true;
+    },
+    async jwt({ token, user, trigger, account }) {
+      if (user && account?.provider === "google") {
+        const db = await prisma.user.findUnique({ where: { email: normalizeEmail(user.email) ?? "" } });
+        if (!db) return {};
+        const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
+        token.userId = db.id;
+        token.email = db.email;
+        token.isAdmin = db.isAdmin || adminEmails.includes(db.email);
+        token.pwdAt = Date.now(); // this session was just created, so it's newer than any password change
+        return token;
+      }
       if (user) {
         token.userId = user.id;
         token.isAdmin = Boolean((user as { isAdmin?: boolean }).isAdmin);
