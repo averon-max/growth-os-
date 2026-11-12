@@ -19,25 +19,25 @@ export default function Paywall({
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
-        <span className={styles.eyebrow}>Тариф {requiredPlan}</span>
+        <span className={styles.eyebrow}>{requiredPlan} plan</span>
 
-        <h1 className={styles.title}>Раздел «{section}» входит в {requiredPlan}</h1>
+        <h1 className={styles.title}>{section} is part of {requiredPlan}</h1>
 
         <p className={styles.text}>
-          Сейчас у вас {currentPlan}. Подключите {requiredPlan}, и раздел откроется сразу
-          после оплаты — выходить и заходить заново не нужно.
+          You're on {currentPlan}. Upgrade to {requiredPlan} and this section unlocks right after payment —
+          no need to log out and back in.
         </p>
 
         <div className={styles.actions}>
           {requiredPlanId === "FREE" ? null : (
             <SubscribeButton
               plan={requiredPlanId as "STARTER" | "GROWTH" | "AUTOPILOT"}
-              label={`Подключить ${requiredPlan}`}
+              label={`Upgrade to ${requiredPlan}`}
               variant="accent"
             />
           )}
           <Link href="/pricing" className={styles.compare}>
-            Сравнить тарифы
+            Compare plans
           </Link>
         </div>
       </div>

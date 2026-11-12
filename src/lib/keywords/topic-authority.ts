@@ -708,7 +708,7 @@ export function buildTopicAuthorityProfile({
     );
 
   /*
-   * Internal Growth OS evidence score.
+   * Internal Hyprlyx evidence score.
    *
    * NOT a Google metric.
    * NOT a claimed ranking factor.

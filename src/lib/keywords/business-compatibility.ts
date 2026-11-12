@@ -440,7 +440,7 @@ export function evaluateBusinessCompatibility({
       keyword,
 
       reason:
-        "Проверенные актуальные данные бизнеса прямо противоречат этому предложению. Создавать продуктовую или коммерческую страницу по такому запросу нельзя.",
+        "Verified, current business facts directly contradict this suggestion. Don't create a product or commercial page for this query.",
 
       verifiedFreshFacts:
         usable.length,
@@ -465,7 +465,7 @@ export function evaluateBusinessCompatibility({
       keyword,
 
       reason:
-        "Проверенные актуальные Business Facts подтверждают, что тема соответствует реальным возможностям или политике бизнеса.",
+        "Verified, current Business Facts confirm this topic matches what the business actually offers.",
 
       verifiedFreshFacts:
         usable.length,
@@ -491,7 +491,7 @@ export function evaluateBusinessCompatibility({
       keyword,
 
       reason:
-        "Запрос явно информационный, но Business Facts не подтверждают, что бизнес предоставляет эту услугу. Допустим только образовательный материал без неподтверждённых продуктовых заявлений.",
+        "The query is informational, but Business Facts don't confirm the business offers this. Only educational content without unverified product claims is allowed.",
 
       verifiedFreshFacts:
         usable.length,
@@ -510,7 +510,7 @@ export function evaluateBusinessCompatibility({
     keyword,
 
     reason:
-      "Проверенные актуальные Business Facts не подтверждают, что бизнес предоставляет продукт, услугу или возможность, подразумеваемую этим запросом.",
+      "Verified, current Business Facts don't confirm the business offers the product, service or capability this query implies.",
 
     verifiedFreshFacts:
       usable.length,

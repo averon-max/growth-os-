@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const ACTIVE_STATUSES = ["active", "trialing", "past_due"];
 
 function formatDate(value: Date | null): string {
-  if (!value) return "бессрочно";
+  if (!value) return "no end date";
   return value.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -70,11 +70,11 @@ export default async function AdminPage({
   return (
     <div className={styles.page}>
       <div className={styles.head}>
-        <span className={styles.eyebrow}>Админка</span>
-        <h1 className={styles.title}>Подписки и доступы</h1>
+        <span className={styles.eyebrow}>Admin</span>
+        <h1 className={styles.title}>Subscriptions & access</h1>
         <p className={styles.lede}>
-          Выдача доступа вручную, мимо оплаты. Такие подписки помечаются как выданные
-          вручную и не перезаписываются при оплате через Stripe.
+          Grant access manually, without payment. These subscriptions are marked as manual
+          and are never overwritten by Stripe payments.
         </p>
       </div>
 
@@ -83,21 +83,21 @@ export default async function AdminPage({
           type="search"
           name="q"
           defaultValue={query}
-          placeholder="Поиск по email или названию воркспейса"
+          placeholder="Search by email or workspace name"
           className={styles.searchInput}
         />
         <button type="submit" className={styles.button}>
-          Найти
+          Search
         </button>
       </form>
 
       <div>
-        <h2 className={styles.sectionTitle}>Воркспейсы</h2>
+        <h2 className={styles.sectionTitle}>Workspaces</h2>
 
         <div className={styles.list}>
           {workspaces.length === 0 ? (
             <div className={styles.rows}>
-              <p className={styles.empty}>Ничего не найдено.</p>
+              <p className={styles.empty}>Nothing found.</p>
             </div>
           ) : null}
 
@@ -113,9 +113,9 @@ export default async function AdminPage({
                   <div className={styles.cardTitle}>
                     <span className={styles.cardName}>{workspace.name}</span>
                     <span className={styles.cardMeta}>
-                      {owner?.user.email ?? "без участников"}
+                      {owner?.user.email ?? "no members"}
                       {workspace.members.length > 1
-                        ? ` · ещё ${workspace.members.length - 1}`
+                        ? ` · +${workspace.members.length - 1}`
                         : ""}
                     </span>
                   </div>
@@ -130,7 +130,7 @@ export default async function AdminPage({
                     </span>
                     {sub ? (
                       <span className={styles.cardMeta}>
-                        {sub.source === "manual" ? "вручную" : "Stripe"} ·{" "}
+                        {sub.source === "manual" ? "manual" : "Stripe"} ·{" "}
                         {formatDate(sub.currentPeriodEnd)}
                       </span>
                     ) : null}
@@ -149,7 +149,7 @@ export default async function AdminPage({
       </div>
 
       <div>
-        <h2 className={styles.sectionTitle}>Пользователи</h2>
+        <h2 className={styles.sectionTitle}>Users</h2>
 
         <div className={styles.rows}>
           {users.map((u) => (
@@ -157,7 +157,7 @@ export default async function AdminPage({
               <div className={styles.rowMain}>
                 <span className={styles.rowTitle}>{u.email}</span>
                 <span className={styles.rowMeta}>
-                  {u.name ?? "без имени"} · воркспейсов: {u.memberships.length} · с{" "}
+                  {u.name ?? "no name"} · workspaces: {u.memberships.length} · since{" "}
                   {u.createdAt.toLocaleDateString("ru-RU")}
                 </span>
               </div>
@@ -165,7 +165,7 @@ export default async function AdminPage({
             </div>
           ))}
 
-          {users.length === 0 ? <p className={styles.empty}>Никого не найдено.</p> : null}
+          {users.length === 0 ? <p className={styles.empty}>No users found.</p> : null}
         </div>
       </div>
     </div>

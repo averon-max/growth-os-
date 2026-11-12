@@ -115,7 +115,7 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
       <div className={u.compactHeader}>
         <div>
           <h1 className={u.compactTitle}>Content</h1>
-          <div className={u.compactMeta}>Articles written by Growth OS, from draft to published.</div>
+          <div className={u.compactMeta}>Articles written by Hyprlyx, from draft to published.</div>
         </div>
         {websiteId ? <WriterButton websiteId={websiteId} /> : null}
       </div>

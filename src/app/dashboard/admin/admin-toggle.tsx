@@ -29,7 +29,7 @@ export default function AdminToggle({
   }
 
   if (self) {
-    return <span className={styles.self}>это вы</span>;
+    return <span className={styles.self}>you</span>;
   }
 
   return (
@@ -39,7 +39,7 @@ export default function AdminToggle({
       disabled={busy}
       className={isAdmin ? `${styles.toggle} ${styles.toggleOn}` : styles.toggle}
     >
-      {isAdmin ? "админ — снять" : "сделать админом"}
+      {isAdmin ? "admin — remove" : "make admin"}
     </button>
   );
 }

@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Growth OS — SEO intelligence for teams that ship fast.",
-  description: "Growth OS crawls your website, detects what is holding back organic growth, and surfaces the highest-impact opportunities — with evidence, not guesses.",
+  title: "Hyprlyx — SEO intelligence for teams that ship fast.",
+  description: "Hyprlyx crawls your website, detects what is holding back organic growth, and surfaces the highest-impact opportunities — with evidence, not guesses.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

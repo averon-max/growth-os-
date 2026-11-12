@@ -353,7 +353,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
                     <td className={pg.topKeyword ? undefined : p.dim}>{pg.topKeyword ?? "—"}</td>
                     <td className={p.num}>{fmt(pg.clicks)}</td><td className={p.num}>{fmt(pg.impressions)}</td>
                     <td className={p.num}>{pg.bestPosition ?? "—"}</td>
-                    <td>{pg.hasArticle ? <span className={`${u.badge} ${u.badgeSuccess}`}>Growth OS</span> : <span className={p.dim}>—</span>}</td>
+                    <td>{pg.hasArticle ? <span className={`${u.badge} ${u.badgeSuccess}`}>Hyprlyx</span> : <span className={p.dim}>—</span>}</td>
                   </tr>
                 ))}</tbody>
               </table>

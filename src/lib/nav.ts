@@ -86,10 +86,10 @@ export const NAV_BOTTOM: NavItem[] = [
 
 /* Пункт только для администраторов. Сайдбар рисует его, если isAdmin. */
 export const NAV_ADMIN: NavItem = {
-  label: "Админка",
+  label: "Admin",
   href: "/dashboard/admin",
   icon: ShieldCheck,
-  description: "Пользователи, тарифы и выдача доступа",
+  description: "Users, plans and access grants",
   keepSite: false,
 };
 

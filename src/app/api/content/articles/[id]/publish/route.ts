@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       try {
         await assertOutcomeActionExecutable(actionScope);
       } catch {
-        return NextResponse.json({ error: "This Growth OS action cannot be linked to this content execution." }, { status: 409 });
+        return NextResponse.json({ error: "This Hyprlyx action cannot be linked to this content execution." }, { status: 409 });
       }
     }
 

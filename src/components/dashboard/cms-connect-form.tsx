@@ -61,7 +61,7 @@ export function CMSConnectForm({ websiteId, currentSiteUrl }: Props) {
           value={cmsType}
           onChange={(e) => setCmsType(e.target.value as CMSType)}
         >
-          <option value="CUSTOM_API">Custom website (Growth OS Integration API)</option>
+          <option value="CUSTOM_API">Custom website (Hyprlyx Integration API)</option>
           <option value="WORDPRESS">WordPress</option>
         </select>
       </div>

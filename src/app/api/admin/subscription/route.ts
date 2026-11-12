@@ -14,15 +14,15 @@ export async function POST(request: Request) {
     const note = typeof body?.note === "string" ? body.note.slice(0, 500) : null;
 
     if (typeof workspaceId !== "string" || !workspaceId) {
-      return NextResponse.json({ error: "Не указан воркспейс" }, { status: 400 });
+      return NextResponse.json({ error: "Workspace is required" }, { status: 400 });
     }
     if (!isPlanId(plan)) {
-      return NextResponse.json({ error: "Неизвестный тариф" }, { status: 400 });
+      return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
     }
 
     const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
     if (!workspace) {
-      return NextResponse.json({ error: "Воркспейс не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
     // FREE означает снятие доступа.

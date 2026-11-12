@@ -13,15 +13,15 @@ export interface MailMessage {
  */
 export async function sendMail(message: MailMessage): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.MAIL_FROM ?? "Growth OS <onboarding@resend.dev>";
+  const from = process.env.MAIL_FROM ?? "Hyprlyx <no-reply@hyprlyx.com>";
 
   if (!apiKey) {
     console.log(
       [
         "",
-        "─── письмо не отправлено, нет RESEND_API_KEY ───",
-        `кому:  ${message.to}`,
-        `тема:  ${message.subject}`,
+        "─── email not sent: RESEND_API_KEY is missing ───",
+        `to:      ${message.to}`,
+        `subject: ${message.subject}`,
         "",
         message.text,
         "────────────────────────────────────────────────",

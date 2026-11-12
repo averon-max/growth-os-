@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   try {
     event = stripe().webhooks.constructEvent(payload, signature, secret);
   } catch (error) {
-    console.error("[stripe-webhook] подпись не сошлась", error);
+    console.error("[stripe-webhook] signature mismatch", error);
     return NextResponse.json({ error: "bad signature" }, { status: 400 });
   }
 
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         break;
     }
   } catch (error) {
-    console.error("[stripe-webhook] ошибка обработки", event.type, error);
+    console.error("[stripe-webhook] processing error", event.type, error);
     // Удаляем отметку, чтобы Stripe повторил доставку.
     await prisma.stripeEvent.delete({ where: { id: event.id } }).catch(() => {});
     return NextResponse.json({ error: "handler failed" }, { status: 500 });

@@ -99,7 +99,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Growth OS action not found.",
+            "Hyprlyx action not found.",
         },
         {
           status:
@@ -173,7 +173,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Данные бизнеса изменились после создания плана. Обновите анализ перед выполнением.",
+            "Business data changed after this plan was created. Refresh the analysis before running it.",
 
           storedCompatibilityStatus:
             action.compatibilityStatus,
@@ -202,7 +202,7 @@ export async function POST(
             " "
           )
         : [
-            "Create the dedicated page described by the Growth OS Outcome Action.",
+            "Create the dedicated page described by the Hyprlyx Outcome Action.",
             "Keep the primary keyword aligned exactly with the Outcome Action.",
             "Use only verified business claims and evidence-backed content.",
           ].join(

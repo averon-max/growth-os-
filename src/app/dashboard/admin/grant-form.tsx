@@ -9,7 +9,7 @@ const PLAN_OPTIONS = [
   { value: "STARTER", label: "Starter" },
   { value: "GROWTH", label: "Growth" },
   { value: "AUTOPILOT", label: "Autopilot" },
-  { value: "FREE", label: "Снять доступ" },
+  { value: "FREE", label: "Remove access" },
 ];
 
 export default function GrantForm({
@@ -49,14 +49,14 @@ export default function GrantForm({
       router.refresh();
     } else {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Не удалось сохранить");
+      setError(body.error ?? "Couldn't save");
     }
   }
 
   return (
     <form onSubmit={submit} className={styles.form}>
       <label className={styles.field}>
-        <span className={styles.label}>Тариф</span>
+        <span className={styles.label}>Plan</span>
         <select value={plan} onChange={(e) => setPlan(e.target.value)}>
           {PLAN_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -67,7 +67,7 @@ export default function GrantForm({
       </label>
 
       <label className={styles.field}>
-        <span className={styles.label}>Месяцев</span>
+        <span className={styles.label}>Months</span>
         <input
           type="number"
           min={0}
@@ -80,11 +80,11 @@ export default function GrantForm({
       </label>
 
       <label className={`${styles.field} ${styles.fieldGrow}`}>
-        <span className={styles.label}>Комментарий</span>
+        <span className={styles.label}>Note</span>
         <input
           type="text"
           value={note}
-          placeholder="за что выдано"
+          placeholder="reason for the grant"
           onChange={(e) => setNote(e.target.value)}
         />
       </label>
@@ -94,7 +94,7 @@ export default function GrantForm({
         disabled={busy}
         className={`${styles.button} ${styles.buttonPrimary}`}
       >
-        {busy ? "…" : "Применить"}
+        {busy ? "…" : "Apply"}
       </button>
 
       {error ? <p className={styles.error}>{error}</p> : null}

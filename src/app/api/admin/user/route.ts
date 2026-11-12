@@ -10,13 +10,13 @@ export async function POST(request: Request) {
     const isAdmin = body?.isAdmin;
 
     if (typeof userId !== "string" || typeof isAdmin !== "boolean") {
-      return NextResponse.json({ error: "Неверные данные" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
     }
 
     // Не даём снять права с самого себя — иначе можно запереть себя снаружи.
     if (userId === admin.id && !isAdmin) {
       return NextResponse.json(
-        { error: "Нельзя снять права администратора с себя" },
+        { error: "You can't remove your own admin rights" },
         { status: 400 }
       );
     }

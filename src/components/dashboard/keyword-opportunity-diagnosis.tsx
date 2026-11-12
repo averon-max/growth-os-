@@ -534,7 +534,7 @@ export function KeywordOpportunityDiagnosis({
               styles.eyebrow
             }
           >
-            Growth OS decision
+            Hyprlyx decision
           </p>
 
           <h3
@@ -1061,7 +1061,7 @@ export function KeywordOpportunityDiagnosis({
                       }
                     >
                       No confirmed shared content gaps yet.
-                      Growth OS will not invent sections without enough evidence.
+                      Hyprlyx will not invent sections without enough evidence.
                     </div>
                   ) : (
                     actionPlan.evidenceBackedTopics.map(

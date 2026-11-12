@@ -26,7 +26,7 @@ describe(
     );
 
     it(
-      "reuses a recent planned Growth OS action",
+      "reuses a recent planned Hyprlyx action",
       () => {
         const now =
           Date.now();

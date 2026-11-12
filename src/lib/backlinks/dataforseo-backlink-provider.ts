@@ -408,7 +408,7 @@ function parseBacklink({
 
     /*
      * Provider metrics stay raw evidence.
-     * Growth OS does NOT rename them into DA/PA
+     * Hyprlyx does NOT rename them into DA/PA
      * or create an authority probability.
      */
     providerData:

@@ -35,7 +35,7 @@ export function evaluateOutcomeCreateBriefPermission({
         false,
 
       reason:
-        "Only a planned Growth OS action can create a content brief.",
+        "Only a planned Hyprlyx action can create a content brief.",
     };
   }
 
@@ -61,7 +61,7 @@ export function evaluateOutcomeCreateBriefPermission({
         false,
 
       reason:
-        "Сначала подтвердите, что бизнес действительно предоставляет продукт, услугу или возможность, связанную с этим запросом.",
+        "First confirm the business actually offers the product, service or capability behind this query.",
     };
   }
 
@@ -74,7 +74,7 @@ export function evaluateOutcomeCreateBriefPermission({
         false,
 
       reason:
-        "Проверенные данные бизнеса противоречат этому действию.",
+        "Verified business facts contradict this action.",
     };
   }
 
@@ -87,7 +87,7 @@ export function evaluateOutcomeCreateBriefPermission({
         true,
 
       reason:
-        "Разрешён только образовательный материал без неподтверждённых продуктовых заявлений.",
+        "Only educational content without unverified product claims is allowed.",
     };
   }
 
@@ -96,6 +96,6 @@ export function evaluateOutcomeCreateBriefPermission({
       true,
 
     reason:
-      "Проверенные данные бизнеса разрешают создание страницы.",
+      "Verified business facts allow creating this page.",
   };
 }

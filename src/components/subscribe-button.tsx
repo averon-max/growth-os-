@@ -15,7 +15,7 @@ const STYLES: Record<Variant, { background: string; color: string }> = {
 
 export default function SubscribeButton({
   plan = "GROWTH",
-  label = "Подписаться",
+  label = "Subscribe",
   variant = "dark",
   size = "md",
 }: {
@@ -50,7 +50,7 @@ export default function SubscribeButton({
     if (res.ok && body.url) {
       window.location.href = body.url;
     } else {
-      setError(body.error ?? "Не удалось открыть оплату");
+      setError(body.error ?? "Couldn't open checkout");
     }
   }
 
@@ -79,7 +79,7 @@ export default function SubscribeButton({
           ...palette,
         }}
       >
-        {busy ? "Открываем оплату…" : label} <ArrowRight size={size === "lg" ? 16 : 14} />
+        {busy ? "Opening checkout…" : label} <ArrowRight size={size === "lg" ? 16 : 14} />
       </button>
       {error ? (
         <span style={{ fontSize: "0.72rem", color: "#b0463c" }}>{error}</span>

@@ -33,7 +33,7 @@ export function AppFooter() {
           <div className={styles.brand}>
             <Link href={withSite("/dashboard", site)} className={styles.brandRow}>
               <span className={styles.mark}>G</span>
-              Growth OS
+              Hyprlyx
             </Link>
             <p className={styles.tagline}>
               Keywords, content, backlinks and traffic for your sites — in one workspace.
@@ -68,7 +68,7 @@ export function AppFooter() {
         </div>
 
         <div className={styles.bottom}>
-          <span>© {new Date().getFullYear()} Growth OS</span>
+          <span>© {new Date().getFullYear()} Hyprlyx</span>
           <button type="button" className={styles.toTop} onClick={scrollToTop}>
             <ArrowUp size={13} strokeWidth={1.8} />
             Back to top

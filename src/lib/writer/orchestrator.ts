@@ -1036,7 +1036,7 @@ ${sec.content}`;
       linkCount < 3 ? `only ${linkCount} source links` : "",
       h3Count < 3 ? `only ${h3Count} H3` : "",
       hasFaq ? "" : "no FAQ",
-      editorialFindings.length ? `editorial repetition (same check as Growth OS UI) in section(s): ${editorialFindings.map((f) => f.sectionIndex + 1).join(", ")}` : "",
+      editorialFindings.length ? `editorial repetition (same check as Hyprlyx UI) in section(s): ${editorialFindings.map((f) => f.sectionIndex + 1).join(", ")}` : "",
       dupHeadings.length ? `duplicate headings: ${dupHeadings.join(" | ")}` : "",
       serpAnalysis.pageStructures.length < 3 ? `research incomplete: only ${serpAnalysis.pageStructures.length} competitor pages analyzed` : "",
       // ISSUE_CLOSURE: a good average never passes an article with an unresolved critical problem

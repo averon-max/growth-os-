@@ -2033,7 +2033,7 @@ ${article.bodyMarkdown}`
             </span>
 
             <strong>
-              What Growth OS
+              What Hyprlyx
               sees
             </strong>
           </div>
@@ -2878,7 +2878,7 @@ ${article.bodyMarkdown}`
                 </strong>
 
                 <span>
-                  Keywords selected when Growth OS created the content brief. Usage below is exact-phrase evidence, not a semantic SEO score.
+                  Keywords selected when Hyprlyx created the content brief. Usage below is exact-phrase evidence, not a semantic SEO score.
                 </span>
               </div>
             </div>
@@ -3111,7 +3111,7 @@ ${article.bodyMarkdown}`
               </strong>
 
               <span>
-                Growth OS will compare real page-level Google queries with the article once Search Console reports impressions for its published URL.
+                Hyprlyx will compare real page-level Google queries with the article once Search Console reports impressions for its published URL.
               </span>
             </div>
           </div>
@@ -3507,7 +3507,7 @@ ${article.bodyMarkdown}`
                 Cloudflare
                 actually
                 reports them.
-                Growth OS does
+                Hyprlyx does
                 not guess bot
                 identity.
               </div>
@@ -3532,7 +3532,7 @@ ${article.bodyMarkdown}`
               </strong>
 
               <span>
-                Growth OS will
+                Hyprlyx will
                 not invent
                 human or bot
                 traffic when
@@ -4210,7 +4210,7 @@ ${article.bodyMarkdown}`
                 article is
                 connected to
                 an executed
-                Growth OS
+                Hyprlyx
                 action,
                 baseline and
                 7 / 14 / 28 / 60 / 90

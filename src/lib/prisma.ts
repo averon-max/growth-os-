@@ -26,7 +26,7 @@ string {
     throw new Error(
       [
         "DATABASE_URL_MISSING",
-        "Growth OS runtime cannot start Prisma without DATABASE_URL.",
+        "Hyprlyx runtime cannot start Prisma without DATABASE_URL.",
         "Expected PostgreSQL database: signal_db.",
         "Do not allow pg to fall back to the operating-system username database.",
       ].join(

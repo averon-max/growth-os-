@@ -57,15 +57,15 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           <div className={styles.brandMark}>
             <span>G</span>
           </div>
-          <span className={styles.brandName}>Growth OS</span>
+          <span className={styles.brandName}>Hyprlyx</span>
         </Link>
 
         <button
           type="button"
           onClick={toggle}
           className={styles.collapseToggle}
-          aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
-          title={collapsed ? "Развернуть меню" : "Свернуть меню"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.7} /> : <PanelLeftClose size={16} strokeWidth={1.7} />}
         </button>
@@ -99,7 +99,7 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         <div className={styles.workspace}>
           <div className={styles.avatar}>G</div>
           <div className={styles.workspaceText}>
-            <strong>Growth OS</strong>
+            <strong>Hyprlyx</strong>
             <span>Workspace</span>
           </div>
         </div>

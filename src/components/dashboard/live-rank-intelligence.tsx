@@ -446,7 +446,7 @@ export function LiveRankIntelligence({
               styles.copy
             }
           >
-            Growth OS takes real search queries for your business
+            Hyprlyx takes real search queries for your business
             and checks where the site ranks right now.
           </p>
         </div>
@@ -501,7 +501,7 @@ export function LiveRankIntelligence({
               styles.state
             }
           >
-            Click “Check positions”. Growth OS will pick a few
+            Click “Check positions”. Hyprlyx will pick a few
             important queries for your business and check the site
             against Google's top 100 results.
           </div>

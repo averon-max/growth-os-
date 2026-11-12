@@ -94,8 +94,8 @@ function rankEvidence(
 ): string {
   return diagnosis.liveRank ===
     null
-    ? "Сайт не найден в первых 100 органических результатах последней live-проверки."
-    : `Текущая live-позиция: #${diagnosis.liveRank}.`;
+    ? "The site wasn't found in the top 100 organic results of the latest live check."
+    : `Current live position: #${diagnosis.liveRank}.`;
 }
 
 export function decideOpportunityAction(
@@ -162,7 +162,7 @@ export function buildOpportunityActionPlan(
     diagnosis.ownPage
   ) {
     evidence.push(
-      `Лучшая найденная страница: ${diagnosis.ownPage.url}.`
+      `Best matching page: ${diagnosis.ownPage.url}.`
     );
 
     if (
@@ -170,7 +170,7 @@ export function buildOpportunityActionPlan(
       null
     ) {
       evidence.push(
-        `Совпадение страницы с темой поиска: ${Math.round(
+        `Page match with the search topic: ${Math.round(
           relevance *
             100
         )}%.`
@@ -178,20 +178,20 @@ export function buildOpportunityActionPlan(
     }
 
     evidence.push(
-      `Title: ${diagnosis.ownPage.title ?? "отсутствует"}.`
+      `Title: ${diagnosis.ownPage.title ?? "missing"}.`
     );
 
     evidence.push(
-      `H1: ${diagnosis.ownPage.h1 ?? "отсутствует"}.`
+      `H1: ${diagnosis.ownPage.h1 ?? "missing"}.`
     );
   } else {
     evidence.push(
-      "Подходящая страница на сайте не найдена."
+      "No matching page found on the site."
     );
   }
 
   evidence.push(
-    `Прочитано страниц конкурентов: ${diagnosis.competitorPagesFetched}.`
+    `Competitor pages read: ${diagnosis.competitorPagesFetched}.`
   );
 
   const evidenceBackedTopics =
@@ -232,31 +232,31 @@ export function buildOpportunityActionPlan(
 
     rationale =
       diagnosis.ownPage
-        ? `Текущая наиболее близкая страница совпадает с темой только на ${Math.round(
+        ? `The closest existing page matches the topic by only ${Math.round(
             (
               diagnosis.ownPage
                 .relevanceScore ??
               0
             ) *
               100
-          )}%. Сильное изменение этой страницы может изменить её существующую цель, поэтому безопаснее создать отдельную страницу под этот поиск.`
-        : "На сайте не найдено страницы, которая достаточно ясно отвечает этому поиску.";
+          )}%. Changing it heavily could break its current purpose, so it's safer to create a dedicated page for this search.`
+        : "No page on the site clearly answers this search.";
 
     steps.push({
       type:
         "CREATE_PAGE",
 
       title:
-        `Создать отдельную страницу под «${diagnosis.keyword}»`,
+        `Create a dedicated page for “${diagnosis.keyword}”`,
 
       explanation:
-        "Страница должна иметь одну ясную задачу и действительно отвечать на этот поиск. Не нужно превращать другую, слабо связанную страницу в универсальную SEO-страницу.",
+        "The page should have one clear job and genuinely answer this search. Don't turn a loosely related page into a catch-all SEO page.",
 
       evidence:
         diagnosis.ownPage
           ? [
-              `Текущая лучшая страница: ${diagnosis.ownPage.url}`,
-              `Совпадение: ${Math.round(
+              `Current best page: ${diagnosis.ownPage.url}`,
+              `Match: ${Math.round(
                 (
                   diagnosis.ownPage
                     .relevanceScore ??
@@ -266,7 +266,7 @@ export function buildOpportunityActionPlan(
               )}%`,
             ]
           : [
-              "Подходящая существующая страница не найдена.",
+              "No suitable existing page found.",
             ],
     });
 
@@ -275,13 +275,13 @@ export function buildOpportunityActionPlan(
         "ALIGN_TOPIC",
 
       title:
-        "Сделать тему страницы понятной в Title и H1",
+        "Make the page topic clear in the Title and H1",
 
       explanation:
-        `Title и H1 должны естественно объяснять, что страница посвящена теме «${diagnosis.keyword}». Не повторяй keyword искусственно и не делай keyword stuffing.`,
+        `The Title and H1 should naturally say the page is about “${diagnosis.keyword}”. Don't repeat the keyword artificially or stuff it.`,
 
       evidence: [
-        `Основной поиск: ${diagnosis.keyword}`,
+        `Primary search: ${diagnosis.keyword}`,
         diagnosis.serpPattern,
       ],
     });
@@ -290,22 +290,22 @@ export function buildOpportunityActionPlan(
     "UPDATE"
   ) {
     rationale =
-      "Существующая страница уже связана с поиском, поэтому отдельную новую страницу создавать без необходимости не нужно. Улучшаем существующую страницу только по наблюдаемым пробелам.";
+      "An existing page already targets this search, so there's no need for a new one. Improve the existing page only where gaps are observed.";
 
     steps.push({
       type:
         "UPDATE_PAGE",
 
       title:
-        "Улучшить существующую страницу",
+        "Improve the existing page",
 
       explanation:
-        `Работаем с ${diagnosis.ownPage?.url ?? "существующей страницей"} вместо создания второй страницы с похожей целью.`,
+        `Work on ${diagnosis.ownPage?.url ?? "the existing page"} instead of creating a second page with a similar goal.`,
 
       evidence:
         diagnosis.ownPage
           ? [
-              `Совпадение с темой: ${Math.round(
+              `Topic match: ${Math.round(
                 (
                   diagnosis.ownPage
                     .relevanceScore ??
@@ -328,33 +328,33 @@ export function buildOpportunityActionPlan(
           "ALIGN_TOPIC",
 
         title:
-          "Сделать тему страницы яснее",
+          "Make the page topic clearer",
 
         explanation:
-          "Уточнить Title и H1 только там, где это правдиво описывает содержание страницы.",
+          "Refine the Title and H1 only where it truthfully describes the page content.",
 
         evidence:
           diagnosis.ownPage
             ? [
-                `Title: ${diagnosis.ownPage.title ?? "отсутствует"}`,
-                `H1: ${diagnosis.ownPage.h1 ?? "отсутствует"}`,
+                `Title: ${diagnosis.ownPage.title ?? "missing"}`,
+                `H1: ${diagnosis.ownPage.h1 ?? "missing"}`,
               ]
             : [],
       });
     }
   } else {
     rationale =
-      "Существующая страница уже достаточно хорошо соответствует теме, а текущие данные не показывают детерминированного изменения, которое стоит делать только ради SEO. Сохраняем страницу и продолжаем измерение.";
+      "The existing page already matches the topic well, and current data shows no clear change worth making just for SEO. Keep the page and keep measuring.";
 
     steps.push({
       type:
         "MEASURE_OUTCOME",
 
       title:
-        "Не делать крупное изменение без новых доказательств",
+        "Don't make big changes without new evidence",
 
       explanation:
-        "Низкая позиция сама по себе не доказывает, что страницу нужно переписывать. Сначала собираем дополнительную историю позиций и Search Console.",
+        "A low position alone doesn't prove the page needs rewriting. Collect more ranking and Search Console history first.",
 
       evidence: [
         rankEvidence(
@@ -373,13 +373,13 @@ export function buildOpportunityActionPlan(
         "ADD_EVIDENCE_BACKED_TOPIC",
 
       title:
-        `Проверить, нужна ли тема «${gap.topic}»`,
+        `Check whether “${gap.topic}” is needed`,
 
       explanation:
-        "Добавляй эту тему только если она действительно помогает посетителю. Она появилась в нескольких прочитанных конкурентных страницах, поэтому это evidence-backed возможность, а не обязательный SEO-блок.",
+        "Add this topic only if it genuinely helps visitors. It appeared on several competitor pages, so it's an evidence-backed opportunity, not a mandatory SEO block.",
 
       evidence: [
-        `Тема встретилась на ${gap.competitorCoverage} конкурентных страницах.`,
+        `Topic found on ${gap.competitorCoverage} competitor pages.`,
         ...gap.evidence,
       ],
     });
@@ -396,15 +396,15 @@ export function buildOpportunityActionPlan(
         "STRENGTHEN_INTERNAL_LINKS",
 
       title:
-        "Добавить естественные внутренние ссылки",
+        "Add natural internal links",
 
       explanation:
-        "Связать релевантные страницы с целевой страницей, если ссылка действительно полезна посетителю.",
+        "Link relevant pages to the target page where the link genuinely helps visitors.",
 
       evidence:
         diagnosis.ownPage
           ? [
-              `Найдено внутренних ссылок на страницу среди проверенных страниц: ${diagnosis.ownPage.inboundInternalLinks ?? 0}.`,
+              `Internal links to this page found among checked pages: ${diagnosis.ownPage.inboundInternalLinks ?? 0}.`,
             ]
           : [],
     });
@@ -424,10 +424,10 @@ export function buildOpportunityActionPlan(
         "MEASURE_OUTCOME",
 
       title:
-        "Измерить результат после изменения",
+        "Measure the result after the change",
 
       explanation:
-        "Сохраняем baseline до изменения и сравниваем реальные результаты через 7, 14, 28, 60 и 90 дней. Это наблюдение результата, а не обещание роста.",
+        "Save a baseline before the change and compare real results after 7, 14, 28, 60 and 90 days. This tracks outcomes; it doesn't promise growth.",
 
       evidence: [
         rankEvidence(
@@ -492,12 +492,12 @@ export function buildOpportunityActionPlan(
     },
 
     guardrails: [
-      "Не обещать Top 1 или конкретный рост позиции.",
-      "Не создавать новую страницу, если существующая уже ясно выполняет ту же поисковую задачу.",
-      "Не добавлять секции только потому, что они есть у одного конкурента.",
-      "Consensus topic требует подтверждения минимум несколькими прочитанными конкурентными страницами.",
-      "Не использовать количество слов или H2/H3 как SEO-цель.",
-      "SKIP — допустимое решение, если доказательств для изменения недостаточно.",
+      "Don't promise #1 or a specific ranking gain.",
+      "Don't create a new page if an existing one already clearly serves the same search.",
+      "Don't add sections just because one competitor has them.",
+      "A consensus topic needs confirmation from several competitor pages.",
+      "Don't treat word count or H2/H3 counts as SEO goals.",
+      "SKIP is a valid decision when there isn't enough evidence for a change.",
     ],
   };
 }

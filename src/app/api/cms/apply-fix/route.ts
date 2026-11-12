@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         });
       } catch {
         return NextResponse.json(
-          { error: "This Growth OS action cannot be linked to this website execution." },
+          { error: "This Hyprlyx action cannot be linked to this website execution." },
           { status: 409 }
         );
       }

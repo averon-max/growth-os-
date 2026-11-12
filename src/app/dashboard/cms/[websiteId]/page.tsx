@@ -52,7 +52,7 @@ export default async function CMSWebsiteDetailPage({ params }: { params: Promise
             {connection ? "Update connection" : "Connect your CMS"}
         </h1>
         <p className={styles.pageSubtitle}>
-            Growth OS applies SEO fixes to this site through WordPress or a custom Integration API.
+            Hyprlyx applies SEO fixes to this site through WordPress or a custom Integration API.
         </p>
 
         <CMSConnectForm websiteId={websiteId} currentSiteUrl={connection?.siteUrl ?? website.url} />
