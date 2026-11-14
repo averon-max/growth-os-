@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { emailHtml } from "@/lib/email-template";
 import { passwordProblem } from "@/lib/auth-guard";
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
@@ -40,16 +41,13 @@ export async function requestPasswordReset(email: string): Promise<void> {
       "",
       "If this wasn't you, ignore this email — your password stays the same.",
     ].join("\n"),
-    html: `
-      <div style="background:#08090a;padding:40px 0;font-family:Inter,-apple-system,Segoe UI,sans-serif">
-        <div style="max-width:440px;margin:0 auto;background:#0f1011;border:1px solid #23252a;border-radius:14px;padding:32px;color:#f7f8f8">
-          <div style="font-size:15px;font-weight:600;margin-bottom:24px">Hyprlyx</div>
-          <div style="font-size:20px;font-weight:600;margin-bottom:10px">Reset your password</div>
-          <p style="font-size:14px;line-height:1.6;color:#9ca0a8;margin:0 0 24px">Someone asked to reset the password for your account. The link works once and expires in 30 minutes.</p>
-          <a href="${link}" style="display:inline-block;padding:11px 20px;border-radius:999px;background:#f7f8f8;color:#08090a;text-decoration:none;font-weight:600;font-size:14px">Set a new password</a>
-          <p style="font-size:12px;line-height:1.6;color:#62666e;margin:28px 0 0">If this wasn't you, ignore this email — your password stays the same.</p>
-        </div>
-      </div>`,
+    html: emailHtml({
+      preview: "Set a new password for your Hyprlyx account. The link expires in 30 minutes.",
+      title: "Reset your password",
+      body: "Someone asked to reset the password for your Hyprlyx account. Click the button to choose a new one. The link works once and expires in 30 minutes.",
+      button: { label: "Set a new password", url: link },
+      note: "Didn't ask for this? Ignore this email. Your password stays the same, and nobody can change it without this link.",
+    }),
   });
 }
 
