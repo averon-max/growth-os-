@@ -74,7 +74,7 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
       <div className={styles.brandRow}>
         <Link href={withSite("/dashboard", site)} className={styles.brand}>
           <div className={styles.brandMark}>
-            <span>G</span>
+            <span>H</span>
           </div>
           <span className={styles.brandName}>Hyprlyx</span>
         </Link>
@@ -116,7 +116,7 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         ))}
 
         <div className={styles.workspace}>
-          <div className={styles.avatar}>G</div>
+          <div className={styles.avatar}>H</div>
           <div className={styles.workspaceText}>
             <strong>Hyprlyx</strong>
             <span>Workspace</span>
