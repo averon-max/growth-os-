@@ -1,49 +1,141 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Check, Minus } from "lucide-react";
 import SubscribeButton from "@/components/subscribe-button";
+import { PLANS } from "@/lib/billing/plans";
+import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+
+export const metadata: Metadata = {
+  title: "Pricing · Hyprlyx",
+  description: "Simple monthly plans. Start free with one website and upgrade when you need more.",
+  alternates: { canonical: "/pricing" },
+};
+
+const IDS = ["FREE", "STARTER", "GROWTH", "AUTOPILOT"] as const;
+const DESC: Record<(typeof IDS)[number], string> = {
+  FREE: "Try Hyprlyx on one website.",
+  STARTER: "For one site getting serious about search.",
+  GROWTH: "For growing sites and small teams.",
+  AUTOPILOT: "For agencies and many sites.",
+};
+const HIGHLIGHTS: Record<(typeof IDS)[number], string[]> = {
+  FREE: ["1 website", "Keyword research", "Basic site audit"],
+  STARTER: ["Everything in Free", "Keyword Planner", "Full site audit", "Rankings from Search Console", "Monthly reports"],
+  GROWTH: ["Everything in Starter", "5 websites", "Competitor monitoring", "Backlinks", "Audience & bot traffic", "Automations"],
+  AUTOPILOT: ["Everything in Growth", "25 websites", "Advanced competitors", "Content workflows", "Priority processing"],
+};
+
+// ✓ = included, text = limit, false = not included. Keep in sync with lib/billing/access.ts.
+type Cell = boolean | string;
+const ROWS: { group: string; rows: [string, Cell, Cell, Cell, Cell][] }[] = [
+  { group: "Usage", rows: [
+    ["Websites", String(PLANS.FREE.limits.websites), String(PLANS.STARTER.limits.websites), String(PLANS.GROWTH.limits.websites), String(PLANS.AUTOPILOT.limits.websites)],
+    ["Keyword data refreshes / month", String(PLANS.FREE.limits.keywordRefreshesPerMonth), String(PLANS.STARTER.limits.keywordRefreshesPerMonth), String(PLANS.GROWTH.limits.keywordRefreshesPerMonth), String(PLANS.AUTOPILOT.limits.keywordRefreshesPerMonth)],
+    ["Content drafts / month", String(PLANS.FREE.limits.articlesPerMonth), String(PLANS.STARTER.limits.articlesPerMonth), String(PLANS.GROWTH.limits.articlesPerMonth), String(PLANS.AUTOPILOT.limits.articlesPerMonth)],
+  ]},
+  { group: "Research & planning", rows: [
+    ["Keyword research & trends", true, true, true, true],
+    ["Keyword Planner (quick wins, gaps, clusters)", false, true, true, true],
+    ["Rankings from Search Console", false, true, true, true],
+  ]},
+  { group: "Site & competition", rows: [
+    ["Site audit", "Basic", true, true, true],
+    ["Fixes through your CMS", false, true, true, true],
+    ["Competitor monitoring", false, false, true, "Advanced"],
+    ["Backlinks", false, false, true, true],
+    ["Audience & bot traffic (GA4, Cloudflare)", false, false, true, true],
+  ]},
+  { group: "Content & automation", rows: [
+    ["Briefs & drafts", true, true, true, true],
+    ["Automations", false, false, true, true],
+    ["Content workflows", false, false, false, true],
+  ]},
+  { group: "Support", rows: [
+    ["Email support", true, true, true, true],
+    ["Priority processing & support", false, false, false, true],
+  ]},
+];
+
+const FAQ = [
+  ["Is there a free plan?", "Yes. Free covers one website with keyword research and a basic audit. No credit card required."],
+  ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and are prorated. Cancel from Settings → Billing and keep access until the end of the paid period."],
+  ["Do you offer refunds?", "Plans are billed monthly in advance. If something went wrong, write to support@hyprlyx.com within 30 days and we'll make it right."],
+  ["What payment methods do you accept?", "All major cards, Apple Pay and Google Pay through Stripe. We never see or store your card number."],
+  ["Are taxes included?", "Prices are in USD and exclude tax. Applicable taxes are calculated at checkout."],
+  ["Do I need Search Console or Google Analytics?", "No, but connecting them unlocks real rankings and traffic data. Both are free Google products."],
+];
+
+const cell = (v: Cell) =>
+  v === true ? <Check size={16} className={s.yes} /> : v === false ? <Minus size={16} className={s.no} /> : <span>{v}</span>;
 
 export default function PricingPage() {
   return (
-    <div style={{ background: "#f2f1ed", minHeight: "100vh", fontFamily: "-apple-system, 'SF Pro Display', sans-serif", color: "#0a0a0a" }}>
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, padding: "0 48px", borderBottom: "1px solid rgba(0,0,0,0.07)", background: "rgba(242,241,237,0.92)", backdropFilter: "blur(20px)" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.03em", textDecoration: "none", color: "#0a0a0a" }}>SIGNAL</Link>
-          <Link href="/signup" style={{ background: "#0a0a0a", color: "#f2f1ed", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none", padding: "10px 22px", borderRadius: 100 }}>Get Started →</Link>
+    <SiteShell>
+      <section className={s.hero} style={{ paddingBottom: 40 }}>
+        <div className={s.container}>
+          <p className={s.eyebrow}>Pricing</p>
+          <h1 className={s.h1}>Simple plans that grow with you</h1>
+          <p className={s.lede}>Start free with one website. Upgrade when you need more sites, data and automation. Cancel anytime.</p>
         </div>
-      </nav>
+      </section>
 
-      <div style={{ paddingTop: 140, paddingBottom: 100, paddingLeft: 48, paddingRight: 48, maxWidth: 1400, margin: "0 auto" }}>
-        <div style={{ fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", marginBottom: 20, fontFamily: "SF Mono, monospace" }}>— Pricing</div>
-        <h1 style={{ fontSize: "clamp(3rem, 7vw, 6rem)", fontWeight: 800, letterSpacing: "-0.045em", lineHeight: 0.95, marginBottom: 24 }}>
-          Simple plans.<br />
-          <span style={{ color: "#d4a030", fontStyle: "italic" }}>Real growth.</span>
-        </h1>
-        <p style={{ fontSize: "1rem", color: "rgba(0,0,0,0.4)", marginBottom: 80, maxWidth: 400, lineHeight: 1.7 }}>Start free, upgrade as your website grows. No credit card required.</p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 20, overflow: "hidden" }}>
-          {[
-            { name: "Starter", plan: "STARTER" as const, price: 49, features: ["Website monitoring", "SEO analysis", "Keyword intelligence", "Opportunity tracking", "Monthly reports"], pop: false },
-            { name: "Growth", plan: "GROWTH" as const, price: 75, features: ["Everything in Starter", "Search Console integration", "Audience analytics", "Content opportunities", "Competitor monitoring", "Automations"], pop: true },
-            { name: "Autopilot", plan: "AUTOPILOT" as const, price: 150, features: ["Everything in Growth", "Advanced automation", "Content workflows", "Advanced competitors", "Continuous optimization", "Priority processing"], pop: false },
-          ].map((p, i) => (
-            <div key={p.name} style={{ padding: "48px 40px", borderLeft: i > 0 ? "1px solid rgba(0,0,0,0.08)" : "none", background: p.pop ? "#0a0a0a" : "#fff", display: "flex", flexDirection: "column" }}>
-              {p.pop && <div style={{ fontFamily: "SF Mono, monospace", fontSize: "0.58rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#d4a030", marginBottom: 16 }}>— Most popular</div>}
-              <div style={{ fontWeight: 700, fontSize: "1.1rem", marginBottom: 24, color: p.pop ? "#f2f1ed" : "#0a0a0a", letterSpacing: "-0.02em" }}>{p.name}</div>
-              <div style={{ marginBottom: 36 }}>
-                <span style={{ fontSize: "4rem", fontWeight: 800, letterSpacing: "-0.05em", color: p.pop ? "#f2f1ed" : "#0a0a0a", lineHeight: 1 }}>${p.price}</span>
-                <span style={{ fontSize: "0.82rem", color: p.pop ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)", marginLeft: 8 }}>/month</span>
-              </div>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, marginBottom: 40 }}>
-                {p.features.map(f => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.82rem", color: p.pop ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.5)" }}>
-                    <span style={{ color: p.pop ? "#d4a030" : "rgba(0,0,0,0.2)" }}>—</span> {f}
+      <section style={{ paddingBottom: 96 }}>
+        <div className={s.container}>
+          <div className={s.plans}>
+            {IDS.map((id) => {
+              const plan = PLANS[id];
+              const popular = id === "GROWTH";
+              return (
+                <div key={id} className={popular ? `${s.plan} ${s.planPopular}` : s.plan}>
+                  <div className={s.planHead}>
+                    <h2 className={s.planName}>{plan.name}</h2>
+                    {popular ? <span className={s.planTag}>Most popular</span> : null}
                   </div>
-                ))}
-              </div>
-              <SubscribeButton plan={p.plan} label="Start Free" variant={p.pop ? "gold" : "dark"} />
-            </div>
-          ))}
+                  <p className={s.price}>${plan.priceMonthlyUsd}<span className={s.per}>/ month</span></p>
+                  <p className={s.planDesc}>{DESC[id]}</p>
+                  <ul className={s.planList}>
+                    {HIGHLIGHTS[id].map((h) => <li key={h}><Check size={15} strokeWidth={2.2} />{h}</li>)}
+                  </ul>
+                  {id === "FREE" ? (
+                    <Link href="/signup" className={s.ghost} style={{ justifyContent: "center" }}>Start free</Link>
+                  ) : (
+                    <SubscribeButton plan={id} label={`Choose ${plan.name}`} variant={popular ? "accent" : "light"} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section className={s.section}>
+        <div className={s.container}>
+          <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side.</p></div>
+          <div className={s.tableWrap}>
+            <table className={s.table}>
+              <thead><tr><th>Feature</th>{IDS.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>
+              <tbody>
+                {ROWS.map((g) => [
+                  <tr key={g.group} className={s.group}><td colSpan={5}>{g.group}</td></tr>,
+                  ...g.rows.map(([label, ...vals]) => (
+                    <tr key={label}><td>{label}</td>{vals.map((v, i) => <td key={i}>{cell(v)}</td>)}</tr>
+                  )),
+                ])}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className={s.section}>
+        <div className={s.narrow}>
+          <h2 className={s.h2} style={{ marginBottom: 28 }}>Billing questions</h2>
+          <div className={s.faq}>{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
+          <p className={s.muted} style={{ marginTop: 28, fontSize: 14 }}>
+            Still have a question? <Link href="/support" style={{ color: "#f7f8f8" }}>Contact support</Link>.
+          </p>
+        </div>
+      </section>
+    </SiteShell>
   );
 }

@@ -19,12 +19,6 @@ export function AuthShell({
   return (
     <main className={`${styles.page} ${sans.variable} ${serif.variable}`}>
       <Link href="/" className={styles.brand} aria-label="Hyprlyx home">
-        <span className={styles.mark}>
-          <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 19L12 5l6 14" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M8.6 13.6h6.8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-        </span>
         Hyprlyx
       </Link>
 

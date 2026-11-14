@@ -603,3 +603,11 @@
   border-radius: 10px 0 0 0 !important; box-shadow: 0 -20px 60px -30px rgba(0,0,0,.8) !important; overflow: hidden; transform: none !important;
   -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent 100%) !important; mask-image: linear-gradient(90deg, #000 88%, transparent 100%) !important; }
 .heroShot img, .blockShot img { display: block; width: 100% !important; max-width: none !important; height: auto; opacity: 1 !important; filter: none !important; }
+
+/* v10: no frames around screenshots — just the screenshot, softly fading out */
+.heroShotWrap, .blockCard { border: 0 !important; padding: 0 !important; background: none !important; border-radius: 0 !important; overflow: visible !important;
+  -webkit-mask-image: none !important; mask-image: none !important; }
+.heroShotWrap { padding: 0 24px !important; }
+.heroShot, .blockShot { border: 1px solid rgba(255,255,255,.1) !important; border-radius: 14px !important; box-shadow: none !important;
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%) !important; mask-image: linear-gradient(180deg, #000 70%, transparent 100%) !important; }
+.heroShot img, .blockShot img { width: 100% !important; }

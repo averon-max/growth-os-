@@ -340,3 +340,6 @@
   .sidebar[data-collapsed="true"] .section { margin-bottom: 0 !important; padding: 6px 0; }
   .sidebar[data-collapsed="true"] .workspace { padding: 6px 0 6px 6px; }
 }
+
+/* no logo mark */
+.brandMark { display: none !important; }

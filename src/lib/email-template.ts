@@ -20,8 +20,7 @@ export function emailHtml(o: { preview: string; title: string; body: string; but
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px">
     <tr><td style="padding:0 4px 28px">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="26" height="26" align="center" valign="middle" bgcolor="#f7f8f8" style="border-radius:7px;background:#f7f8f8;color:#08090a;font:700 14px/26px Inter,-apple-system,'Segoe UI',Arial,sans-serif">H</td>
-        <td style="padding-left:10px;color:#f7f8f8;font:600 16px Inter,-apple-system,'Segoe UI',Arial,sans-serif;letter-spacing:-.01em">Hyprlyx</td>
+        <td style="color:#f7f8f8;font:500 20px Georgia,serif;letter-spacing:-.02em" >Hyprlyx</td>
       </tr></table>
     </td></tr>
     <tr><td class="card" bgcolor="#0f1011" style="background:#0f1011;border:1px solid #23252a;border-radius:16px;padding:36px 34px">

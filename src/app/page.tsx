@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter, Newsreader } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Menu } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 import SubscribeButton from "@/components/subscribe-button";
 import { PLANS } from "@/lib/billing/plans";
 
 import styles from "./landing.module.css";
+import { SiteHeader, SiteFooter } from "@/components/site/site-shell";
 
 const display = Newsreader({ subsets: ["latin"], variable: "--font-landing-display", display: "swap" });
 
@@ -31,7 +32,7 @@ const SECTIONS = [
     label: "Keyword research",
     title: "Know what people search for",
     text: "Volume, difficulty, CPC and trend for every keyword, plus rising searches from Google Trends — before you decide what to write.",
-    src: "/landing/keywords-v9.webp",
+    src: "/landing/keywords-v10.webp",
     alt: "Keyword research: rising and top searches with volume, difficulty and CPC",
   },
   {
@@ -39,15 +40,15 @@ const SECTIONS = [
     label: "Rankings",
     title: "See where you stand",
     text: "Impressions, clicks and positions straight from Search Console, with the queries closest to page one surfaced first.",
-    src: "/landing/search-console-v9.webp",
+    src: "/landing/search-console-v10.webp",
     alt: "Search Console view with impressions, average position and easiest wins",
   },
   {
     id: "writer",
-    label: "AI writer",
-    title: "Write what actually ranks",
-    text: "Drafts built from the live search results: competitor structure, People Also Ask and sources you can verify before anything goes live.",
-    src: "/landing/content-v9.webp",
+    label: "Content",
+    title: "Turn findings into pages",
+    text: "When a gap needs a page, get a brief based on what already ranks — and a draft to review if you want one. Nothing goes live without your approval.",
+    src: "/landing/content-v10.webp",
     alt: "Content library with AI-written drafts, formats and approval status",
   },
 ];
@@ -82,75 +83,20 @@ const PLAN_FEATURES = {
 
 const PAID = ["STARTER", "GROWTH", "AUTOPILOT"] as const;
 
-const FOOTER = [
-  {
-    title: "Product",
-    links: [
-      { label: "Keyword research", href: "#keywords" },
-      { label: "Rankings", href: "#visibility" },
-      { label: "AI writer", href: "#writer" },
-      { label: "Pricing", href: "#pricing" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "Sign up", href: "/signup" },
-      { label: "Log in", href: "/login" },
-      { label: "Reset password", href: "/forgot-password" },
-    ],
-  },
-];
 
-function BrandMark() {
-  return (
-    <svg className={styles.brandMark} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect width="24" height="24" rx="6" fill="#f7f8f8" />
-      <path d="M7 17L12 7L17 17" stroke="#08090a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9.4 13.2H14.6" stroke="#08090a" strokeWidth="2.4" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function LandingPage() {
   return (
     <div className={`${styles.page} ${display.variable} ${mono.variable}`}>
-      <header className={styles.nav}>
-        <div className={styles.navInner}>
-          <Link href="/" className={styles.brand}>
-            <BrandMark />
-            Hyprlyx
-          </Link>
-
-          <nav className={styles.navRight} aria-label="Main">
-            <div className={styles.navAnchors}>
-              <a href="#keywords">Product</a>
-              <a href="#pricing">Pricing</a>
-            </div>
-            <Link href="/login" className={styles.navLogin}>Log in</Link>
-            <Link href="/signup" className={styles.pill}>Sign up</Link>
-            <details className={styles.menu}>
-              <summary aria-label="Open menu">
-                <Menu size={24} strokeWidth={1.6} />
-              </summary>
-              <div className={styles.menuPanel}>
-                <a href="#keywords">Product</a>
-                <a href="#pricing">Pricing</a>
-                <Link href="/login">Log in</Link>
-                <Link href="/signup">Sign up</Link>
-              </div>
-            </details>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         <section className={styles.hero}>
           <div className={styles.container}>
-            <Link href="/signup" className={styles.news}>
+            <Link href="/product/competitors" className={styles.news}>
               <span className={styles.newsTag}>New</span>
               <span className={styles.newsText}>
-                AI article writer <ArrowRight size={15} />
+                Competitor & backlink tracking <ArrowRight size={15} />
               </span>
             </Link>
 
@@ -163,9 +109,9 @@ export default function LandingPage() {
 
             <div className={styles.heroActions}>
               <Link href="/signup" className={styles.pill}>Start free</Link>
-              <a href="#pricing" className={styles.textLink}>
+              <Link href="/pricing" className={styles.textLink}>
                 See pricing <ArrowRight size={15} />
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -173,7 +119,7 @@ export default function LandingPage() {
           <div className={styles.heroShotWrap}>
             <div className={styles.heroShot}>
               <Image
-                src="/landing/planner-v9.webp"
+                src="/landing/planner-v10.webp"
                 alt="Keyword Planner: tracked keywords, pages without content and current rankings"
                 width={3200}
                 height={2000}
@@ -283,50 +229,15 @@ export default function LandingPage() {
             </h2>
             <div className={styles.heroActions}>
               <Link href="/signup" className={styles.pill}>Start free</Link>
-              <a href="#pricing" className={styles.textLink}>
+              <Link href="/pricing" className={styles.textLink}>
                 See pricing <ArrowRight size={15} />
-              </a>
+              </Link>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        <div className={styles.container}>
-          <div className={styles.footerGrid}>
-            <div className={styles.footerBrand}>
-              <Link href="/" className={styles.brand}>
-                <BrandMark />
-                Hyprlyx
-              </Link>
-              <p>The SEO workspace for teams that publish.</p>
-            </div>
-
-            {FOOTER.map((column) => (
-              <nav key={column.title} className={styles.footerCol} aria-label={column.title}>
-                <h3>{column.title}</h3>
-                <ul>
-                  {column.links.map((link) => (
-                    <li key={link.label}>
-                      {link.href.startsWith("#") ? (
-                        <a href={link.href}>{link.label}</a>
-                      ) : (
-                        <Link href={link.href}>{link.label}</Link>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ))}
-          </div>
-
-          <div className={styles.footerBottom}>
-            <span>© {new Date().getFullYear()} Hyprlyx</span>
-            <span>hyprlyx.com</span>
-          </div>
-        </div>
-      <nav style={{ display: "flex", gap: 20, justifyContent: "center", padding: "20px 0 8px", fontSize: 13 }}><Link href="/terms" style={{ color: "#8a8f98" }}>Terms</Link><Link href="/privacy" style={{ color: "#8a8f98" }}>Privacy</Link><Link href="/cookies" style={{ color: "#8a8f98" }}>Cookies</Link></nav>
-</footer>
+      <SiteFooter />
     </div>
   );
 }
