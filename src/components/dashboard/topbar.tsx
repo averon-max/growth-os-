@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
@@ -63,9 +64,9 @@ export function Topbar({ title, subtitle, websiteSwitcher }: Props) {
           </div>
         )}
 
-        <div className={styles.avatar} title={email ?? "Account"} aria-label={email ?? "Account"}>
+        <Link href="/dashboard/settings/account" className={styles.avatar} title={email ?? "Account"} aria-label="Account settings">
           {initial}
-        </div>
+        </Link>
       </div>
     </div>
   );

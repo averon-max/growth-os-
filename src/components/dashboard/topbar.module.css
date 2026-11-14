@@ -117,3 +117,8 @@
     display: none;
   }
 }
+
+/* mobile drawer */
+.avatar { text-decoration: none; }
+.avatar:hover { border-color: #3b3e44; }
+@media (max-width: 720px) { .topbar { padding-left: 54px; } }

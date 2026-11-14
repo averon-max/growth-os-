@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeft, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { NAV, NAV_ADMIN, NAV_BOTTOM, isActivePath, withSite, type NavItem } from "@/lib/nav";
@@ -36,6 +36,17 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const params = useSearchParams();
   const site = params?.get("websiteId") ?? null;
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close the mobile drawer on navigation and on Esc.
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   // Состояние живёт между переходами и перезагрузками.
   useEffect(() => {
@@ -51,7 +62,15 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   }
 
   return (
-    <aside className={styles.sidebar} data-collapsed={collapsed ? "true" : "false"}>
+    <>
+    <button type="button" className={styles.mobileMenu} onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
+      <PanelLeft size={18} strokeWidth={1.8} />
+    </button>
+    {mobileOpen ? <div className={styles.backdrop} onClick={() => setMobileOpen(false)} aria-hidden="true" /> : null}
+    <aside className={styles.sidebar} data-collapsed={collapsed ? "true" : "false"} data-mobile-open={mobileOpen ? "true" : "false"}>
+      <button type="button" className={styles.mobileClose} onClick={() => setMobileOpen(false)} aria-label="Close menu">
+        <X size={18} strokeWidth={1.8} />
+      </button>
       <div className={styles.brandRow}>
         <Link href={withSite("/dashboard", site)} className={styles.brand}>
           <div className={styles.brandMark}>
@@ -105,5 +124,6 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       </div>
     </aside>
+    </>
   );
 }

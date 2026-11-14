@@ -2,7 +2,9 @@ import Link from "next/link";
 import {
   Building2,
   Cable,
+  Database,
   Globe,
+  UserRound,
 } from "lucide-react";
 
 import {
@@ -148,6 +150,30 @@ export default async function SettingsPage() {
 
       <div className={styles.pageBody}>
         <div className={styles.settingsGrid}>
+          <div className={styles.group}>
+            <div className={styles.groupHeader}><span className={styles.groupLabel}>Account</span></div>
+            <div className={styles.issueRow}>
+              <div className={styles.issueMain}>
+                <UserRound size={14} className={styles.rowIcon} />
+                <div>
+                  <div className={styles.issueTitle}>{user.email}</div>
+                  <div className={styles.issueDesc}>Profile, password, sessions, delete account</div>
+                </div>
+              </div>
+              <div className={styles.issueMeta}><Link href="/dashboard/settings/account" className={styles.link}>Manage →</Link></div>
+            </div>
+            <div className={styles.issueRow}>
+              <div className={styles.issueMain}>
+                <Database size={14} className={styles.rowIcon} />
+                <div>
+                  <div className={styles.issueTitle}>Data retention</div>
+                  <div className={styles.issueDesc}>How long reports, scans and drafts are kept</div>
+                </div>
+              </div>
+              <div className={styles.issueMeta}><Link href="/dashboard/settings/data" className={styles.link}>Manage →</Link></div>
+            </div>
+          </div>
+
           <div className={styles.group}>
             <div className={styles.groupHeader}>
               <span className={styles.groupLabel}>

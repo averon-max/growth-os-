@@ -298,3 +298,27 @@
 .sidebar[data-collapsed="true"] .workspace {
   justify-content: center;
 }
+
+/* ===== mobile drawer ===== */
+.mobileMenu, .mobileClose, .backdrop { display: none; }
+@media (max-width: 720px) {
+  .mobileMenu {
+    display: grid; place-items: center; position: fixed; z-index: 60; top: 8px; left: 10px;
+    width: 32px; height: 32px; border: 1px solid #23252a; border-radius: 8px; background: #141516; color: #d0d6e0; cursor: pointer;
+  }
+  .sidebar {
+    display: flex !important; position: fixed !important; z-index: 80; top: 0; left: 0; bottom: 0;
+    width: 272px !important; min-width: 272px !important; height: 100dvh !important;
+    transform: translateX(-102%); transition: transform .22s cubic-bezier(.2,.7,.2,1);
+    box-shadow: 0 0 60px rgba(0,0,0,.6) !important; border-right: 1px solid #1d1e21 !important;
+  }
+  .sidebar[data-mobile-open="true"] { transform: none; }
+  .sidebar[data-collapsed="true"] .navLabel, .sidebar[data-collapsed="true"] .sectionLabel,
+  .sidebar[data-collapsed="true"] .brandName, .sidebar[data-collapsed="true"] .workspaceText { display: revert !important; }
+  .collapseToggle { display: none !important; }
+  .mobileClose {
+    display: grid; place-items: center; position: absolute; top: 9px; right: 10px; width: 30px; height: 30px;
+    border: 0; border-radius: 7px; background: transparent; color: #8a8f98; cursor: pointer;
+  }
+  .backdrop { display: block; position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+}
