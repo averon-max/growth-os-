@@ -39,3 +39,7 @@
 /* ===== LINEAR v2 shell ===== */
 .shell { background: #08090a !important; }
 .main { margin: 8px 8px 8px 0 !important; height: calc(100vh - 16px) !important; overflow-y: auto !important; border: 1px solid #1d1e21 !important; border-radius: 12px !important; background: #101112 !important; }
+
+/* sidebar width follows the sidebar itself (collapsed rail = 56px) */
+.shell { display: flex !important; grid-template-columns: none !important; }
+.main { flex: 1 1 auto; min-width: 0; margin-left: 0 !important; width: auto !important; }
