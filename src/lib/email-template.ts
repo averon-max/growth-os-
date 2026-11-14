@@ -10,11 +10,12 @@ export function emailHtml(o: { preview: string; title: string; body: string; but
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">
 <title>${esc(o.title)}</title>
-<style>:root{color-scheme:dark}a{color:#f7f8f8}@media (max-width:520px){.card{padding:28px 22px!important}.h1{font-size:26px!important}}</style>
+<style>:root{color-scheme:dark}body,table,td,div{background-color:inherit}[data-ogsc] .card,[data-ogsb] .card{background-color:#0f1011!important}a{color:#f7f8f8}@media (max-width:520px){.card{padding:28px 22px!important}.h1{font-size:26px!important}}</style>
 </head>
-<body style="margin:0;padding:0;background:#08090a;-webkit-font-smoothing:antialiased">
+<body bgcolor="#08090a" style="margin:0;padding:0;background:#08090a;background-color:#08090a;-webkit-font-smoothing:antialiased">
+<div style="background:#08090a;background-color:#08090a;margin:0;padding:0;width:100%">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(o.preview)}&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#08090a" style="background:#08090a">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#08090a" style="background:#08090a;background-color:#08090a;width:100%;min-width:100%">
 <tr><td align="center" style="padding:48px 16px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px">
     <tr><td style="padding:0 4px 28px">
@@ -44,5 +45,6 @@ export function emailHtml(o: { preview: string; title: string; body: string; but
     </td></tr>
   </table>
 </td></tr></table>
+</div>
 </body></html>`;
 }
