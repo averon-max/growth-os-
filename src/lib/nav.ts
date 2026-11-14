@@ -4,6 +4,7 @@ import {
   Compass,
   FileText,
   Globe2,
+  LifeBuoy,
   LayoutDashboard,
   Link2,
   Plug,
@@ -81,6 +82,7 @@ export const NAV: NavSection[] = [
 
 /* Нижний блок сайдбара. */
 export const NAV_BOTTOM: NavItem[] = [
+  { label: "Support", href: "/support", icon: LifeBuoy, description: "Contact support", keepSite: false },
   { label: "Settings", href: "/dashboard/settings", icon: Settings, description: "Workspace settings" },
 ];
 
@@ -100,6 +102,7 @@ export const FOOTER_EXTRA: NavSection[] = [
     items: [
       { label: "Settings", href: "/dashboard/settings", icon: Settings },
       { label: "Add website", href: "/dashboard/add-website", icon: Plus },
+      { label: "Support", href: "/support", icon: LifeBuoy, keepSite: false },
     ],
   },
 ];

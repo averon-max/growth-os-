@@ -72,6 +72,7 @@ export default async function AdminPage({
       <div className={styles.head}>
         <span className={styles.eyebrow}>Admin</span>
         <h1 className={styles.title}>Subscriptions & access</h1>
+        <a href="/dashboard/admin/tickets" style={{ display: "inline-block", marginTop: 8, fontSize: 13, color: "var(--accent)" }}>Support tickets →</a>
         <p className={styles.lede}>
           Grant access manually, without payment. These subscriptions are marked as manual
           and are never overwritten by Stripe payments.

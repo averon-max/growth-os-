@@ -1005,3 +1005,20 @@ model AuthRateLimit {
 
   @@index([resetAt])
 }
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  number    Int      @unique @default(autoincrement())
+  userId    String?
+  email     String
+  name      String?
+  category  String
+  subject   String
+  message   String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}

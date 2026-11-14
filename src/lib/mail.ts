@@ -5,6 +5,7 @@ export interface MailMessage {
   subject: string;
   html: string;
   text: string;
+  replyTo?: string;
 }
 
 /**
@@ -43,6 +44,7 @@ export async function sendMail(message: MailMessage): Promise<void> {
       subject: message.subject,
       html: message.html,
       text: message.text,
+      ...(message.replyTo ? { reply_to: message.replyTo } : {}),
     }),
   });
 

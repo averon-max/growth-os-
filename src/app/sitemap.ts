@@ -9,6 +9,7 @@ type ChangeFrequency = MetadataRoute.Sitemap[number]["changeFrequency"];
 const PAGES: { path: string; updated: string; changeFrequency: ChangeFrequency; priority: number }[] = [
   { path: "/", updated: "2026-11-10", changeFrequency: "weekly", priority: 1 },
   { path: "/pricing", updated: "2026-11-10", changeFrequency: "monthly", priority: 0.8 },
+    { path: "/support", updated: "2026-11-13", changeFrequency: "yearly", priority: 0.3 },
     { path: "/privacy", updated: "2026-11-10", changeFrequency: "yearly", priority: 0.2 },
     { path: "/terms", updated: "2026-11-10", changeFrequency: "yearly", priority: 0.2 },
     { path: "/cookies", updated: "2026-11-10", changeFrequency: "yearly", priority: 0.2 },
