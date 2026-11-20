@@ -9,7 +9,7 @@ const mono = Geist_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: 
 
 
 const FOOTER = [
-  { title: "Product", links: [{ label: "Overview", href: "/product" }, ...FEATURES.map((f) => ({ label: f.name, href: `/product/${f.slug}` })), { label: "Pricing", href: "/pricing" }, { label: "Changelog", href: "/changelog" }] },
+  { title: "Product", links: [{ label: "Overview", href: "/product" }, ...FEATURES.map((f) => ({ label: f.name, href: `/product/${f.slug}` })), { label: "Pricing", href: "/pricing" }, { label: "Changelog", href: "/changelog" }, { label: "Blog", href: "/blog" }] },
   { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Contact", href: "/support" }] },
   { title: "Resources", links: [{ label: "Support", href: "/support" }, { label: "Log in", href: "/login" }, { label: "Sign up", href: "/signup" }] },
   { title: "Legal", links: [{ label: "Terms of Service", href: "/terms" }, { label: "Privacy Policy", href: "/privacy" }, { label: "Cookie Policy", href: "/cookies" }] },
@@ -40,6 +40,7 @@ export function SiteHeader() {
             </div>
           </div>
           <Link href="/pricing" className={s.navLink}>Pricing</Link>
+          <Link href="/blog" className={s.navLink}>Blog</Link>
           <Link href="/changelog" className={s.navLink}>Changelog</Link>
           <Link href="/support" className={s.navLink}>Support</Link>
         </nav>

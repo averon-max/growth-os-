@@ -8,6 +8,7 @@ import SubscribeButton from "@/components/subscribe-button";
 import { PLANS } from "@/lib/billing/plans";
 
 import styles from "./landing.module.css";
+import { LatestPosts } from "@/components/blog/latest-posts";
 import { SiteHeader, SiteFooter } from "@/components/site/site-shell";
 
 const display = Newsreader({ subsets: ["latin"], variable: "--font-landing-display", display: "swap" });
@@ -219,6 +220,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <LatestPosts />
 
         <section className={styles.cta}>
           <div className={styles.container}>
