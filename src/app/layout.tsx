@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Hyprlyx — SEO intelligence for teams that ship fast.",
   description: "Hyprlyx crawls your website, detects what is holding back organic growth, and surfaces the highest-impact opportunities — with evidence, not guesses.",
+  icons: {
+    icon: [{ url: "/favicon.ico?v=3", sizes: "any" }, { url: "/icon.png?v=3", type: "image/png" }],
+    shortcut: "/favicon.ico?v=3",
+    apple: "/apple-icon.png?v=3",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
