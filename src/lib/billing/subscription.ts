@@ -17,10 +17,12 @@ export interface WorkspaceBilling {
 export async function getWorkspaceBilling(workspaceId: string): Promise<WorkspaceBilling> {
   const sub = await prisma.subscription.findUnique({ where: { workspaceId } });
 
-  if (!sub || !ACTIVE_STATUSES.has(sub.status)) {
+  // A manual grant ends on its end date; Stripe subscriptions end when Stripe says so (webhook).
+  const expired = sub?.source === "manual" && sub.currentPeriodEnd !== null && sub.currentPeriodEnd.getTime() < Date.now();
+  if (!sub || expired || !ACTIVE_STATUSES.has(sub.status)) {
     return {
       plan: planFor(DEFAULT_PLAN_ID),
-      status: sub?.status ?? "none",
+      status: expired ? "expired" : sub?.status ?? "none",
       source: sub?.source ?? "none",
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,

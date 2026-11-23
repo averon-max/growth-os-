@@ -30,19 +30,8 @@ export async function sectionGate(section: string): Promise<SectionGate> {
     };
   }
 
-  // Админ ходит везде без подписки.
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isAdmin: true, email: true },
-  });
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  const isAdmin =
-    Boolean(user?.isAdmin) ||
-    (user?.email ? adminEmails.includes(user.email.toLowerCase()) : false);
-
+  // Plans apply to everyone, admins included: an admin who wants access grants it to their own workspace
+  // in /dashboard/admin. Otherwise removing a plan looks broken when testing on an admin account.
   const membership = await prisma.workspaceMember.findFirst({
     where: { userId },
     select: { workspaceId: true },
@@ -55,7 +44,7 @@ export async function sectionGate(section: string): Promise<SectionGate> {
 
   return {
     unauthenticated: false,
-    allowed: isAdmin || meetsPlan(billing.plan.id, required),
+    allowed: meetsPlan(billing.plan.id, required),
     currentPlan: billing.plan.name,
     requiredPlan: PLANS[required].name,
     requiredPlanId: required,

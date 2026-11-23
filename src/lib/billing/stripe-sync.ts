@@ -48,6 +48,11 @@ export async function syncSubscription(
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
   };
 
+  // A live manual grant is not replaced by a Stripe subscription that is not paying (canceled, unpaid, incomplete…).
+  const existing = await prisma.subscription.findUnique({ where: { workspaceId }, select: { source: true, status: true, currentPeriodEnd: true } });
+  const manualLive = existing?.source === "manual" && existing.status === "active" && (!existing.currentPeriodEnd || existing.currentPeriodEnd.getTime() > Date.now());
+  if (manualLive && subscription.status !== "active" && subscription.status !== "trialing") return;
+
   await prisma.subscription.upsert({
     where: { workspaceId },
     create: { workspaceId, ...data },

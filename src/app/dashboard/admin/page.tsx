@@ -104,7 +104,8 @@ export default async function AdminPage({
 
           {workspaces.map((workspace) => {
             const sub = workspace.subscription;
-            const active = sub ? ACTIVE_STATUSES.includes(sub.status) : false;
+            const expired = sub?.source === "manual" && sub.currentPeriodEnd !== null && sub.currentPeriodEnd.getTime() < Date.now();
+            const active = sub ? ACTIVE_STATUSES.includes(sub.status) && !expired : false;
             const plan = planFor(active ? sub?.plan : "FREE");
             const owner = workspace.members.find((m) => m.role === "OWNER") ?? workspace.members[0];
 
