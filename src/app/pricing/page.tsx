@@ -2,63 +2,53 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, Minus } from "lucide-react";
 import SubscribeButton from "@/components/subscribe-button";
-import { PLANS } from "@/lib/billing/plans";
+import { PLANS, type PlanId } from "@/lib/billing/plans";
+import { planPrices, formatPrice } from "@/lib/billing/prices";
+import { FEATURES, PLAN_ORDER, hasFeature, highlights } from "@/lib/billing/features";
+import { NAV } from "@/lib/nav";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Pricing · Hyprlyx",
-  description: "Simple monthly plans. Start free with one website and upgrade when you need more.",
+  description: "Simple monthly plans. Start free with one website and upgrade when you need keyword data, content and more sites.",
   alternates: { canonical: "/pricing" },
 };
 
-const IDS = ["FREE", "STARTER", "GROWTH", "AUTOPILOT"] as const;
-const DESC: Record<(typeof IDS)[number], string> = {
-  FREE: "Try Hyprlyx on one website.",
-  STARTER: "For one site getting serious about search.",
-  GROWTH: "For growing sites and small teams.",
-  AUTOPILOT: "For agencies and many sites.",
-};
-const HIGHLIGHTS: Record<(typeof IDS)[number], string[]> = {
-  FREE: ["1 website", "Keyword research", "Basic site audit"],
-  STARTER: ["Everything in Free", "Keyword Planner", "Full site audit", "Rankings from Search Console", "Monthly reports"],
-  GROWTH: ["Everything in Starter", "5 websites", "Competitor monitoring", "Backlinks", "Audience & bot traffic", "Automations"],
-  AUTOPILOT: ["Everything in Growth", "25 websites", "Advanced competitors", "Content workflows", "Priority processing"],
+const DESC: Record<PlanId, string> = {
+  FREE: "One website and the overview. Free, no card needed.",
+  STARTER: "Keyword data, site audits and publishing for one site.",
+  GROWTH: "Content, backlinks, competitors and traffic for up to 5 sites.",
+  AUTOPILOT: "Everything, with room for agencies and many sites.",
 };
 
-// ✓ = included, text = limit, false = not included. Keep in sync with lib/billing/access.ts.
 type Cell = boolean | string;
-const ROWS: { group: string; rows: [string, Cell, Cell, Cell, Cell][] }[] = [
-  { group: "Usage", rows: [
-    ["Websites", String(PLANS.FREE.limits.websites), String(PLANS.STARTER.limits.websites), String(PLANS.GROWTH.limits.websites), String(PLANS.AUTOPILOT.limits.websites)],
-    ["Keyword data refreshes / month", String(PLANS.FREE.limits.keywordRefreshesPerMonth), String(PLANS.STARTER.limits.keywordRefreshesPerMonth), String(PLANS.GROWTH.limits.keywordRefreshesPerMonth), String(PLANS.AUTOPILOT.limits.keywordRefreshesPerMonth)],
-    ["Content drafts / month", String(PLANS.FREE.limits.articlesPerMonth), String(PLANS.STARTER.limits.articlesPerMonth), String(PLANS.GROWTH.limits.articlesPerMonth), String(PLANS.AUTOPILOT.limits.articlesPerMonth)],
-  ]},
-  { group: "Research & planning", rows: [
-    ["Keyword research & trends", true, true, true, true],
-    ["Keyword Planner (quick wins, gaps, clusters)", false, true, true, true],
-    ["Rankings from Search Console", false, true, true, true],
-  ]},
-  { group: "Site & competition", rows: [
-    ["Site audit", "Basic", true, true, true],
-    ["Fixes through your CMS", false, true, true, true],
-    ["Competitor monitoring", false, false, true, "Advanced"],
-    ["Backlinks", false, false, true, true],
-    ["Audience & bot traffic (GA4, Cloudflare)", false, false, true, true],
-  ]},
-  { group: "Content & automation", rows: [
-    ["Briefs & drafts", true, true, true, true],
-    ["Automations", false, false, true, true],
-    ["Content workflows", false, false, false, true],
-  ]},
-  { group: "Support", rows: [
-    ["Email support", true, true, true, true],
-    ["Priority processing & support", false, false, false, true],
-  ]},
+const yes = (id: PlanId, key: string): Cell => hasFeature(id, key);
+
+const n = (v: number) => v.toLocaleString("en-US");
+const ROWS: { group: string; rows: [string, ...Cell[]][] }[] = [
+  {
+    group: "Usage",
+    rows: [
+      ["Websites", ...PLAN_ORDER.map((id) => n(PLANS[id].limits.websites))],
+      ["Keyword data refreshes / month", ...PLAN_ORDER.map((id) => (hasFeature(id, "keywords") ? n(PLANS[id].limits.keywordRefreshesPerMonth) : false))],
+      ["AI article drafts / month", ...PLAN_ORDER.map((id) => (hasFeature(id, "content") ? n(PLANS[id].limits.articlesPerMonth) : false))],
+    ],
+  },
+  ...NAV.map((section) => ({
+    group: section.label,
+    rows: section.items.map((item) => {
+      const f = FEATURES.find((x) => x.label === item.label)!;
+      return [f.description ? `${f.label} — ${f.description.toLowerCase()}` : f.label, ...PLAN_ORDER.map((id) => yes(id, f.key))] as [string, ...Cell[]];
+    }),
+  })),
+  { group: "Support", rows: [["Email support", true, true, true, true]] },
 ];
 
 const FAQ = [
-  ["Is there a free plan?", "Yes. Free covers one website with keyword research and a basic audit. No credit card required."],
-  ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and are prorated. Cancel from Settings → Billing and keep access until the end of the paid period."],
+  ["Is there a free plan?", "Yes. Free covers one website and the overview dashboard. Keyword data, audits and AI content start with Starter. No credit card required."],
+  ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and the difference is prorated. Cancel from Settings → Billing and keep access until the end of the paid period."],
   ["Do you offer refunds?", "Plans are billed monthly in advance. If something went wrong, write to support@hyprlyx.com within 30 days and we'll make it right."],
   ["What payment methods do you accept?", "All major cards, Apple Pay and Google Pay through Stripe. We never see or store your card number."],
   ["Are taxes included?", "Prices are in USD and exclude tax. Applicable taxes are calculated at checkout."],
@@ -68,21 +58,22 @@ const FAQ = [
 const cell = (v: Cell) =>
   v === true ? <Check size={16} className={s.yes} /> : v === false ? <Minus size={16} className={s.no} /> : <span>{v}</span>;
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const prices = await planPrices();
   return (
     <SiteShell>
       <section className={s.hero} style={{ paddingBottom: 40 }}>
         <div className={s.container}>
           <p className={s.eyebrow}>Pricing</p>
           <h1 className={s.h1}>Simple plans that grow with you</h1>
-          <p className={s.lede}>Start free with one website. Upgrade when you need more sites, data and automation. Cancel anytime.</p>
+          <p className={s.lede}>Start free with one website. Upgrade when you need keyword data, content and more sites. Cancel anytime.</p>
         </div>
       </section>
 
       <section style={{ paddingBottom: 96 }}>
         <div className={s.container}>
           <div className={s.plans}>
-            {IDS.map((id) => {
+            {PLAN_ORDER.map((id) => {
               const plan = PLANS[id];
               const popular = id === "GROWTH";
               return (
@@ -91,10 +82,10 @@ export default function PricingPage() {
                     <h2 className={s.planName}>{plan.name}</h2>
                     {popular ? <span className={s.planTag}>Most popular</span> : null}
                   </div>
-                  <p className={s.price}>${plan.priceMonthlyUsd}<span className={s.per}>/ month</span></p>
+                  <p className={s.price}>{formatPrice(prices[id])}<span className={s.per}>/ month</span></p>
                   <p className={s.planDesc}>{DESC[id]}</p>
                   <ul className={s.planList}>
-                    {HIGHLIGHTS[id].map((h) => <li key={h}><Check size={15} strokeWidth={2.2} />{h}</li>)}
+                    {highlights(id).map((h) => <li key={h}><Check size={15} strokeWidth={2.2} />{h}</li>)}
                   </ul>
                   {id === "FREE" ? (
                     <Link href="/signup" className={s.ghost} style={{ justifyContent: "center" }}>Start free</Link>
@@ -113,7 +104,7 @@ export default function PricingPage() {
           <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side.</p></div>
           <div className={s.tableWrap}>
             <table className={s.table}>
-              <thead><tr><th>Feature</th>{IDS.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>
+              <thead><tr><th>Feature</th>{PLAN_ORDER.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>
               <tbody>
                 {ROWS.map((g) => [
                   <tr key={g.group} className={s.group}><td colSpan={5}>{g.group}</td></tr>,

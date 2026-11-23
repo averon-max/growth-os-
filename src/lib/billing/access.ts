@@ -12,7 +12,6 @@ export const PLAN_RANK: Record<PlanId, number> = {
  * Разделы, которых тут нет, доступны всем.
  */
 export const SECTION_MIN_PLAN: Record<string, PlanId> = {
-  websites: "STARTER",
   keywords: "STARTER",
   "keyword-planner": "STARTER",
   "seo-audit": "STARTER",

@@ -102,7 +102,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                       ) : null}
                     </dl>
                     <div className={a.divider} />
-                    <PlanForm workspaceId={w.id} currentPlan={plan} stripeActive={sub?.source === "stripe" && plan !== "FREE"} />
+                    <PlanForm workspaceId={w.id} plan={plan} source={sub?.source ?? "none"} stripeActive={sub?.source === "stripe" && !!sub.stripeSubscriptionId && plan !== "FREE"} cancelAtPeriodEnd={sub?.cancelAtPeriodEnd ?? false} />
                   </div>
                 </section>
               );

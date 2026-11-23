@@ -13,6 +13,10 @@ const PAGE = 100;
 const LABEL: Record<string, string> = {
   "plan.grant": "Gave plan",
   "plan.remove": "Removed plan",
+  "plan.extend": "Extended plan",
+  "plan.stripe_change": "Changed plan in Stripe",
+  "plan.stripe_cancel": "Set to cancel",
+  "plan.stripe_resume": "Undid cancellation",
   "admin.grant": "Made admin",
   "admin.remove": "Removed admin",
   "user.signout_all": "Signed out everywhere",
@@ -23,7 +27,7 @@ const LABEL: Record<string, string> = {
   "ticket.status": "Changed status",
   "cleanup.run": "Ran cleanup",
 };
-const TONE: Record<string, string> = { "user.delete": "danger", "plan.remove": "warning", "admin.grant": "violet", "admin.remove": "warning", "plan.grant": "success", "ticket.reply": "accent" };
+const TONE: Record<string, string> = { "user.delete": "danger", "plan.remove": "warning", "admin.grant": "violet", "admin.remove": "warning", "plan.grant": "success", "plan.extend": "success", "plan.stripe_change": "accent", "plan.stripe_cancel": "warning", "ticket.reply": "accent" };
 
 function targetHref(type: string, id: string | null, label: string | null): string | null {
   if (!id) return null;

@@ -7,6 +7,7 @@ import { PLANS } from "@/lib/billing/plans";
 import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan } from "@/lib/admin/core";
 import { AdminNav, PLAN_TONE } from "../admin-nav";
 import a from "../admin.module.css";
+import { QuickPlan } from "./[id]/user-actions";
 
 export const dynamic = "force-dynamic";
 const PAGE = 50;
@@ -39,7 +40,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
       take: PAGE,
       select: {
         id: true, email: true, name: true, isAdmin: true, createdAt: true, passwordChangedAt: true,
-        memberships: { select: { role: true, workspace: { select: { name: true, subscription: true, businesses: { select: { _count: { select: { websites: true } } } } } } } },
+        memberships: { select: { role: true, workspace: { select: { id: true, name: true, subscription: true, businesses: { select: { _count: { select: { websites: true } } } } } } } },
       },
     }),
   ]);
@@ -82,6 +83,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
                 <th className={a.hideSm}>Workspaces</th>
                 <th className={a.hideSm}>Websites</th>
                 <th className={a.hideSm}>Joined</th>
+                <th>Change plan</th>
               </tr>
             </thead>
             <tbody>
@@ -89,6 +91,9 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
                 const subs = u.memberships.map((m) => m.workspace.subscription);
                 const plan = bestPlan(subs);
                 const sources = new Set(subs.filter(Boolean).map((s) => s!.source));
+                const own = u.memberships.find((m) => m.role === "OWNER") ?? u.memberships[0];
+                const ownSub = own?.workspace.subscription;
+                const ownStripe = ownSub?.source === "stripe" && !!ownSub.stripeSubscriptionId && ["active", "trialing", "past_due"].includes(ownSub.status);
                 const sites = u.memberships.reduce((n, m) => n + m.workspace.businesses.reduce((k, b) => k + b._count.websites, 0), 0);
                 return (
                   <tr key={u.id}>
@@ -111,6 +116,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
                     <td className={`${a.num} ${a.hideSm}`}>{u.memberships.length}</td>
                     <td className={`${a.num} ${a.hideSm}`}>{sites}</td>
                     <td className={`${a.muted} ${a.hideSm}`}>{ago(u.createdAt)}</td>
+                    <td><QuickPlan workspaceId={own?.workspace.id ?? null} plan={plan} stripeActive={ownStripe} userId={u.id} /></td>
                   </tr>
                 );
               })}

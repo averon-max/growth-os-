@@ -6,6 +6,8 @@ import { ArrowRight, Check } from "lucide-react";
 
 import SubscribeButton from "@/components/subscribe-button";
 import { PLANS } from "@/lib/billing/plans";
+import { planPrices, formatPrice } from "@/lib/billing/prices";
+import { highlights } from "@/lib/billing/features";
 
 import styles from "./landing.module.css";
 import { LatestPosts } from "@/components/blog/latest-posts";
@@ -56,37 +58,14 @@ const SECTIONS = [
 
 const WORKS_WITH = ["Google Search Console", "Google Analytics 4", "Cloudflare", "DataForSEO", "Google Trends"];
 
-const PLAN_FEATURES = {
-  STARTER: [
-    "Website monitoring",
-    "SEO analysis",
-    "Keyword intelligence",
-    "Opportunity tracking",
-    "Monthly reports",
-  ],
-  GROWTH: [
-    "Everything in Starter",
-    "Search Console integration",
-    "Audience analytics",
-    "Content opportunities",
-    "Competitor monitoring",
-    "Automations",
-  ],
-  AUTOPILOT: [
-    "Everything in Growth",
-    "Advanced automation",
-    "Content workflows",
-    "Advanced competitors",
-    "Continuous optimization",
-    "Priority processing",
-  ],
-} as const;
-
 const PAID = ["STARTER", "GROWTH", "AUTOPILOT"] as const;
 
 
 
-export default function LandingPage() {
+export const revalidate = 3600;
+
+export default async function LandingPage() {
+  const prices = await planPrices();
   return (
     <div className={`${styles.page} ${display.variable} ${mono.variable}`}>
       <SiteHeader />
@@ -198,11 +177,11 @@ export default function LandingPage() {
                       {popular ? <span className={styles.planTag}>Most popular</span> : null}
                     </div>
                     <p className={styles.price}>
-                      ${plan.priceMonthlyUsd}
+                      {formatPrice(prices[id])}
                       <span className={styles.per}>/ month</span>
                     </p>
                     <ul className={styles.planList}>
-                      {PLAN_FEATURES[id].map((item) => (
+                      {highlights(id).map((item) => (
                         <li key={item}>
                           <Check size={15} strokeWidth={2.2} />
                           {item}

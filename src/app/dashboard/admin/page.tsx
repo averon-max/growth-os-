@@ -7,13 +7,14 @@ import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan, effectivePlan } from "
 import { AdminNav, PLAN_TONE, STATUS_TONE } from "./admin-nav";
 import a from "./admin.module.css";
 import { CleanupButton } from "./cleanup-button";
+import { planPrices } from "@/lib/billing/prices";
 import { lastCleanup } from "@/lib/retention";
 import { SETTINGS_KEY, normalizeDfs } from "@/lib/dataforseo/cache-settings";
 
 export const dynamic = "force-dynamic";
 
 const DAY = 864e5;
-const money = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+const money = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
 export default async function AdminOverview() {
   await adminOrNotFound();
@@ -37,16 +38,17 @@ export default async function AdminOverview() {
     prisma.supportTicket.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { number: true, subject: true, email: true, status: true, kind: true, createdAt: true } }),
     prisma.adminAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
   ]);
-  const [cleanup, dfsRow, cacheRows] = await Promise.all([
+  const [cleanup, dfsRow, cacheRows, prices] = await Promise.all([
     lastCleanup(),
     prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } }).catch(() => null),
     prisma.apiCache.count().catch(() => 0),
+    planPrices(),
   ]);
   const budget = normalizeDfs(dfsRow?.value).dailyBudget;
 
   const live = subs.map((s) => ({ ...s, plan: effectivePlan(s) })).filter((s) => s.plan !== "FREE");
   const paying = live.filter((s) => s.source === "stripe");
-  const mrr = paying.reduce((sum, s) => sum + PLANS[s.plan as PlanId].priceMonthlyUsd, 0);
+  const mrr = paying.reduce((sum, s) => sum + prices[s.plan as PlanId], 0);
   const manual = live.length - paying.length;
 
   const stats = [

@@ -10,58 +10,157 @@ async function post(url: string, body: object): Promise<{ ok: boolean; error?: s
   return res.ok ? { ok: true } : { ok: false, error: data.error ?? "Something went wrong.", needsForce: data.needsForce };
 }
 
-const PLAN_OPTIONS = [
+const PAID = [
   { value: "STARTER", label: "Starter" },
   { value: "GROWTH", label: "Growth" },
   { value: "AUTOPILOT", label: "Autopilot" },
-  { value: "FREE", label: "Remove access (Free)" },
 ];
 
-/** Give, change or remove a manual plan for one workspace. */
-export function PlanForm({ workspaceId, currentPlan, stripeActive }: { workspaceId: string; currentPlan: string; stripeActive: boolean }) {
+type PlanState = {
+  workspaceId: string;
+  plan: string;
+  source: string;
+  stripeActive: boolean;
+  cancelAtPeriodEnd: boolean;
+};
+
+/** Everything that can be done with one workspace's plan: manual grants, extensions, Stripe changes, cancellation and refunds. */
+export function PlanForm({ workspaceId, plan, source, stripeActive, cancelAtPeriodEnd }: PlanState) {
   const router = useRouter();
-  const [plan, setPlan] = useState(currentPlan === "FREE" ? "STARTER" : currentPlan);
+  const manualLive = source === "manual" && plan !== "FREE";
+  const [grant, setGrant] = useState(plan === "FREE" ? "STARTER" : plan);
   const [months, setMonths] = useState("1");
   const [note, setNote] = useState("");
-  const [state, setState] = useState<{ busy?: boolean; ok?: string; error?: string }>({});
+  const [change, setChange] = useState(plan === "FREE" ? "STARTER" : plan);
+  const [refund, setRefund] = useState(false);
+  const [state, setState] = useState<{ busy?: string; ok?: string; error?: string }>({});
 
-  async function apply(force = false) {
-    setState({ busy: true });
-    const r = await post("/api/admin/subscription", { workspaceId, plan, months: plan === "FREE" ? 0 : Number(months), note, force });
-    if (r.needsForce && confirm(`${r.error}\n\nOverride with a manual plan anyway?`)) return apply(true);
-    if (!r.ok) return setState({ error: r.error });
+  async function act(action: string, extra: object = {}, confirmText?: string) {
+    if (confirmText && !confirm(confirmText)) return;
+    setState({ busy: action });
+    const res = await fetch("/api/admin/subscription", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, action, note, ...extra }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setState({ error: data.error ?? "Something went wrong." });
     setNote("");
-    setState({ ok: plan === "FREE" ? "Access removed." : "Plan saved." });
+    setState({ ok: data.message ?? "Saved." });
+    router.refresh();
+  }
+  const busy = !!state.busy;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {stripeActive ? (
+        <>
+          <div className={a.form}>
+            <label className={a.field}>
+              <span className={a.label}>Change plan in Stripe</span>
+              <select className={a.select} value={change} onChange={(e) => setChange(e.target.value)}>
+                {PAID.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+            <button type="button" className={`${a.btn} ${a.btnPrimary}`} disabled={busy || change === plan} onClick={() => void act("stripeChange", { plan: change }, `Move this customer to ${change} in Stripe? The price difference is charged or credited right away.`)}>
+              {state.busy === "stripeChange" ? "Changing…" : "Change plan"}
+            </button>
+            {cancelAtPeriodEnd ? (
+              <button type="button" className={a.btn} disabled={busy} onClick={() => void act("stripeResume")}>Undo cancellation</button>
+            ) : (
+              <button type="button" className={a.btn} disabled={busy} onClick={() => void act("stripeCancel", {}, "Cancel at the end of the paid period? The customer keeps access until then and is not charged again.")}>Cancel at period end</button>
+            )}
+          </div>
+          <div className={a.form}>
+            <label className={a.field} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} />
+              <span className={a.label} style={{ color: "#d0d6e0" }}>Refund the last payment</span>
+            </label>
+            <button type="button" className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => void act("remove", { refund }, `Cancel the Stripe subscription now and remove access${refund ? ", and refund the last payment" : ""}? This cannot be undone.`)}>
+              {state.busy === "remove" ? "Cancelling…" : "Cancel now and remove access"}
+            </button>
+          </div>
+          <p className={a.hint}>This customer pays through Stripe. Changes here are made in Stripe, so the next webhook keeps them.</p>
+        </>
+      ) : (
+        <>
+          <div className={a.form}>
+            <label className={a.field}>
+              <span className={a.label}>Give plan</span>
+              <select className={a.select} value={grant} onChange={(e) => setGrant(e.target.value)}>
+                {PAID.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+            <label className={a.field}>
+              <span className={a.label}>For</span>
+              <select className={a.select} value={months} onChange={(e) => setMonths(e.target.value)}>
+                <option value="1">1 month</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+                <option value="0">No end date</option>
+              </select>
+            </label>
+            <label className={`${a.field} ${a.fieldGrow}`}>
+              <span className={a.label}>Note (why)</span>
+              <input className={a.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. beta tester, partner, refund" maxLength={500} />
+            </label>
+            <button type="button" className={`${a.btn} ${a.btnPrimary}`} disabled={busy} onClick={() => void act("grant", { plan: grant, months: Number(months) })}>
+              {state.busy === "grant" ? "Saving…" : manualLive ? "Replace plan" : "Give plan"}
+            </button>
+          </div>
+          {manualLive ? (
+            <div className={a.form}>
+              <span className={a.label} style={{ alignSelf: "center" }}>Extend</span>
+              {[1, 3, 12].map((m) => (
+                <button key={m} type="button" className={a.btn} disabled={busy} onClick={() => void act("extend", { months: m })}>+{m} mo</button>
+              ))}
+              <span className={a.spacer} />
+              <button type="button" className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => void act("remove", {}, "Remove this plan now? Paid sections close immediately.")}>
+                {state.busy === "remove" ? "Removing…" : "Remove access"}
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
+      {state.ok ? <span className={a.ok}>{state.ok}</span> : null}
+      {state.error ? <span className={a.err}>{state.error}</span> : null}
+    </div>
+  );
+}
+
+/** Compact plan control for a row in the users list. */
+export function QuickPlan({ workspaceId, plan, stripeActive, userId }: { workspaceId: string | null; plan: string; stripeActive: boolean; userId: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  if (!workspaceId) return <span className={a.muted}>No workspace</span>;
+  if (stripeActive) return <a className={a.panelLink} style={{ marginLeft: 0 }} href={`/dashboard/admin/users/${userId}`}>Manage in Stripe →</a>;
+
+  async function apply(value: string) {
+    if (!value) return;
+    const [action, p, m] = value.split(":");
+    const text = action === "remove" ? "Remove this plan now?" : `Give ${p} for ${m === "0" ? "no end date" : `${m} month${m === "1" ? "" : "s"}`}?`;
+    if (!confirm(text)) return;
+    setBusy(true);
+    setError("");
+    const res = await fetch("/api/admin/subscription", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, action, plan: p, months: Number(m ?? 0) }) });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setError(data.error ?? "Failed");
     router.refresh();
   }
 
   return (
-    <form className={a.form} onSubmit={(e) => { e.preventDefault(); void apply(); }}>
-      <label className={a.field}>
-        <span className={a.label}>Plan</span>
-        <select className={a.select} value={plan} onChange={(e) => setPlan(e.target.value)}>
-          {PLAN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </label>
-      <label className={a.field}>
-        <span className={a.label}>For</span>
-        <select className={a.select} value={months} onChange={(e) => setMonths(e.target.value)} disabled={plan === "FREE"}>
-          <option value="1">1 month</option>
-          <option value="3">3 months</option>
-          <option value="6">6 months</option>
-          <option value="12">12 months</option>
-          <option value="0">No end date</option>
-        </select>
-      </label>
-      <label className={`${a.field} ${a.fieldGrow}`}>
-        <span className={a.label}>Note (why)</span>
-        <input className={a.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. beta tester, refund, partner" maxLength={500} />
-      </label>
-      <button type="submit" className={`${a.btn} ${a.btnPrimary}`} disabled={state.busy}>{state.busy ? "Saving…" : "Apply"}</button>
-      {state.ok ? <span className={a.ok}>{state.ok}</span> : null}
-      {state.error ? <span className={a.err}>{state.error}</span> : null}
-      {stripeActive ? <p className={a.hint} style={{ width: "100%" }}>This workspace pays through Stripe. Billing changes belong in Stripe; a manual plan here overrides it until removed.</p> : null}
-    </form>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <select className={a.select} style={{ height: 28, fontSize: 12 }} value="" disabled={busy} onChange={(e) => void apply(e.target.value)} aria-label="Change plan">
+        <option value="">{busy ? "Saving…" : "Change…"}</option>
+        <optgroup label="Give for 1 month">
+          {PAID.map((o) => <option key={o.value} value={`grant:${o.value}:1`}>{o.label}</option>)}
+        </optgroup>
+        <optgroup label="Give with no end date">
+          {PAID.map((o) => <option key={o.value} value={`grant:${o.value}:0`}>{o.label}</option>)}
+        </optgroup>
+        {plan !== "FREE" ? <option value="remove::0">Remove access</option> : null}
+      </select>
+      {error ? <span className={a.err}>{error}</span> : null}
+    </span>
   );
 }
 
