@@ -11,7 +11,7 @@ const LIVE = ["active", "trialing", "past_due"];
 const DAY = 24 * 60 * 60 * 1000;
 
 type Body = {
-  workspaceId?: unknown; action?: unknown; plan?: unknown; months?: unknown; note?: unknown; refund?: unknown;
+  workspaceId?: unknown; action?: unknown; plan?: unknown; months?: unknown; note?: unknown; refund?: unknown; until?: unknown;
 };
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
@@ -19,7 +19,8 @@ const fail = (error: string, status = 400) => NextResponse.json({ error }, { sta
 /**
  * Full control over one workspace's plan. Every change goes to the audit log.
  *   grant        give or change a manual (free of charge) plan for N months or with no end date
- *   extend       add N months to a manual plan
+ *   extend       add N months to a manual plan, or take months away with a negative N
+ *   setEnd       set the exact end date of a manual plan (empty = no end date)
  *   remove       take access away now; a Stripe subscription is cancelled too (optionally refunding the last payment)
  *   stripeChange move a paying customer to another plan in Stripe (the difference is charged or credited now)
  *   stripeCancel cancel a Stripe subscription at the end of the paid period (access stays until then)
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
     const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId : "";
     // Old form posts {plan} without an action: FREE means remove, anything else means grant.
     const action = typeof body.action === "string" ? body.action : body.plan === DEFAULT_PLAN_ID ? "remove" : "grant";
-    const months = Math.min(120, Math.max(0, Math.floor(Number(body.months ?? 0)) || 0));
+    const rawMonths = Math.trunc(Number(body.months ?? 0)) || 0;
+    const months = Math.min(120, Math.max(0, rawMonths));
     const plan = isPlanId(body.plan) ? body.plan : null;
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
     if (!workspaceId) return fail("Workspace is required");
@@ -64,12 +66,32 @@ export async function POST(request: Request) {
       }
 
       case "extend": {
-        if (!sub || sub.source !== "manual" || sub.plan === DEFAULT_PLAN_ID || months < 1) return fail("Only a manual plan can be extended, by at least 1 month");
-        const from = sub.currentPeriodEnd && sub.currentPeriodEnd.getTime() > Date.now() ? sub.currentPeriodEnd.getTime() : Date.now();
-        const currentPeriodEnd = new Date(from + months * 30 * DAY);
-        await prisma.subscription.update({ where: { workspaceId }, data: { currentPeriodEnd, status: "active", grantedByUserId: admin.id, ...(note ? { note } : {}) } });
-        await audit(admin, "plan.extend", target, { before, months, until: currentPeriodEnd, note });
-        return NextResponse.json({ ok: true, message: `Extended until ${currentPeriodEnd.toDateString()}.` });
+        const delta = Math.min(120, Math.max(-120, rawMonths));
+        if (!sub || sub.source !== "manual" || sub.plan === DEFAULT_PLAN_ID || !LIVE.includes(sub.status)) return fail("Only an active manual plan can be changed this way");
+        if (delta === 0) return fail("Enter a number of months, e.g. 2 or -1");
+        // Adding starts from the current end (or today if it has none / already passed); removing counts back from the current end.
+        const base = sub.currentPeriodEnd ? sub.currentPeriodEnd.getTime() : Date.now();
+        const from = delta > 0 ? Math.max(base, Date.now()) : base;
+        const end = new Date(from + delta * 30 * DAY);
+        const expired = end.getTime() <= Date.now();
+        await prisma.subscription.update({
+          where: { workspaceId },
+          data: expired
+            ? { plan: DEFAULT_PLAN_ID, status: "canceled", currentPeriodEnd: null, grantedByUserId: admin.id }
+            : { currentPeriodEnd: end, status: "active", grantedByUserId: admin.id, ...(note ? { note } : {}) },
+        });
+        await audit(admin, delta > 0 ? "plan.extend" : "plan.shorten", target, { before, months: delta, until: expired ? null : end, expired, note });
+        return NextResponse.json({ ok: true, message: expired ? "No time left — access removed." : `${delta > 0 ? "Added" : "Removed"} ${Math.abs(delta)} month${Math.abs(delta) === 1 ? "" : "s"}. Ends ${end.toDateString()}.` });
+      }
+
+      case "setEnd": {
+        if (!sub || sub.source !== "manual" || sub.plan === DEFAULT_PLAN_ID || !LIVE.includes(sub.status)) return fail("Only an active manual plan has an end date to set");
+        const raw = typeof body.until === "string" ? body.until.trim() : "";
+        const end = raw ? new Date(`${raw}T23:59:59`) : null;
+        if (end && (Number.isNaN(end.getTime()) || end.getTime() <= Date.now())) return fail("Pick a date in the future");
+        await prisma.subscription.update({ where: { workspaceId }, data: { currentPeriodEnd: end, grantedByUserId: admin.id } });
+        await audit(admin, "plan.set_end", target, { before, until: end, note });
+        return NextResponse.json({ ok: true, message: end ? `Ends ${end.toDateString()}.` : "No end date." });
       }
 
       case "remove": {

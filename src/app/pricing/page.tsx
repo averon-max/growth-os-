@@ -6,6 +6,7 @@ import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { planPrices, formatPrice } from "@/lib/billing/prices";
 import { FEATURES, PLAN_ORDER, hasFeature, highlights } from "@/lib/billing/features";
 import { NAV } from "@/lib/nav";
+import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
 
 export const revalidate = 3600;
@@ -48,6 +49,7 @@ const ROWS: { group: string; rows: [string, ...Cell[]][] }[] = [
 
 const FAQ = [
   ["Is there a free plan?", "Yes. Free covers one website and the overview dashboard. Keyword data, audits and AI content start with Starter. No credit card required."],
+  ["How does the free trial work?", `Starter comes with a ${TRIAL_DAYS}-day free trial. Add a card at checkout; you're charged only when the trial ends, and you can cancel any time before that from Settings → Billing. The trial includes a fixed amount of fresh keyword data.`],
   ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and the difference is prorated. Cancel from Settings → Billing and keep access until the end of the paid period."],
   ["Do you offer refunds?", "Plans are billed monthly in advance. If something went wrong, write to support@hyprlyx.com within 30 days and we'll make it right."],
   ["What payment methods do you accept?", "All major cards, Apple Pay and Google Pay through Stripe. We never see or store your card number."],
@@ -66,7 +68,7 @@ export default async function PricingPage() {
         <div className={s.container}>
           <p className={s.eyebrow}>Pricing</p>
           <h1 className={s.h1}>Simple plans that grow with you</h1>
-          <p className={s.lede}>Start free with one website. Upgrade when you need keyword data, content and more sites. Cancel anytime.</p>
+          <p className={s.lede}>Start free with one website, or try Starter free for {TRIAL_DAYS} days. Upgrade when you need content and more sites. Cancel anytime.</p>
         </div>
       </section>
 
@@ -90,7 +92,7 @@ export default async function PricingPage() {
                   {id === "FREE" ? (
                     <Link href="/signup" className={s.ghost} style={{ justifyContent: "center" }}>Start free</Link>
                   ) : (
-                    <SubscribeButton plan={id} label={`Choose ${plan.name}`} variant={popular ? "accent" : "light"} />
+                    <SubscribeButton plan={id} label={id === TRIAL_PLAN ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`} variant={popular ? "accent" : "light"} />
                   )}
                 </div>
               );

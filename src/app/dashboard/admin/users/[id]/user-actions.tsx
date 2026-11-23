@@ -22,14 +22,18 @@ type PlanState = {
   source: string;
   stripeActive: boolean;
   cancelAtPeriodEnd: boolean;
+  /** End of the manual plan or of the Stripe period, ISO date (yyyy-mm-dd), or null. */
+  until?: string | null;
 };
 
 /** Everything that can be done with one workspace's plan: manual grants, extensions, Stripe changes, cancellation and refunds. */
-export function PlanForm({ workspaceId, plan, source, stripeActive, cancelAtPeriodEnd }: PlanState) {
+export function PlanForm({ workspaceId, plan, source, stripeActive, cancelAtPeriodEnd, until = null }: PlanState) {
   const router = useRouter();
   const manualLive = source === "manual" && plan !== "FREE";
   const [grant, setGrant] = useState(plan === "FREE" ? "STARTER" : plan);
   const [months, setMonths] = useState("1");
+  const [delta, setDelta] = useState("1");
+  const [endDate, setEndDate] = useState(until ?? "");
   const [note, setNote] = useState("");
   const [change, setChange] = useState(plan === "FREE" ? "STARTER" : plan);
   const [refund, setRefund] = useState(false);
@@ -88,14 +92,8 @@ export function PlanForm({ workspaceId, plan, source, stripeActive, cancelAtPeri
               </select>
             </label>
             <label className={a.field}>
-              <span className={a.label}>For</span>
-              <select className={a.select} value={months} onChange={(e) => setMonths(e.target.value)}>
-                <option value="1">1 month</option>
-                <option value="3">3 months</option>
-                <option value="6">6 months</option>
-                <option value="12">12 months</option>
-                <option value="0">No end date</option>
-              </select>
+              <span className={a.label}>Months (0 = no end)</span>
+              <input className={a.input} style={{ width: 120 }} type="number" min={0} max={120} step={1} value={months} onChange={(e) => setMonths(e.target.value)} />
             </label>
             <label className={`${a.field} ${a.fieldGrow}`}>
               <span className={a.label}>Note (why)</span>
@@ -106,16 +104,29 @@ export function PlanForm({ workspaceId, plan, source, stripeActive, cancelAtPeri
             </button>
           </div>
           {manualLive ? (
-            <div className={a.form}>
-              <span className={a.label} style={{ alignSelf: "center" }}>Extend</span>
-              {[1, 3, 12].map((m) => (
-                <button key={m} type="button" className={a.btn} disabled={busy} onClick={() => void act("extend", { months: m })}>+{m} mo</button>
-              ))}
-              <span className={a.spacer} />
-              <button type="button" className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => void act("remove", {}, "Remove this plan now? Paid sections close immediately.")}>
-                {state.busy === "remove" ? "Removing…" : "Remove access"}
-              </button>
-            </div>
+            <>
+              <div className={a.form}>
+                <label className={a.field}>
+                  <span className={a.label}>Months</span>
+                  <input className={a.input} style={{ width: 90 }} type="number" min={1} max={120} step={1} value={delta} onChange={(e) => setDelta(e.target.value)} />
+                </label>
+                <button type="button" className={a.btn} disabled={busy || !(Number(delta) > 0)} onClick={() => void act("extend", { months: Math.abs(Number(delta)) })}>+ Add months</button>
+                <button type="button" className={a.btn} disabled={busy || !(Number(delta) > 0)} onClick={() => void act("extend", { months: -Math.abs(Number(delta)) }, `Take ${Math.abs(Number(delta))} month(s) off? If no time is left, access is removed now.`)}>− Remove months</button>
+                <span className={a.spacer} />
+                <label className={a.field}>
+                  <span className={a.label}>Ends on</span>
+                  <input className={a.input} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </label>
+                <button type="button" className={a.btn} disabled={busy} onClick={() => void act("setEnd", { until: endDate })}>{endDate ? "Set date" : "No end date"}</button>
+              </div>
+              <div className={a.form}>
+                <p className={a.hint} style={{ margin: 0 }}>{until ? `Currently ends ${new Date(`${until}T12:00:00`).toDateString()}.` : "Currently has no end date."} Months are counted as 30 days.</p>
+                <span className={a.spacer} />
+                <button type="button" className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => void act("remove", {}, "Remove this plan now? Paid sections close immediately.")}>
+                  {state.busy === "remove" ? "Removing…" : "Remove access"}
+                </button>
+              </div>
+            </>
           ) : null}
         </>
       )}
@@ -135,7 +146,22 @@ export function QuickPlan({ workspaceId, plan, stripeActive, userId }: { workspa
 
   async function apply(value: string) {
     if (!value) return;
-    const [action, p, m] = value.split(":");
+    let [action, p, m] = value.split(":");
+    if (action === "custom") {
+      const asked = prompt(`Give ${p} for how many months? (0 = no end date)`, "2");
+      if (asked === null) return;
+      const n = Math.trunc(Number(asked));
+      if (!Number.isFinite(n) || n < 0 || n > 120) return setError("Enter 0–120 months");
+      action = "grant";
+      m = String(n);
+      setBusy(true);
+      setError("");
+      const res = await fetch("/api/admin/subscription", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, action, plan: p, months: n }) });
+      const data = await res.json().catch(() => ({}));
+      setBusy(false);
+      if (!res.ok) return setError(data.error ?? "Failed");
+      return router.refresh();
+    }
     const text = action === "remove" ? "Remove this plan now?" : `Give ${p} for ${m === "0" ? "no end date" : `${m} month${m === "1" ? "" : "s"}`}?`;
     if (!confirm(text)) return;
     setBusy(true);
@@ -156,6 +182,9 @@ export function QuickPlan({ workspaceId, plan, stripeActive, userId }: { workspa
         </optgroup>
         <optgroup label="Give with no end date">
           {PAID.map((o) => <option key={o.value} value={`grant:${o.value}:0`}>{o.label}</option>)}
+        </optgroup>
+        <optgroup label="Give for any number of months">
+          {PAID.map((o) => <option key={o.value} value={`custom:${o.value}`}>{o.label}…</option>)}
         </optgroup>
         {plan !== "FREE" ? <option value="remove::0">Remove access</option> : null}
       </select>

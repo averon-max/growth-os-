@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 const now = () => new Date();
 const FILTERS: Record<string, { label: string; where: () => Prisma.SubscriptionWhereInput }> = {
   active: { label: "Active", where: () => ({ status: { in: ACTIVE_STATUSES }, plan: { not: "FREE" }, OR: [{ source: "stripe" }, { currentPeriodEnd: null }, { currentPeriodEnd: { gt: now() } }] }) },
+  trial: { label: "Free trial", where: () => ({ status: "trialing" }) },
   stripe: { label: "Stripe", where: () => ({ source: "stripe", status: { in: ACTIVE_STATUSES }, plan: { not: "FREE" } }) },
   manual: { label: "Manual", where: () => ({ source: "manual", status: { in: ACTIVE_STATUSES }, plan: { not: "FREE" }, OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: now() } }] }) },
   ending: { label: "Ending soon", where: () => ({ status: { in: ACTIVE_STATUSES }, plan: { not: "FREE" }, OR: [{ cancelAtPeriodEnd: true }, { source: "manual", currentPeriodEnd: { gt: now(), lt: new Date(Date.now() + 14 * 864e5) } }] }) },
@@ -96,8 +97,8 @@ export default async function AdminSubscriptions({ searchParams }: { searchParam
                       )}
                     </td>
                     <td className={a.hideSm}>
-                      <span className={a.badge} data-tone={expired || !ACTIVE_STATUSES.includes(s.status) ? "danger" : s.status === "past_due" ? "warning" : s.cancelAtPeriodEnd ? "warning" : "success"}>
-                        {expired ? "expired" : s.cancelAtPeriodEnd && ACTIVE_STATUSES.includes(s.status) ? "canceling" : s.status.replace("_", " ")}
+                      <span className={a.badge} data-tone={expired || !ACTIVE_STATUSES.includes(s.status) ? "danger" : s.status === "past_due" || s.status === "trialing" ? "warning" : s.cancelAtPeriodEnd ? "warning" : "success"}>
+                        {expired ? "expired" : s.status === "trialing" ? "free trial" : s.cancelAtPeriodEnd && ACTIVE_STATUSES.includes(s.status) ? "canceling" : s.status.replace("_", " ")}
                       </span>
                     </td>
                     <td className={`${a.hideSm} ${a.muted}`}>{s.currentPeriodEnd ? day(s.currentPeriodEnd) : s.source === "manual" ? "no end date" : "—"}</td>

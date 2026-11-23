@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe, isStripeConfigured } from "@/lib/stripe";
 import { PLANS, isPlanId, stripePriceIdFor } from "@/lib/billing/plans";
 import { syncSubscription } from "@/lib/billing/stripe-sync";
+import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
 
 const LIVE = ["active", "trialing", "past_due"];
 
@@ -76,6 +77,9 @@ export async function POST(request: Request) {
       }
     }
 
+    // 7-day free trial with a card on file: only on the trial plan, and only once per workspace.
+    const trial = planId === TRIAL_PLAN && !existing?.stripeSubscriptionId && !existing?.stripeCustomerId;
+
     const create = (customer: string | undefined) =>
       stripe().checkout.sessions.create({
         mode: "subscription",
@@ -86,7 +90,11 @@ export async function POST(request: Request) {
         customer,
         customer_email: customer ? undefined : user.email,
         allow_promotion_codes: true,
-        subscription_data: { metadata: { workspaceId: targetWorkspaceId } },
+        payment_method_collection: "always",
+        subscription_data: {
+          metadata: { workspaceId: targetWorkspaceId },
+          ...(trial ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: "cancel" as const } } } : {}),
+        },
         metadata: { workspaceId: targetWorkspaceId, planId },
       });
 

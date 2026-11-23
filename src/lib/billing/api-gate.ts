@@ -39,3 +39,12 @@ export async function bestPlanForUser(userId: string): Promise<PlanId> {
 export function planName(id: PlanId): string {
   return PLANS[id].name;
 }
+
+/** True while any workspace of this user is in a Stripe free trial. */
+export async function isTrialing(userId: string): Promise<boolean> {
+  const row = await prisma.subscription.findFirst({
+    where: { status: "trialing", workspace: { members: { some: { userId } } } },
+    select: { id: true },
+  });
+  return row !== null;
+}

@@ -79,7 +79,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                       <dd>
                         {sub ? (
                           <>
-                            {PLANS[plan].name} · {sub.source === "stripe" ? "Stripe" : "manual"} · {sub.status}
+                            {PLANS[plan].name} · {sub.source === "stripe" ? "Stripe" : "manual"} · {sub.status === "trialing" ? "free trial" : sub.status}
                             {sub.currentPeriodEnd ? ` · until ${day(sub.currentPeriodEnd)}` : sub.source === "manual" && plan !== "FREE" ? " · no end date" : ""}
                             {sub.cancelAtPeriodEnd ? " · cancels at period end" : ""}
                           </>
@@ -102,7 +102,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                       ) : null}
                     </dl>
                     <div className={a.divider} />
-                    <PlanForm workspaceId={w.id} plan={plan} source={sub?.source ?? "none"} stripeActive={sub?.source === "stripe" && !!sub.stripeSubscriptionId && plan !== "FREE"} cancelAtPeriodEnd={sub?.cancelAtPeriodEnd ?? false} />
+                    <PlanForm workspaceId={w.id} plan={plan} source={sub?.source ?? "none"} stripeActive={sub?.source === "stripe" && !!sub.stripeSubscriptionId && plan !== "FREE"} cancelAtPeriodEnd={sub?.cancelAtPeriodEnd ?? false} until={sub?.currentPeriodEnd ? sub.currentPeriodEnd.toISOString().slice(0, 10) : null} />
                   </div>
                 </section>
               );

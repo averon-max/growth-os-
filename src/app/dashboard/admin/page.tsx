@@ -3,7 +3,7 @@ import { Topbar } from "@/components/dashboard/topbar";
 import ui from "@/components/dashboard/ui.module.css";
 import { prisma } from "@/lib/prisma";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
-import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan, effectivePlan } from "@/lib/admin/core";
+import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan, day, effectivePlan } from "@/lib/admin/core";
 import { AdminNav, PLAN_TONE, STATUS_TONE } from "./admin-nav";
 import a from "./admin.module.css";
 import { CleanupButton } from "./cleanup-button";
@@ -47,15 +47,16 @@ export default async function AdminOverview() {
   const budget = normalizeDfs(dfsRow?.value).dailyBudget;
 
   const live = subs.map((s) => ({ ...s, plan: effectivePlan(s) })).filter((s) => s.plan !== "FREE");
-  const paying = live.filter((s) => s.source === "stripe");
+  const trials = live.filter((s) => s.status === "trialing").sort((x, y) => (x.currentPeriodEnd?.getTime() ?? 0) - (y.currentPeriodEnd?.getTime() ?? 0));
+  const paying = live.filter((s) => s.source === "stripe" && s.status !== "trialing");
   const mrr = paying.reduce((sum, s) => sum + prices[s.plan as PlanId], 0);
-  const manual = live.length - paying.length;
+  const manual = live.filter((s) => s.source !== "stripe").length;
 
   const stats = [
     { label: "Users", value: users.toLocaleString(), note: <><span className={a.up}>+{new7}</span> this week · +{new30} in 30 days</> },
-    { label: "Paying", value: paying.length.toLocaleString(), note: `${users ? Math.round((paying.length / users) * 1000) / 10 : 0}% of users` },
+    { label: "Paying", value: paying.length.toLocaleString(), note: `${users ? Math.round((paying.length / users) * 1000) / 10 : 0}% of users · ${manual} manual` },
     { label: "MRR", value: money(mrr), note: "from Stripe subscriptions" },
-    { label: "Manual plans", value: manual.toLocaleString(), note: "granted here, not billed" },
+    { label: "Free trials", value: trials.length.toLocaleString(), note: trials[0]?.currentPeriodEnd ? `next ends ${day(trials[0].currentPeriodEnd)}` : "7 days, card on file" },
     { label: "Open inbox", value: openTickets.toLocaleString(), note: `${newTickets} new this week` },
     { label: "Data spend", value: `$${(spendToday._sum.cost ?? 0).toFixed(2)}`, note: `today, limit $${budget} · $${(spend30._sum.cost ?? 0).toFixed(2)} in 30 days` },
   ];

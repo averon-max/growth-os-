@@ -4,7 +4,7 @@ import { Topbar } from "@/components/dashboard/topbar";
 import ui from "@/components/dashboard/ui.module.css";
 import { prisma } from "@/lib/prisma";
 import { PLANS } from "@/lib/billing/plans";
-import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan } from "@/lib/admin/core";
+import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan, day } from "@/lib/admin/core";
 import { AdminNav, PLAN_TONE } from "../admin-nav";
 import a from "../admin.module.css";
 import { QuickPlan } from "./[id]/user-actions";
@@ -17,6 +17,7 @@ const FILTERS: Record<string, { label: string; where: Prisma.UserWhereInput }> =
   all: { label: "All", where: {} },
   paying: { label: "Paying", where: { memberships: { some: { workspace: { subscription: { ...PAID, source: "stripe" } } } } } },
   manual: { label: "Manual plan", where: { memberships: { some: { workspace: { subscription: { ...PAID, source: "manual" } } } } } },
+  trial: { label: "Free trial", where: { memberships: { some: { workspace: { subscription: { status: "trialing" } } } } } },
   free: { label: "Free", where: { NOT: { memberships: { some: { workspace: { subscription: PAID } } } } } },
   admins: { label: "Admins", where: { isAdmin: true } },
 };
@@ -110,8 +111,13 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
                     <td>
                       <span className={a.badges}>
                         <span className={a.badge} data-tone={PLAN_TONE[plan]}>{PLANS[plan].name}</span>
-                        {plan !== "FREE" ? <span className={a.badge}>{sources.has("stripe") ? "Stripe" : "Manual"}</span> : null}
+                        {ownSub?.status === "trialing" ? <span className={a.badge} data-tone="warning">Free trial</span> : plan !== "FREE" ? <span className={a.badge}>{sources.has("stripe") ? "Stripe" : "Manual"}</span> : null}
                       </span>
+                      {plan !== "FREE" && ownSub?.currentPeriodEnd ? (
+                        <div className={a.cellSub} style={{ marginTop: 4 }}>
+                          {ownSub.status === "trialing" ? "trial ends" : ownSub.source === "stripe" ? (ownSub.cancelAtPeriodEnd ? "ends" : "renews") : "until"} {day(ownSub.currentPeriodEnd)}
+                        </div>
+                      ) : null}
                     </td>
                     <td className={`${a.num} ${a.hideSm}`}>{u.memberships.length}</td>
                     <td className={`${a.num} ${a.hideSm}`}>{sites}</td>

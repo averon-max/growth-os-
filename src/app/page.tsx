@@ -8,6 +8,7 @@ import SubscribeButton from "@/components/subscribe-button";
 import { PLANS } from "@/lib/billing/plans";
 import { planPrices, formatPrice } from "@/lib/billing/prices";
 import { highlights } from "@/lib/billing/features";
+import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
 
 import styles from "./landing.module.css";
 import { LatestPosts } from "@/components/blog/latest-posts";
@@ -190,7 +191,7 @@ export default async function LandingPage() {
                     </ul>
                     <SubscribeButton
                       plan={id}
-                      label={`Choose ${plan.name}`}
+                      label={id === TRIAL_PLAN ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`}
                       variant={popular ? "accent" : "light"}
                     />
                   </div>

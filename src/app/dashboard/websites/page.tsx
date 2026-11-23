@@ -121,13 +121,18 @@ export default async function WebsitesPage() {
                   >
                     <div className={styles.dataIdentity}>
                       <span
-                        className={styles.issueDot}
-                        data-tone={
-                          latest
-                            ? "success"
-                            : "muted"
-                        }
-                      />
+                        aria-hidden
+                        style={{ width: 30, height: 30, flex: "0 0 auto", display: "grid", placeItems: "center", border: "1px solid #26282d", borderRadius: 7, background: "#141516" }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(website.url.replace(/^https?:\/\//, "").split("/")[0])}&sz=64`}
+                          alt=""
+                          width={16}
+                          height={16}
+                          style={{ borderRadius: 3 }}
+                        />
+                      </span>
 
                       <div>
                         <div className={styles.dataTitle}>
