@@ -2,6 +2,7 @@ import { filterRelevantSearches } from "./keyword-relevance";
 import { initLogger, log, logError } from "./logger";
 import { pickBestKeyword } from "./keyword-picker";
 import { analyzeSERP } from "./serp-analyzer";
+import { mentions, researchExtraKeywords } from "./extra-keywords";
 import { writeArticle } from "./article-writer";
 import { runEditorialScorecard } from "./editorial-scorecard";
 import { buildEvidenceContract, checkProcedureFeasibility, evaluateReadiness, evidenceIssues, recoverEvidence, verifyClaims } from "./publication-readiness";
@@ -30,6 +31,8 @@ export interface WriterInput {
   dataForSeoPassword: string;
   openAiKey: string;
   exactKeyword?: boolean;
+  /** Up to 5 more keywords the article must also rank for; each gets its own Google research. */
+  extraKeywords?: string[];
   internalLinks?: { anchor: string; url: string; topic: string }[];
 }
 
@@ -607,6 +610,31 @@ console.log('[TEMPLATE]', template?.category, 'wordRange:', template?.wordRange,
 
   if (!outline.some((s) => /faq|frequently asked/i.test(s.h2)) && new Set([...questions, ...overflowQuestions]).size >= 3) {
     outline.push({ h2: "Frequently Asked Questions", h3s: [], keyPoints: getSectionKeyPoints("Frequently Asked Questions", keywordResult.winner.keyword, outline.length, outline.length + 1) });
+  }
+
+  // EXTRA_KEYWORDS: keywords the user added. Each one is searched in Google (one saved SERP request) and must get
+  // a place in the outline: an existing section about it gets its questions, otherwise a new section is added before the FAQ.
+  const extraKeywords = (input.extraKeywords ?? []).filter((k) => k.toLowerCase() !== winnerKw).slice(0, 5);
+  if (extraKeywords.length) {
+    const signals = await researchExtraKeywords(extraKeywords, input.dataForSeoLogin, input.dataForSeoPassword);
+    log("orchestrator", "EXTRA_KEYWORDS", { signals: signals.map((x) => ({ keyword: x.keyword, questions: x.questions.length, related: x.related.length })) });
+    for (const sig of signals) {
+      const points = [
+        `This section targets the search "${sig.keyword}": use the phrase naturally in the heading or the first sentence and answer what people searching it want to know`,
+        ...(sig.questions.length ? [`Answer these real Google questions about "${sig.keyword}" where they fit: ${sig.questions.slice(0, 4).join(" | ")}`] : []),
+        ...(sig.topTitles.length ? [`Pages that rank for "${sig.keyword}" are titled: ${sig.topTitles.slice(0, 5).join(" | ")} — cover what they cover, better`] : []),
+      ];
+      const existing = outline.find((sec) => !/faq|frequently asked/i.test(sec.h2) && mentions(sec.h2, sig.keyword));
+      if (existing) {
+        existing.keyPoints = [...existing.keyPoints, ...points];
+      } else {
+        const faqAt = outline.findIndex((sec) => /faq|frequently asked/i.test(sec.h2));
+        const h2 = sig.keyword.charAt(0).toUpperCase() + sig.keyword.slice(1);
+        outline.splice(faqAt >= 0 ? faqAt : outline.length, 0, { h2, h3s: [], keyPoints: points });
+      }
+      for (const r of sig.related) if (!relatedKeywords.includes(r)) relatedKeywords.push(r);
+    }
+    relatedKeywords.unshift(...extraKeywords.filter((k) => !relatedKeywords.includes(k)));
   }
 
   log("orchestrator", "STEP_3_OUTLINE_BUILT", {

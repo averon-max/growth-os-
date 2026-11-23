@@ -5,7 +5,7 @@ import { CATEGORY_LABELS, ArticleCategory } from "@/lib/writer/templates";
 import s from "./writer.module.css";
 
 const CATEGORIES = Object.entries(CATEGORY_LABELS) as [ArticleCategory, string][];
-type Result = { title: string; metaDescription: string; body: string; wordCount: number; score?: number; editorialScore?: number };
+type Result = { title: string; metaDescription: string; body: string; wordCount: number; score?: number; editorialScore?: number; keywords?: { keyword: string; covered: boolean }[] };
 
 const STEPS_RESEARCH = ["Keyword research", "SERP analysis", "Planning sections", "Writing", "Editorial review"];
 const STEPS_EXACT = ["SERP analysis", "Planning sections", "Writing", "Editorial review"];
@@ -25,6 +25,7 @@ export function WriterForm({ websiteId, onSuccess, initialKeyword }: { websiteId
   const [keyword, setKeyword] = useState(initialKeyword ?? "");
   const [category, setCategory] = useState<ArticleCategory>("definition");
   const [exact, setExact] = useState(false);
+  const [extras, setExtras] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
@@ -47,7 +48,7 @@ export function WriterForm({ websiteId, onSuccess, initialKeyword }: { websiteId
       const res = await fetch("/api/writer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim(), category, websiteId, exactKeyword: exact }),
+        body: JSON.stringify({ keyword: keyword.trim(), category, websiteId, exactKeyword: exact, keywords: extras.split(",").map((k) => k.trim()).filter(Boolean).slice(0, 5) }),
       });
       const data = await res.json();
       if (res.ok === false) throw new Error(data.error || "Failed");
@@ -83,6 +84,7 @@ export function WriterForm({ websiteId, onSuccess, initialKeyword }: { websiteId
         <div className={s.cardHead}><span>Brief</span><span>{CATEGORY_LABELS[category]}</span></div>
         <form onSubmit={submit} className={s.form}>
           <input className={s.input} value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. best crm software" disabled={loading} />
+          <input className={s.input} value={extras} onChange={(e) => setExtras(e.target.value)} placeholder="Also rank for (optional, up to 5, comma-separated): crm for small business, free crm" disabled={loading} />
           <select className={s.select} value={category} onChange={(e) => setCategory(e.target.value as ArticleCategory)} disabled={loading}>
             {CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
@@ -125,6 +127,11 @@ export function WriterForm({ websiteId, onSuccess, initialKeyword }: { websiteId
           </div>
           <div className={s.resTitle}>{result.title}</div>
           <div className={s.resMeta}>{result.metaDescription}</div>
+          {result.keywords?.length ? (
+            <div className={s.resMeta}>
+              Keywords: {result.keywords.map((k) => `${k.covered ? "✓" : "✗ missing:"} ${k.keyword}`).join(" · ")}
+            </div>
+          ) : null}
           <div className={s.actions}>
             <button className={s.ghost} onClick={() => download(result)}><Download size={13} />Download .md</button>
             <button className={s.ghost} onClick={() => { navigator.clipboard.writeText(result.body); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>

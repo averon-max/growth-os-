@@ -1,51 +1,78 @@
 /*
- * Постоянный кэш DataForSEO.
- * Каждый успешный (оплаченный) ответ api.dataforseo.com сохраняется в таблицу ApiCache
- * и переиспользуется: повторный такой же запрос не тратит деньги.
- * Если API недоступен или отвечает ошибкой оплаты — отдаётся последний сохранённый ответ.
+ * Every request to api.dataforseo.com goes through here.
+ *
+ * 1. Saved answers. A successful (paid) answer is stored in ApiCache and reused by everyone until it is older than
+ *    the days set for its kind in Settings → Data. The same search is never paid for twice in that time,
+ *    and identical requests running at the same moment share one paid call.
+ * 2. Daily budget. Every paid call is logged in DfsSpend with its real cost. When today's total reaches the
+ *    daily budget, no new paid calls are made: the last saved answer is used, or the caller gets a
+ *    "balance" error and falls back to its free mode.
+ * 3. Cheaper page reads. Reading a page with a full browser costs ~30× more than a plain read.
+ *    A plain read is tried first; the browser is used only when the plain read comes back empty.
  *
  * .env:
- *   DATAFORSEO_OFFLINE=1   — вообще не ходить в API, только кэш (когда баланс пуст)
- *   DATAFORSEO_CACHE=0     — выключить кэш
- *
- * Свежесть: 30 дней (SERP 14). Записи старше 60 дней удаляются раз в сутки —
- * так же чистится KeywordSuggestionCache (идеи ключевых слов, Trends, Autocomplete).
- * Одинаковые одновременные запросы склеиваются в один платный вызов.
+ *   DATAFORSEO_OFFLINE=1        never call the API, only saved answers
+ *   DATAFORSEO_CACHE=0          turn all of this off
+ *   DATAFORSEO_DAILY_BUDGET=3   default daily budget in USD (Settings → Data overrides it)
  */
 
 const DFS = "https://api.dataforseo.com/";
-const DAY = 24 * 60 * 60 * 1000;
-
-// Сколько ответ считается свежим. После — запрос идёт в API, но старый ответ остаётся запасным.
-function ttlFor(endpoint: string): number {
-  if (endpoint.includes("/appendix/")) return 0;
-  if (endpoint.includes("/serp/")) return 14 * DAY;
-  return 30 * DAY;
-}
-const PURGE_AFTER = 60 * DAY;
+const SETTINGS_TTL = 60 * 1000;
 
 type Json = Record<string, unknown>;
 
 function isOk(json: Json): boolean {
-  if ([20000].includes(Number(json.status_code)) === false) return false;
+  if (Number(json.status_code) !== 20000) return false;
   const tasks = Array.isArray(json.tasks) ? (json.tasks as Json[]) : [];
-  return tasks.every((t) => Number(t.status_code) === 20000 || Number(t.status_code) === 40102);
+  return tasks.length > 0 && tasks.every((t) => Number(t.status_code) === 20000 || Number(t.status_code) === 40102);
 }
 
 function jsonResponse(json: Json, source: string): Response {
-  return new Response(JSON.stringify(json), {
-    status: 200,
-    headers: { "content-type": "application/json", "x-dataforseo-cache": source },
-  });
+  return new Response(JSON.stringify(json), { status: 200, headers: { "content-type": "application/json", "x-dataforseo-cache": source } });
 }
 
 async function sha256(text: string): Promise<string> {
-  // Web Crypto работает и в Node, и в Edge — без импорта node:crypto.
-  const data = new TextEncoder().encode(text);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const firstItem = (json: Json): Json | undefined => {
+  const t = (json.tasks as Json[] | undefined)?.[0];
+  const r = (t?.result as Json[] | undefined)?.[0];
+  return (r?.items as Json[] | undefined)?.[0];
+};
+
+/** For a page read with a browser: the same request without one, and how to tell if its answer is good enough. */
+function cheaperPageRead(endpoint: string, body: string): { body: string; good: (json: Json) => boolean } | null {
+  let tasks: Json[];
+  try { tasks = JSON.parse(body) as Json[]; } catch { return null; }
+  if (!Array.isArray(tasks) || tasks.length !== 1) return null;
+  const task = tasks[0];
+  if (endpoint === "v3/on_page/instant_pages" && (task.enable_browser_rendering === true || task.enable_javascript === true)) {
+    const { enable_browser_rendering: _b, enable_javascript: _j, load_resources: _l, ...plain } = task;
+    return {
+      body: JSON.stringify([plain]),
+      good: (json) => {
+        const item = firstItem(json);
+        if (!item) return false;
+        const meta = (item.meta ?? {}) as Json;
+        const words = Number(((meta.content ?? {}) as Json).plain_text_word_count ?? 0);
+        const loc = typeof item.location === "string" ? item.location : "";
+        return words >= 300 || (loc !== "" && /google\./i.test(loc) === false);
+      },
+    };
+  }
+  if (endpoint === "v3/on_page/content_parsing/live" && task.enable_javascript === true) {
+    const { enable_javascript: _j, ...plain } = task;
+    return {
+      body: JSON.stringify([plain]),
+      good: (json) => {
+        const main = (((firstItem(json)?.page_content ?? {}) as Json).main_topic as unknown[] | undefined) ?? [];
+        return main.length >= 2;
+      },
+    };
+  }
+  return null;
 }
 
 export async function register() {
@@ -56,102 +83,125 @@ export async function register() {
   g.__dfsCachePatched = true;
 
   const { prisma } = await import("@/lib/prisma");
+  const { categoryOf, normalizeDfs, SETTINGS_KEY } = await import("@/lib/dataforseo/cache-settings");
+  const { wantsFresh } = await import("@/lib/dataforseo/fresh");
   const original = globalThis.fetch.bind(globalThis);
   const inflight = new Map<string, Promise<Response>>();
 
-  // раз в сутки удаляем всё старше 60 дней (кроме режима OFFLINE)
-  const purge = async () => {
-    if (process.env.DATAFORSEO_OFFLINE === "1") return; // без баланса ничего не удаляем
-    const before = new Date(Date.now() - PURGE_AFTER);
+  let settings = normalizeDfs(null);
+  let settingsAt = 0;
+  const getSettings = async () => {
+    if (Date.now() - settingsAt < SETTINGS_TTL) return settings;
     try {
-      const a = await prisma.apiCache.deleteMany({ where: { createdAt: { lt: before } } });
-      const b = await prisma.keywordSuggestionCache.deleteMany({ where: { fetchedAt: { lt: before } } });
-      if (a.count + b.count > 0) console.log(`[dataforseo cache] purged ${a.count} api + ${b.count} suggestion rows older than 60 days`);
+      const row = await prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } });
+      settings = normalizeDfs(row?.value);
     } catch (e) {
-      console.warn("[dataforseo cache] purge failed:", (e as Error).message);
+      console.warn("[dataforseo] settings read failed:", (e as Error).message);
+    }
+    settingsAt = Date.now();
+    return settings;
+  };
+
+  const today = () => new Date(new Date().toISOString().slice(0, 10));
+  const spentToday = async () => {
+    try {
+      const r = await prisma.dfsSpend.aggregate({ where: { date: today() }, _sum: { cost: true } });
+      return r._sum.cost ?? 0;
+    } catch {
+      return 0;
     }
   };
-  // первая чистка — через сутки после старта, дальше раз в сутки
-  const timer = setInterval(purge, DAY) as unknown as { unref?: () => void };
-  timer.unref?.();
+
+  /** One paid request. Logs its cost. Never throws for a provider error — returns the JSON. */
+  const paid = async (url: string, init: RequestInit, endpoint: string, body: string): Promise<{ res: Response; json: Json | null }> => {
+    const res = await original(url, { ...init, body });
+    let json: Json | null = null;
+    try { json = (await res.clone().json()) as Json; } catch { json = null; }
+    const cost = Number(json?.cost ?? 0) || 0;
+    if (cost > 0) {
+      await prisma.dfsSpend
+        .upsert({
+          where: { date_endpoint: { date: today(), endpoint } },
+          create: { date: today(), endpoint, category: categoryOf(endpoint), calls: 1, cost },
+          update: { calls: { increment: 1 }, cost: { increment: cost } },
+        })
+        .catch((e: Error) => console.warn("[dataforseo] spend log failed:", e.message));
+    }
+    console.log(`[dataforseo] paid  ${endpoint}  $${cost.toFixed(4)}`);
+    return { res, json };
+  };
 
   globalThis.fetch = async function cachedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     if (url.startsWith(DFS) === false) return original(input, init);
 
     const body = typeof init?.body === "string" ? init.body : "";
-    if (init?.body && body === "") return original(input, init); // нестандартное тело — не кэшируем
-
+    if (init?.body && body === "") return original(input, init);
     const endpoint = url.slice(DFS.length).split("?")[0];
-    const ttl = ttlFor(endpoint);
-    if (ttl === 0) return original(input, init);
+    if (endpoint.includes("/appendix/") || endpoint.includes("/user_data")) return original(input, init);
 
+    const category = categoryOf(endpoint);
+    const s = await getSettings();
+    const ttl = s.days[category] * 24 * 60 * 60 * 1000;
     const key = await sha256(`${(init?.method ?? "GET").toUpperCase()} ${url}\n${body}`);
+
     let cached: { response: unknown; createdAt: Date } | null = null;
     try {
       cached = await prisma.apiCache.findUnique({ where: { key }, select: { response: true, createdAt: true } });
     } catch (e) {
-      console.warn("[dataforseo cache] read failed:", (e as Error).message);
+      console.warn("[dataforseo] cache read failed:", (e as Error).message);
     }
-
-    const fresh = cached ? Date.now() - cached.createdAt.getTime() < ttl : false;
+    const fresh = cached !== null && wantsFresh() === false && Date.now() - cached.createdAt.getTime() < ttl;
     if (cached && (fresh || process.env.DATAFORSEO_OFFLINE === "1")) {
-      prisma.apiCache.update({ where: { key }, data: { hits: { increment: 1 } } }).catch(() => undefined);
-      console.log(`[dataforseo] ${fresh ? "cache" : "offline-stale"}  ${endpoint}`);
+      await prisma.apiCache.update({ where: { key }, data: { hits: { increment: 1 } } }).catch(() => undefined);
       return jsonResponse(cached.response as Json, fresh ? "hit" : "stale");
     }
 
     const running = inflight.get(key);
     if (running) return (await running).clone();
 
-    if (process.env.DATAFORSEO_OFFLINE === "1") {
-      console.log(`[dataforseo] offline-miss ${endpoint}`);
-      return jsonResponse({ status_code: 40200, status_message: "Offline mode: no saved data for this request yet.", tasks: [] }, "miss");
+    const refuse = (message: string) =>
+      cached ? jsonResponse(cached.response as Json, "stale") : jsonResponse({ status_code: 40200, status_message: message, cost: 0, tasks: [] }, "refused");
+    if (process.env.DATAFORSEO_OFFLINE === "1") return refuse("Offline mode: no saved data for this request yet.");
+    const spent = await spentToday();
+    if (spent >= s.dailyBudget) {
+      console.warn(`[dataforseo] daily budget reached ($${spent.toFixed(2)} of $${s.dailyBudget}), refused ${endpoint}`);
+      return refuse(`Daily data budget reached ($${s.dailyBudget}). Saved data is still shown; new data resumes tomorrow.`);
     }
 
-    let live: Response;
-    const request = original(input, init);
-    const shared = request.then((r) => r.clone());
-    shared.catch(() => undefined);
-    inflight.set(key, shared);
-    try {
-      live = await request;
-    } catch (e) {
-      inflight.delete(key);
-      if (cached) {
-        console.log(`[dataforseo] network error, stale ${endpoint}`);
-        return jsonResponse(cached.response as Json, "stale");
+    const work = (async (): Promise<Response> => {
+      const req = { ...(init ?? {}), method: init?.method ?? "POST" };
+      const cheaper = cheaperPageRead(endpoint, body);
+      let result: { res: Response; json: Json | null } | null = null;
+      if (cheaper) {
+        const plain = await paid(url, req, endpoint, cheaper.body).catch(() => null);
+        if (plain?.json && isOk(plain.json) && cheaper.good(plain.json)) result = plain;
       }
-      throw e;
-    }
+      result ??= await paid(url, req, endpoint, body);
+      const { res, json } = result;
+      if (json && isOk(json)) {
+        const cost = Number(json.cost ?? 0) || 0;
+        await prisma.apiCache
+          .upsert({
+            where: { key },
+            create: { key, endpoint, category, response: json as never, cost },
+            update: { response: json as never, cost, category, createdAt: new Date() },
+          })
+          .catch((e: Error) => console.warn("[dataforseo] cache write failed:", e.message));
+        return jsonResponse(json, "live");
+      }
+      if (cached) return jsonResponse(cached.response as Json, "stale");
+      return json ? jsonResponse(json, "error") : res;
+    })();
 
-    let json: Json | null = null;
+    inflight.set(key, work.then((r) => r.clone()));
     try {
-      json = (await live.clone().json()) as Json;
-    } catch {
-      inflight.delete(key);
-      return live;
+      return await work;
+    } catch (e) {
+      if (cached) return jsonResponse(cached.response as Json, "stale");
+      throw e;
+    } finally {
+      setTimeout(() => inflight.delete(key), 1000);
     }
-    setTimeout(() => inflight.delete(key), 1000);
-
-    if (json && isOk(json)) {
-      const cost = Number(json.cost ?? 0) || 0;
-      prisma.apiCache
-        .upsert({
-          where: { key },
-          create: { key, endpoint, response: json as never, cost },
-          update: { response: json as never, cost, createdAt: new Date() },
-        })
-        .catch((e: Error) => console.warn("[dataforseo cache] write failed:", e.message));
-      console.log(`[dataforseo] live  ${endpoint}  $${cost.toFixed(4)} saved`);
-      return jsonResponse(json, "live");
-    }
-
-    // ошибка оплаты / лимита / любая — отдаём последний сохранённый ответ, если он есть
-    if (cached) {
-      console.log(`[dataforseo] ${json?.status_message ?? live.status} -> stale ${endpoint}`);
-      return jsonResponse(cached.response as Json, "stale");
-    }
-    return live;
   } as typeof fetch;
 }

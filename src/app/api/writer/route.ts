@@ -4,6 +4,7 @@ import { runWriter } from "@/lib/writer/orchestrator";
 import { extractArticleHeadings } from "@/lib/content/article-analyzer";
 import type { ArticleCategory } from "@/lib/writer/templates";
 import { prisma } from "@/lib/prisma";
+import { cleanExtraKeywords, keywordCoverage } from "@/lib/writer/extra-keywords";
 
 export async function POST(req: NextRequest) {
   let userId: string;
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     const seedKeyword = typeof body.keyword === "string" ? body.keyword.trim() : typeof body.seedKeyword === "string" ? body.seedKeyword.trim() : "";
     const exactKeyword = body.exactKeyword === true;
     const websiteId = typeof body.websiteId === "string" ? body.websiteId.trim() : "";
+    const extraKeywords = cleanExtraKeywords(body.keywords, seedKeyword);
 
     const allowedCategories: readonly ArticleCategory[] = [
       "definition","how-it-works","how-to","troubleshooting","comparison",
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest) {
       dataForSeoPassword,
       openAiKey,
       internalLinks,
+      extraKeywords,
     });
 
     const generatedBodyMarkdown =
@@ -118,7 +121,7 @@ export async function POST(req: NextRequest) {
             topic: seedKeyword,
             searchIntent: category,
             primaryKeyword: result.article?.keyword ?? seedKeyword,
-            secondaryKeywords: [],
+            secondaryKeywords: extraKeywords,
             outline: {},
             status: "DRAFT",
             generatedBy: "gpt-5.6-luna",
@@ -142,7 +145,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ title: result.article.title, metaDescription: result.article.metaDescription, body: result.article.body, wordCount: result.article.totalWordCount, keyword: result.article.keyword, briefId });
+    return NextResponse.json({ title: result.article.title, metaDescription: result.article.metaDescription, body: result.article.body, wordCount: result.article.totalWordCount, keyword: result.article.keyword, briefId, keywords: keywordCoverage(generatedBodyMarkdown, extraKeywords) });
   } catch {
     return NextResponse.json({ error: "Writer generation failed" }, { status: 500 });
   }

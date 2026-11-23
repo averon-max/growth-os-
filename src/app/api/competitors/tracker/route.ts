@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { rateLimit } from "@/lib/rate-limit";
+import { wantsFresh, withFreshData } from "@/lib/dataforseo/fresh";
 import { dfs, num, str, rec } from "@/lib/dataforseo/client";
 import { fetchRankedKeywords } from "@/lib/keywords/dataforseo-provider";
 import { analyzeSite, getCachedPlannerReport } from "@/lib/planner/analyze";
@@ -10,7 +11,8 @@ export const maxDuration = 120;
 const SKIP = /(^|\.)(google|youtube|wikipedia|reddit|amazon|facebook|linkedin|quora|pinterest|instagram|twitter|tiktok|yelp|apple|microsoft|x)\.[a-z.]+$/i;
 const cache = new Map<string, { at: number; body: unknown }>();
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<Response> {
+  if (req.nextUrl.searchParams.get("refresh") === "1" && wantsFresh() === false) return withFreshData(() => GET(req));
   try {
     const user = await requireUser();
     const websiteId = req.nextUrl.searchParams.get("websiteId") ?? "";

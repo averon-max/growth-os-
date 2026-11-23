@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchRankedKeywords, fetchSearchVolume, fetchKeywordDifficulty } from "@/lib/keywords/dataforseo-provider";
 import { fetchSitemapUrls } from "./sitemap";
 import { dfs, num, str, rec } from "@/lib/dataforseo/client";
+import { wantsFresh, withFreshData } from "@/lib/dataforseo/fresh";
 
 export type KeywordSource = "GSC" | "Ranked" | "Article" | "Tracked";
 export interface PlannerKeyword {
@@ -36,6 +37,7 @@ const cache = new Map<string, { at: number; report: PlannerReport }>();
 const TTL = 30 * 60 * 1000;
 
 export async function analyzeSite(opts: { websiteId: string; workspaceId: string; siteUrl: string; refresh?: boolean }): Promise<PlannerReport> {
+  if (opts.refresh === true && wantsFresh() === false) return withFreshData(() => analyzeSite(opts));
   const hit = cache.get(opts.websiteId);
   if (hit && opts.refresh !== true && Date.now() - hit.at < TTL) return { ...hit.report, fromCache: true };
 

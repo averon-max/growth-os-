@@ -934,11 +934,29 @@ model ApiCache {
   endpoint  String
   response  Json
   cost      Float    @default(0)
+  category  String   @default("other")
   hits      Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([endpoint])
+  @@index([category, createdAt])
+}
+
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model DfsSpend {
+  date     DateTime @db.Date
+  endpoint String
+  category String
+  calls    Int      @default(0)
+  cost     Float    @default(0)
+
+  @@id([date, endpoint])
 }
 
 /// Бесплатные бэклинки: импорт CSV (GSC / Ahrefs / Bing) и Bing Webmaster API

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TIERS } from "@/lib/retention";
 import RetentionForm from "./retention-form";
+import CachePanel from "./cache-panel";
 
 export const metadata: Metadata = { title: "Data retention · Hyprlyx" };
 
@@ -14,6 +15,7 @@ export default function DataRetentionPage() {
         approved or published articles are never deleted automatically.
       </p>
       <RetentionForm tiers={JSON.parse(JSON.stringify(tiers))} />
+      <CachePanel />
     </div>
   );
 }

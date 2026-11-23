@@ -62,7 +62,7 @@ export default function RetentionForm({ tiers }: { tiers: Tier[] }) {
         {state === "error" ? <span style={{ fontSize: 13, color: "var(--danger)" }}>{error}</span> : null}
       </div>
       <p style={{ marginTop: 28, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.6 }}>
-        System records are handled automatically: data provider caches 30 days, security logs and rate limits 1–7 days, billing events 30 days,
+        System records are handled automatically: security logs and rate limits 1–7 days, billing events 30 days,
         usage counters 62 days. Billing records required by tax law are kept by Stripe.
       </p>
     </>

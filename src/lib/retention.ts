@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { SETTINGS_KEY, normalizeDfs } from "@/lib/dataforseo/cache-settings";
 
 /**
  * Data retention tiers. 0 = keep forever.
@@ -147,7 +148,11 @@ export async function cleanWorkspace(workspaceId: string, s: RetentionSettings, 
 }
 
 export async function cleanGlobal(counts: Counts) {
-  await run(counts, "apiCache", `DELETE FROM "ApiCache" WHERE "updatedAt" < now() - make_interval(days => $1)`, GLOBAL.apiCacheDays);
+  // Saved DataForSEO answers: each kind is kept for the days set in Settings → Data.
+  const dfs = normalizeDfs((await prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } }).catch(() => null))?.value);
+  for (const [category, days] of Object.entries(dfs.days)) {
+    await run(counts, `apiCache:${category}`, `DELETE FROM "ApiCache" WHERE category = $1 AND "createdAt" < now() - make_interval(days => $2)`, category, days);
+  }
   await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1)`, GLOBAL.suggestionCacheDays);
   await run(counts, "rateLimits", `DELETE FROM "AuthRateLimit" WHERE "resetAt" < now() - interval '1 day'`);
   await run(counts, "resetTokens", `DELETE FROM "PasswordResetToken" WHERE "expiresAt" < now() - make_interval(days => $1)`, GLOBAL.resetTokenDays);
