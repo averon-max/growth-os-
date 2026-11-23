@@ -14,7 +14,7 @@ export default function CookiesPage() {
       <div className={s.summary}>
         <p>
           <strong>Short version.</strong> We only use cookies that are needed to log you in, keep your session secure and remember a couple of
-          interface choices. No advertising cookies, no cross-site tracking, so there&apos;s no cookie banner to click.
+          interface choices. No advertising cookies, no cross-site tracking. We show a short notice once, on your first visit.
         </p>
       </div>
 
@@ -32,6 +32,7 @@ export default function CookiesPage() {
           <tr><td>__Secure-next-auth.session-token</td><td>Keeps you logged in. Encrypted, HTTP-only, sent only over HTTPS.</td><td>30 days</td></tr>
           <tr><td>__Host-next-auth.csrf-token</td><td>Protects forms against cross-site request forgery.</td><td>Session</td></tr>
           <tr><td>__Secure-next-auth.callback-url</td><td>Returns you to the right page after logging in.</td><td>Session</td></tr>
+          <tr><td>hyprlyx_cookie_notice</td><td>Remembers that you&apos;ve seen the cookie notice, so it isn&apos;t shown again.</td><td>12 months</td></tr>
         </tbody>
       </table>
 

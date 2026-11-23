@@ -20,11 +20,11 @@ export const SECTION_MIN_PLAN: Record<string, PlanId> = {
   seo: "STARTER",
 
   content: "GROWTH",
-  audience: "GROWTH",
-  competitors: "GROWTH",
-  backlinks: "GROWTH",
-  bots: "GROWTH",
-  "bots-crawlers": "GROWTH",
+  audience: "STARTER",
+  competitors: "STARTER",
+  backlinks: "STARTER",
+  bots: "STARTER",
+  "bots-crawlers": "STARTER",
 
   automations: "AUTOPILOT",
   workflows: "AUTOPILOT",

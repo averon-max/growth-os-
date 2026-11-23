@@ -19,8 +19,8 @@ export const metadata: Metadata = {
 
 const DESC: Record<PlanId, string> = {
   FREE: "One website and the overview. Free, no card needed.",
-  STARTER: "Keyword data, site audits and publishing for one site.",
-  GROWTH: "Content, backlinks, competitors and traffic for up to 5 sites.",
+  STARTER: "Everything except AI writing, for one website.",
+  GROWTH: "Adds the AI writer, with room for up to 5 websites.",
   AUTOPILOT: "Everything, with room for agencies and many sites.",
 };
 

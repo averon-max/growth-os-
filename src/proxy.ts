@@ -54,7 +54,9 @@ export async function proxy(req: NextRequest) {
       // Only requests that can buy new data count: writes, refreshes and live research. Opening pages with saved data is free.
       const costly = req.method !== "GET" || /explore|serp|research|live|refresh=1|fresh=1/.test(path + req.nextUrl.search);
       if (costly && (await isTrialing(userId))) {
-        const allowed = await limit(`trial:${userId}`, trialPaidRequests(), TRIAL_DAYS * 24 * 60 * 60 * 1000);
+        const heavy = /^\/api\/(backlinks|competitors)(\/|$)/.test(path);
+        const allowed = (await limit(`trial:${userId}`, trialPaidRequests(), TRIAL_DAYS * 24 * 60 * 60 * 1000))
+          && (!heavy || (await limit(`trial-heavy:${userId}`, 10, TRIAL_DAYS * 24 * 60 * 60 * 1000)));
         if (!allowed) {
           return NextResponse.json(
             { error: "You've used the data included in the free trial. Start your plan now to keep going.", trialLimit: true, upgrade: "/dashboard/settings/billing" },

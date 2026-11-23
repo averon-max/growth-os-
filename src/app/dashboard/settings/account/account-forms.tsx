@@ -131,7 +131,7 @@ export default function AccountForms(p: Props) {
             <div style={{ fontSize: 14, fontWeight: 500 }}>{p.plan}{p.planSource === "manual" ? " · granted" : ""}</div>
             <p style={note}>{p.plan === "FREE" ? "Free plan" : p.renews ? `${p.planStatus} · until ${p.renews}` : p.planStatus}</p>
           </div>
-          <Link href="/pricing" style={{ ...ghost, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{p.plan === "FREE" ? "Upgrade" : "Change plan"}</Link>
+          <Link href={p.plan === "FREE" ? "/pricing" : "/dashboard/settings/billing"} style={{ ...ghost, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{p.plan === "FREE" ? "Upgrade" : "Manage billing"}</Link>
         </div>
       </section>
 
@@ -149,7 +149,7 @@ export default function AccountForms(p: Props) {
         <div style={body}>
           <p style={note}>
             Permanently deletes your account and every workspace where you are the only member: websites, keywords, articles and history.
-            This can&apos;t be undone. Cancel any paid plan first.
+            This can&apos;t be undone. Any paid subscription is cancelled right away and your saved card is removed, so you won&apos;t be charged again.
           </p>
           <div>
             <label style={label} htmlFor="acc-confirm">Type <b>{p.email}</b> to confirm</label>

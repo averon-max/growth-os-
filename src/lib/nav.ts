@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BookOpen,
   Bot,
   Compass,
   FileText,
@@ -102,6 +103,7 @@ export const FOOTER_EXTRA: NavSection[] = [
     items: [
       { label: "Settings", href: "/dashboard/settings", icon: Settings },
       { label: "Add website", href: "/dashboard/add-website", icon: Plus },
+      { label: "Blog", href: "/blog", icon: BookOpen, keepSite: false },
       { label: "Support", href: "/support", icon: LifeBuoy, keepSite: false },
     ],
   },

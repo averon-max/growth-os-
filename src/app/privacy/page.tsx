@@ -114,6 +114,7 @@ export default function PrivacyPage() {
       <h2>6. How long we keep it</h2>
       <ul>
         <li><strong>Account and content:</strong> while your account is active; deleted within 30 days after you close it.</li>
+        <li><strong>Billing:</strong> when you delete your account we cancel your subscription immediately and delete your customer record and saved cards at Stripe. Invoices and payment records are kept as long as tax law requires.</li>
         <li><strong>Data from connected services:</strong> until you disconnect the service or delete the website from Hyprlyx.</li>
         <li><strong>Billing records:</strong> up to 7 years, because tax law requires it.</li>
         <li><strong>Security logs and rate-limit records:</strong> up to 90 days.</li>

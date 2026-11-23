@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Building2,
   Cable,
+  CreditCard,
   Database,
   Globe,
   UserRound,
@@ -161,6 +162,16 @@ export default async function SettingsPage() {
                 </div>
               </div>
               <div className={styles.issueMeta}><Link href="/dashboard/settings/account" className={styles.link}>Manage →</Link></div>
+            </div>
+            <div className={styles.issueRow}>
+              <div className={styles.issueMain}>
+                <CreditCard size={14} className={styles.rowIcon} />
+                <div>
+                  <div className={styles.issueTitle}>Billing</div>
+                  <div className={styles.issueDesc}>Plan, card, invoices, cancel subscription</div>
+                </div>
+              </div>
+              <div className={styles.issueMeta}><Link href="/dashboard/settings/billing" className={styles.link}>Manage →</Link></div>
             </div>
             <div className={styles.issueRow}>
               <div className={styles.issueMain}>

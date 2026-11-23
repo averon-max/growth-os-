@@ -4,6 +4,7 @@ import { checkRequest } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { requestPasswordReset } from "@/lib/password-reset";
 import { audit } from "@/lib/admin/core";
+import { closeBilling } from "@/lib/billing/close";
 
 /*
  * Actions on one user. Body: { userId, action, ... }
@@ -57,11 +58,13 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Type the user's email exactly to confirm." }, { status: 400 });
         }
         const owned = user.memberships.filter((m) => m.role === "OWNER").map((m) => m.workspaceId);
-        const paying = await prisma.subscription.findFirst({
-          where: { workspaceId: { in: owned }, source: "stripe", status: { in: ["active", "trialing", "past_due"] }, plan: { not: "FREE" } },
-          select: { stripeCustomerId: true },
-        });
-        if (paying) return NextResponse.json({ error: "This user pays through Stripe. Cancel the subscription in Stripe first." }, { status: 409 });
+        // Stop billing first (cancel subscriptions now, delete the Stripe customer and its cards). If Stripe fails, nothing is deleted.
+        let billing = { cancelled: 0, customersDeleted: 0 };
+        try {
+          billing = await closeBilling(owned);
+        } catch (e) {
+          return NextResponse.json({ error: `Stripe refused, nothing was deleted: ${(e as Error).message}` }, { status: 502 });
+        }
         let removedWorkspaces = 0;
         await prisma.$transaction(async (tx) => {
           for (const workspaceId of owned) {
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
           }
           await tx.user.delete({ where: { id: user.id } });
         });
-        await audit(admin, "user.delete", target, { removedWorkspaces });
+        await audit(admin, "user.delete", target, { removedWorkspaces, ...billing });
         return NextResponse.json({ ok: true });
       }
       default:

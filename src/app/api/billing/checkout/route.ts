@@ -65,12 +65,15 @@ export async function POST(request: Request) {
         if (item?.price?.id === priceId) {
           return NextResponse.json({ error: `You're already on ${PLANS[planId].name}.` }, { status: 400 });
         }
+        if (current.cancel_at_period_end || current.metadata?.workspaceId !== targetWorkspaceId) {
+          await stripe().subscriptions.update(current.id, { cancel_at_period_end: false, metadata: { ...current.metadata, workspaceId: targetWorkspaceId } });
+        }
+        const trialing = current.status === "trialing";
         const updated = await stripe().subscriptions.update(current.id, {
           items: [{ id: item.id, price: priceId, quantity: 1 }],
-          proration_behavior: "always_invoice",
+          proration_behavior: trialing ? "none" : "always_invoice",
+          ...(trialing ? { trial_end: "now" as const } : {}),
           payment_behavior: "pending_if_incomplete",
-          cancel_at_period_end: false,
-          metadata: { ...current.metadata, workspaceId: targetWorkspaceId },
         });
         await syncSubscription(targetWorkspaceId, updated);
         return NextResponse.json({ url: `${base}/dashboard?checkout=success` });
@@ -91,6 +94,9 @@ export async function POST(request: Request) {
         customer_email: customer ? undefined : user.email,
         allow_promotion_codes: true,
         payment_method_collection: "always",
+        ...(trial
+          ? { custom_text: { submit: { message: `Free for ${TRIAL_DAYS} days. On ${new Date(Date.now() + TRIAL_DAYS * 864e5).toDateString()} your card is charged the ${PLANS[planId].name} price shown above, then every month until you cancel. Cancel anytime before then in Settings → Billing and you pay nothing.` } } }
+          : {}),
         subscription_data: {
           metadata: { workspaceId: targetWorkspaceId },
           ...(trial ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: "cancel" as const } } } : {}),
