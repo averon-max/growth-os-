@@ -88,12 +88,23 @@
 .issueRec { margin: 0 0 10px; color: #d0d6e0; font-size: 12.5px; line-height: 1.55; }
 .issueRec::before { content: "How to fix: "; color: #62666d; }
 .urls { display: flex; flex-direction: column; border: 1px solid #1d1e22; border-radius: 6px; overflow: hidden; }
-.url { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; padding: 7px 10px; border-bottom: 1px solid #17181b; font-size: 12px; }
+.url { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; align-items: center; gap: 12px; padding: 6px 10px; border-bottom: 1px solid #17181b; font-size: 12px; }
 .url:last-child { border-bottom: 0; }
 .url a { color: #a0a4ab; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono, ui-monospace, monospace); }
 .url a:hover { color: #f7f8f8; }
 .url span { color: #62666d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { padding: 28px 16px; color: #62666d; font-size: 13px; text-align: center; }
+
+.urlActions { display: inline-flex; gap: 4px; justify-content: flex-end; }
+.mini { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border: 1px solid #26282d; border-radius: 5px; background: #121314; color: #a0a4ab !important; font: inherit; font-size: 11.5px; font-family: inherit !important; white-space: nowrap; cursor: pointer; text-decoration: none; }
+.mini:hover { border-color: #34363c; color: #f7f8f8 !important; }
+.fixWrap { border-bottom: 1px solid #17181b; }
+.fixWrap:last-child { border-bottom: 0; }
+.fixWrap .fix { border-bottom: 0; }
+.fixPages { padding: 0 16px 14px 56px; }
+.showPages { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 0; border: 0; background: none; color: #93c5fd; font: inherit; font-size: 12.5px; font-weight: 510; cursor: pointer; }
+.showPages:hover { color: #bfdbfe; }
+.showPages svg { transition: transform .15s ease; }
 
 /* states */
 .state { padding: 22px; border: 1px solid #1d1e22; border-radius: 10px; color: #8a8f98; font-size: 13px; line-height: 1.6; }
@@ -110,4 +121,6 @@
   .issue summary { grid-template-columns: 10px minmax(0, 1fr) auto; }
   .issueSev { display: none; }
   .url { grid-template-columns: 1fr; }
+  .urlActions { justify-content: flex-start; }
+  .fixPages { padding-left: 16px; }
 }

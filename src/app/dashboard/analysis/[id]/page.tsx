@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { Check, ChevronDown, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import ui from "@/components/dashboard/ui.module.css";
 import s from "./analysis.module.css";
@@ -68,6 +68,105 @@ const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#
 const path = (u: string) => { try { const x = new URL(u); return x.pathname + x.search || "/"; } catch { return u; } };
 const pl = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const tone = (c: string) => ({ "--tone": c }) as React.CSSProperties;
+
+/** Opportunities don't store which issues they came from, so match by type, then by the words in the title. */
+const OPP_KEYWORDS: [RegExp, string][] = [
+  [/broken.*link/i, "BROKEN_INTERNAL_LINK"],
+  [/duplicate.*title/i, "DUPLICATE_TITLE"],
+  [/missing.*title/i, "MISSING_TITLE"],
+  [/title.*(long|short)/i, "TITLE_TOO_LONG"],
+  [/duplicate.*meta/i, "DUPLICATE_META_DESCRIPTION"],
+  [/meta description/i, "MISSING_META_DESCRIPTION"],
+  [/thin|expand.*content/i, "THIN_CONTENT"],
+  [/canonical/i, "MISSING_CANONICAL"],
+  [/structured data|schema/i, "MISSING_SCHEMA"],
+  [/alt text|image/i, "IMAGE_MISSING_ALT"],
+  [/h1|heading/i, "MISSING_H1"],
+  [/orphan|internal link/i, "ORPHAN_PAGE"],
+];
+function issuesFor(o: Opportunity, all: Issue[]): Issue[] {
+  const exact = all.filter((i) => i.type === o.type);
+  if (exact.length) return exact;
+  const hit = OPP_KEYWORDS.find(([re]) => re.test(o.title));
+  if (!hit) return [];
+  const t = hit[1];
+  const family = t === "TITLE_TOO_LONG" ? ["TITLE_TOO_LONG", "TITLE_TOO_SHORT"] : t === "MISSING_H1" ? ["MISSING_H1", "MULTIPLE_H1"] : [t];
+  return all.filter((i) => family.includes(i.type));
+}
+
+/** A link that opens the page and, where the problem has visible text, scrolls to it and highlights it. */
+function pageLink(i: Issue): string | null {
+  if (!i.pageUrl) return null;
+  const quoted = (i.evidence ?? "").match(/["“']([^"”']{3,80})["”']/)?.[1];
+  const visible = quoted && !["MISSING_TITLE", "TITLE_TOO_LONG", "TITLE_TOO_SHORT", "DUPLICATE_TITLE", "MISSING_META_DESCRIPTION", "META_DESCRIPTION_TOO_LONG", "DUPLICATE_META_DESCRIPTION", "MISSING_CANONICAL", "MISSING_SCHEMA"].includes(i.type);
+  return visible ? `${i.pageUrl.split("#")[0]}#:~:text=${encodeURIComponent(quoted!)}` : i.pageUrl;
+}
+
+/** An outside tool that shows the part of the page Google reads but visitors don't see. */
+function checkTool(i: Issue): { label: string; href: string } | null {
+  if (!i.pageUrl) return null;
+  const u = encodeURIComponent(i.pageUrl);
+  if (i.type === "MISSING_SCHEMA") return { label: "Rich results test", href: `https://search.google.com/test/rich-results?url=${u}` };
+  if (/TITLE|META_DESCRIPTION|CANONICAL/.test(i.type)) return { label: "View in Google", href: `https://www.google.com/search?q=${encodeURIComponent(`site:${i.pageUrl}`)}` };
+  return null;
+}
+
+function PageList({ items, limit = 50 }: { items: Issue[]; limit?: number }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (u: string) => { void navigator.clipboard?.writeText(u); setCopied(u); setTimeout(() => setCopied(null), 1500); };
+  return (
+    <div className={s.urls}>
+      {items.slice(0, limit).map((i) => {
+        const link = pageLink(i);
+        const tool = checkTool(i);
+        return (
+          <div key={i.id} className={s.url}>
+            {i.pageUrl ? <a href={link!} target="_blank" rel="noreferrer" title={i.pageUrl}>{path(i.pageUrl)}</a> : <span>Whole site</span>}
+            <span title={i.evidence ?? i.description}>{i.evidence ?? i.description}</span>
+            <span className={s.urlActions}>
+              {i.pageUrl ? (
+                <>
+                  <a className={s.mini} href={link!} target="_blank" rel="noreferrer" title={link !== i.pageUrl ? "Open the page at the problem" : "Open the page"}><ExternalLink size={12} />{link !== i.pageUrl ? "Show on page" : "Open"}</a>
+                  {tool ? <a className={s.mini} href={tool.href} target="_blank" rel="noreferrer">{tool.label}</a> : null}
+                  <button type="button" className={s.mini} onClick={() => copy(i.pageUrl!)} aria-label="Copy page URL">{copied === i.pageUrl ? <Check size={12} /> : <Copy size={12} />}</button>
+                </>
+              ) : null}
+            </span>
+          </div>
+        );
+      })}
+      {items.length > limit ? <div className={s.url}><span>…and {items.length - limit} more</span></div> : null}
+    </div>
+  );
+}
+
+function FixRow({ o, rank, items }: { o: Opportunity; rank: number; items: Issue[] }) {
+  const [open, setOpen] = useState(false);
+  const im = impact(o.score);
+  return (
+    <div className={s.fixWrap}>
+      <div className={s.fix}>
+        <span className={s.rank}>{rank}</span>
+        <div>
+          <div className={s.fixTitle}>{o.title}</div>
+          <div className={s.fixWhy}>{o.reason}</div>
+          <div className={s.fixHow}>{o.recommendation}</div>
+          {items.length ? (
+            <button type="button" className={s.showPages} aria-expanded={open} onClick={() => setOpen(!open)}>
+              <ChevronDown size={13} style={{ transform: open ? "rotate(180deg)" : undefined }} />
+              {open ? "Hide pages" : `Show ${pl(new Set(items.map((x) => x.pageUrl ?? "site")).size, "page")}`}
+            </button>
+          ) : null}
+        </div>
+        <div className={s.fixSide}>
+          <span className={s.impact} style={tone(im.tone)}>{im.text}</span>
+          <div className={s.affects}>{pl(o.affectedPages, "page")}</div>
+        </div>
+      </div>
+      {open ? <div className={s.fixPages}><PageList items={items} /></div> : null}
+    </div>
+  );
+}
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
@@ -239,23 +338,7 @@ export default function AnalysisPage() {
                     <span className={s.panelCount}>{top.length}</span>
                     <span className={s.panelHint}>Ordered by how much each fix helps</span>
                   </div>
-                  {top.map((o, i) => {
-                    const im = impact(o.score);
-                    return (
-                      <div key={o.id} className={s.fix}>
-                        <span className={s.rank}>{i + 1}</span>
-                        <div>
-                          <div className={s.fixTitle}>{o.title}</div>
-                          <div className={s.fixWhy}>{o.reason}</div>
-                          <div className={s.fixHow}>{o.recommendation}</div>
-                        </div>
-                        <div className={s.fixSide}>
-                          <span className={s.impact} style={tone(im.tone)}>{im.text}</span>
-                          <div className={s.affects}>{pl(o.affectedPages, "page")}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {top.map((o, i) => <FixRow key={o.id} o={o} rank={i + 1} items={issuesFor(o, issues)} />)}
                 </section>
               ) : null}
 
@@ -305,15 +388,7 @@ export default function AnalysisPage() {
                     </summary>
                     <div className={s.issueBody}>
                       <p className={s.issueRec}>{g.recommendation}</p>
-                      <div className={s.urls}>
-                        {g.items.slice(0, 50).map((i) => (
-                          <div key={i.id} className={s.url}>
-                            {i.pageUrl ? <a href={i.pageUrl} target="_blank" rel="noreferrer" title={i.pageUrl}>{path(i.pageUrl)}</a> : <span>Whole site</span>}
-                            <span title={i.evidence ?? i.description}>{i.evidence ?? i.description}</span>
-                          </div>
-                        ))}
-                        {g.items.length > 50 ? <div className={s.url}><span>…and {g.items.length - 50} more</span></div> : null}
-                      </div>
+                      <PageList items={g.items} />
                     </div>
                   </details>
                 ))}
