@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
 
     await requireWorkspaceAccess(user.id, workspaceId);
 
-    const page = Number(req.nextUrl.searchParams.get("page") ?? "1");
-    const limit = Number(req.nextUrl.searchParams.get("limit") ?? "25");
+    const page = Math.min(1000, Math.max(1, Math.floor(Number(req.nextUrl.searchParams.get("page") ?? "1")) || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(Number(req.nextUrl.searchParams.get("limit") ?? "25")) || 25));
 
     const result = await getAppliedFixesForWorkspace(workspaceId, { page, limit });
     return NextResponse.json(result);

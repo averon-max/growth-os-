@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { clientIp, limit } from "@/lib/auth-guard";
+import { bestPlanForUser, planName, requiredPlanFor } from "@/lib/billing/api-gate";
+import { PLAN_RANK } from "@/lib/billing/access";
 
 /**
  * Site-wide rate limit for every API route, counted per IP in Postgres
@@ -31,6 +34,22 @@ export async function proxy(req: NextRequest) {
       { error: "Too many requests. Slow down and try again in a minute." },
       { status: 429, headers: { "Retry-After": String(Math.ceil(rule.windowMs / 1000)) } },
     );
+  }
+
+  // Paid features: the API needs the same plan as the page. Not signed in → the route itself answers 401.
+  const required = requiredPlanFor(path);
+  if (required) {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const userId = typeof token?.userId === "string" ? token.userId : null;
+    if (userId) {
+      const plan = await bestPlanForUser(userId);
+      if (PLAN_RANK[plan] < PLAN_RANK[required]) {
+        return NextResponse.json(
+          { error: `This needs the ${planName(required)} plan.`, requiredPlan: required, upgrade: "/pricing" },
+          { status: 402 },
+        );
+      }
+    }
   }
   return NextResponse.next();
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, authErrorResponse } from "@/lib/auth-helpers";
+import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { runWriter } from "@/lib/writer/orchestrator";
 import { extractArticleHeadings } from "@/lib/content/article-analyzer";
 import type { ArticleCategory } from "@/lib/writer/templates";
@@ -33,6 +33,15 @@ export async function POST(req: NextRequest) {
     const exactKeyword = body.exactKeyword === true;
     const websiteId = typeof body.websiteId === "string" ? body.websiteId.trim() : "";
     const extraKeywords = cleanExtraKeywords(body.keywords, seedKeyword);
+    // Never read or write another account's website: its articles feed internal links and the new article is saved into it.
+    if (websiteId) {
+      try {
+        await requireWebsiteAccess(userId, websiteId);
+      } catch (error) {
+        const denied = authErrorResponse(error);
+        return NextResponse.json(denied.body, { status: denied.status });
+      }
+    }
 
     const allowedCategories: readonly ArticleCategory[] = [
       "definition","how-it-works","how-to","troubleshooting","comparison",

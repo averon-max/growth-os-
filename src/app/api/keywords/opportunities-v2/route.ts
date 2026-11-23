@@ -21,8 +21,9 @@ export async function POST(req: NextRequest) {
         error: "Explicit paid research authorization required",
       }, { status: 403 });
     }
-    const limit = input.limit === undefined ? undefined : Number(input.limit);
-    const deepSerpLimit = input.deepSerpLimit === undefined ? undefined : Number(input.deepSerpLimit);
+    const clamp = (v: unknown, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.floor(Number(v)) || lo));
+    const limit = input.limit === undefined ? undefined : clamp(input.limit, 1, 100);
+    const deepSerpLimit = input.deepSerpLimit === undefined ? undefined : clamp(input.deepSerpLimit, 0, 10);
     if (input.useGptDecision !== undefined && typeof input.useGptDecision !== "boolean") {
       return NextResponse.json({ error: "useGptDecision must be boolean" }, { status: 400 });
     }

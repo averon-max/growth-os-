@@ -56,11 +56,11 @@ export async function POST(req: Request) {
       to: email,
       replyTo: inbox,
       subject: `We got your message [#${ticket.number}]`,
-      text: `Thanks for reaching out. We received your request #${ticket.number} ("${subject}") and usually reply within one business day.\n\nJust reply to this email to add details.\n\n— Hyprlyx support`,
+      text: `Thanks for reaching out. We received your request #${ticket.number} and usually reply within one business day.\n\nJust reply to this email to add details.\n\n— Hyprlyx support`,
       html: emailHtml({
         preview: `Request #${ticket.number} received. We usually reply within one business day.`,
         title: `We got your message`,
-        body: `Thanks for reaching out. Your request #${ticket.number} — “${subject}” — is with our team. We usually reply within one business day. To add details, just reply to this email.`,
+        body: `Thanks for reaching out. Your request #${ticket.number} is with our team. We usually reply within one business day. To add details, just reply to this email.`,
         button: { label: "Open Hyprlyx", url: `${site}/dashboard` },
         note: "You're receiving this because you contacted Hyprlyx support.",
       }),
