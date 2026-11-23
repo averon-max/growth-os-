@@ -1,265 +1,326 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { RefreshCw } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
-import styles from "@/components/dashboard/ui.module.css";
+import ui from "@/components/dashboard/ui.module.css";
+import s from "./analysis.module.css";
 
 interface Analysis {
   id: string;
+  websiteId?: string;
   status: string;
   errorMessage: string | null;
   overallScore: number | null;
-  technicalScore: number | null;
-  contentScore: number | null;
-  structureScore: number | null;
-  indexabilityScore: number | null;
   pagesCount: number | null;
+  completedAt?: string | null;
+  createdAt?: string;
   website: { url: string; business: { name: string } };
   _count: { pages: number; issues: number; opportunities: number };
 }
+interface Issue { id: string; type: string; severity: string; pageUrl: string | null; description: string; evidence: string | null; recommendation: string }
+interface Opportunity { id: string; title: string; type: string; priority: string; score: number; reason: string; recommendation: string; affectedPages: number }
 
-interface Issue {
-  id: string;
-  type: string;
-  severity: string;
-  pageUrl: string | null;
-  description: string;
-  evidence: string | null;
-  recommendation: string;
-}
+type Sev = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+type Group = { type: string; title: string; severity: Sev; recommendation: string; items: Issue[] };
+const SEV: Sev[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+const SEV_LABEL: Record<Sev, string> = { CRITICAL: "Critical", HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
+const SEV_TONE: Record<Sev, string> = { CRITICAL: "#d3767f", HIGH: "#d49a4e", MEDIUM: "#60a5fa", LOW: "#6b6f76" };
+const sevOf = (v: string): Sev => (SEV.includes(v as Sev) ? (v as Sev) : "LOW");
 
-interface Opportunity {
-  id: string;
-  title: string;
-  type: string;
-  priority: string;
-  score: number;
-  reason: string;
-  recommendation: string;
-  affectedPages: number;
-}
+/** Same grouping as lib/seo-engine/scoring.ts. */
+const AREAS = [
+  { key: "technical", name: "Technical", what: "Page titles, broken links and structured data", types: ["MISSING_TITLE", "TITLE_TOO_LONG", "TITLE_TOO_SHORT", "DUPLICATE_TITLE", "MISSING_SCHEMA", "BROKEN_INTERNAL_LINK"] },
+  { key: "content", name: "Content", what: "Meta descriptions, page length and image alt text", types: ["MISSING_META_DESCRIPTION", "META_DESCRIPTION_TOO_LONG", "DUPLICATE_META_DESCRIPTION", "IMAGE_MISSING_ALT", "THIN_CONTENT"] },
+  { key: "structure", name: "Structure", what: "One H1 per page and internal links to every page", types: ["MISSING_H1", "MULTIPLE_H1", "ORPHAN_PAGE"] },
+  { key: "indexability", name: "Indexability", what: "Canonical tags that tell Google which URL to show", types: ["MISSING_CANONICAL"] },
+];
 
-const SEVERITY_TONE: Record<string, "danger" | "warning" | "accent" | "muted"> = {
-  CRITICAL: "danger",
-  HIGH: "warning",
-  MEDIUM: "accent",
-  LOW: "muted",
+const TYPE_LABEL: Record<string, string> = {
+  MISSING_TITLE: "Missing page title",
+  TITLE_TOO_LONG: "Title too long",
+  TITLE_TOO_SHORT: "Title too short",
+  DUPLICATE_TITLE: "Duplicate titles",
+  MISSING_META_DESCRIPTION: "Missing meta description",
+  META_DESCRIPTION_TOO_LONG: "Meta description too long",
+  DUPLICATE_META_DESCRIPTION: "Duplicate meta descriptions",
+  MISSING_H1: "Missing H1 heading",
+  MULTIPLE_H1: "More than one H1",
+  MISSING_CANONICAL: "Missing canonical tag",
+  IMAGE_MISSING_ALT: "Images without alt text",
+  THIN_CONTENT: "Thin content (under 300 words)",
+  MISSING_SCHEMA: "No structured data",
+  ORPHAN_PAGE: "Pages no other page links to",
+  BROKEN_INTERNAL_LINK: "Broken internal links",
 };
+const typeLabel = (t: string, fallback: string) => TYPE_LABEL[t] ?? (fallback || t.toLowerCase().replace(/_/g, " "));
 
-const PRIORITY_TONE: Record<string, "danger" | "warning" | "accent" | "muted"> = {
-  HIGH: "warning",
-  MEDIUM: "accent",
-  LOW: "muted",
-};
-
-const POLL_INTERVAL_MS = 3000;
-
-const PROGRESS_STEPS = [
-  { key: "QUEUED", label: "Starting analysis" },
-  { key: "RUNNING", label: "Crawling website and analyzing pages" },
-  { key: "COMPLETED", label: "Completed" },
-] as const;
+function verdict(score: number | null) {
+  if (score === null) return { text: "Not scored", tone: "#6b6f76" };
+  if (score >= 90) return { text: "Good", tone: "#4daf6d" };
+  if (score >= 70) return { text: "Fair", tone: "#9cc46b" };
+  if (score >= 50) return { text: "Needs work", tone: "#d4a94e" };
+  return { text: "Poor", tone: "#d3767f" };
+}
+const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#d49a4e" } : score >= 60 ? { text: "Medium impact", tone: "#60a5fa" } : { text: "Low impact", tone: "#8a8f98" });
+const path = (u: string) => { try { const x = new URL(u); return x.pathname + x.search || "/"; } catch { return u; } };
+const pl = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const tone = (c: string) => ({ "--tone": c }) as React.CSSProperties;
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Sev | "ALL">("ALL");
+  const [rerun, setRerun] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     let interval: ReturnType<typeof setInterval>;
-
     const fetchData = async () => {
       try {
         const res = await fetch(`/api/analyses/${id}`);
-        if (!res.ok) {
-          setError("Analysis not found.");
-          setLoading(false);
-          return;
-        }
+        if (!res.ok) { setError("Analysis not found."); setLoading(false); clearInterval(interval); return; }
         const data = await res.json();
         setAnalysis(data.analysis);
         setLoading(false);
-
         if (data.analysis.status === "COMPLETED") {
           clearInterval(interval);
-          const [issuesRes, oppsRes] = await Promise.all([
-            fetch(`/api/analyses/${id}/issues`),
-            fetch(`/api/analyses/${id}/opportunities`),
-          ]);
-          const issuesData = await issuesRes.json();
-          const oppsData = await oppsRes.json();
-          setIssues(issuesData.issues || []);
-          setOpportunities(oppsData.opportunities || []);
+          const [ir, or] = await Promise.all([fetch(`/api/analyses/${id}/issues`), fetch(`/api/analyses/${id}/opportunities`)]);
+          setIssues((await ir.json()).issues || []);
+          setOpportunities((await or.json()).opportunities || []);
         }
-
-        if (data.analysis.status === "FAILED") {
-          clearInterval(interval);
-        }
+        if (data.analysis.status === "FAILED") clearInterval(interval);
       } catch {
         setLoading(false);
         setError("Failed to load analysis.");
       }
     };
-
-    fetchData();
-    interval = setInterval(fetchData, POLL_INTERVAL_MS);
+    void fetchData();
+    interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, [id]);
 
-  if (loading) {
-    return (
-      <>
-        <Topbar title="Analysis" />
-        <div className={styles.pageBody}><p className={styles.awaitingLabel}>Loading...</p></div>
-      </>
-    );
+  const pages = analysis?.pagesCount ?? analysis?._count.pages ?? 0;
+
+  const groups = useMemo((): Group[] => {
+    const map = new Map<string, Group>();
+    for (const i of issues) {
+      const g: Group = map.get(i.type) ?? { type: i.type, title: typeLabel(i.type, i.description), severity: sevOf(i.severity), recommendation: i.recommendation, items: [] };
+      if (SEV.indexOf(sevOf(i.severity)) < SEV.indexOf(g.severity)) g.severity = sevOf(i.severity);
+      g.items.push(i);
+      map.set(i.type, g);
+    }
+    return [...map.values()].sort((a, b) => SEV.indexOf(a.severity) - SEV.indexOf(b.severity) || b.items.length - a.items.length);
+  }, [issues]);
+
+  const bySev = useMemo(() => Object.fromEntries(SEV.map((k) => [k, issues.filter((i) => sevOf(i.severity) === k).length])) as Record<Sev, number>, [issues]);
+  const affected = useMemo(() => new Set(issues.map((i) => i.pageUrl).filter(Boolean)).size, [issues]);
+
+  const areas = useMemo(() => AREAS.map((a) => {
+    const list = issues.filter((i) => a.types.includes(i.type));
+    const bad = new Set(list.map((i) => i.pageUrl).filter(Boolean)).size;
+    const kinds = groups.filter((g) => a.types.includes(g.type));
+    return { ...a, bad: Math.min(bad, pages), siteWide: list.some((i) => !i.pageUrl), kinds };
+  }), [issues, groups, pages]);
+
+  async function runAgain() {
+    if (!analysis?.websiteId) return router.push("/dashboard/seo");
+    setRerun(true);
+    const res = await fetch("/api/analyses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId: analysis.websiteId }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.analysisId) router.push(`/dashboard/analysis/${data.analysisId}`);
+    else { setRerun(false); setError(data.error ?? "Could not start a new audit."); }
   }
 
-  if (error || !analysis) {
-    return (
-      <>
-        <Topbar title="Analysis" />
-        <div className={styles.pageBody}>
-          <p style={{ color: "var(--danger)", marginBottom: 16, fontSize: "0.85rem" }}>{error || "Analysis not found."}</p>
-          <Link href="/dashboard" className={styles.link}>← Back to dashboard</Link>
-        </div>
-      </>
-    );
-  }
+  if (loading) return (<><Topbar title="Site audit" /><div className={ui.pageBody}><p className={ui.awaitingLabel}>Loading…</p></div></>);
 
-  const isRunning = analysis.status === "QUEUED" || analysis.status === "RUNNING";
-  const isCompleted = analysis.status === "COMPLETED";
-  const isFailed = analysis.status === "FAILED";
+  if (error || !analysis) return (
+    <>
+      <Topbar title="Site audit" />
+      <div className={ui.pageBody}>
+        <div className={`${s.state} ${s.stateBad}`}><strong>{error || "Analysis not found."}</strong><Link href="/dashboard/websites" className={s.back}>← Websites</Link></div>
+      </div>
+    </>
+  );
+
+  const running = analysis.status === "QUEUED" || analysis.status === "RUNNING";
+  const done = analysis.status === "COMPLETED";
+  const v = verdict(analysis.overallScore);
+  const when = analysis.completedAt ?? analysis.createdAt;
+  const name = analysis.website.business.name;
+  const shown: Group[] = filter === "ALL" ? groups : groups.filter((g) => g.severity === filter);
+  const top = [...opportunities].sort((a, b) => b.score - a.score);
 
   return (
     <>
-      <Topbar title="Analysis" subtitle={analysis.website.business.name} />
-      <div className={styles.pageBody} style={{ maxWidth: 1000 }}>
-        <Link href="/dashboard/websites" className={styles.backLink}>← Websites</Link>
-        <h1 className={styles.pageTitle} style={{ marginTop: 10 }}>{analysis.website.business.name}</h1>
-        <p className={`${styles.mono} ${styles.pageSubtitle}`}>{analysis.website.url}</p>
+      <Topbar title="Site audit" subtitle={name} />
+      <div className={ui.pageBody}>
+        <div className={s.wrap}>
+          <Link href="/dashboard/websites" className={s.back}>← Websites</Link>
 
-        {isRunning && (
-          <div className={styles.progressCard}>
-            <p className={styles.progressTitle}>Analysis in progress</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {PROGRESS_STEPS.map((step) => {
-                const isActive = step.key === analysis.status;
-                return (
-                  <div key={step.key} className={styles.progressStep}>
-                    <span className={styles.progressDot} data-active={isActive} />
-                    <span className={styles.progressStepLabel} data-active={isActive}>
-                      {step.label}{isActive ? "..." : ""}
-                    </span>
-                  </div>
-                );
-              })}
+          <div className={s.head}>
+            <div>
+              <h1 className={s.domain}>{name}</h1>
+              <p className={s.meta}>
+                <a href={analysis.website.url} target="_blank" rel="noreferrer">{analysis.website.url.replace(/^https?:\/\//, "")}</a>
+                {when && done ? ` · checked ${new Date(when).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}
+              </p>
             </div>
-            <p className={styles.progressHint}>This may take 30–90 seconds.</p>
+            {done || analysis.status === "FAILED" ? (
+              <button type="button" className={s.btn} onClick={() => void runAgain()} disabled={rerun}>
+                <RefreshCw size={13} />{rerun ? "Starting…" : "Run audit again"}
+              </button>
+            ) : null}
           </div>
-        )}
 
-        {isFailed && (
-          <div className={styles.errorCard}>
-            <p className={styles.errorTitle}>Analysis failed</p>
-            <p className={styles.errorDesc}>{analysis.errorMessage || "Unknown error."}</p>
-            <Link href="/dashboard/add-website" className={styles.link} style={{ display: "inline-block", marginTop: 14 }}>Try again →</Link>
-          </div>
-        )}
+          {running ? (
+            <div className={s.state}>
+              <strong><span className={s.pulse} />Checking {analysis.website.url.replace(/^https?:\/\//, "")}</strong>
+              Reading up to 25 pages and checking titles, descriptions, headings, links, canonicals and structured data. This usually takes 30–90 seconds; the page updates by itself.
+            </div>
+          ) : null}
 
-        {isCompleted && (
-          <>
-            <div className={styles.scoreGrid}>
-              {[
-                { label: "Overall", value: analysis.overallScore },
-                { label: "Technical", value: analysis.technicalScore },
-                { label: "Content", value: analysis.contentScore },
-                { label: "Structure", value: analysis.structureScore },
-                { label: "Indexability", value: analysis.indexabilityScore },
-              ].map((s) => (
-                <div key={s.label} className={styles.scoreCard}>
-                  <p
-                    className={`${styles.scoreValue} ${styles.mono}`}
-                    style={{ color: (s.value ?? 0) >= 70 ? "var(--success)" : (s.value ?? 0) >= 50 ? "var(--warning)" : "var(--danger)" }}
-                  >
-                    {s.value ?? "—"}
+          {analysis.status === "FAILED" ? (
+            <div className={`${s.state} ${s.stateBad}`}>
+              <strong>The audit couldn&apos;t finish</strong>
+              {analysis.errorMessage || "Unknown error."} Check that the site opens in a browser, then run the audit again.
+            </div>
+          ) : null}
+
+          {done ? (
+            <>
+              <section className={s.summary}>
+                <div className={s.health}>
+                  <div className={s.healthLabel}>Site health</div>
+                  <div className={s.healthValue}><strong>{analysis.overallScore ?? "—"}</strong><span>/ 100</span></div>
+                  <div className={s.verdict} style={tone(v.tone)}><i />{v.text}</div>
+                  <p className={s.healthNote}>Starts at 100. Each problem takes points off by severity; a problem repeated on many pages is capped so one issue can&apos;t sink the score.</p>
+                </div>
+                <div className={s.overview}>
+                  <p className={s.sentence}>
+                    {issues.length === 0 ? (
+                      <>No problems found on the <b>{pl(pages, "page")}</b> we checked.</>
+                    ) : (
+                      <>
+                        We checked <b>{pl(pages, "page")}</b> and found <b>{pl(groups.length, "kind")} of problem</b> on <b>{affected} of them</b>.
+                        {top[0] ? <> Fix first: <b>{top[0].title.toLowerCase()}</b>.</> : null}
+                      </>
+                    )}
                   </p>
-                  <p className={styles.scoreLabel}>{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.statGrid}>
-              <div className={styles.statCard}>
-                <p className={`${styles.statValue} ${styles.mono}`}>{analysis.pagesCount ?? 0}</p>
-                <p className={styles.statLabel}>Pages crawled</p>
-              </div>
-              <div className={styles.statCard}>
-                <p className={`${styles.statValue} ${styles.mono}`}>{analysis._count.issues}</p>
-                <p className={styles.statLabel}>SEO issues</p>
-              </div>
-              <div className={styles.statCard}>
-                <p className={`${styles.statValue} ${styles.mono}`}>{analysis._count.opportunities}</p>
-                <p className={styles.statLabel}>Opportunities</p>
-              </div>
-            </div>
-
-            {opportunities.length > 0 && (
-              <div className={styles.group}>
-                <div className={styles.groupHeader}>
-                  <span className={styles.groupLabel}>Opportunities</span>
-                  <span className={styles.groupCount}>{opportunities.length}</span>
-                </div>
-                {opportunities.map((o) => (
-                  <div key={o.id} className={styles.issueRow}>
-                    <div className={styles.issueMain}>
-                      <span className={styles.issueDot} data-tone={PRIORITY_TONE[o.priority] ?? "muted"} />
-                      <div style={{ minWidth: 0 }}>
-                        <div className={styles.issueTitle}>{o.title}</div>
-                        <div className={styles.issueDesc}>{o.reason}</div>
-                        <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {o.recommendation}</div>
+                  {issues.length > 0 ? (
+                    <>
+                      <div className={s.bar} role="img" aria-label={SEV.map((k) => `${SEV_LABEL[k]} ${bySev[k]}`).join(", ")}>
+                        {SEV.filter((k) => bySev[k] > 0).map((k) => <span key={k} style={{ ...tone(SEV_TONE[k]), width: `${(bySev[k] / issues.length) * 100}%` }} />)}
                       </div>
+                      <div className={s.legend}>
+                        {SEV.map((k) => <span key={k} style={tone(SEV_TONE[k])}><i />{SEV_LABEL[k]} <b>{bySev[k]}</b></span>)}
+                      </div>
+                    </>
+                  ) : null}
+                  <div className={s.facts}>
+                    <span>Pages checked <b>{pages}</b></span>
+                    <span>Pages with problems <b>{affected}</b></span>
+                    <span>Problems found <b>{issues.length}</b></span>
+                  </div>
+                </div>
+              </section>
+
+              {top.length > 0 ? (
+                <section className={s.panel}>
+                  <div className={s.panelHead}>
+                    <span className={s.panelTitle}>Fix first</span>
+                    <span className={s.panelCount}>{top.length}</span>
+                    <span className={s.panelHint}>Ordered by how much each fix helps</span>
+                  </div>
+                  {top.map((o, i) => {
+                    const im = impact(o.score);
+                    return (
+                      <div key={o.id} className={s.fix}>
+                        <span className={s.rank}>{i + 1}</span>
+                        <div>
+                          <div className={s.fixTitle}>{o.title}</div>
+                          <div className={s.fixWhy}>{o.reason}</div>
+                          <div className={s.fixHow}>{o.recommendation}</div>
+                        </div>
+                        <div className={s.fixSide}>
+                          <span className={s.impact} style={tone(im.tone)}>{im.text}</span>
+                          <div className={s.affects}>{pl(o.affectedPages, "page")}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+              ) : null}
+
+              <section className={s.panel}>
+                <div className={s.panelHead}>
+                  <span className={s.panelTitle}>By area</span>
+                  <span className={s.panelHint}>Green = pages with no problems in this area</span>
+                </div>
+                {areas.map((a) => (
+                  <div key={a.key} className={s.area}>
+                    <div>
+                      <div className={s.areaName}>{a.name}</div>
+                      <div className={s.areaWhat}>{a.what}</div>
                     </div>
-                    <div className={styles.issueMeta}>
-                      <span className={styles.mono} style={{ fontWeight: 600, color: "var(--primary)" }}>{o.score}</span>
-                      <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: 2 }}>{o.affectedPages} page{o.affectedPages === 1 ? "" : "s"}</div>
+                    <div className={s.areaIssues}>
+                      {a.kinds.length === 0 ? <span className={s.ok}>No problems found</span> : a.kinds.map((k, i) => (
+                        <span key={k.type}>{i ? " · " : ""}<em>{k.title}</em> on {pl(new Set(k.items.map((x) => x.pageUrl).filter(Boolean)).size || k.items.length, "page")}</span>
+                      ))}
+                    </div>
+                    <div className={s.pages}>
+                      <div className={s.pagesText}><span><b>{pages - a.bad}</b> of {pages} pages OK</span>{a.siteWide ? <span>+ site-wide</span> : null}</div>
+                      <div className={`${s.meter} ${pages === 0 ? s.meterClean : ""}`}><span style={{ width: `${pages ? ((pages - a.bad) / pages) * 100 : 0}%` }} /></div>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+              </section>
 
-            {issues.length > 0 && (
-              <div className={styles.group}>
-                <div className={styles.groupHeader}>
-                  <span className={styles.groupLabel}>SEO Issues</span>
-                  <span className={styles.groupCount}>{issues.length}</span>
+              <section className={s.panel}>
+                <div className={s.panelHead}>
+                  <span className={s.panelTitle}>All problems</span>
+                  <span className={s.panelCount}>{pl(groups.length, "kind")} · {issues.length} total</span>
+                  <div className={s.chips}>
+                    <button type="button" className={s.chip} data-on={filter === "ALL" ? "true" : "false"} onClick={() => setFilter("ALL")}>All</button>
+                    {SEV.filter((k) => bySev[k] > 0).map((k) => (
+                      <button key={k} type="button" className={s.chip} data-on={filter === k ? "true" : "false"} onClick={() => setFilter(k)}>{SEV_LABEL[k]} {bySev[k]}</button>
+                    ))}
+                  </div>
                 </div>
-                {issues.map((issue) => (
-                  <div key={issue.id} className={styles.issueRow}>
-                    <div className={styles.issueMain}>
-                      <span className={styles.issueDot} data-tone={SEVERITY_TONE[issue.severity] ?? "muted"} />
-                      <div style={{ minWidth: 0 }}>
-                        <div className={styles.issueTitle}>{issue.description}</div>
-                        {issue.evidence && <div className={styles.issueDesc}>Evidence: {issue.evidence}</div>}
-                        <div className={`${styles.issueDesc} ${styles.mono}`} style={{ marginTop: 4 }}>→ {issue.recommendation}</div>
+                {shown.length === 0 ? <div className={s.empty}>{issues.length === 0 ? "Nothing to fix. Run the audit again after you change the site." : "No problems at this level."}</div> : null}
+                {shown.map((g: Group) => (
+                  <details key={g.type} className={s.issue}>
+                    <summary>
+                      <span className={s.dot} style={tone(SEV_TONE[g.severity])} />
+                      <span className={s.issueName}>{g.title}</span>
+                      <span className={s.issueSev} style={tone(SEV_TONE[g.severity])}>{SEV_LABEL[g.severity]}</span>
+                      <span className={s.issueCount}>{pl(g.items.length, "page")}</span>
+                    </summary>
+                    <div className={s.issueBody}>
+                      <p className={s.issueRec}>{g.recommendation}</p>
+                      <div className={s.urls}>
+                        {g.items.slice(0, 50).map((i) => (
+                          <div key={i.id} className={s.url}>
+                            {i.pageUrl ? <a href={i.pageUrl} target="_blank" rel="noreferrer" title={i.pageUrl}>{path(i.pageUrl)}</a> : <span>Whole site</span>}
+                            <span title={i.evidence ?? i.description}>{i.evidence ?? i.description}</span>
+                          </div>
+                        ))}
+                        {g.items.length > 50 ? <div className={s.url}><span>…and {g.items.length - 50} more</span></div> : null}
                       </div>
                     </div>
-                    <div className={styles.issueMeta}>
-                      {issue.pageUrl && <span className={`${styles.mono} ${styles.truncate}`} title={issue.pageUrl}>{issue.pageUrl}</span>}
-                    </div>
-                  </div>
+                  </details>
                 ))}
-              </div>
-            )}
-          </>
-        )}
+              </section>
+            </>
+          ) : null}
+        </div>
       </div>
     </>
   );
