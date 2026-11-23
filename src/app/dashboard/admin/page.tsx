@@ -1,175 +1,170 @@
-import { notFound } from "next/navigation";
-
-import { requireAdmin } from "@/lib/auth-helpers";
+import Link from "next/link";
+import { Topbar } from "@/components/dashboard/topbar";
+import ui from "@/components/dashboard/ui.module.css";
 import { prisma } from "@/lib/prisma";
-import { planFor } from "@/lib/billing/plans";
-
-import GrantForm from "./grant-form";
-import AdminToggle from "./admin-toggle";
-import styles from "./admin.module.css";
+import { PLANS, type PlanId } from "@/lib/billing/plans";
+import { ACTIVE_STATUSES, adminOrNotFound, ago, bestPlan, effectivePlan } from "@/lib/admin/core";
+import { AdminNav, PLAN_TONE, STATUS_TONE } from "./admin-nav";
+import a from "./admin.module.css";
+import { CleanupButton } from "./cleanup-button";
+import { lastCleanup } from "@/lib/retention";
+import { SETTINGS_KEY, normalizeDfs } from "@/lib/dataforseo/cache-settings";
 
 export const dynamic = "force-dynamic";
 
-const ACTIVE_STATUSES = ["active", "trialing", "past_due"];
+const DAY = 864e5;
+const money = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
-function formatDate(value: Date | null): string {
-  if (!value) return "no end date";
-  return value.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
-}
+export default async function AdminOverview() {
+  await adminOrNotFound();
+  const now = Date.now();
+  const today = new Date(new Date().toISOString().slice(0, 10));
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
-  let me: { id: string; email: string };
-  try {
-    me = await requireAdmin();
-  } catch {
-    notFound();
-    return null;
-  }
+  const [users, new7, new30, subs, openTickets, newTickets, spendToday, spend30, recentUsers, recentTickets, recentAudit] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { createdAt: { gte: new Date(now - 7 * DAY) } } }),
+    prisma.user.count({ where: { createdAt: { gte: new Date(now - 30 * DAY) } } }),
+    prisma.subscription.findMany({ where: { status: { in: ACTIVE_STATUSES }, plan: { not: "FREE" } }, select: { plan: true, status: true, source: true, currentPeriodEnd: true } }),
+    prisma.supportTicket.count({ where: { status: "open" } }),
+    prisma.supportTicket.count({ where: { createdAt: { gte: new Date(now - 7 * DAY) } } }),
+    prisma.dfsSpend.aggregate({ where: { date: today }, _sum: { cost: true } }).catch(() => ({ _sum: { cost: 0 } })),
+    prisma.dfsSpend.aggregate({ where: { date: { gte: new Date(now - 30 * DAY) } }, _sum: { cost: true } }).catch(() => ({ _sum: { cost: 0 } })),
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: { id: true, email: true, name: true, createdAt: true, memberships: { select: { workspace: { select: { subscription: true } } } } },
+    }),
+    prisma.supportTicket.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { number: true, subject: true, email: true, status: true, kind: true, createdAt: true } }),
+    prisma.adminAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
+  ]);
+  const [cleanup, dfsRow, cacheRows] = await Promise.all([
+    lastCleanup(),
+    prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } }).catch(() => null),
+    prisma.apiCache.count().catch(() => 0),
+  ]);
+  const budget = normalizeDfs(dfsRow?.value).dailyBudget;
 
-  const { q } = await searchParams;
-  const query = (q ?? "").trim();
+  const live = subs.map((s) => ({ ...s, plan: effectivePlan(s) })).filter((s) => s.plan !== "FREE");
+  const paying = live.filter((s) => s.source === "stripe");
+  const mrr = paying.reduce((sum, s) => sum + PLANS[s.plan as PlanId].priceMonthlyUsd, 0);
+  const manual = live.length - paying.length;
 
-  const workspaces = await prisma.workspace.findMany({
-    where: query
-      ? {
-          OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { members: { some: { user: { email: { contains: query, mode: "insensitive" } } } } },
-          ],
-        }
-      : undefined,
-    include: {
-      subscription: true,
-      members: {
-        include: { user: { select: { email: true, name: true } } },
-        orderBy: { role: "asc" },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
-  const users = await prisma.user.findMany({
-    where: query ? { email: { contains: query, mode: "insensitive" } } : undefined,
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      isAdmin: true,
-      createdAt: true,
-      memberships: { select: { workspaceId: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const stats = [
+    { label: "Users", value: users.toLocaleString(), note: <><span className={a.up}>+{new7}</span> this week · +{new30} in 30 days</> },
+    { label: "Paying", value: paying.length.toLocaleString(), note: `${users ? Math.round((paying.length / users) * 1000) / 10 : 0}% of users` },
+    { label: "MRR", value: money(mrr), note: "from Stripe subscriptions" },
+    { label: "Manual plans", value: manual.toLocaleString(), note: "granted here, not billed" },
+    { label: "Open inbox", value: openTickets.toLocaleString(), note: `${newTickets} new this week` },
+    { label: "Data spend", value: `$${(spendToday._sum.cost ?? 0).toFixed(2)}`, note: `today, limit $${budget} · $${(spend30._sum.cost ?? 0).toFixed(2)} in 30 days` },
+  ];
 
   return (
-    <div className={styles.page}>
-      <div className={styles.head}>
-        <span className={styles.eyebrow}>Admin</span>
-        <h1 className={styles.title}>Subscriptions & access</h1>
-        <a href="/dashboard/admin/tickets" style={{ display: "inline-block", marginTop: 8, fontSize: 13, color: "var(--accent)" }}>Support tickets →</a>
-        <p className={styles.lede}>
-          Grant access manually, without payment. These subscriptions are marked as manual
-          and are never overwritten by Stripe payments.
-        </p>
-      </div>
+    <>
+      <Topbar title="Admin" subtitle="Overview" />
+      <div className={ui.pageBody}>
+        <AdminNav active="/dashboard/admin" />
 
-      <form className={styles.search}>
-        <input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search by email or workspace name"
-          className={styles.searchInput}
-        />
-        <button type="submit" className={styles.button}>
-          Search
-        </button>
-      </form>
-
-      <div>
-        <h2 className={styles.sectionTitle}>Workspaces</h2>
-
-        <div className={styles.list}>
-          {workspaces.length === 0 ? (
-            <div className={styles.rows}>
-              <p className={styles.empty}>Nothing found.</p>
-            </div>
-          ) : null}
-
-          {workspaces.map((workspace) => {
-            const sub = workspace.subscription;
-            const expired = sub?.source === "manual" && sub.currentPeriodEnd !== null && sub.currentPeriodEnd.getTime() < Date.now();
-            const active = sub ? ACTIVE_STATUSES.includes(sub.status) && !expired : false;
-            const plan = planFor(active ? sub?.plan : "FREE");
-            const owner = workspace.members.find((m) => m.role === "OWNER") ?? workspace.members[0];
-
-            return (
-              <div key={workspace.id} className={styles.card}>
-                <div className={styles.cardHead}>
-                  <div className={styles.cardTitle}>
-                    <span className={styles.cardName}>{workspace.name}</span>
-                    <span className={styles.cardMeta}>
-                      {owner?.user.email ?? "no members"}
-                      {workspace.members.length > 1
-                        ? ` · +${workspace.members.length - 1}`
-                        : ""}
-                    </span>
-                  </div>
-
-                  <div className={styles.cardHead}>
-                    <span
-                      className={
-                        plan.id === "FREE" ? styles.badge : `${styles.badge} ${styles.badgePaid}`
-                      }
-                    >
-                      {plan.name}
-                    </span>
-                    {sub ? (
-                      <span className={styles.cardMeta}>
-                        {sub.source === "manual" ? "manual" : "Stripe"} ·{" "}
-                        {formatDate(sub.currentPeriodEnd)}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                {sub?.note ? <p className={styles.note}>{sub.note}</p> : null}
-
-                <div className={styles.divider}>
-                  <GrantForm workspaceId={workspace.id} currentPlan={plan.id} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div>
-        <h2 className={styles.sectionTitle}>Users</h2>
-
-        <div className={styles.rows}>
-          {users.map((u) => (
-            <div key={u.id} className={styles.row}>
-              <div className={styles.rowMain}>
-                <span className={styles.rowTitle}>{u.email}</span>
-                <span className={styles.rowMeta}>
-                  {u.name ?? "no name"} · workspaces: {u.memberships.length} · since{" "}
-                  {u.createdAt.toLocaleDateString("ru-RU")}
-                </span>
-              </div>
-              <AdminToggle userId={u.id} isAdmin={u.isAdmin} self={u.id === me.id} />
+        <div className={a.stats}>
+          {stats.map((s) => (
+            <div key={s.label} className={a.stat}>
+              <div className={a.statLabel}>{s.label}</div>
+              <div className={a.statValue}>{s.value}</div>
+              <div className={a.statNote}>{s.note}</div>
             </div>
           ))}
-
-          {users.length === 0 ? <p className={styles.empty}>No users found.</p> : null}
         </div>
+
+        <div className={a.cols}>
+          <section className={a.panel}>
+            <div className={a.panelHead}>
+              <span className={a.panelTitle}>New users</span>
+              <Link href="/dashboard/admin/users" className={a.panelLink}>All users</Link>
+            </div>
+            <div className={a.list}>
+              {recentUsers.length === 0 ? <div className={a.empty}>No users yet.</div> : null}
+              {recentUsers.map((u) => {
+                const plan = bestPlan(u.memberships.map((m) => m.workspace.subscription));
+                return (
+                  <Link key={u.id} href={`/dashboard/admin/users/${u.id}`} className={a.item}>
+                    <div className={a.itemMain}>
+                      <div className={a.cellTitle}>{u.email}</div>
+                      {u.name ? <div className={a.cellSub}>{u.name}</div> : null}
+                    </div>
+                    <span className={a.badge} data-tone={PLAN_TONE[plan]}>{PLANS[plan].name}</span>
+                    <span className={a.itemMeta}>{ago(u.createdAt)}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className={a.panel}>
+            <div className={a.panelHead}>
+              <span className={a.panelTitle}>Latest messages</span>
+              <Link href="/dashboard/admin/inbox" className={a.panelLink}>Inbox</Link>
+            </div>
+            <div className={a.list}>
+              {recentTickets.length === 0 ? <div className={a.empty}>No messages yet.</div> : null}
+              {recentTickets.map((t) => (
+                <Link key={t.number} href={`/dashboard/admin/inbox/${t.number}`} className={a.item}>
+                  <span className={a.dot} data-tone={t.status} />
+                  <div className={a.itemMain}>
+                    <div className={a.cellTitle}>{t.subject}</div>
+                    <div className={a.cellSub}>#{t.number} · {t.kind === "feedback" ? "Feedback" : "Support"} · {t.email}</div>
+                  </div>
+                  <span className={a.badge} data-tone={STATUS_TONE[t.status]}>{t.status}</span>
+                  <span className={a.itemMeta}>{ago(t.createdAt)}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className={a.panel} style={{ marginTop: 16 }}>
+          <div className={a.panelHead}>
+            <span className={a.panelTitle}>Data cleanup</span>
+            <span className={a.panelCount}>runs every night · {cacheRows.toLocaleString()} saved answers now</span>
+            <CleanupButton />
+          </div>
+          <div className={a.panelBody}>
+            {cleanup ? (
+              <dl className={a.kv}>
+                <dt>Last run</dt>
+                <dd>{ago(new Date(cleanup.at))} · {cleanup.trigger === "admin" ? "started by an admin" : "nightly"} · {Math.round(cleanup.ms / 100) / 10}s · database {cleanup.databaseMB} MB</dd>
+                <dt>Removed</dt>
+                <dd>
+                  {Object.entries(cleanup.deleted).filter(([k, v]) => !k.endsWith(":error") && v > 0).map(([k, v]) => `${k} ${v.toLocaleString()}`).join(" · ") || "nothing was expired"}
+                </dd>
+                <dt>Errors</dt>
+                <dd className={Object.keys(cleanup.deleted).some((k) => k.endsWith(":error")) ? a.err : a.ok}>
+                  {Object.keys(cleanup.deleted).filter((k) => k.endsWith(":error")).map((k) => k.replace(":error", "")).join(", ") || "none"}
+                </dd>
+              </dl>
+            ) : (
+              <div className={a.muted} style={{ fontSize: 13 }}>No cleanup recorded yet. Press “Run cleanup now” to run it and see what it removes.</div>
+            )}
+          </div>
+        </section>
+
+        <section className={a.panel} style={{ marginTop: 16 }}>
+          <div className={a.panelHead}>
+            <span className={a.panelTitle}>Recent admin actions</span>
+            <Link href="/dashboard/admin/audit" className={a.panelLink}>Audit log</Link>
+          </div>
+          <div className={a.list}>
+            {recentAudit.length === 0 ? <div className={a.empty}>Nothing yet. Every grant, reply and account change made here will be listed.</div> : null}
+            {recentAudit.map((e) => (
+              <div key={e.id} className={a.item}>
+                <div className={a.itemMain}>
+                  <div className={a.cellTitle}>{e.action} <span className={a.muted}>→ {e.targetLabel ?? e.targetId ?? e.targetType}</span></div>
+                  <div className={a.cellSub}>by {e.adminEmail}</div>
+                </div>
+                <span className={a.itemMeta}>{ago(e.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
-    </div>
+    </>
   );
 }

@@ -1025,22 +1025,52 @@ model AuthRateLimit {
 }
 
 model SupportTicket {
-  kind      String   @default("ticket") // "ticket" (support form) or "feedback" (feedback widget)
+  messages  TicketMessage[]
+  kind      String          @default("ticket") // "ticket" (support form) or "feedback" (feedback widget)
   pageUrl   String?
   userAgent String?
-  id        String   @id @default(cuid())
-  number    Int      @unique @default(autoincrement())
+  id        String          @id @default(cuid())
+  number    Int             @unique @default(autoincrement())
   userId    String?
   email     String
   name      String?
   category  String
   subject   String
   message   String
-  status    String   @default("open")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String          @default("open")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@index([kind, status])
   @@index([status, createdAt])
   @@index([email])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  adminEmail  String
+  action      String
+  targetType  String
+  targetId    String?
+  targetLabel String?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model TicketMessage {
+  id          String        @id @default(cuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId    String?
+  authorEmail String
+  body        String
+  internal    Boolean       @default(false)
+  emailed     Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
 }

@@ -9,11 +9,16 @@
  *    "balance" error and falls back to its free mode.
  * 3. Cheaper page reads. Reading a page with a full browser costs ~30× more than a plain read.
  *    A plain read is tried first; the browser is used only when the plain read comes back empty.
+ * 4. Same question, same answer. "Best CRM", " best  crm" and {a,b} vs {b,a} are one saved answer, not three.
+ * 5. Shorter Google results. Google results are billed per 10 rows, so 100 rows cost 10× more than 10.
+ *    Requests are capped at DATAFORSEO_MAX_SERP_DEPTH rows (default 30), and a saved answer with more rows
+ *    is reused for a request that needs fewer.
  *
  * .env:
  *   DATAFORSEO_OFFLINE=1        never call the API, only saved answers
  *   DATAFORSEO_CACHE=0          turn all of this off
- *   DATAFORSEO_DAILY_BUDGET=3   default daily budget in USD (Settings → Data overrides it)
+ *   DATAFORSEO_DAILY_BUDGET=3   daily budget in USD
+ *   DATAFORSEO_MAX_SERP_DEPTH=30  most Google result rows bought per search (10–100)
  */
 
 const DFS = "https://api.dataforseo.com/";
@@ -41,6 +46,53 @@ const firstItem = (json: Json): Json | undefined => {
   const r = (t?.result as Json[] | undefined)?.[0];
   return (r?.items as Json[] | undefined)?.[0];
 };
+
+const SERP_DEPTHS = [10, 20, 30, 50, 100];
+const maxSerpDepth = () => {
+  const n = Math.round(Number(process.env.DATAFORSEO_MAX_SERP_DEPTH));
+  return Number.isFinite(n) && n >= 10 && n <= 100 ? n : 30;
+};
+
+const tidy = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+/** Same request written differently → same text: keys sorted, keywords trimmed and lowercased. */
+function canonical(value: unknown, key = ""): unknown {
+  if (Array.isArray(value)) return value.map((v) => canonical(v, key));
+  if (value && typeof value === "object") {
+    const o = value as Json;
+    return Object.fromEntries(Object.keys(o).sort().map((k) => [k, canonical(o[k], k)]));
+  }
+  if (typeof value === "string" && (key === "keyword" || key === "keywords")) return tidy(value);
+  return value;
+}
+
+/** The body to send and to key on: canonical, with Google result depth capped. */
+function prepare(endpoint: string, body: string): { body: string; tasks: Json[] | null } {
+  let tasks: unknown;
+  try { tasks = JSON.parse(body); } catch { return { body, tasks: null }; }
+  if (!Array.isArray(tasks)) return { body, tasks: null };
+  const out = (canonical(tasks) as Json[]).map((t) => {
+    if (!endpoint.startsWith("v3/serp/") || !t || typeof t !== "object") return t;
+    const d = Number(t.depth);
+    return Number.isFinite(d) && d > maxSerpDepth() ? { ...t, depth: maxSerpDepth() } : t;
+  });
+  return { body: JSON.stringify(out), tasks: out };
+}
+
+/** A saved Google answer with more rows, trimmed to the rows this request asked for. */
+function trimSerp(json: Json, depth: number): Json {
+  const tasks = (json.tasks as Json[] | undefined) ?? [];
+  return {
+    ...json,
+    tasks: tasks.map((t) => ({
+      ...t,
+      result: ((t.result as Json[] | undefined) ?? []).map((r) => ({
+        ...r,
+        items: ((r.items as Json[] | undefined) ?? []).filter((i) => Number(i.rank_absolute ?? i.rank_group ?? 0) <= depth),
+      })),
+    })),
+  };
+}
 
 /** For a page read with a browser: the same request without one, and how to tell if its answer is good enough. */
 function cheaperPageRead(endpoint: string, body: string): { body: string; good: (json: Json) => boolean } | null {
@@ -135,10 +187,12 @@ export async function register() {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     if (url.startsWith(DFS) === false) return original(input, init);
 
-    const body = typeof init?.body === "string" ? init.body : "";
-    if (init?.body && body === "") return original(input, init);
+    const rawBody = typeof init?.body === "string" ? init.body : "";
+    if (init?.body && rawBody === "") return original(input, init);
     const endpoint = url.slice(DFS.length).split("?")[0];
     if (endpoint.includes("/appendix/") || endpoint.includes("/user_data")) return original(input, init);
+    const prepared = prepare(endpoint, rawBody);
+    const body = prepared.body;
 
     const category = categoryOf(endpoint);
     const s = await getSettings();
@@ -151,10 +205,29 @@ export async function register() {
     } catch (e) {
       console.warn("[dataforseo] cache read failed:", (e as Error).message);
     }
+    // Answers saved before keys were made canonical are still used until they expire.
+    if (cached === null && rawBody !== body) {
+      const legacy = await sha256(`${(init?.method ?? "GET").toUpperCase()} ${url}\n${rawBody}`);
+      cached = await prisma.apiCache.findUnique({ where: { key: legacy }, select: { response: true, createdAt: true } }).catch(() => null);
+    }
     const fresh = cached !== null && wantsFresh() === false && Date.now() - cached.createdAt.getTime() < ttl;
     if (cached && (fresh || process.env.DATAFORSEO_OFFLINE === "1")) {
       await prisma.apiCache.update({ where: { key }, data: { hits: { increment: 1 } } }).catch(() => undefined);
       return jsonResponse(cached.response as Json, fresh ? "hit" : "stale");
+    }
+
+    // A fresh saved Google answer for the same search with more rows covers this one too.
+    const single = prepared.tasks?.length === 1 ? prepared.tasks[0] : null;
+    const depth = Number(single?.depth);
+    if (endpoint.startsWith("v3/serp/") && single && Number.isFinite(depth) && wantsFresh() === false) {
+      for (const bigger of SERP_DEPTHS.filter((d) => d > depth && d <= maxSerpDepth())) {
+        const k = await sha256(`${(init?.method ?? "GET").toUpperCase()} ${url}\n${JSON.stringify([{ ...single, depth: bigger }])}`);
+        const row = await prisma.apiCache.findUnique({ where: { key: k }, select: { response: true, createdAt: true } }).catch(() => null);
+        if (row && Date.now() - row.createdAt.getTime() < ttl) {
+          await prisma.apiCache.update({ where: { key: k }, data: { hits: { increment: 1 } } }).catch(() => undefined);
+          return jsonResponse(trimSerp(row.response as Json, depth), "hit");
+        }
+      }
     }
 
     const running = inflight.get(key);

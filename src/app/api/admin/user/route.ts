@@ -1,28 +1,84 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, authErrorResponse } from "@/lib/auth-helpers";
+import { checkRequest } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { requestPasswordReset } from "@/lib/password-reset";
+import { audit } from "@/lib/admin/core";
 
+/*
+ * Actions on one user. Body: { userId, action, ... }
+ *   setAdmin { isAdmin }   make or remove an admin (never yourself)
+ *   signOut                end every session on every device
+ *   sendReset              email a password reset link
+ *   delete { confirm }     delete the account; confirm must be the user's email.
+ *                          Workspaces where they are the only member are deleted with all their data.
+ */
 export async function POST(request: Request) {
   try {
+    const bad = checkRequest(request);
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     const admin = await requireAdmin();
     const body = await request.json().catch(() => ({}));
     const userId = body?.userId;
-    const isAdmin = body?.isAdmin;
+    // Old admin page sent { userId, isAdmin } without an action.
+    const action = typeof body?.action === "string" ? body.action : typeof body?.isAdmin === "boolean" ? "setAdmin" : "";
+    if (typeof userId !== "string" || !userId) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
 
-    if (typeof userId !== "string" || typeof isAdmin !== "boolean") {
-      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, isAdmin: true, memberships: { select: { workspaceId: true, role: true } } },
+    });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const target = { type: "user" as const, id: user.id, label: user.email };
+    const self = user.id === admin.id;
+
+    switch (action) {
+      case "setAdmin": {
+        if (typeof body.isAdmin !== "boolean") return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+        if (self && !body.isAdmin) return NextResponse.json({ error: "You can't remove your own admin rights." }, { status: 400 });
+        await prisma.user.update({ where: { id: user.id }, data: { isAdmin: body.isAdmin } });
+        await audit(admin, body.isAdmin ? "admin.grant" : "admin.remove", target);
+        return NextResponse.json({ ok: true });
+      }
+      case "signOut": {
+        await prisma.user.update({ where: { id: user.id }, data: { passwordChangedAt: new Date() } });
+        await audit(admin, "user.signout_all", target);
+        return NextResponse.json({ ok: true });
+      }
+      case "sendReset": {
+        await requestPasswordReset(user.email);
+        await audit(admin, "user.send_reset", target);
+        return NextResponse.json({ ok: true });
+      }
+      case "delete": {
+        if (self) return NextResponse.json({ error: "You can't delete your own account here." }, { status: 400 });
+        if (user.isAdmin) return NextResponse.json({ error: "Remove admin rights first." }, { status: 400 });
+        if (typeof body.confirm !== "string" || body.confirm.trim().toLowerCase() !== user.email.toLowerCase()) {
+          return NextResponse.json({ error: "Type the user's email exactly to confirm." }, { status: 400 });
+        }
+        const owned = user.memberships.filter((m) => m.role === "OWNER").map((m) => m.workspaceId);
+        const paying = await prisma.subscription.findFirst({
+          where: { workspaceId: { in: owned }, source: "stripe", status: { in: ["active", "trialing", "past_due"] }, plan: { not: "FREE" } },
+          select: { stripeCustomerId: true },
+        });
+        if (paying) return NextResponse.json({ error: "This user pays through Stripe. Cancel the subscription in Stripe first." }, { status: 409 });
+        let removedWorkspaces = 0;
+        await prisma.$transaction(async (tx) => {
+          for (const workspaceId of owned) {
+            const others = await tx.workspaceMember.count({ where: { workspaceId, userId: { not: user.id } } });
+            if (others === 0) {
+              await tx.workspace.delete({ where: { id: workspaceId } });
+              removedWorkspaces++;
+            }
+          }
+          await tx.user.delete({ where: { id: user.id } });
+        });
+        await audit(admin, "user.delete", target, { removedWorkspaces });
+        return NextResponse.json({ ok: true });
+      }
+      default:
+        return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
-
-    // Не даём снять права с самого себя — иначе можно запереть себя снаружи.
-    if (userId === admin.id && !isAdmin) {
-      return NextResponse.json(
-        { error: "You can't remove your own admin rights" },
-        { status: 400 }
-      );
-    }
-
-    await prisma.user.update({ where: { id: userId }, data: { isAdmin } });
-    return NextResponse.json({ ok: true });
   } catch (error) {
     const mapped = authErrorResponse(error);
     if (mapped.status === 500) console.error("[admin/user]", error);

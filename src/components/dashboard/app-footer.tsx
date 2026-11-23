@@ -32,7 +32,7 @@ export function AppFooter() {
         <div className={styles.top}>
           <div className={styles.brand}>
             <Link href={withSite("/dashboard", site)} className={styles.brandRow}>
-              <span className={styles.mark}>G</span>
+              <img src="/icon.png" alt="" width={22} height={22} style={{ borderRadius: 6, display: "block", flexShrink: 0 }} />
               Hyprlyx
             </Link>
             <p className={styles.tagline}>

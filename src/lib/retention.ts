@@ -89,13 +89,13 @@ export async function cleanWorkspace(workspaceId: string, s: RetentionSettings, 
     await run(counts, "analyses", `
       DELETE FROM "Analysis" a
       WHERE a."websiteId" IN (${WEBSITES_OF})
-        AND a."createdAt" < now() - make_interval(days => $2)
+        AND a."createdAt" < now() - make_interval(days => $2::int)
         AND a.id NOT IN (SELECT DISTINCT ON ("websiteId") id FROM "Analysis" WHERE "websiteId" IN (${WEBSITES_OF})
                          ORDER BY "websiteId", "completedAt" DESC NULLS LAST, "createdAt" DESC)`, workspaceId, s.reports);
 
     await run(counts, "serpReplays", `
       DELETE FROM "SerpReplayArtifact" r
-      WHERE r."createdAt" < now() - make_interval(days => $2)
+      WHERE r."createdAt" < now() - make_interval(days => $2::int)
         AND r."contentArticleId" IN (SELECT ca.id FROM "ContentArticle" ca JOIN "ContentBrief" cb ON cb.id = ca."briefId" WHERE cb."websiteId" IN (${WEBSITES_OF}))
         AND r.id NOT IN (SELECT DISTINCT ON ("contentArticleId") id FROM "SerpReplayArtifact" ORDER BY "contentArticleId", "createdAt" DESC)`,
       workspaceId, s.reports);
@@ -103,21 +103,21 @@ export async function cleanWorkspace(workspaceId: string, s: RetentionSettings, 
     await run(counts, "failedArticles", `
       DELETE FROM "ContentArticle" ca
       WHERE ca.status IN ('REJECTED', 'PUBLISH_FAILED', 'BLOCKED_EXTERNAL')
-        AND ca."updatedAt" < now() - make_interval(days => $2)
+        AND ca."updatedAt" < now() - make_interval(days => $2::int)
         AND ca."briefId" IN (SELECT id FROM "ContentBrief" WHERE "websiteId" IN (${WEBSITES_OF}))`, workspaceId, s.reports);
   }
 
   if (s.caches > 0) {
     await run(counts, "competitorSnapshots", `
       DELETE FROM "CompetitorSnapshot" cs
-      WHERE cs."capturedAt" < now() - make_interval(days => $2)
+      WHERE cs."capturedAt" < now() - make_interval(days => $2::int)
         AND cs."competitorId" IN (SELECT id FROM "Competitor" WHERE "websiteId" IN (${WEBSITES_OF}))
         AND cs.id NOT IN (SELECT DISTINCT ON ("competitorId") id FROM "CompetitorSnapshot" ORDER BY "competitorId", "capturedAt" DESC)`,
       workspaceId, s.caches);
 
     await run(counts, "backlinkSnapshots", `
       DELETE FROM "BacklinkSnapshot" bs
-      WHERE bs."capturedAt" < now() - make_interval(days => $2)
+      WHERE bs."capturedAt" < now() - make_interval(days => $2::int)
         AND bs."targetId" IN (SELECT id FROM "BacklinkTarget" WHERE "websiteId" IN (${WEBSITES_OF}))
         AND bs.id NOT IN (SELECT DISTINCT ON ("targetId") id FROM "BacklinkSnapshot" ORDER BY "targetId", "capturedAt" DESC)`,
       workspaceId, s.caches);
@@ -127,7 +127,7 @@ export async function cleanWorkspace(workspaceId: string, s: RetentionSettings, 
     await run(counts, "staleDrafts", `
       DELETE FROM "ContentArticle" ca
       WHERE ca.status IN ('DRAFT', 'IN_REVIEW', 'GENERATING')
-        AND ca."updatedAt" < now() - make_interval(days => $2)
+        AND ca."updatedAt" < now() - make_interval(days => $2::int)
         AND ca."briefId" IN (SELECT id FROM "ContentBrief" WHERE "websiteId" IN (${WEBSITES_OF}))`, workspaceId, s.drafts);
   }
 
@@ -151,21 +151,38 @@ export async function cleanGlobal(counts: Counts) {
   // Saved DataForSEO answers: each kind is kept for the days set in Settings → Data.
   const dfs = normalizeDfs((await prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } }).catch(() => null))?.value);
   for (const [category, days] of Object.entries(dfs.days)) {
-    await run(counts, `apiCache:${category}`, `DELETE FROM "ApiCache" WHERE category = $1 AND "createdAt" < now() - make_interval(days => $2)`, category, days);
+    await run(counts, `apiCache:${category}`, `DELETE FROM "ApiCache" WHERE category = $1 AND "createdAt" < now() - make_interval(days => $2::int)`, category, days);
   }
-  await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1)`, GLOBAL.suggestionCacheDays);
+  await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1::int)`, dfs.days.keywords);
   await run(counts, "rateLimits", `DELETE FROM "AuthRateLimit" WHERE "resetAt" < now() - interval '1 day'`);
-  await run(counts, "resetTokens", `DELETE FROM "PasswordResetToken" WHERE "expiresAt" < now() - make_interval(days => $1)`, GLOBAL.resetTokenDays);
-  await run(counts, "stripeEvents", `DELETE FROM "StripeEvent" WHERE "receivedAt" < now() - make_interval(days => $1)`, GLOBAL.stripeEventDays);
+  await run(counts, "resetTokens", `DELETE FROM "PasswordResetToken" WHERE "expiresAt" < now() - make_interval(days => $1::int)`, GLOBAL.resetTokenDays);
+  await run(counts, "stripeEvents", `DELETE FROM "StripeEvent" WHERE "receivedAt" < now() - make_interval(days => $1::int)`, GLOBAL.stripeEventDays);
   await run(counts, "usageCounters", `DELETE FROM "ApiUsageCounter" WHERE "date" < current_date - $1::int`, GLOBAL.usageCounterDays);
 }
 
-export async function runRetention() {
+export async function runRetention(trigger: "nightly" | "admin" = "nightly") {
+  const started = Date.now();
   const counts: Counts = {};
   await cleanGlobal(counts);
   const workspaces = await prisma.workspace.findMany({ select: { id: true, retention: true } });
   for (const w of workspaces) await cleanWorkspace(w.id, normalize(w.retention), counts);
 
   const size = await prisma.$queryRawUnsafe<{ bytes: bigint }[]>(`SELECT pg_database_size(current_database()) AS bytes`);
-  return { workspaces: workspaces.length, deleted: counts, databaseMB: Math.round(Number(size[0]?.bytes ?? 0) / 1048576) };
+  const result: CleanupRun = {
+    at: new Date().toISOString(), ms: Date.now() - started, trigger,
+    workspaces: workspaces.length, deleted: counts, databaseMB: Math.round(Number(size[0]?.bytes ?? 0) / 1048576),
+  };
+  await prisma.appSetting
+    .upsert({ where: { key: CLEANUP_KEY }, create: { key: CLEANUP_KEY, value: result as never }, update: { value: result as never } })
+    .catch((e: Error) => console.error("[retention] could not record run:", e.message));
+  return result;
+}
+
+export const CLEANUP_KEY = "retentionLastRun";
+export type CleanupRun = { at: string; ms: number; trigger: string; workspaces: number; deleted: Record<string, number>; databaseMB: number };
+
+/** The last cleanup run (nightly or started by an admin), or null if it never ran. */
+export async function lastCleanup(): Promise<CleanupRun | null> {
+  const row = await prisma.appSetting.findUnique({ where: { key: CLEANUP_KEY } }).catch(() => null);
+  return (row?.value as CleanupRun | undefined) ?? null;
 }

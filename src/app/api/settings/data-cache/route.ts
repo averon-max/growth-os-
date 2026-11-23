@@ -3,6 +3,7 @@ import { requireUser, authErrorResponse } from "@/lib/auth-helpers";
 import { checkRequest } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { DFS_CATEGORIES, DFS_CATEGORY_KEYS, SETTINGS_KEY, categoryOf, normalizeDfs, type DfsCategory } from "@/lib/dataforseo/cache-settings";
+import { lastCleanup } from "@/lib/retention";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,17 @@ async function report() {
     spent30[c] = (spent30[c] ?? 0) + r.cost;
     if (r.date.toISOString().slice(0, 10) === todayKey) today += r.cost;
   }
+  const last = await lastCleanup();
   return {
     dailyBudget: settings.dailyBudget,
     spentToday: Math.round(today * 10000) / 10000,
+    lastCleanup: last
+      ? {
+          at: last.at,
+          removedSaved: Object.entries(last.deleted).filter(([k]) => k.startsWith("apiCache") && !k.endsWith(":error")).reduce((n, [, v]) => n + v, 0),
+          errors: Object.keys(last.deleted).filter((k) => k.endsWith(":error")).map((k) => k.replace(":error", "")),
+        }
+      : null,
     categories: DFS_CATEGORY_KEYS.map((key) => {
       const s = stats.find((x) => x.category === key);
       return {
@@ -69,8 +78,9 @@ export async function PUT(req: Request) {
     const bad = checkRequest(req);
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     if (!(await admin())) return NextResponse.json({ error: "Admins only." }, { status: 403 });
-    const body = (await req.json().catch(() => null)) as { days?: unknown; dailyBudget?: unknown } | null;
-    const value = normalizeDfs({ days: body?.days, dailyBudget: body?.dailyBudget });
+    const body = (await req.json().catch(() => null)) as { days?: unknown } | null;
+    // The daily budget is no longer set here; the stored value (default $3) is kept.
+    const value = normalizeDfs({ days: body?.days, dailyBudget: (await load()).dailyBudget });
     await prisma.appSetting.upsert({ where: { key: SETTINGS_KEY }, create: { key: SETTINGS_KEY, value }, update: { value } });
     return NextResponse.json(await report());
   } catch (err) {

@@ -6,10 +6,9 @@ type Cat = {
   key: string; label: string; help: string; usedIn: string; def: number; days: number;
   rows: number; mb: number; saved: number; spent30: number; last: string | null;
 };
-type Report = { dailyBudget: number; spentToday: number; categories: Cat[] };
+type Report = { categories: Cat[]; lastCleanup: { at: string; removedSaved: number; errors: string[] } | null };
 
 const DAYS = [1, 3, 7, 14, 30, 60, 90, 180, 365];
-const BUDGETS = [1, 2, 3, 5, 10, 20, 50];
 const money = (n: number) => (n < 0.01 && n > 0 ? "<$0.01" : `$${n.toFixed(2)}`);
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—");
 
@@ -44,7 +43,6 @@ export default function CachePanel() {
   const select: React.CSSProperties = { height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--primary)", fontSize: 13.5, minWidth: 130 };
   const small: React.CSSProperties = { fontSize: 12.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 };
   const link: React.CSSProperties = { border: 0, background: "none", padding: 0, color: "var(--secondary)", fontSize: 12.5, textDecoration: "underline", cursor: "pointer" };
-  const pct = Math.min(100, Math.round((data.spentToday / data.dailyBudget) * 100));
 
   return (
     <section style={{ marginTop: 48 }}>
@@ -52,26 +50,14 @@ export default function CachePanel() {
       <p style={{ color: "var(--secondary)", fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>
         Keyword numbers, Google results and backlinks come from DataForSEO, which charges for every request. Hyprlyx saves each
         answer and reuses it for everyone until it is older than the time you set below, so the same search is paid for only once.
-        Longer means cheaper; shorter means fresher numbers. Old data is deleted every night. Only admins see this section.
+        Longer means cheaper; shorter means fresher numbers. Expired data is deleted every night. Only admins see this section.
       </p>
 
-      <div style={card}>
-        <div style={{ ...row, borderTop: "none", alignItems: "center" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Daily spending limit</div>
-            <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
-              When today&apos;s DataForSEO spending reaches this, no new data is bought until tomorrow. Saved data keeps working.
-            </div>
-            <div style={{ height: 4, borderRadius: 2, background: "var(--surface-2)", marginTop: 10, overflow: "hidden" }}>
-              <div style={{ width: `${pct}%`, height: "100%", background: pct >= 90 ? "var(--danger)" : "var(--primary)" }} />
-            </div>
-            <div style={small}>Spent today: {money(data.spentToday)} of ${data.dailyBudget}</div>
-          </div>
-          <select style={select} value={data.dailyBudget} onChange={(e) => setData({ ...data, dailyBudget: Number(e.target.value) })}>
-            {[...new Set([...BUDGETS, data.dailyBudget])].sort((a, b) => a - b).map((b) => <option key={b} value={b}>${b} a day</option>)}
-          </select>
-        </div>
-      </div>
+      <p style={{ ...small, fontSize: 13, marginTop: 14 }}>
+        {data.lastCleanup
+          ? <>Last cleanup: {new Date(data.lastCleanup.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · removed {data.lastCleanup.removedSaved.toLocaleString()} expired saved answers{data.lastCleanup.errors.length ? ` · failed: ${data.lastCleanup.errors.join(", ")}` : " · no errors"}</>
+          : "Cleanup has not run yet. It runs every night; an admin can also run it from the admin console."}
+      </p>
 
       <div style={card}>
         {data.categories.map((c, i) => (
@@ -105,7 +91,7 @@ export default function CachePanel() {
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 18 }}>
         <button
-          onClick={() => void send("PUT", { days, dailyBudget: data.dailyBudget })}
+          onClick={() => void send("PUT", { days })}
           disabled={state === "saving"}
           style={{ height: 36, padding: "0 18px", borderRadius: 999, border: 0, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
         >

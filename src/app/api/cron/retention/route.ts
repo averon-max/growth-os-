@@ -13,8 +13,7 @@ export async function GET(req: Request) {
   const ok = secret.length >= 32 && got.length === want.length && timingSafeEqual(Buffer.from(got), Buffer.from(want));
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const started = Date.now();
   const result = await runRetention();
   console.log("[retention]", JSON.stringify(result));
-  return NextResponse.json({ ok: true, ms: Date.now() - started, ...result });
+  return NextResponse.json({ ok: true, ...result });
 }
