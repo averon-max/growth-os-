@@ -8,7 +8,7 @@ export const LEGAL = {
   email: "privacy@hyprlyx.com",
   supportEmail: "support@hyprlyx.com",
   jurisdiction: "the Province of Alberta, Canada",
-  effective: "November 10, 2026",
+  effective: "November 23, 2026",
 };
 
 export function LegalShell({ title, current, children }: { title: string; current: "privacy" | "terms" | "cookies"; children: React.ReactNode }) {

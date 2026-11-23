@@ -14,8 +14,9 @@ export default function TermsPage() {
       <div className={s.summary}>
         <p>
           <strong>Short version.</strong> Use Hyprlyx lawfully, keep your account secure, pay for the plan you choose, and you own what you
-          create. Subscriptions renew until you cancel; you can cancel any time and keep access until the end of the paid period. We
-          can&apos;t promise rankings or traffic.
+          create. Paid plans renew every month until you cancel. Cancel any time in Settings → Billing and keep access until the end of the
+          period you paid for. The Starter free trial is charged only if you don&apos;t cancel before it ends. We can&apos;t promise rankings
+          or traffic.
         </p>
       </div>
 
@@ -33,30 +34,68 @@ export default function TermsPage() {
         <li>Keep your password secret. You are responsible for activity under your account.</li>
         <li>Tell us right away at <a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a> if you suspect unauthorized access.</li>
         <li>One person per login. Invite teammates to your workspace instead of sharing passwords.</li>
+        <li>Billing belongs to the workspace owner. Only the owner can start, change or cancel a subscription.</li>
       </ul>
 
       <h2>3. Plans, billing and cancellation</h2>
+      <h3>Plans and prices</h3>
       <ul>
         <li>
-          Paid plans (Starter, Growth, Autopilot) are billed in advance, monthly or yearly, through Stripe. Prices are shown on the{" "}
-          <Link href="/pricing">pricing page</Link> and exclude taxes unless stated; applicable taxes are added at checkout.
+          The Free plan costs nothing and needs no card. Paid plans (Starter, Growth, Autopilot) are billed monthly, in advance, in US dollars,
+          through our payment processor Stripe. What each plan includes and its current price are shown on the{" "}
+          <Link href="/pricing">pricing page</Link> and at checkout.
         </li>
-        <li><strong>Automatic renewal.</strong> Subscriptions renew automatically at the then-current price until you cancel.</li>
+        <li>Where we are required to charge sales tax, it is shown at checkout before you pay.</li>
+        <li><strong>Usage limits.</strong> Each plan has limits, for example the number of websites and AI article drafts per month. Some data features also have a daily limit across the Service; when it is reached, saved data keeps working and fresh data is available again the next day.</li>
+      </ul>
+      <h3>Free trial</h3>
+      <ul>
+        <li>The Starter plan comes with a 7-day free trial. You add a card at checkout; nothing is charged during the trial.</li>
         <li>
-          <strong>Cancelling.</strong> Cancel any time in Settings → Billing. Cancellation stops the next renewal; you keep paid features
-          until the end of the current period.
+          <strong>When the trial ends, your card is charged the Starter monthly price</strong> shown at checkout, and the subscription then
+          renews every month until you cancel. The date of the first charge is shown at checkout and in Settings → Billing.
+        </li>
+        <li>Cancel any time before the trial ends in Settings → Billing and you pay nothing. You keep access until the trial ends.</li>
+        <li>One free trial per workspace. A trial includes a limited amount of fresh keyword, backlink and competitor data.</li>
+        <li>If you switch to another plan during the trial, the trial ends at that moment and the new plan&apos;s price is charged.</li>
+      </ul>
+      <h3>Renewal, changes and cancellation</h3>
+      <ul>
+        <li><strong>Automatic renewal.</strong> Paid plans renew automatically every month at the then-current price until you cancel.</li>
+        <li>
+          <strong>Cancelling.</strong> Cancel any time in Settings → Billing. Cancelling stops the next renewal; you keep paid features until
+          the end of the period you paid for, and you are not charged again. You can undo the cancellation before the period ends.
         </li>
         <li>
-          <strong>Refunds.</strong> Fees are non-refundable except where the law requires otherwise, or where we decide to refund at our
-          discretion. If you think you were charged by mistake, write to us within 30 days.
+          <strong>Removing your card.</strong> You can remove your saved card in Settings → Billing. Doing so also stops renewal, because there
+          is nothing left to charge.
         </li>
-        <li><strong>Plan changes.</strong> Upgrades take effect immediately and are prorated. Downgrades take effect at the next renewal.</li>
+        <li>
+          <strong>Upgrades and downgrades</strong> take effect immediately. On an upgrade you pay only the difference for the rest of the
+          current month; on a downgrade the unused difference is credited to your next invoices. Settings → Billing shows the exact amount
+          before you confirm.
+        </li>
         <li>
           <strong>Price changes.</strong> We will email you at least 30 days before a price change affects your subscription. If you don&apos;t
           agree, cancel before the change takes effect.
         </li>
-        <li><strong>Failed payments.</strong> If a payment fails and isn&apos;t fixed within 14 days, we may downgrade the workspace to the free plan.</li>
-        <li><strong>Usage limits.</strong> Each plan has limits (for example articles, tracked keywords, websites). Limits are shown in the app.</li>
+        <li>
+          <strong>Failed payments.</strong> If a renewal payment fails, Stripe retries it and we email you. If it still can&apos;t be
+          collected, the subscription ends and the workspace moves to the Free plan.
+        </li>
+        <li>
+          <strong>Refunds.</strong> Fees are non-refundable except where the law requires otherwise, or where we decide to refund at our
+          discretion. If you think you were charged by mistake, write to us within 30 days and we will look into it.
+        </li>
+        <li>
+          <strong>Deleting your account</strong> (Settings → Account) cancels every subscription you pay for immediately and removes your
+          saved card from Stripe, so you won&apos;t be charged again. Time left in the current period is not refunded automatically; if you
+          want a refund for it, write to us before deleting.
+        </li>
+        <li>
+          <strong>Plans we grant.</strong> We may give a plan free of charge, for example for a promotion or as a goodwill gesture. Such plans
+          end on the date we set and never charge your card.
+        </li>
       </ul>
 
       <h2>4. Acceptable use</h2>
@@ -116,7 +155,7 @@ export default function TermsPage() {
 
       <h2>10. Suspension and termination</h2>
       <ul>
-        <li>You can close your account any time by writing to us or from Settings.</li>
+        <li>You can delete your account any time in Settings → Account. This also cancels any subscription you pay for, as described in section 3.</li>
         <li>
           We may suspend or close accounts that break these Terms, put others at risk, or don&apos;t pay. Where reasonable, we will warn you
           first and let you export your data.

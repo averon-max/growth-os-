@@ -13,8 +13,9 @@ export default function CookiesPage() {
     <LegalShell title="Cookie Policy" current="cookies">
       <div className={s.summary}>
         <p>
-          <strong>Short version.</strong> We only use cookies that are needed to log you in, keep your session secure and remember a couple of
-          interface choices. No advertising cookies, no cross-site tracking. We show a short notice once, on your first visit.
+          <strong>Short version.</strong> We only use cookies that are needed to sign you in, keep your account secure and remember a few
+          interface choices. No advertising cookies, no analytics cookies, no cross-site tracking. We show a short notice once, on your first
+          visit.
         </p>
       </div>
 
@@ -25,13 +26,16 @@ export default function CookiesPage() {
       </p>
 
       <h2>2. Cookies we set</h2>
-      <p>All of these are strictly necessary. The Service can&apos;t work without them, so they don&apos;t need your consent under EU and UK law.</p>
+      <p>
+        All of these are strictly necessary or only remember a choice you made. The Service can&apos;t work without the sign-in and security
+        cookies, so under EU, UK and Canadian law they don&apos;t need your consent.
+      </p>
       <table className={s.table}>
         <thead><tr><th>Name</th><th>Purpose</th><th>Duration</th></tr></thead>
         <tbody>
-          <tr><td>__Secure-next-auth.session-token</td><td>Keeps you logged in. Encrypted, HTTP-only, sent only over HTTPS.</td><td>30 days</td></tr>
+          <tr><td>__Secure-next-auth.session-token</td><td>Keeps you signed in. Encrypted, HTTP-only, sent only over HTTPS.</td><td>30 days</td></tr>
           <tr><td>__Host-next-auth.csrf-token</td><td>Protects forms against cross-site request forgery.</td><td>Session</td></tr>
-          <tr><td>__Secure-next-auth.callback-url</td><td>Returns you to the right page after logging in.</td><td>Session</td></tr>
+          <tr><td>__Secure-next-auth.callback-url</td><td>Returns you to the right page after signing in.</td><td>Session</td></tr>
           <tr><td>hyprlyx_cookie_notice</td><td>Remembers that you&apos;ve seen the cookie notice, so it isn&apos;t shown again.</td><td>12 months</td></tr>
         </tbody>
       </table>
@@ -41,6 +45,7 @@ export default function CookiesPage() {
         <thead><tr><th>Key</th><th>Purpose</th><th>Duration</th></tr></thead>
         <tbody>
           <tr><td>sidebar-collapsed</td><td>Remembers whether you collapsed the app sidebar.</td><td>Until you clear it</td></tr>
+          <tr><td>growth-os:code-variant</td><td>Remembers which code format you chose when exporting an article.</td><td>Until you clear it</td></tr>
         </tbody>
       </table>
 
@@ -51,30 +56,31 @@ export default function CookiesPage() {
           <a href="https://stripe.com/cookies-policy/legal" rel="noopener noreferrer" target="_blank">Stripe&apos;s cookie policy</a>.
         </li>
         <li>
-          <strong>Google Fonts</strong> delivers some typefaces. Google receives your IP address to serve the font files but doesn&apos;t set
-          cookies for this.
+          <strong>Google</strong> serves some typefaces and the small site icons shown next to your websites. Google receives your IP address
+          to deliver these files but doesn&apos;t set cookies for them.
         </li>
         <li>
-          <strong>Google sign-in</strong> pages, shown when you connect Search Console or Analytics, are run by Google under Google&apos;s
-          policies.
+          <strong>Google sign-in</strong> pages, shown when you sign in with Google or connect Search Console or Analytics, are run by Google
+          under Google&apos;s policies.
         </li>
       </ul>
 
       <h2>5. Analytics and advertising</h2>
       <p>
-        We don&apos;t use advertising cookies or third-party analytics on {LEGAL.site} today. If we ever add analytics or marketing cookies,
-        we will update this page and ask for your consent first where the law requires it.
+        We don&apos;t use advertising cookies or third-party analytics on {LEGAL.site}. If we ever add analytics or marketing cookies, we will
+        update this page and ask for your consent first, with a real choice to accept or decline, where the law requires it.
       </p>
 
       <h2>6. Controlling cookies</h2>
       <p>
-        You can block or delete cookies in your browser settings. If you block the necessary cookies above, you won&apos;t be able to log in.
-        Logging out removes the session cookie.
+        You can block or delete cookies in your browser settings. If you block the necessary cookies above, you won&apos;t be able to sign in.
+        Signing out removes the session cookie.
       </p>
 
       <h2>7. Contact</h2>
       <p>
-        Questions: <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a>. See also our <Link href="/privacy">Privacy Policy</Link>.
+        Questions: <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a>. See also our <Link href="/privacy">Privacy Policy</Link> and{" "}
+        <Link href="/terms">Terms of Service</Link>.
       </p>
     </LegalShell>
   );
