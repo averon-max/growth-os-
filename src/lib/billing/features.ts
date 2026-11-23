@@ -1,20 +1,37 @@
 import { NAV } from "@/lib/nav";
 import { PLAN_RANK, SECTION_MIN_PLAN } from "./access";
 import { PLANS, type PlanId } from "./plans";
+import { TRIAL_DAYS, TRIAL_PLAN } from "./trial";
 
 /*
- * What each plan opens, built from the dashboard menu (lib/nav.ts) and the plan gates (lib/billing/access.ts).
- * The pricing cards and the comparison table read from here, so they can't promise something the plan doesn't open.
+ * What each plan opens, built from the dashboard menu (lib/nav.ts) and the plan gates (lib/billing/access.ts),
+ * so the pricing cards and the comparison table can't promise something a plan doesn't open.
+ * COPY only rewords a section for the pricing page; a section missing here falls back to its menu label.
  */
 export const PLAN_ORDER: PlanId[] = ["FREE", "STARTER", "GROWTH", "AUTOPILOT"];
+export const PAID_ORDER: PlanId[] = ["STARTER", "GROWTH", "AUTOPILOT"];
 
-export type Feature = { key: string; label: string; description: string; plan: PlanId };
+const COPY: Record<string, string> = {
+  "": "Overview of every site's health",
+  websites: "Website setup and site analysis",
+  keywords: "Keyword rankings, volume and clicks",
+  "keyword-planner": "Keyword Planner: quick wins, gaps and clusters",
+  content: "AI writer: briefs and full drafts from live search results",
+  backlinks: "Backlinks: referring domains, links and anchors",
+  competitors: "Competitor tracking and live Google results",
+  audience: "Audience from Google Analytics 4",
+  bots: "Search engine and AI crawler traffic",
+  seo: "Technical SEO audit with clear fixes",
+  cms: "Publish and fix pages in your CMS",
+};
+
+export type Feature = { key: string; label: string; text: string; plan: PlanId };
 
 const sectionOf = (href: string) => href.replace(/^\/dashboard\/?/, "").split(/[/?]/)[0];
 
 export const FEATURES: Feature[] = NAV.flatMap((s) => s.items).map((item) => {
   const key = sectionOf(item.href);
-  return { key, label: item.label, description: item.description ?? "", plan: SECTION_MIN_PLAN[key] ?? "FREE" };
+  return { key, label: item.label, text: COPY[key] ?? item.label, plan: SECTION_MIN_PLAN[key] ?? "FREE" };
 });
 
 export const hasFeature = (plan: PlanId, key: string) =>
@@ -32,10 +49,18 @@ export function usage(id: PlanId): string[] {
   return out;
 }
 
-/** Short list for a pricing card: what is new in this plan compared with the one below it. */
+/**
+ * Short list for a pricing card. The first paid plan lists everything it opens (the Free basics are left out:
+ * every account has them); higher plans list what they add on top of the plan below.
+ */
 export function highlights(id: PlanId): string[] {
-  const i = PLAN_ORDER.indexOf(id);
-  const prev = i > 0 ? PLAN_ORDER[i - 1] : null;
-  const added = FEATURES.filter((f) => f.plan === id).map((f) => (f.description ? `${f.label} — ${f.description.toLowerCase()}` : f.label));
-  return [...(prev ? [`Everything in ${PLANS[prev].name}`] : []), ...usage(id), ...added];
+  const i = PAID_ORDER.indexOf(id);
+  const prev = i > 0 ? PAID_ORDER[i - 1] : null;
+  const added = FEATURES.filter((f) => (prev ? f.plan === id : f.plan !== "FREE" && PLAN_RANK[f.plan] <= PLAN_RANK[id])).map((f) => f.text);
+  return [
+    ...(id === TRIAL_PLAN ? [`${TRIAL_DAYS}-day free trial`] : []),
+    ...(prev ? [`Everything in ${PLANS[prev].name}`] : []),
+    ...usage(id),
+    ...added,
+  ];
 }

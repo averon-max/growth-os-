@@ -163,7 +163,7 @@ export default async function LandingPage() {
                 <h2 className={styles.blockTitle}>Simple, monthly pricing</h2>
               </div>
               <p className={styles.blockText}>
-                Start free with one site. Upgrade when you need more sites, articles and data.
+                Try Starter free for 7 days. Upgrade when you need the AI writer and more websites. Cancel anytime.
               </p>
             </div>
 
@@ -175,7 +175,7 @@ export default async function LandingPage() {
                   <div key={id} className={popular ? `${styles.plan} ${styles.planPopular}` : styles.plan}>
                     <div className={styles.planHead}>
                       <h3 className={styles.planName}>{plan.name}</h3>
-                      {popular ? <span className={styles.planTag}>Most popular</span> : null}
+                      {id === "STARTER" ? <span className={styles.planTag}>7 days free</span> : popular ? <span className={styles.planTag}>Most popular</span> : null}
                     </div>
                     <p className={styles.price}>
                       {formatPrice(prices[id])}

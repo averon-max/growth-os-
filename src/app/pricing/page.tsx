@@ -4,56 +4,54 @@ import { Check, Minus } from "lucide-react";
 import SubscribeButton from "@/components/subscribe-button";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { planPrices, formatPrice } from "@/lib/billing/prices";
-import { FEATURES, PLAN_ORDER, hasFeature, highlights } from "@/lib/billing/features";
-import { NAV } from "@/lib/nav";
+import { FEATURES, PAID_ORDER, hasFeature, highlights } from "@/lib/billing/features";
 import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
+import { NAV } from "@/lib/nav";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Pricing · Hyprlyx",
-  description: "Simple monthly plans. Start free with one website and upgrade when you need keyword data, content and more sites.",
+  description: `Try Hyprlyx Starter free for ${TRIAL_DAYS} days. Simple monthly plans, cancel anytime.`,
   alternates: { canonical: "/pricing" },
 };
 
 const DESC: Record<PlanId, string> = {
-  FREE: "One website and the overview. Free, no card needed.",
-  STARTER: "Everything except AI writing, for one website.",
+  FREE: "",
+  STARTER: "Everything you need to grow one website, except the AI writer.",
   GROWTH: "Adds the AI writer, with room for up to 5 websites.",
-  AUTOPILOT: "Everything, with room for agencies and many sites.",
+  AUTOPILOT: "Everything, for agencies and teams running many sites.",
 };
 
 type Cell = boolean | string;
-const yes = (id: PlanId, key: string): Cell => hasFeature(id, key);
-
 const n = (v: number) => v.toLocaleString("en-US");
 const ROWS: { group: string; rows: [string, ...Cell[]][] }[] = [
   {
     group: "Usage",
     rows: [
-      ["Websites", ...PLAN_ORDER.map((id) => n(PLANS[id].limits.websites))],
-      ["Keyword data refreshes / month", ...PLAN_ORDER.map((id) => (hasFeature(id, "keywords") ? n(PLANS[id].limits.keywordRefreshesPerMonth) : false))],
-      ["AI article drafts / month", ...PLAN_ORDER.map((id) => (hasFeature(id, "content") ? n(PLANS[id].limits.articlesPerMonth) : false))],
+      ["Websites", ...PAID_ORDER.map((id) => n(PLANS[id].limits.websites))],
+      ["Keyword data refreshes / month", ...PAID_ORDER.map((id) => (hasFeature(id, "keywords") ? n(PLANS[id].limits.keywordRefreshesPerMonth) : false))],
+      ["AI article drafts / month", ...PAID_ORDER.map((id) => (hasFeature(id, "content") ? n(PLANS[id].limits.articlesPerMonth) : false))],
     ],
   },
   ...NAV.map((section) => ({
     group: section.label,
     rows: section.items.map((item) => {
       const f = FEATURES.find((x) => x.label === item.label)!;
-      return [f.description ? `${f.label} — ${f.description.toLowerCase()}` : f.label, ...PLAN_ORDER.map((id) => yes(id, f.key))] as [string, ...Cell[]];
+      return [f.text, ...PAID_ORDER.map((id) => hasFeature(id, f.key))] as [string, ...Cell[]];
     }),
   })),
-  { group: "Support", rows: [["Email support", true, true, true, true]] },
+  { group: "Billing & support", rows: [["Free trial", `${TRIAL_DAYS} days`, false, false], ["Cancel anytime in Settings", true, true, true], ["Email support", true, true, true]] },
 ];
 
 const FAQ = [
-  ["Is there a free plan?", "Yes. Free covers one website and the overview dashboard. Keyword data, audits and AI content start with Starter. No credit card required."],
-  ["How does the free trial work?", `Starter comes with a ${TRIAL_DAYS}-day free trial. Add a card at checkout; you're charged only when the trial ends, and you can cancel any time before that from Settings → Billing. The trial includes a fixed amount of fresh keyword data.`],
-  ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and the difference is prorated. Cancel from Settings → Billing and keep access until the end of the paid period."],
-  ["Do you offer refunds?", "Plans are billed monthly in advance. If something went wrong, write to support@hyprlyx.com within 30 days and we'll make it right."],
-  ["What payment methods do you accept?", "All major cards, Apple Pay and Google Pay through Stripe. We never see or store your card number."],
-  ["Are taxes included?", "Prices are in USD and exclude tax. Applicable taxes are calculated at checkout."],
+  ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. When it ends, the Starter monthly price is charged and the plan renews every month. Cancel before the trial ends in Settings → Billing and you pay nothing. One trial per workspace; it includes a limited amount of fresh keyword, backlink and competitor data.`],
+  ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and you pay only the difference for the rest of the month; downgrades credit the difference to your next invoices. Cancel in Settings → Billing and keep access until the end of the period you paid for."],
+  ["Can I use Hyprlyx without paying?", "Yes. A free account includes one website and the overview. Keyword data, audits, backlinks and the AI writer start with Starter."],
+  ["Do you offer refunds?", "Plans are billed monthly in advance. If something went wrong, write to support@hyprlyx.com within 30 days and we'll look into it."],
+  ["What payment methods do you accept?", "All major cards, Apple Pay and Google Pay through Stripe. We never see or store your card number, and you can remove your card in Settings → Billing."],
+  ["Are taxes included?", "Prices are in US dollars. If sales tax applies to you, it is shown at checkout before you pay."],
   ["Do I need Search Console or Google Analytics?", "No, but connecting them unlocks real rankings and traffic data. Both are free Google products."],
 ];
 
@@ -67,37 +65,40 @@ export default async function PricingPage() {
       <section className={s.hero} style={{ paddingBottom: 40 }}>
         <div className={s.container}>
           <p className={s.eyebrow}>Pricing</p>
-          <h1 className={s.h1}>Simple plans that grow with you</h1>
-          <p className={s.lede}>Start free with one website, or try Starter free for {TRIAL_DAYS} days. Upgrade when you need content and more sites. Cancel anytime.</p>
+          <h1 className={s.h1}>Try Starter free for {TRIAL_DAYS} days</h1>
+          <p className={s.lede}>Monthly plans with no contract. Cancel anytime in Settings and keep access until the end of the period you paid for.</p>
         </div>
       </section>
 
       <section style={{ paddingBottom: 96 }}>
         <div className={s.container}>
-          <div className={s.plans}>
-            {PLAN_ORDER.map((id) => {
+          <div className={s.plans} style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            {PAID_ORDER.map((id) => {
               const plan = PLANS[id];
-              const popular = id === "GROWTH";
+              const featured = id === "GROWTH";
+              const trial = id === TRIAL_PLAN;
               return (
-                <div key={id} className={popular ? `${s.plan} ${s.planPopular}` : s.plan}>
+                <div key={id} className={featured ? `${s.plan} ${s.planPopular}` : s.plan}>
                   <div className={s.planHead}>
                     <h2 className={s.planName}>{plan.name}</h2>
-                    {popular ? <span className={s.planTag}>Most popular</span> : null}
+                    {trial ? <span className={s.planTag}>{TRIAL_DAYS} days free</span> : featured ? <span className={s.planTag}>Most popular</span> : null}
                   </div>
                   <p className={s.price}>{formatPrice(prices[id])}<span className={s.per}>/ month</span></p>
                   <p className={s.planDesc}>{DESC[id]}</p>
                   <ul className={s.planList}>
                     {highlights(id).map((h) => <li key={h}><Check size={15} strokeWidth={2.2} />{h}</li>)}
                   </ul>
-                  {id === "FREE" ? (
-                    <Link href="/signup" className={s.ghost} style={{ justifyContent: "center" }}>Start free</Link>
-                  ) : (
-                    <SubscribeButton plan={id} label={id === TRIAL_PLAN ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`} variant={popular ? "accent" : "light"} />
-                  )}
+                  <SubscribeButton plan={id as "STARTER" | "GROWTH" | "AUTOPILOT"} label={trial ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`} variant={featured ? "accent" : "light"} />
+                  <p className={s.muted} style={{ margin: "10px 0 0", fontSize: 12.5, textAlign: "center" }}>
+                    {trial ? `Free for ${TRIAL_DAYS} days, then ${formatPrice(prices[id])}/month. Cancel before day ${TRIAL_DAYS} and pay nothing.` : "Billed monthly. Cancel anytime."}
+                  </p>
                 </div>
               );
             })}
           </div>
+          <p className={s.muted} style={{ marginTop: 22, fontSize: 14, textAlign: "center" }}>
+            Just looking? <Link href="/signup" style={{ color: "#f7f8f8" }}>Create a free account</Link> with one website and the overview — no card needed.
+          </p>
         </div>
       </section>
 
@@ -106,10 +107,10 @@ export default async function PricingPage() {
           <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side.</p></div>
           <div className={s.tableWrap}>
             <table className={s.table}>
-              <thead><tr><th>Feature</th>{PLAN_ORDER.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>
+              <thead><tr><th>Feature</th>{PAID_ORDER.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>
               <tbody>
                 {ROWS.map((g) => [
-                  <tr key={g.group} className={s.group}><td colSpan={5}>{g.group}</td></tr>,
+                  <tr key={g.group} className={s.group}><td colSpan={PAID_ORDER.length + 1}>{g.group}</td></tr>,
                   ...g.rows.map(([label, ...vals]) => (
                     <tr key={label}><td>{label}</td>{vals.map((v, i) => <td key={i}>{cell(v)}</td>)}</tr>
                   )),
@@ -125,7 +126,8 @@ export default async function PricingPage() {
           <h2 className={s.h2} style={{ marginBottom: 28 }}>Billing questions</h2>
           <div className={s.faq}>{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
           <p className={s.muted} style={{ marginTop: 28, fontSize: 14 }}>
-            Still have a question? <Link href="/support" style={{ color: "#f7f8f8" }}>Contact support</Link>.
+            Still have a question? <Link href="/support" style={{ color: "#f7f8f8" }}>Contact support</Link>. See also our{" "}
+            <Link href="/terms" style={{ color: "#f7f8f8" }}>Terms</Link>.
           </p>
         </div>
       </section>
