@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
   devIndicators: { position: "bottom-right" },
   // Screenshots are served resized for each screen (AVIF/WebP) instead of the 3200px originals.
   images: {
-    formats: ["image/avif", "image/webp"],
+    formats: ["image/webp"],
     qualities: [75, 90],
     minimumCacheTTL: 86400,
     // Local images may carry a query string (the Overview site preview: /api/site-preview?url=…).

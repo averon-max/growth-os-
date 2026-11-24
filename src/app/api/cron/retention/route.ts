@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { runRetention } from "@/lib/retention";
-import { refreshAllCloudflare } from "@/lib/traffic/refresh";
+import { refreshAllCloudflare, refreshAllSearchConsole } from "@/lib/traffic/refresh";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -18,8 +18,12 @@ export async function GET(req: Request) {
   console.log("[retention]", JSON.stringify(result));
 
   // Same daily run keeps every connected Cloudflare site up to date (one cron instead of two).
-  const cloudflare = await refreshAllCloudflare().catch((error) => ({ error: error instanceof Error ? error.message : "failed" }));
+  const cloudflare = await refreshAllCloudflare(110_000).catch((error) => ({ error: error instanceof Error ? error.message : "failed" }));
   console.log("[cloudflare refresh]", JSON.stringify(cloudflare));
 
-  return NextResponse.json({ ok: true, ...result, cloudflare });
+  // …and pulls Search Console queries into Keywords, so Keyword Planner and Competitors never sit empty.
+  const searchConsole = await refreshAllSearchConsole(110_000).catch((error) => ({ error: error instanceof Error ? error.message : "failed" }));
+  console.log("[search console refresh]", JSON.stringify(searchConsole));
+
+  return NextResponse.json({ ok: true, ...result, cloudflare, searchConsole });
 }
