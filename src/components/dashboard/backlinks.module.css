@@ -70,9 +70,9 @@ button.stat:hover { background: var(--ds-gray-100); }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; }
 .table th.num .sort { justify-content: flex-end; }
 td.num[data-tone="bad"] { color: var(--ds-red-900); }
-.primary { display: flex; align-items: center; gap: 10px; height: 48px; max-width: 420px; font-weight: 500; }
+.primary { display: flex; align-items: center; gap: 10px; max-width: 420px; font-weight: 500; }
 .favicon { flex: none; border-radius: 3px; }
-.clip { display: inline-block; max-width: 320px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.clip { display: inline-block; min-width: 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
 .muted { color: var(--ds-gray-900); }
 
 .sort { display: inline-flex; align-items: center; gap: 4px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
@@ -90,7 +90,7 @@ td.num[data-tone="bad"] { color: var(--ds-red-900); }
 .quality[data-bad] i { background: var(--ds-red-700); }
 
 .shareHead { width: 220px; }
-.shareCell { display: flex; align-items: center; gap: 10px; height: 48px; }
+.shareCell { display: flex; align-items: center; gap: 10px; }
 .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--ds-gray-200); overflow: hidden; }
 .bar span { display: block; height: 100%; border-radius: 3px; background: var(--ds-blue-700); }
 .shareValue { min-width: 36px; color: var(--ds-gray-900); font-size: var(--ds-text-13); text-align: right; font-variant-numeric: tabular-nums; }

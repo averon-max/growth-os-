@@ -30,6 +30,7 @@
 
 .deploy { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 32px; padding: 20px; }
 .preview {
+  position: relative;
   display: block;
   overflow: hidden;
   aspect-ratio: 16 / 10;

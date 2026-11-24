@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Check, Globe, ScanSearch } from "lucide-react";
 
@@ -6,6 +5,7 @@ import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState } from "@/components/dashboard/ui";
+import { SitePreview } from "@/components/dashboard/site-preview";
 import ui from "@/components/dashboard/ui.module.css";
 import { buildTrafficReport, type DayPoint, type Metric } from "@/lib/traffic/report";
 import { change, fmt } from "@/lib/traffic/filters";
@@ -28,8 +28,6 @@ const STATUS: Record<string, { label: string; tone: "ok" | "busy" | "bad" }> = {
   RUNNING: { label: "Scanning", tone: "busy" },
   FAILED: { label: "Error", tone: "bad" },
 };
-/** Website screenshot from WordPress.com's public mShots service, served through Next.js as WebP/AVIF. */
-const shot = (url: string, version: string) => `https://s.wordpress.com/mshots/v1/${encodeURIComponent(url)}?w=1280&h=800&v=${version}`;
 
 export default async function DashboardOverview({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
   const user = await requireUser();
@@ -118,7 +116,7 @@ export default async function DashboardOverview({ searchParams }: { searchParams
 
           <div className={s.deploy}>
             <a href={site.url} target="_blank" rel="noreferrer" className={s.preview} aria-label={`Open ${host(site.url)} in a new tab`}>
-              <Image src={shot(site.url, version)} alt={`Screenshot of ${host(site.url)}`} width={1280} height={800} sizes="(max-width: 900px) 100vw, 520px" quality={75} className={s.previewImg} />
+              <SitePreview url={site.url} version={version} className={s.previewImg} />
             </a>
 
             <dl className={s.facts}>
@@ -175,7 +173,7 @@ export default async function DashboardOverview({ searchParams }: { searchParams
                 <i className={critical ? s.bad : s.ok} aria-hidden /> {critical ? `${critical} critical issue${critical === 1 ? "" : "s"}` : "No critical issues"}
               </span>
               <span className={s.muted}>
-                {issues(analysis.id)} issues in total{analysis.pagesCount ? ` · ${analysis.pagesCount} pages checked` : ""}
+                {issues(analysis.id)} issues in total{analysis.pagesCount ? ` · ${analysis.pagesCount} page${analysis.pagesCount === 1 ? "" : "s"} checked` : ""}
               </span>
               <span className={s.footLink}>
                 Open report <ArrowUpRight size={14} strokeWidth={1.8} aria-hidden />

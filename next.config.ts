@@ -23,11 +23,8 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     qualities: [75, 90],
     minimumCacheTTL: 86400,
-    // Website previews on the Overview (WordPress.com mShots), re-encoded by Next.js to AVIF/WebP.
-    remotePatterns: [
-      { protocol: "https", hostname: "s.wordpress.com", pathname: "/mshots/v1/**" },
-      { protocol: "https", hostname: "s0.wp.com" },
-    ],
+    // Local images may carry a query string (the Overview site preview: /api/site-preview?url=…).
+    localPatterns: [{ pathname: "/**" }],
   },
   async headers() {
     return [

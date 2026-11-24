@@ -199,7 +199,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           st.onClick ? (
             <button key={st.label} type="button" className={s.stat} data-active={st.active || undefined} onClick={st.onClick} title={st.hint}>
               <span className={s.statLabel}>{st.label}</span>
-              <span className={s.statValue} data-tone={st.tone}>{st.value}</span>
+              <span className={s.statValue} data-tone={Number(st.value) > 0 ? st.tone : undefined}>{st.value}</span>
             </button>
           ) : (
             <div key={st.label} className={s.stat} title={st.hint}>
@@ -256,9 +256,11 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                 <tbody>
                   {slice(dSort.sorted).map((d) => (
                     <tr key={d.domain} tabIndex={0} onClick={() => openDomain(d)} onKeyDown={(e) => e.key === "Enter" && openDomain(d)}>
-                      <td className={s.primary}>
-                        <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(d.domain)}&sz=32`} alt="" width={16} height={16} className={s.favicon} />
-                        {d.domain}
+                      <td>
+                        <span className={s.primary}>
+                          <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(d.domain)}&sz=32`} alt="" width={16} height={16} className={s.favicon} />
+                          <span className={s.clip}>{d.domain}</span>
+                        </span>
                       </td>
                       <td><Quality bad={toxicDomain(d)} /></td>
                       <td className={s.num}>{fmt(d.backlinks)}</td>
@@ -285,9 +287,11 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                 <tbody>
                   {slice(lSort.sorted).map((l, i) => (
                     <tr key={l.from + l.to + i} tabIndex={0} onClick={() => openLink(l)} onKeyDown={(e) => e.key === "Enter" && openLink(l)}>
-                      <td className={s.primary} title={l.from}>
-                        <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(l.fromDomain)}&sz=32`} alt="" width={16} height={16} className={s.favicon} />
-                        <span className={s.clip}>{short(l.from)}</span>
+                      <td title={l.from}>
+                        <span className={s.primary}>
+                          <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(l.fromDomain)}&sz=32`} alt="" width={16} height={16} className={s.favicon} />
+                          <span className={s.clip}>{short(l.from)}</span>
+                        </span>
                       </td>
                       <td className={s.clip} title={l.anchor ?? ""}>{l.anchor || <span className={s.muted}>(no anchor)</span>}</td>
                       <td className={s.clip}>{short(l.to)}</td>
@@ -315,14 +319,18 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                     const share = anchorTotal ? (a.backlinks ?? 0) / anchorTotal : 0;
                     return (
                       <tr key={a.anchor} tabIndex={0} onClick={() => openAnchor(a)} onKeyDown={(e) => e.key === "Enter" && openAnchor(a)}>
-                        <td className={s.primary} title={a.anchor}>
-                          <span className={s.clip}>{a.anchor}</span>
-                          {SPAM.test(a.anchor) ? <Quality bad /> : null}
+                        <td title={a.anchor}>
+                          <span className={s.primary}>
+                            <span className={s.clip}>{a.anchor}</span>
+                            {SPAM.test(a.anchor) ? <Quality bad /> : null}
+                          </span>
                         </td>
                         <td className={s.num}>{fmt(a.backlinks)}</td>
-                        <td className={s.shareCell}>
-                          <span className={s.bar}><span style={{ width: `${Math.max(2, share * 100)}%` }} /></span>
-                          <span className={s.shareValue}>{Math.round(share * 100)}%</span>
+                        <td>
+                          <span className={s.shareCell}>
+                            <span className={s.bar}><span style={{ width: `${Math.max(2, share * 100)}%` }} /></span>
+                            <span className={s.shareValue}>{Math.round(share * 100)}%</span>
+                          </span>
                         </td>
                         <td className={s.num}>{fmt(a.domains)}</td>
                         <td className={s.num}>{date(a.firstSeen)}</td>
