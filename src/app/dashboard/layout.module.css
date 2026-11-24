@@ -1,45 +1,18 @@
+/* Dashboard shell — full viewport: fixed-height sidebar on the left, the page scrolls on the right. */
 .shell {
-  min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  background: #08090a;
-  color: #f7f8f8;
+  grid-template-columns: var(--ds-sidebar) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--ds-background-200);
+  color: var(--ds-gray-1000);
 }
 
 .main {
   min-width: 0;
   min-height: 100vh;
-  overflow-x: hidden;
-  background: #08090a;
+  background: var(--ds-background-200);
 }
 
 @media (max-width: 900px) {
-  .shell {
-    grid-template-columns: 188px minmax(0, 1fr);
-  }
+  .shell { display: block; }
 }
-
-@media (max-width: 720px) {
-  .shell {
-    display: block;
-  }
-}
-
-/* ===== Linear shell: dark frame + raised content panel ===== */
-.shell { background: #08090a !important; }
-.main {
-  margin: 8px 8px 8px 0 !important;
-  height: calc(100vh - 16px) !important;
-  overflow-y: auto !important;
-  border: 1px solid #1d1e22 !important;
-  border-radius: 10px !important;
-  background: #0e0f11 !important;
-}
-
-/* ===== LINEAR v2 shell ===== */
-.shell { background: #08090a !important; }
-.main { margin: 8px 8px 8px 0 !important; height: calc(100vh - 16px) !important; overflow-y: auto !important; border: 1px solid #1d1e21 !important; border-radius: 12px !important; background: #101112 !important; }
-
-/* sidebar width follows the sidebar itself (collapsed rail = 56px) */
-.shell { display: flex !important; grid-template-columns: none !important; }
-.main { flex: 1 1 auto; min-width: 0; margin-left: 0 !important; width: auto !important; }

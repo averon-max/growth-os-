@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { Plus } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { NAV, isActivePath, navItemFor } from "@/lib/nav";
@@ -18,56 +18,33 @@ interface Props {
   };
 }
 
+/** Top bar: site selector on the left (Vercel's project selector), the page in the middle, one real action on the right. */
 export function Topbar({ title, subtitle, websiteSwitcher }: Props) {
-  const { data: session } = useSession();
   const pathname = usePathname() ?? "";
-  const email = session?.user?.email ?? null;
-  const initial = email?.charAt(0).toUpperCase() ?? "G";
-
   const item = navItemFor(pathname);
   const section = item ? NAV.find((s) => s.items.some((i) => isActivePath(pathname, i) && i.href === item.href)) : undefined;
-  const Icon = item?.icon;
 
   return (
-    <div className={styles.topbar}>
-      <div className={styles.titleBlock}>
-        {Icon ? (
-          <span className={styles.pageIcon}>
-            <Icon size={15} strokeWidth={1.7} />
-          </span>
+    <header className={styles.topbar}>
+      <div className={styles.left}>
+        {websiteSwitcher ? (
+          <WebsiteSwitcher workspaceId={websiteSwitcher.workspaceId} currentWebsiteId={websiteSwitcher.currentWebsiteId} />
+        ) : section ? (
+          <span className={styles.section}>{section.label}</span>
         ) : null}
+      </div>
 
-        {section ? (
-          <>
-            <span className={styles.section}>{section.label}</span>
-            <span className={styles.separator}>/</span>
-          </>
-        ) : null}
-
+      <div className={styles.center}>
         <span className={styles.title}>{title}</span>
-
-        {subtitle && (
-          <>
-            <span className={styles.separator}>/</span>
-            <span className={styles.subtitle}>{subtitle}</span>
-          </>
-        )}
+        {subtitle ? <span className={styles.subtitle}>{subtitle}</span> : null}
       </div>
 
       <div className={styles.right}>
-        {websiteSwitcher && (
-          <div className={styles.websiteControl}>
-            <WebsiteSwitcher
-              workspaceId={websiteSwitcher.workspaceId}
-              currentWebsiteId={websiteSwitcher.currentWebsiteId}
-            />
-          </div>
-        )}
-
-        <Link href="/dashboard/settings/account" className={styles.avatar} title={email ?? "Account"} aria-label="Account settings">
-          {initial}
+        <Link href="/dashboard/add-website" className={styles.action}>
+          <Plus size={16} strokeWidth={1.6} aria-hidden />
+          <span>Add website</span>
         </Link>
       </div>
-    </div>
+    </header>
   );
 }

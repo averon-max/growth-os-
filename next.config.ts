@@ -19,7 +19,16 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: { position: "bottom-right" },
   // Screenshots are served resized for each screen (AVIF/WebP) instead of the 3200px originals.
-  images: { formats: ["image/avif", "image/webp"], qualities: [75, 90], minimumCacheTTL: 2678400 },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    qualities: [75, 90],
+    minimumCacheTTL: 86400,
+    // Website previews on the Overview (WordPress.com mShots), re-encoded by Next.js to AVIF/WebP.
+    remotePatterns: [
+      { protocol: "https", hostname: "s.wordpress.com", pathname: "/mshots/v1/**" },
+      { protocol: "https", hostname: "s0.wp.com" },
+    ],
+  },
   async headers() {
     return [
       {

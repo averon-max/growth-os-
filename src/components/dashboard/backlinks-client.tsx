@@ -1,52 +1,92 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, RefreshCw, Upload } from "lucide-react";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowUpRight, Loader2, RefreshCw, Search, Upload } from "lucide-react";
 import type { BacklinksReport } from "@/lib/backlinks/domain";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
-import { LinearList, type LRow } from "./linear-list";
-import u from "./ui.module.css";
-import p from "./planner.module.css";
+import s from "./backlinks.module.css";
 
 type Tab = "domains" | "links" | "anchors";
-const fmt = (n: number | null) => (n === null ? "—" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(n));
-const day = (s: string | null) => (s ? s.slice(0, 10) : "—");
-const short = (url: string) => { try { const x = new URL(url); return x.hostname.replace(/^www\./, "") + x.pathname; } catch { return url; } };
+type Only = "all" | "dofollow" | "new" | "lost";
+type Link = BacklinksReport["links"][number];
+type Domain = BacklinksReport["domains"][number];
+type Anchor = BacklinksReport["anchors"][number];
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={u.statCard}>
-      <div className={u.statHeader}><p className={u.statLabel}>{label}</p></div>
-      <p className={u.statValue}>{value}</p>
-    </div>
+const PAGE = 50;
+const fmt = (n: number | null | undefined) =>
+  n === null || n === undefined ? "—" : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${Math.round(n / 1e3)}K` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : n.toLocaleString("en-US");
+const date = (v: string | null) => (v ? new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
+const short = (url: string) => {
+  try {
+    const x = new URL(url);
+    return x.hostname.replace(/^www\./, "") + (x.pathname === "/" ? "" : x.pathname);
+  } catch {
+    return url;
+  }
+};
+/** Anchors and URLs that read like paid link schemes (PBNs, "DA 50 backlinks", casinos). */
+const SPAM = /backlink|pbn|dofollow|\bseo\b|\bda ?\d|buy|cheap|casino|poker|slot|betting|888|rank first/i;
+
+function useSort<T>(rows: T[], cols: Record<string, (r: T) => number | string | null>, initial: string) {
+  const [sort, setSort] = useState({ key: initial, desc: true });
+  const sorted: T[] = useMemo<T[]>(() => {
+    const get = cols[sort.key];
+    if (!get) return rows;
+    return [...rows].sort((a, b) => {
+      const x = get(a);
+      const y = get(b);
+      if (x === null) return 1;
+      if (y === null) return -1;
+      const d = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+      return sort.desc ? -d : d;
+    });
+  }, [rows, cols, sort]);
+  const th = (key: string, label: string, align: "left" | "right" = "right") => (
+    <th className={align === "right" ? s.num : undefined} aria-sort={sort.key === key ? (sort.desc ? "descending" : "ascending") : undefined}>
+      <button type="button" className={s.sort} onClick={() => setSort((p) => ({ key, desc: p.key === key ? !p.desc : true }))}>
+        {label}
+        <span className={s.arrow} aria-hidden>
+          {sort.key === key ? (sort.desc ? "↓" : "↑") : ""}
+        </span>
+      </button>
+    </th>
   );
+  return { sorted, th };
 }
 
 function FreeBanner({ notice, websiteId, onImported }: { notice: string; websiteId: string; onImported: () => void }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   async function onFiles(files: FileList | null) {
-    if (files == null || files.length === 0) return;
-    setBusy(true); setMsg(null);
+    if (!files?.length) return;
+    setBusy(true);
+    setMsg(null);
     const notes: string[] = [];
     try {
       for (const f of Array.from(files)) {
         const res = await fetch(`/api/backlinks/import?websiteId=${encodeURIComponent(websiteId)}&name=${encodeURIComponent(f.name)}`, {
-          method: "POST", headers: { "content-type": "text/csv" }, body: await f.text(),
+          method: "POST",
+          headers: { "content-type": "text/csv" },
+          body: await f.text(),
         });
         const j = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
-        if (res.ok === false) throw new Error(j.error ?? `Import of ${f.name} failed.`);
+        if (!res.ok) throw new Error(j.error ?? `Import of ${f.name} failed.`);
         notes.push(j.message ?? f.name);
       }
       setMsg(notes.join(" "));
       onImported();
-    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "0 0 18px", padding: "10px 14px", border: "1px solid rgba(242,201,76,.28)", borderRadius: 10, background: "rgba(242,201,76,.06)", color: "#d0d6e0", fontSize: 13, lineHeight: 1.45 }}>
-      <span style={{ color: "#f2c94c", fontWeight: 510, whiteSpace: "nowrap" }}>Free mode</span>
-      <span style={{ flex: 1, minWidth: 0 }}>{msg ?? notice.replace(/^Free mode — /, "")}</span>
-      <label className={p.ghost} style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
-        {busy ? <Loader2 size={13} className={p.spin} /> : <Upload size={13} />}Import CSV
+    <div className={s.notice}>
+      <span className={s.noticeTag}>Free mode</span>
+      <span className={s.noticeText}>{msg ?? notice.replace(/^Free mode — /, "")}</span>
+      <label className={s.button}>
+        {busy ? <Loader2 size={14} className={s.spin} /> : <Upload size={14} />} Import CSV
         <input type="file" accept=".csv,.tsv,.txt" multiple hidden onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} />
       </label>
     </div>
@@ -58,149 +98,263 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("domains");
+  const [only, setOnly] = useState<Only>("all");
   const [q, setQ] = useState("");
-  const [only, setOnly] = useState<"all" | "dofollow" | "new" | "lost">("all");
-  const [sel, setSel] = useState<DrawerData | null>(null);
   const [pg, setPg] = useState(0);
-  type Link = BacklinksReport["links"][number];
-  const linkItems = (ls: Link[]) => ls.map((l) => ({ primary: short(l.from), secondary: `${l.anchor || "(no anchor)"} → ${short(l.to)} · ${l.dofollow ? "dofollow" : "nofollow"}`, href: l.from }));
-  const openDomain = (d: string) => {
-    const ls = (data?.links ?? []).filter((l) => l.fromDomain === d || l.fromDomain.endsWith("." + d));
-    const info = data?.domains.find((x) => x.domain === d);
-    setSel({ title: d, subtitle: "Referring domain", fields: [["Rank", fmt(info?.rank ?? null)], ["Backlinks", fmt(info?.backlinks ?? null)], ["Spam score", String(info?.spamScore ?? "—")], ["First seen", day(info?.firstSeen ?? null)]], itemsTitle: `Links from this domain · ${ls.length} in sample`, items: linkItems(ls), actions: <a className={p.ghost} href={`https://${d}`} target="_blank" rel="noreferrer">Open site</a> });
-  };
-  const openLink = (l: Link) => setSel({ title: short(l.from), subtitle: l.title ?? "Backlink", fields: [["Anchor", l.anchor || "(no anchor)"], ["Target", short(l.to)], ["Type", l.dofollow ? "dofollow" : "nofollow"], ["Rank", fmt(l.rank)], ["First seen", day(l.firstSeen)], ["Status", l.isLost ? "Lost" : l.isNew ? "New" : "Live"]], actions: <a className={p.ghost} href={l.from} target="_blank" rel="noreferrer">Open source page</a> });
-  const openAnchor = (a: string) => {
-    const ls = (data?.links ?? []).filter((l) => (l.anchor || "(empty)") === a);
-    setSel({ title: a, subtitle: "Anchor text", itemsTitle: `Links with this anchor · ${ls.length} in sample`, items: linkItems(ls) });
-  };
+  const [sel, setSel] = useState<DrawerData | null>(null);
 
   const load = useCallback(async (refresh: boolean) => {
-    setBusy(true); setError(null);
+    setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`/api/backlinks?websiteId=${encodeURIComponent(websiteId)}${refresh ? "&refresh=1" : ""}`);
       const json = await res.json();
-      if (res.ok === false) throw new Error(json.error ?? "Could not load backlinks.");
+      if (!res.ok) throw new Error(json.error ?? "Could not load backlinks.");
       setData(json);
-    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }, [websiteId]);
   useEffect(() => { void load(false); }, [load]);
 
-  const s = data?.summary;
+  const spamBy = useMemo(() => new Map((data?.domains ?? []).map((d) => [d.domain, d.spamScore ?? 0])), [data]);
+  const toxicLink = useCallback((l: Link) => SPAM.test(l.anchor ?? "") || SPAM.test(l.from) || (spamBy.get(l.fromDomain) ?? 0) >= 50, [spamBy]);
+  const toxicDomain = (d: Domain) => (d.spamScore ?? 0) >= 50;
+
   const ql = q.trim().toLowerCase();
-  const links = (data?.links ?? []).filter((l) => (only === "all" || (only === "dofollow" && l.dofollow) || (only === "new" && l.isNew) || (only === "lost" && l.isLost)) && (ql === "" || l.from.toLowerCase().includes(ql) || (l.anchor ?? "").toLowerCase().includes(ql)));
-  const domains = (data?.domains ?? []).filter((d) => ql === "" || d.domain.includes(ql));
-  const anchors = (data?.anchors ?? []).filter((a) => ql === "" || a.anchor.toLowerCase().includes(ql));
-  const newCount = (data?.links ?? []).filter((l) => l.isNew).length;
-  const SPAM = /backlink|pbn|dofollow|\bseo\b|\bda ?\d|buy|cheap|casino|poker|slot|betting|888|rank first/i;
-  const spamDomain = new Map((data?.domains ?? []).map((d) => [d.domain, d.spamScore ?? 0]));
-  const linkToxic = (l: Link) => SPAM.test(l.anchor ?? "") || SPAM.test(l.from) || (spamDomain.get(l.fromDomain) ?? 0) >= 50;
-  const mon = (s: string | null) => (s ? new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
-  const page = <T,>(xs: T[]) => xs.slice(pg * 100, pg * 100 + 100);
-  const domainRow = (d: BacklinksReport["domains"][number], i: number): LRow => {
-    const tox = (d.spamScore ?? 0) >= 50;
-    return { key: d.domain, id: `RD-${pg * 100 + i + 1}`, status: tox ? "red" : "green", title: d.domain, hint: `${fmt(d.backlinks)} link${d.backlinks === 1 ? "" : "s"}`,
-      pills: [tox ? { label: "Spam", dot: "#eb5757" } : { label: "Clean", dot: "#4cb782" }], metrics: [`spam ${d.spamScore ?? "—"}`, `rank ${fmt(d.rank)}`], date: mon(d.firstSeen), onClick: () => openDomain(d.domain) };
+  const allLinks = data?.links ?? [];
+  const links = allLinks.filter((l) => (only === "all" || (only === "dofollow" && l.dofollow) || (only === "new" && l.isNew) || (only === "lost" && l.isLost)) && (!ql || l.from.toLowerCase().includes(ql) || (l.anchor ?? "").toLowerCase().includes(ql)));
+  const domains = (data?.domains ?? []).filter((d) => !ql || d.domain.includes(ql));
+  const anchors = (data?.anchors ?? []).filter((a) => !ql || a.anchor.toLowerCase().includes(ql));
+  const anchorTotal = (data?.anchors ?? []).reduce((a, x) => a + (x.backlinks ?? 0), 0);
+
+  const dSort = useSort<Domain>(domains, useMemo(() => ({ domain: (d: Domain) => d.domain, backlinks: (d: Domain) => d.backlinks, rank: (d: Domain) => d.rank, spam: (d: Domain) => d.spamScore, seen: (d: Domain) => d.firstSeen }), []), "backlinks");
+  const lSort = useSort<Link>(links, useMemo(() => ({ from: (l: Link) => l.from, rank: (l: Link) => l.rank, seen: (l: Link) => l.firstSeen }), []), "rank");
+  const aSort = useSort<Anchor>(anchors, useMemo(() => ({ anchor: (a: Anchor) => a.anchor, backlinks: (a: Anchor) => a.backlinks, domains: (a: Anchor) => a.domains, seen: (a: Anchor) => a.firstSeen }), []), "backlinks");
+
+  const linkItems = (ls: Link[]) => ls.map((l) => ({ primary: short(l.from), secondary: `${l.anchor || "(no anchor)"} → ${short(l.to)} · ${l.dofollow ? "dofollow" : "nofollow"}`, href: l.from }));
+  const openDomain = (d: Domain) => {
+    const ls = allLinks.filter((l) => l.fromDomain === d.domain || l.fromDomain.endsWith(`.${d.domain}`));
+    setSel({
+      title: d.domain,
+      subtitle: toxicDomain(d) ? "Referring domain · looks spammy" : "Referring domain",
+      fields: [["Domain rank", fmt(d.rank)], ["Backlinks to you", fmt(d.backlinks)], ["Spam score", d.spamScore === null ? "—" : `${d.spamScore}/100`], ["First seen", date(d.firstSeen)]],
+      itemsTitle: `Links from this domain (${ls.length} in the sample)`,
+      items: linkItems(ls),
+      actions: <a className={s.button} href={`https://${d.domain}`} target="_blank" rel="noreferrer">Open site <ArrowUpRight size={14} /></a>,
+    });
   };
-  const linkRow = (l: Link, i: number): LRow => {
-    const tox = linkToxic(l);
-    return { key: l.from + l.to + i, id: `BL-${pg * 100 + i + 1}`, status: l.isLost ? "gray" : tox ? "red" : "green", title: l.fromDomain || short(l.from), hint: l.anchor || "no anchor",
-      pills: [tox ? { label: "PBN", dot: "#eb5757" } : (l.source ? { label: l.source } : { label: l.dofollow ? "dofollow" : "nofollow" }), ...(l.isNew ? [{ label: "New", dot: "#f2c94c" }] : []), ...(l.isLost ? [{ label: "Lost" }] : [])],
-      metrics: [short(l.to)], date: mon(l.firstSeen), onClick: () => openLink(l) };
+  const openLink = (l: Link) =>
+    setSel({
+      title: short(l.from),
+      subtitle: l.title ?? "Backlink",
+      fields: [["Anchor", l.anchor || "(no anchor)"], ["Points to", short(l.to)], ["Type", l.dofollow ? "dofollow" : "nofollow"], ["Page rank", fmt(l.rank)], ["First seen", date(l.firstSeen)], ["Status", l.isLost ? "Lost" : l.isNew ? "New" : "Live"]],
+      actions: <a className={s.button} href={l.from} target="_blank" rel="noreferrer">Open source page <ArrowUpRight size={14} /></a>,
+    });
+  const openAnchor = (a: Anchor) => {
+    const ls = allLinks.filter((l) => (l.anchor || "(empty)") === a.anchor);
+    setSel({ title: a.anchor, subtitle: "Anchor text", fields: [["Backlinks", fmt(a.backlinks)], ["Referring domains", fmt(a.domains)], ["First seen", date(a.firstSeen)]], itemsTitle: `Links with this anchor (${ls.length} in the sample)`, items: linkItems(ls) });
   };
-  const pd = page(domains);
-  const pl = page(links);
-  const domainGroups = [
-    { title: "Toxic", status: "red" as const, count: domains.filter((d) => (d.spamScore ?? 0) >= 50).length, rows: pd.filter((d) => (d.spamScore ?? 0) >= 50).map(domainRow) },
-    { title: "Clean", status: "green" as const, count: domains.filter((d) => (d.spamScore ?? 0) < 50).length, rows: pd.filter((d) => (d.spamScore ?? 0) < 50).map(domainRow) },
+
+  const sum = data?.summary;
+  const go = (t: Tab, o: Only = "all") => {
+    setTab(t);
+    setOnly(o);
+    setPg(0);
+  };
+  const stats: { label: string; value: string; hint: string; active: boolean; onClick?: () => void; tone?: "good" | "bad" }[] = [
+    { label: "Referring domains", value: fmt(sum?.referringDomains), hint: "Different sites that link to you", active: tab === "domains", onClick: () => go("domains") },
+    { label: "Backlinks", value: fmt(sum?.backlinks), hint: "All links pointing to the site", active: tab === "links" && only === "all", onClick: () => go("links") },
+    { label: "Dofollow", value: sum?.dofollowShare == null ? "—" : `${sum.dofollowShare}%`, hint: "Links that pass ranking value", active: tab === "links" && only === "dofollow", onClick: () => go("links", "dofollow") },
+    { label: "New", value: data ? String(allLinks.filter((l) => l.isNew).length) : "—", hint: "New links in the latest sample", active: tab === "links" && only === "new", onClick: () => go("links", "new"), tone: "good" },
+    { label: "Lost", value: data ? String(allLinks.filter((l) => l.isLost).length) : "—", hint: "Links that disappeared", active: tab === "links" && only === "lost", onClick: () => go("links", "lost"), tone: "bad" },
+    { label: "Domain rank", value: fmt(sum?.rank), hint: "DataForSEO authority score of the domain, 0–1000", active: false },
   ];
-  const linkGroups = [
-    { title: "Toxic", status: "red" as const, count: links.filter(linkToxic).length, rows: pl.filter(linkToxic).map(linkRow) },
-    { title: "Live", status: "green" as const, count: links.filter((l) => linkToxic(l) === false).length, rows: pl.filter((l) => linkToxic(l) === false).map(linkRow) },
-  ];
-  const lostCount = (data?.links ?? []).filter((l) => l.isLost).length;
+
+  const rows = tab === "domains" ? dSort.sorted.length : tab === "links" ? lSort.sorted.length : aSort.sorted.length;
+  const pages = Math.max(1, Math.ceil(rows / PAGE));
+  const slice = <T,>(xs: T[]) => xs.slice(pg * PAGE, pg * PAGE + PAGE);
 
   return (
     <>
-      <div className={u.compactHeader}>
+      <header className={s.head}>
         <div>
-          <h1 className={u.compactTitle}>Backlinks</h1>
-          <div className={u.compactMeta}>{data ? `${data.domain} · updated ${new Date(data.generatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : `${domain} · referring domains, links and anchors from DataForSEO`}</div>
+          <h1 className={s.title}>Backlinks</h1>
+          <p className={s.meta}>
+            {data ? `${data.domain} · updated ${new Date(data.generatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : `${domain} · links from other sites, by DataForSEO`}
+          </p>
         </div>
-        <button className={p.ghost} disabled={busy} onClick={() => void load(true)}>{busy ? <Loader2 size={13} className={p.spin} /> : <RefreshCw size={13} />}Refresh</button>
-      </div>
+        <button type="button" className={s.button} disabled={busy} onClick={() => void load(true)}>
+          {busy ? <Loader2 size={14} className={s.spin} /> : <RefreshCw size={14} />} Refresh
+        </button>
+      </header>
 
-      {error ? <div className={p.err}>{error}</div> : null}
+      {error ? <p className={s.error} role="alert">{error}</p> : null}
       {data?.mode === "free" ? <FreeBanner notice={data.notice ?? ""} websiteId={websiteId} onImported={() => void load(false)} /> : null}
 
-      <div className={`${u.statGrid} ${p.stat6}`}>
-        <Stat label="Domain rank" value={fmt(s?.rank ?? null)} />
-        <Stat label="Backlinks" value={fmt(s?.backlinks ?? null)} />
-        <Stat label="Referring domains" value={fmt(s?.referringDomains ?? null)} />
-        <Stat label="Dofollow" value={s?.dofollowShare === null || s === undefined ? "—" : `${s.dofollowShare}%`} />
-        <Stat label="New (sample)" value={data ? String(newCount) : "—"} />
-        <Stat label="Lost (sample)" value={data ? String(lostCount) : "—"} />
+      <div className={s.stats}>
+        {stats.map((st) =>
+          st.onClick ? (
+            <button key={st.label} type="button" className={s.stat} data-active={st.active || undefined} onClick={st.onClick} title={st.hint}>
+              <span className={s.statLabel}>{st.label}</span>
+              <span className={s.statValue} data-tone={st.tone}>{st.value}</span>
+            </button>
+          ) : (
+            <div key={st.label} className={s.stat} title={st.hint}>
+              <span className={s.statLabel}>{st.label}</span>
+              <span className={s.statValue}>{st.value}</span>
+            </div>
+          ),
+        )}
       </div>
 
-      <div className={p.tabs}>
-        {([["domains", "Referring domains", data?.domains.length], ["links", "Backlinks", data?.links.length], ["anchors", "Anchors", data?.anchors.length]] as [Tab, string, number | undefined][]).map(([id, label, n]) => (
-          <button key={id} className={p.tab} data-on={tab === id ? "true" : "false"} onClick={() => { setTab(id); setPg(0); }}>{label}{n === undefined ? null : <span className={p.tabCount}>{n}</span>}</button>
-        ))}
-      </div>
-
-      <div className={u.group}>
-        <div className={p.toolbar}>
-          {tab === "links" ? (["all", "dofollow", "new", "lost"] as const).map((o) => (
-            <button key={o} className={p.chip} data-on={only === o ? "true" : "false"} onClick={() => { setOnly(o); setPg(0); }}>{o === "all" ? "All" : o === "dofollow" ? "Dofollow" : o === "new" ? "New" : "Lost"}</button>
-          )) : null}
-          <input className={p.search} value={q} onChange={(e) => { setQ(e.target.value); setPg(0); }} placeholder="Filter…" />
-        </div>
-        {data === null ? <div className={p.empty}>{busy ? "Loading backlinks from DataForSEO…" : "No data."}</div>
-          : tab === "domains" || tab === "links" ? <LinearList groups={tab === "domains" ? domainGroups : linkGroups} empty="Nothing matches." />
-          : (tab as string) === "domains" ? (domains.length === 0 ? <div className={p.empty}>No referring domains found.</div> : (
-            <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
-              <thead><tr><th>Domain</th><th>Rank</th><th>Backlinks</th><th>Spam score</th><th>First seen</th></tr></thead>
-              <tbody>{domains.slice(pg * 100, pg * 100 + 100).map((d) => (
-                <tr key={d.domain} data-click="" onClick={() => openDomain(d.domain)}><td><a onClick={(e) => e.stopPropagation()} className={p.page} href={`https://${d.domain}`} target="_blank" rel="noreferrer">{d.domain}</a></td>
-                  <td className={p.num}>{fmt(d.rank)}</td><td className={p.num}>{fmt(d.backlinks)}</td>
-                  <td className={(d.spamScore ?? 0) >= 50 ? p.down : p.num}>{d.spamScore ?? "—"}</td><td className={p.dim}>{day(d.firstSeen)}</td></tr>
-              ))}</tbody>
-            </table>
-          )) : (tab as string) === "links" ? (links.length === 0 ? <div className={p.empty}>No backlinks match.</div> : (
-            <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
-              <thead><tr><th>Source page</th><th>Anchor</th><th>Target</th><th>Type</th><th>Rank</th><th>First seen</th><th>Status</th></tr></thead>
-              <tbody>{links.slice(pg * 100, pg * 100 + 100).map((l, i) => (
-                <tr key={l.from + l.to + i} data-click="" onClick={() => openLink(l)}>
-                  <td><a onClick={(e) => e.stopPropagation()} className={p.page} href={l.from} target="_blank" rel="noreferrer" title={l.title ?? undefined}>{short(l.from)}</a></td>
-                  <td className={l.anchor ? undefined : p.dim}>{l.anchor || "(no anchor)"}</td>
-                  <td><span className={p.page}>{short(l.to)}</span></td>
-                  <td>{l.dofollow ? <span className={`${u.badge} ${u.badgeSuccess}`}>dofollow</span> : <span className={u.badge}>nofollow</span>}</td>
-                  <td className={p.num}>{fmt(l.rank)}</td><td className={p.dim}>{day(l.firstSeen)}</td>
-                  <td>{l.isLost ? <span className={p.down}>Lost</span> : l.isNew ? <span className={p.up}>New</span> : <span className={p.dim}>Live</span>}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          )) : (anchors.length === 0 ? <div className={p.empty}>No anchors found.</div> : (
-            <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
-              <thead><tr><th>Anchor</th><th>Backlinks</th><th>Referring domains</th><th>First seen</th></tr></thead>
-              <tbody>{anchors.slice(pg * 100, pg * 100 + 100).map((a) => (
-                <tr key={a.anchor} data-click="" onClick={() => openAnchor(a.anchor)}><td>{a.anchor}</td><td className={p.num}>{fmt(a.backlinks)}</td><td className={p.num}>{fmt(a.domains)}</td><td className={p.dim}>{day(a.firstSeen)}</td></tr>
-              ))}</tbody>
-            </table>
-          ))}
-      </div>
-      {(() => {
-        const n = tab === "domains" ? domains.length : tab === "links" ? links.length : anchors.length;
-        const pages = Math.ceil(n / 100);
-        return pages > 1 ? (
-          <div className={p.pager}>
-            <button disabled={pg === 0} onClick={() => setPg(pg - 1)}>← Prev</button>
-            <span>{pg + 1} / {pages} · {n.toLocaleString()} rows</span>
-            <button disabled={pg >= pages - 1} onClick={() => setPg(pg + 1)}>Next →</button>
+      <section className={s.panel}>
+        <div className={s.toolbar}>
+          <div className={s.tabs} role="tablist">
+            {([["domains", "Referring domains", data?.domains.length], ["links", "Backlinks", data?.links.length], ["anchors", "Anchors", data?.anchors.length]] as [Tab, string, number | undefined][]).map(([id, label, n]) => (
+              <button key={id} type="button" role="tab" aria-selected={tab === id} className={s.tab} data-active={tab === id || undefined} onClick={() => go(id)}>
+                {label}
+                {n === undefined ? null : <span className={s.tabCount}>{n}</span>}
+              </button>
+            ))}
           </div>
-        ) : null;
-      })()}
+          {tab === "links" ? (
+            <div className={s.segment}>
+              {(["all", "dofollow", "new", "lost"] as const).map((o) => (
+                <button key={o} type="button" data-active={only === o || undefined} onClick={() => { setOnly(o); setPg(0); }}>
+                  {o === "all" ? "All" : o === "dofollow" ? "Dofollow" : o === "new" ? "New" : "Lost"}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <label className={s.search}>
+            <Search size={14} aria-hidden />
+            <input value={q} onChange={(e) => { setQ(e.target.value); setPg(0); }} placeholder={tab === "anchors" ? "Filter anchors" : tab === "links" ? "Filter by page or anchor" : "Filter domains"} />
+          </label>
+        </div>
+
+        {data === null ? (
+          <p className={s.empty}>{busy ? "Loading backlinks…" : "No data yet. Press Refresh."}</p>
+        ) : rows === 0 ? (
+          <p className={s.empty}>Nothing matches this filter.</p>
+        ) : (
+          <div className={s.tableWrap}>
+            {tab === "domains" ? (
+              <table className={s.table}>
+                <thead>
+                  <tr>
+                    {dSort.th("domain", "Domain", "left")}
+                    <th>Quality</th>
+                    {dSort.th("backlinks", "Links to you")}
+                    {dSort.th("rank", "Domain rank")}
+                    {dSort.th("spam", "Spam score")}
+                    {dSort.th("seen", "First seen")}
+                  </tr>
+                </thead>
+                <tbody>
+                  {slice(dSort.sorted).map((d) => (
+                    <tr key={d.domain} tabIndex={0} onClick={() => openDomain(d)} onKeyDown={(e) => e.key === "Enter" && openDomain(d)}>
+                      <td className={s.primary}>
+                        <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(d.domain)}&sz=32`} alt="" width={16} height={16} className={s.favicon} />
+                        {d.domain}
+                      </td>
+                      <td><Quality bad={toxicDomain(d)} /></td>
+                      <td className={s.num}>{fmt(d.backlinks)}</td>
+                      <td className={s.num}>{fmt(d.rank)}</td>
+                      <td className={s.num} data-tone={toxicDomain(d) ? "bad" : undefined}>{d.spamScore ?? "—"}</td>
+                      <td className={s.num}>{date(d.firstSeen)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : tab === "links" ? (
+              <table className={s.table}>
+                <thead>
+                  <tr>
+                    {lSort.th("from", "Source page", "left")}
+                    <th>Anchor</th>
+                    <th>Points to</th>
+                    <th>Type</th>
+                    {lSort.th("rank", "Page rank")}
+                    {lSort.th("seen", "First seen")}
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {slice(lSort.sorted).map((l, i) => (
+                    <tr key={l.from + l.to + i} tabIndex={0} onClick={() => openLink(l)} onKeyDown={(e) => e.key === "Enter" && openLink(l)}>
+                      <td className={s.primary} title={l.from}>
+                        <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(l.fromDomain)}&sz=32`} alt="" width={16} height={16} className={s.favicon} />
+                        <span className={s.clip}>{short(l.from)}</span>
+                      </td>
+                      <td className={s.clip} title={l.anchor ?? ""}>{l.anchor || <span className={s.muted}>(no anchor)</span>}</td>
+                      <td className={s.clip}>{short(l.to)}</td>
+                      <td><span className={s.pill} data-tone={l.dofollow ? "good" : undefined}>{l.dofollow ? "dofollow" : "nofollow"}</span></td>
+                      <td className={s.num}>{fmt(l.rank)}</td>
+                      <td className={s.num}>{date(l.firstSeen)}</td>
+                      <td>{l.isLost ? <span className={s.pill} data-tone="bad">Lost</span> : toxicLink(l) ? <Quality bad /> : l.isNew ? <span className={s.pill} data-tone="new">New</span> : <span className={s.muted}>Live</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className={s.table}>
+                <thead>
+                  <tr>
+                    {aSort.th("anchor", "Anchor text", "left")}
+                    {aSort.th("backlinks", "Backlinks")}
+                    <th className={s.shareHead}>Share of links</th>
+                    {aSort.th("domains", "Referring domains")}
+                    {aSort.th("seen", "First seen")}
+                  </tr>
+                </thead>
+                <tbody>
+                  {slice(aSort.sorted).map((a) => {
+                    const share = anchorTotal ? (a.backlinks ?? 0) / anchorTotal : 0;
+                    return (
+                      <tr key={a.anchor} tabIndex={0} onClick={() => openAnchor(a)} onKeyDown={(e) => e.key === "Enter" && openAnchor(a)}>
+                        <td className={s.primary} title={a.anchor}>
+                          <span className={s.clip}>{a.anchor}</span>
+                          {SPAM.test(a.anchor) ? <Quality bad /> : null}
+                        </td>
+                        <td className={s.num}>{fmt(a.backlinks)}</td>
+                        <td className={s.shareCell}>
+                          <span className={s.bar}><span style={{ width: `${Math.max(2, share * 100)}%` }} /></span>
+                          <span className={s.shareValue}>{Math.round(share * 100)}%</span>
+                        </td>
+                        <td className={s.num}>{fmt(a.domains)}</td>
+                        <td className={s.num}>{date(a.firstSeen)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {pages > 1 ? (
+          <div className={s.pager}>
+            <span>
+              {pg * PAGE + 1}–{Math.min(rows, (pg + 1) * PAGE)} of {rows.toLocaleString("en-US")}
+            </span>
+            <button type="button" className={s.button} disabled={pg === 0} onClick={() => setPg(pg - 1)}>Previous</button>
+            <button type="button" className={s.button} disabled={pg >= pages - 1} onClick={() => setPg(pg + 1)}>Next</button>
+          </div>
+        ) : null}
+      </section>
+
       {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
     </>
+  );
+}
+
+function Quality({ bad }: { bad?: boolean }) {
+  return (
+    <span className={s.quality} data-bad={bad || undefined} title={bad ? "Looks like a paid or spam link. Google may ignore it or treat it as a link scheme." : "No spam signals"}>
+      <i aria-hidden /> {bad ? "Spam" : "Clean"}
+    </span>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import styles from "./topbar.module.css";
 
@@ -23,10 +24,14 @@ function loadWebsites(workspaceId: string) {
   return list;
 }
 
+const host = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+/** Site selector in the top bar, in the place of Vercel's project selector. */
 export function WebsiteSwitcher({ workspaceId, currentWebsiteId }: { workspaceId: string; currentWebsiteId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [websites, setWebsites] = useState<WebsiteOption[]>([]);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -34,19 +39,54 @@ export function WebsiteSwitcher({ workspaceId, currentWebsiteId }: { workspaceId
     return () => { live = false; };
   }, [workspaceId]);
 
-  if (websites.length <= 1) return null;
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target as HTMLElement).closest(`.${styles.siteWrap}`)) setOpen(false);
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  const current = websites.find((w) => w.id === currentWebsiteId) ?? websites[0];
+  if (!current) return null;
 
   return (
-    <select
-      className={styles.websiteSwitcher}
-      value={currentWebsiteId}
-      onChange={(e) => router.push(`${pathname}?websiteId=${e.target.value}`)}
-    >
-      {websites.map((w) => (
-        <option key={w.id} value={w.id}>
-          {w.business.name} — {w.url}
-        </option>
-      ))}
-    </select>
+    <div className={styles.siteWrap}>
+      <button type="button" className={styles.site} onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="listbox">
+        <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host(current.url))}&sz=32`} alt="" width={16} height={16} className={styles.favicon} />
+        <span className={styles.siteName}>{host(current.url)}</span>
+        <ChevronsUpDown size={14} strokeWidth={1.6} aria-hidden />
+      </button>
+      {open ? (
+        <div className={styles.siteMenu} role="listbox">
+          {websites.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              role="option"
+              aria-selected={w.id === current.id}
+              className={styles.siteOption}
+              onClick={() => {
+                setOpen(false);
+                router.push(`${pathname}?websiteId=${w.id}`);
+              }}
+            >
+              <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host(w.url))}&sz=32`} alt="" width={16} height={16} className={styles.favicon} />
+              <span className={styles.siteName}>{host(w.url)}</span>
+              {w.id === current.id ? <Check size={14} strokeWidth={1.8} aria-hidden /> : null}
+            </button>
+          ))}
+          <a href="/dashboard/add-website" className={styles.siteOption}>
+            <Plus size={14} strokeWidth={1.8} aria-hidden />
+            <span className={styles.siteName}>Add website</span>
+          </a>
+        </div>
+      ) : null}
+    </div>
   );
 }

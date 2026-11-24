@@ -564,7 +564,7 @@
   }
 }
 
-.page { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
+.page { font-family: var(--ds-font-sans); }
 .heroTitle, .page h2 { letter-spacing: -0.015em; font-weight: 400; }
 
 /* v6: calm Linear framing — full screenshot, soft fade only at the bottom */

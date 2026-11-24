@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PanelLeft, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { ChevronsUpDown, LogOut, MoreHorizontal, PanelLeft, Search, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 import { NAV, NAV_ADMIN, NAV_BOTTOM, isActivePath, withSite, type NavItem } from "@/lib/nav";
 
@@ -11,119 +12,220 @@ import styles from "./sidebar.module.css";
 
 export { withSite } from "@/lib/nav";
 
+/** The Hyprlyx mark: the serif "h" in a black square, same as the site footer. */
+function Mark({ size = 20 }: { size?: number }) {
+  return (
+    <span className={styles.mark} style={{ width: size, height: size, fontSize: size * 0.72 }} aria-hidden>
+      h
+    </span>
+  );
+}
+
 function NavLink({ item, pathname, site }: { item: NavItem; pathname: string; site: string | null }) {
   const Icon = item.icon;
   const active = isActivePath(pathname, item);
   const href = item.keepSite === false ? item.href : withSite(item.href, site);
-
   return (
-    <Link
-      href={href}
-      className={styles.navItem}
-      data-active={active ? "true" : "false"}
-      aria-current={active ? "page" : undefined}
-      title={item.description}
-    >
-      <Icon size={16} strokeWidth={1.7} />
-      <span className={styles.navLabel}>{item.label}</span>
-      {item.badge ? <span className={styles.navBadge}>{item.badge}</span> : null}
+    <Link href={href} className={styles.item} data-active={active || undefined} aria-current={active ? "page" : undefined} title={item.description}>
+      <Icon size={16} strokeWidth={1.6} aria-hidden />
+      <span className={styles.itemLabel}>{item.label}</span>
+      {item.badge ? <span className={styles.badge}>{item.badge}</span> : null}
     </Link>
   );
 }
 
-export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+/** "Find": jump to any page by typing. Opens with F or ⌘K, like the Vercel dashboard. */
+function FindDialog({ open, onClose, items, site }: { open: boolean; onClose: () => void; items: NavItem[]; site: string | null }) {
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  const [index, setIndex] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const found = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? items.filter((i) => `${i.label} ${i.description ?? ""}`.toLowerCase().includes(s)) : items;
+  }, [q, items]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQ("");
+    setIndex(0);
+    const t = setTimeout(() => input.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  if (!open) return null;
+  const go = (item: NavItem | undefined) => {
+    if (!item) return;
+    onClose();
+    router.push(item.keepSite === false ? item.href : withSite(item.href, site));
+  };
+
+  return (
+    <div className={styles.findBackdrop} onMouseDown={onClose}>
+      <div className={styles.find} role="dialog" aria-modal="true" aria-label="Find" onMouseDown={(e) => e.stopPropagation()}>
+        <div className={styles.findInput}>
+          <Search size={16} strokeWidth={1.6} aria-hidden />
+          <input
+            ref={input}
+            value={q}
+            placeholder="Find a page…"
+            onChange={(e) => {
+              setQ(e.target.value);
+              setIndex(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onClose();
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setIndex((i) => Math.min(found.length - 1, i + 1));
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setIndex((i) => Math.max(0, i - 1));
+              }
+              if (e.key === "Enter") go(found[index]);
+            }}
+            aria-label="Find a page"
+          />
+          <kbd className={styles.kbd}>Esc</kbd>
+        </div>
+        <ul className={styles.findList} role="listbox">
+          {found.length === 0 ? <li className={styles.findEmpty}>No page matches “{q}”.</li> : null}
+          {found.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.href} role="option" aria-selected={i === index}>
+                <button type="button" className={styles.findItem} data-active={i === index || undefined} onMouseEnter={() => setIndex(i)} onClick={() => go(item)}>
+                  <Icon size={16} strokeWidth={1.6} aria-hidden />
+                  <span>{item.label}</span>
+                  <span className={styles.findHint}>{item.description}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export function Sidebar({ isAdmin = false, planLabel = "Free", email = "", name = "" }: { isAdmin?: boolean; planLabel?: string; email?: string; name?: string }) {
   const pathname = usePathname() ?? "";
   const params = useSearchParams();
   const site = params?.get("websiteId") ?? null;
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // Close the mobile drawer on navigation and on Esc.
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  const groups = NAV.map((s) => s.items.filter((i) => i.sidebar !== false)).filter((g) => g.length);
+  const bottom = [...(isAdmin ? [NAV_ADMIN] : []), ...NAV_BOTTOM.filter((i) => i.sidebar !== false)];
+  const all = useMemo(() => [...groups.flat(), ...bottom], [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
-    if (!mobileOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    setMobileOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (!typing && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === "f")) {
+        e.preventDefault();
+        setFindOpen(true);
+      }
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        setMenuOpen(false);
+      }
+    };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
-  }, [mobileOpen]);
-
-  // Состояние живёт между переходами и перезагрузками.
-  useEffect(() => {
-    setCollapsed(window.localStorage.getItem("sidebar-collapsed") === "1");
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  function toggle() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      window.localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
-      return next;
-    });
-  }
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  const who = name || email.split("@")[0] || "Account";
+  const initial = (who.charAt(0) || "A").toUpperCase();
 
   return (
     <>
-    <button type="button" className={styles.mobileMenu} onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
-      <PanelLeft size={18} strokeWidth={1.8} />
-    </button>
-    {mobileOpen ? <div className={styles.backdrop} onClick={() => setMobileOpen(false)} aria-hidden="true" /> : null}
-    <aside className={styles.sidebar} data-collapsed={collapsed ? "true" : "false"} data-mobile-open={mobileOpen ? "true" : "false"}>
-      <button type="button" className={styles.mobileClose} onClick={() => setMobileOpen(false)} aria-label="Close menu">
-        <X size={18} strokeWidth={1.8} />
+      <button type="button" className={styles.mobileOpen} onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
+        <PanelLeft size={18} strokeWidth={1.6} />
       </button>
-      <div className={styles.brandRow}>
-        <Link href={withSite("/dashboard", site)} className={styles.brand}>
-          <div className={styles.brandMark}>
-            <span>H</span>
-          </div>
-          <span className={styles.brandName}>Hyprlyx</span>
-        </Link>
+      {mobileOpen ? <div className={styles.backdrop} onClick={() => setMobileOpen(false)} aria-hidden /> : null}
 
-        <button
-          type="button"
-          onClick={toggle}
-          className={styles.collapseToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.7} /> : <PanelLeftClose size={16} strokeWidth={1.7} />}
+      <aside className={styles.sidebar} data-mobile-open={mobileOpen || undefined}>
+        <div className={styles.top}>
+          <Link href="/dashboard/settings" className={styles.workspace} title="Workspace settings">
+            <Mark />
+            <span className={styles.workspaceName}>Hyprlyx</span>
+            <span className={styles.plan}>{planLabel}</span>
+            <ChevronsUpDown size={14} strokeWidth={1.6} className={styles.chevrons} aria-hidden />
+          </Link>
+          <button type="button" className={styles.mobileClose} onClick={() => setMobileOpen(false)} aria-label="Close menu">
+            <X size={18} strokeWidth={1.6} />
+          </button>
+        </div>
+
+        <button type="button" className={styles.findButton} onClick={() => setFindOpen(true)}>
+          <Search size={16} strokeWidth={1.6} aria-hidden />
+          <span>Find…</span>
+          <kbd className={styles.kbd}>F</kbd>
         </button>
-      </div>
 
-      <nav className={styles.navigation} aria-label="Main">
-        {NAV.map((section) => {
-          const items = section.items.filter((item) => item.sidebar !== false);
-          if (items.length === 0) return null;
-
-          return (
-            <div key={section.label} className={styles.section}>
-              <div className={styles.sectionLabel}>{section.label}</div>
-              <div className={styles.sectionItems}>
-                {items.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} site={site} />
-                ))}
-              </div>
+        <nav className={styles.nav} aria-label="Main">
+          {groups.map((items, i) => (
+            <div key={i} className={styles.group}>
+              {items.map((item) => (
+                <NavLink key={item.href} item={item} pathname={pathname} site={site} />
+              ))}
             </div>
-          );
-        })}
-      </nav>
+          ))}
+          <div className={styles.group}>
+            {bottom.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} site={site} />
+            ))}
+          </div>
+        </nav>
 
-      <div className={styles.footer}>
-        {isAdmin ? <NavLink item={NAV_ADMIN} pathname={pathname} site={site} /> : null}
-
-        {NAV_BOTTOM.filter((item) => item.sidebar !== false).map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} site={site} />
-        ))}
-
-        <div className={styles.workspace}>
-          <div className={styles.avatar}>H</div>
-          <div className={styles.workspaceText}>
-            <strong>Hyprlyx</strong>
-            <span>Workspace</span>
+        <div className={styles.account}>
+          <Link href="/dashboard/settings/account" className={styles.accountLink} title={email}>
+            <span className={styles.avatar} aria-hidden>
+              {initial}
+            </span>
+            <span className={styles.accountName}>{who}</span>
+          </Link>
+          <div className={styles.menuWrap}>
+            <button type="button" className={styles.iconButton} onClick={() => setMenuOpen((v) => !v)} aria-label="Account menu" aria-expanded={menuOpen}>
+              <MoreHorizontal size={16} strokeWidth={1.6} />
+            </button>
+            {menuOpen ? (
+              <div className={styles.menu} role="menu">
+                <div className={styles.menuEmail}>{email}</div>
+                <Link href="/dashboard/settings/account" className={styles.menuItem} role="menuitem">
+                  Account
+                </Link>
+                <Link href="/dashboard/settings/billing" className={styles.menuItem} role="menuitem">
+                  Billing
+                </Link>
+                <Link href="/" className={styles.menuItem} role="menuitem">
+                  Home page
+                </Link>
+                <button type="button" className={styles.menuItem} role="menuitem" onClick={() => signOut({ callbackUrl: "/login" })}>
+                  <LogOut size={14} strokeWidth={1.6} aria-hidden /> Log out
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      <FindDialog open={findOpen} onClose={() => setFindOpen(false)} items={all} site={site} />
     </>
   );
 }

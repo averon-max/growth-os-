@@ -1,10 +1,12 @@
 import { SITE_URL } from "@/lib/site";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { CookieNotice } from "@/components/cookie-notice";
 import "./globals.css";
+import "./geist.css";
 
-const inter = Inter({ subsets: ["latin"], axes: ["opsz"], variable: "--font-inter", display: "swap" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -19,8 +21,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable}`}>
-      <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-inter), -apple-system, sans-serif" }}>
+    <html lang="en" className={`h-full antialiased ${geist.variable} ${geistMono.variable}`}>
+      <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-geist-sans), -apple-system, sans-serif" }}>
         {children}
         <CookieNotice />
       </body>

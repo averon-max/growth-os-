@@ -2118,3 +2118,9 @@
 .heroTitle, .pageTitle { color: #f7f8f8 !important; font-size: 24px !important; font-weight: 590 !important; letter-spacing: -.022em !important; }
 .heroSubtitle, .pageSubtitle { color: #8a8f98 !important; font-size: 14px !important; }
 .eyebrow { color: #8a8f98 !important; font-size: 12.5px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; }
+
+/* ===== Geist layout (last layer; wins over the older ones above) =====
+   Data pages use the full width like the Vercel dashboard, with one consistent gutter. */
+.pageBody { max-width: none !important; margin: 0 !important; padding: 32px 32px 56px !important; }
+.pageBody::before, .pageBody::after { display: none !important; }
+@media (max-width: 900px) { .pageBody { padding: 20px 16px 48px !important; } }
