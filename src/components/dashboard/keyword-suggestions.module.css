@@ -502,4 +502,4 @@
 .clickableRow:hover .keywordCell { color: #f7f8f8; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
 .rowChevron { width: 28px; color: #43464d; text-align: right; }
 .clickableRow:hover .rowChevron { color: #d0d6e0; }
-th[title] { cursor: help; }
+.suggestHead th[title] { cursor: help; }

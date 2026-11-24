@@ -209,7 +209,7 @@ export function SuggestionTable({
 }) {
   return (
     <table className={uiStyles.table}>
-      <thead>
+      <thead className={styles.suggestHead}>
         <tr>
           <th>Keyword</th>
           <th title="Average monthly Google searches over the last 12 months (Google Ads data via DataForSEO)">Volume</th>
