@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: { position: "bottom-right" },
   // Screenshots are served resized for each screen (AVIF/WebP) instead of the 3200px originals.
-  images: { formats: ["image/avif", "image/webp"], qualities: [75, 90], minimumCacheTTL: 2678400 },
+  images: { formats: ["image/webp"], qualities: [75, 90], minimumCacheTTL: 2678400 },
   async headers() {
     return [
       {
