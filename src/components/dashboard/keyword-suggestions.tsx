@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Search, TrendingUp, TrendingDown, Minus, Zap, Flame } from "lucide-react";
+import { Sparkles, Search, TrendingUp, TrendingDown, Minus, Zap, Flame, ChevronRight } from "lucide-react";
 import uiStyles from "./ui.module.css";
 import styles from "./keyword-suggestions.module.css";
 import { KeywordOverviewDrawer } from "./keyword-overview-drawer";
@@ -77,17 +77,18 @@ export function difficultyTone(difficulty: number | null): "success" | "warning"
 
 export function TrendBadge({ trend }: { trend: SearchVolumeTrend | null }) {
   const value = trend?.yearly ?? trend?.quarterly ?? trend?.monthly ?? null;
+  const span = trend?.yearly != null ? "a year ago" : trend?.quarterly != null ? "3 months ago" : "last month";
   if (value === null) return <span className={uiStyles.mono}>&mdash;</span>;
   if (value > 0) {
     return (
-      <span className={`${styles.trendBadge} ${styles.trendUp}`} title={`${value}%`}>
+      <span className={`${styles.trendBadge} ${styles.trendUp}`} title={`Monthly searches ${value}% vs. ${span} (Google Ads data)`}>
         <TrendingUp size={12} /> {formatTrend(value)}
       </span>
     );
   }
   if (value < 0) {
     return (
-      <span className={`${styles.trendBadge} ${styles.trendDown}`} title={`${value}%`}>
+      <span className={`${styles.trendBadge} ${styles.trendDown}`} title={`Monthly searches ${value}% vs. ${span} (Google Ads data)`}>
         <TrendingDown size={12} /> {formatTrend(value)}
       </span>
     );
@@ -99,11 +100,30 @@ export function TrendBadge({ trend }: { trend: SearchVolumeTrend | null }) {
   );
 }
 
-export function TrendingQueries({ trending }: { trending: TrendingData | null }) {
+/** Google Trends marks growth above 5,000% as "Breakout": usually a brand-new search. */
+const rising = (v: number) => (v >= 5000 ? "Breakout" : `+${v.toLocaleString("en-US")}%`);
+
+export function TrendingQueries({ trending, onPick }: { trending: TrendingData | null; onPick?: (query: string) => void }) {
   if (!trending || (trending.topQueries.length === 0 && trending.risingQueries.length === 0)) return null;
 
-  const rising = trending.risingQueries.slice(0, 10);
-  const top = trending.topQueries.slice(0, 10);
+  const columns = [
+    {
+      key: "rise",
+      label: "Rising searches",
+      hint: "Searches that grew the most compared with the period before. Breakout means growth above 5,000%, usually a new topic.",
+      rows: trending.risingQueries.slice(0, 10),
+      value: (q: TrendQuery) => rising(q.value),
+      valueClass: `${styles.trendValue} ${styles.risingValue}`,
+    },
+    {
+      key: "top",
+      label: "Top searches",
+      hint: "The most popular related searches. 100 is the most searched in this list; the others are relative to it, not search counts.",
+      rows: trending.topQueries.slice(0, 10),
+      value: (q: TrendQuery) => `${q.value}/100`,
+      valueClass: styles.trendValue,
+    },
+  ];
 
   return (
     <div className={styles.trendingBlock}>
@@ -116,43 +136,35 @@ export function TrendingQueries({ trending }: { trending: TrendingData | null })
       </div>
 
       <div className={styles.trendColumns}>
-        <div className={styles.trendColumn}>
-          <div className={styles.trendColumnLabel}>Rising searches</div>
-          <div className={styles.trendList}>
-            {rising.map((q, index) => (
-              <div key={`rise-${q.query}`} className={styles.trendRow}>
-                <span className={styles.trendRank}>
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className={styles.trendName} title={q.query}>
-                  {q.query}
-                </span>
-                <span className={`${styles.trendValue} ${styles.risingValue}`}>
-                  +{q.value.toLocaleString()}%
-                </span>
-              </div>
-            ))}
+        {columns.map((col) => (
+          <div key={col.key} className={styles.trendColumn}>
+            <div className={styles.trendColumnLabel} title={col.hint}>{col.label}</div>
+            <div className={styles.trendList}>
+              {col.rows.map((q, index) => {
+                const inner = (
+                  <>
+                    <span className={styles.trendRank}>{String(index + 1).padStart(2, "0")}</span>
+                    <span className={styles.trendName} title={q.query}>{q.query}</span>
+                    <span className={col.valueClass}>{col.value(q)}</span>
+                  </>
+                );
+                return onPick ? (
+                  <button
+                    key={`${col.key}-${q.query}`}
+                    type="button"
+                    className={`${styles.trendRow} ${styles.trendButton}`}
+                    onClick={() => onPick(q.query)}
+                    title={`Open volume, difficulty and CPC for "${q.query}"`}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div key={`${col.key}-${q.query}`} className={styles.trendRow}>{inner}</div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-
-        <div className={styles.trendColumn}>
-          <div className={styles.trendColumnLabel}>Top searches</div>
-          <div className={styles.trendList}>
-            {top.map((q, index) => (
-              <div key={`top-${q.query}`} className={styles.trendRow}>
-                <span className={styles.trendRank}>
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className={styles.trendName} title={q.query}>
-                  {q.query}
-                </span>
-                <span className={styles.trendValue}>
-                  {q.value}/100
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -173,6 +185,21 @@ export function CacheBadge({ fromCache }: { fromCache: boolean }) {
   );
 }
 
+/** The table row for a keyword if it has one, otherwise just the keyword (the details panel loads its numbers). */
+export function pickSuggestion(list: Suggestion[] | null, keyword: string): Suggestion {
+  return (
+    list?.find((s) => s.keyword.toLowerCase() === keyword.toLowerCase()) ?? {
+      keyword,
+      searchVolume: null,
+      competitionLevel: null,
+      cpc: null,
+      keywordDifficulty: null,
+      monthlySearches: [],
+      trend: null,
+    }
+  );
+}
+
 export function SuggestionTable({
   suggestions,
   onSelect,
@@ -185,17 +212,30 @@ export function SuggestionTable({
       <thead>
         <tr>
           <th>Keyword</th>
-          <th>Volume</th>
-          <th>Trend</th>
-          <th>Difficulty</th>
-          <th>CPC</th>
-          <th>Competition</th>
+          <th title="Average monthly Google searches over the last 12 months (Google Ads data via DataForSEO)">Volume</th>
+          <th title="Change in monthly searches compared with a year ago">Trend</th>
+          <th title="How hard it is to reach Google's top 10, 0–100. An estimate by DataForSEO based on the sites that rank now">Difficulty</th>
+          <th title="What advertisers pay per click in Google Ads">CPC</th>
+          <th title="How many advertisers bid on this search in Google Ads">Competition</th>
+          <th aria-label="Open" />
         </tr>
       </thead>
       <tbody>
         {suggestions.map((s) => (
-          <tr key={s.keyword} className={styles.clickableRow} onClick={() => onSelect(s)}>
-            <td>{s.keyword}</td>
+          <tr
+            key={s.keyword}
+            className={styles.clickableRow}
+            onClick={() => onSelect(s)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(s);
+              }
+            }}
+            tabIndex={0}
+            title={`Open details for "${s.keyword}"`}
+          >
+            <td className={styles.keywordCell}>{s.keyword}</td>
             <td className={uiStyles.mono}>{formatSuggVol(s.searchVolume)}</td>
             <td><TrendBadge trend={s.trend} /></td>
             <td className={uiStyles.mono}>
@@ -209,6 +249,7 @@ export function SuggestionTable({
             </td>
             <td className={uiStyles.mono}>{s.cpc != null ? `$${s.cpc.toFixed(2)}` : "\u2014"}</td>
             <td>{s.competitionLevel ?? "\u2014"}</td>
+            <td className={styles.rowChevron}><ChevronRight size={14} aria-hidden /></td>
           </tr>
         ))}
       </tbody>
@@ -292,7 +333,7 @@ export function KeywordSuggestions({ workspaceId, market = "US" }: { workspaceId
 
       {suggestions && suggestions.length > 0 && (
         <>
-          <TrendingQueries trending={trending} />
+          <TrendingQueries trending={trending} onPick={(k) => setSelected(pickSuggestion(suggestions, k))} />
           {(() => {
             const filtered = applySuggestionFilters(suggestions, filters);
             return (

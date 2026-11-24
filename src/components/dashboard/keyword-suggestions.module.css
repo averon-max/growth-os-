@@ -484,3 +484,22 @@
 .freeBadge {
   border: 1px solid rgba(77,175,109,.08);
 }
+
+/* Clickable rows: trend lists and the keyword table open the keyword details panel. */
+.trendButton {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.trendButton:not(:first-child) { background: transparent; }
+.trendButton:hover .trendName { color: #f7f8f8; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
+.trendButton:focus-visible, .clickableRow:focus-visible { outline: 2px solid #4c8df6; outline-offset: -2px; }
+.trendColumnLabel[title] { cursor: help; }
+.clickableRow:hover td { background: rgba(255,255,255,.025); }
+.clickableRow:hover .keywordCell { color: #f7f8f8; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
+.rowChevron { width: 28px; color: #43464d; text-align: right; }
+.clickableRow:hover .rowChevron { color: #d0d6e0; }
+th[title] { cursor: help; }

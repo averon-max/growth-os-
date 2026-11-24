@@ -58,9 +58,11 @@ export async function getCachedRelatedKeywords(
   limit = 30,
   market = "US",
   language = "English",
+  depth = 1,
 ): Promise<CachedSuggestionsResult> {
   const normalized = normalizeKeyword(seed);
-  const cacheKey = `${normalized}:${market}:${language}`;
+  // Depth 1 gives about 8 ideas, depth 2 up to ~70. They are stored apart so a short old answer never hides a full one.
+  const cacheKey = `${normalized}:${market}:${language}${depth > 1 ? `:d${depth}` : ""}`;
 
   const cached = await prisma.keywordSuggestionCache.findUnique({
     where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
@@ -78,7 +80,7 @@ export async function getCachedRelatedKeywords(
     market === "AU" ? "Australia" :
     "United States";
 
-  const suggestions = await fetchRelatedKeywords(seed, locationName, language, 1, limit);
+  const suggestions = await fetchRelatedKeywords(seed, locationName, language, depth, depth > 1 ? Math.max(limit, 100) : limit);
 
   await prisma.keywordSuggestionCache.upsert({
     where: { normalized_source: { normalized: cacheKey, source: SOURCE } },

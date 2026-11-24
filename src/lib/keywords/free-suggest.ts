@@ -62,11 +62,17 @@ export async function freeAutocomplete(seed: string, country = "US", lang = "en"
 }
 
 /** Последний сохранённый платный ответ DataForSEO по этому сиду — любой давности. */
-export async function savedRelated(seed: string): Promise<RelatedKeywordResult[] | null> {
-  const row = await prisma.keywordSuggestionCache.findFirst({
+export async function savedRelated(seed: string, anyLength = false): Promise<RelatedKeywordResult[] | null> {
+  const rows = await prisma.keywordSuggestionCache.findMany({
     where: { source: "DATAFORSEO_RELATED", normalized: { startsWith: `${norm(seed)}:` } },
     orderBy: { fetchedAt: "desc" },
+    take: 5,
   });
+  // A full answer (depth 2) is used as is, however few ideas it has. An old short answer (about 8 ideas)
+  // only counts when it is reasonably long, otherwise a full list is fetched once and saved.
+  const row =
+    rows.find((r) => r.normalized.endsWith(":d2")) ??
+    rows.find((r) => Array.isArray(r.payload) && (anyLength || (r.payload as unknown[]).length >= 20));
   return row && Array.isArray(row.payload) ? (row.payload as unknown as RelatedKeywordResult[]) : null;
 }
 

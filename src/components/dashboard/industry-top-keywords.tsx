@@ -8,6 +8,7 @@ import { SuggestionFilterBar, applySuggestionFilters, EMPTY_FILTERS, type Sugges
 import {
   SuggestionTable,
   TrendingQueries,
+  pickSuggestion,
   CacheBadge,
   type Suggestion,
   type TrendingData,
@@ -70,7 +71,7 @@ export function IndustryTopKeywords({ workspaceId, seed, market = "US" }: { work
 
       {suggestions && suggestions.length > 0 && (
         <>
-          <TrendingQueries trending={trending} />
+          <TrendingQueries trending={trending} onPick={(k) => setSelected(pickSuggestion(suggestions, k))} />
           {(() => {
             const filtered = applySuggestionFilters(suggestions, filters);
             return (

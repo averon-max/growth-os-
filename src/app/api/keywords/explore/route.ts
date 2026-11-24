@@ -37,16 +37,20 @@ export async function GET(req: NextRequest) {
 
     if (suggestions == null && wantPaid) {
       try {
-        suggestions = (await getCachedRelatedKeywords(workspaceId, seed, limit)).suggestions;
+        suggestions = (await getCachedRelatedKeywords(workspaceId, seed, limit, "US", "English", 2)).suggestions;
         source = "paid";
       } catch (err) {
         if ((err instanceof DataForSEOError || err instanceof RateLimitError) === false) throw err;
-        suggestions = null;
-        notice = err instanceof RateLimitError
+        // Keep any older saved answer with real numbers before falling back to ideas without them.
+        suggestions = await savedRelated(seed, true);
+        if (suggestions?.length) {
+          source = "saved";
+        } else notice = err instanceof RateLimitError
           ? "Today's keyword data limit is used up, so new ideas are shown without volume and difficulty. Full data returns tomorrow."
           : "Keyword data is unavailable right now, so new ideas are shown without volume and difficulty. Try again later.";
       }
     }
+    if ((suggestions == null || suggestions.length === 0) && !wantPaid) suggestions = await savedRelated(seed, true);
     if (suggestions == null || suggestions.length === 0) {
       suggestions = await freeRelated(workspaceId, seed, limit);
       source = "free";
