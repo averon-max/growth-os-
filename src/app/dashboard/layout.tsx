@@ -6,6 +6,7 @@ import { isUserAdmin } from "@/lib/auth-helpers";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import styles from "./layout.module.css";
 import { AppFooter } from "@/components/dashboard/app-footer";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import "./pages.css";
 
 // Личный кабинет не должен попадать в поиск, даже если ссылка где-то утечёт.
@@ -28,6 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className={styles.main}><div className="page-shell">
         <div className="page-content">{children}</div>
         <AppFooter />
+        <FeedbackWidget />
       </div></div>
     </div>
   );
