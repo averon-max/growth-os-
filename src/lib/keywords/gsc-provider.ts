@@ -107,7 +107,7 @@ async function persistRefreshedTokens(
   });
 }
 
-async function getAuthorizedClient(workspaceId: string) {
+export async function getAuthorizedClient(workspaceId: string) {
   const connection = await prisma.providerConnection.findUnique({
     where: { workspaceId_provider: { workspaceId, provider: "GOOGLE_SEARCH_CONSOLE" } },
   });
@@ -207,7 +207,7 @@ function normalizeSiteUrl(url: string): string {
     .toLowerCase();
 }
 
-async function resolveVerifiedSiteUrl(auth: ReturnType<typeof createGoogleOAuthClient>, requestedUrl: string): Promise<string> {
+export async function resolveVerifiedSiteUrl(auth: ReturnType<typeof createGoogleOAuthClient>, requestedUrl: string): Promise<string> {
   const searchconsole = google.searchconsole({ version: "v1", auth });
   const sitesResponse = await searchconsole.sites.list();
   const entries = sitesResponse.data.siteEntry ?? [];
@@ -220,8 +220,8 @@ async function resolveVerifiedSiteUrl(auth: ReturnType<typeof createGoogleOAuthC
     throw new SitePermissionError(requestedUrl, verifiedUrls);
   }
 
-  console.log("[gsc] verified sites:", verifiedUrls);
-  console.log("[gsc] matching candidates:", candidates);
+
+
 
   // Prefer the Domain property (sc-domain:) -- it aggregates data across
   // protocols, www/non-www variants, and subdomains, so it is a superset
@@ -229,7 +229,7 @@ async function resolveVerifiedSiteUrl(auth: ReturnType<typeof createGoogleOAuthC
   // Google attributes to the domain-level property instead.
   const domainProperty = candidates.find((u) => u.startsWith("sc-domain:"));
   const resolved = domainProperty ?? candidates[0];
-  console.log("[gsc] resolved site:", resolved);
+
   return resolved;
 }
 

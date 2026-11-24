@@ -19,6 +19,7 @@ const COPY: Record<string, string> = {
   content: "AI writer: briefs and full drafts from live search results",
   backlinks: "Backlinks: referring domains, links and anchors",
   competitors: "Competitor tracking and live Google results",
+  traffic: "Traffic report: Cloudflare visits and Google Search side by side",
   audience: "Audience from Google Analytics 4",
   bots: "Search engine and AI crawler traffic",
   seo: "Technical SEO audit with clear fixes",

@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { Geist_Mono, Newsreader } from "next/font/google";
+import { display, mono } from "@/app/fonts";
 import { ChevronDown, Menu } from "lucide-react";
 import { FEATURES } from "./features";
 import s from "./site.module.css";
 
-const display = Newsreader({ subsets: ["latin"], variable: "--font-landing-display", display: "swap" });
-const mono = Geist_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-landing-mono", display: "swap" });
 
 
 const FOOTER = [

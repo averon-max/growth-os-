@@ -1,5 +1,5 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { cache } from "react";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 export class UnauthorizedError extends Error {
@@ -17,7 +17,7 @@ export class ForbiddenError extends Error {
 }
 
 export async function requireUser(): Promise<{ id: string; email: string }> {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   if (!session?.user || !userId) {
@@ -30,7 +30,7 @@ export async function requireUser(): Promise<{ id: string; email: string }> {
   };
 }
 
-export async function isUserAdmin(userId: string): Promise<boolean> {
+export const isUserAdmin = cache(async (userId: string): Promise<boolean> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { isAdmin: true, email: true },
@@ -45,10 +45,10 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
     Boolean(user?.isAdmin) ||
     (user?.email ? adminEmails.includes(user.email.toLowerCase()) : false)
   );
-}
+});
 
 export async function requireAdmin(): Promise<{ id: string; email: string }> {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   if (!session?.user || !userId) {

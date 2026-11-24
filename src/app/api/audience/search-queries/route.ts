@@ -12,6 +12,8 @@ import {
   SitePermissionError,
 } from "@/lib/keywords/gsc-provider";
 import type { KeywordProvenance } from "@/lib/keywords/types";
+import type { SearchConsoleRow } from "@/lib/keywords/provider";
+import { gscBatch } from "@/lib/traffic/gsc";
 
 const MAX_RESULTS = 50;
 
@@ -151,14 +153,23 @@ export async function GET(
     const performanceResult =
       await (async () => {
         try {
-          const rows =
-            await gscProvider.fetchSearchPerformance({
-              workspaceId,
-              siteUrl:
-                website.url,
-              startDate,
-              endDate,
-            });
+          // Only query + page are needed here. Asking Google for exactly that (instead of every
+          // query × page × day × device × country row) is a fraction of the rows, and it is cached.
+          const day = (d: Date) => d.toISOString().slice(0, 10);
+          const [pairs] = await gscBatch(workspaceId, website.url, [
+            { start: day(startDate), end: day(endDate), dimensions: ["query", "page"], rowLimit: 5000 },
+          ], 1);
+          const rows: SearchConsoleRow[] = pairs.map((r) => ({
+            keyword: r.keys[0] ?? "",
+            page: r.keys[1] ?? "",
+            clicks: r.clicks,
+            impressions: r.impressions,
+            ctr: r.ctr,
+            position: r.position,
+            date: endDate,
+            device: "DESKTOP",
+            country: "us",
+          }));
 
           return {
             ok:

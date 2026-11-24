@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Tags,
   Target,
+  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -68,6 +69,7 @@ export const NAV: NavSection[] = [
   {
     label: "Traffic",
     items: [
+      { label: "Traffic report", href: "/dashboard/traffic", icon: TrendingUp, description: "Cloudflare and Search Console side by side", badge: "New" },
       { label: "Audience", href: "/dashboard/audience", icon: Users, description: "Visitors, countries and pages" },
       { label: "Bots & crawlers", href: "/dashboard/bots", icon: Bot, description: "Search and AI crawlers" },
     ],

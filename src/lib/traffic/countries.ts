@@ -1,0 +1,12 @@
+/* ISO 3166-1: alpha-3 (Search Console) → alpha-2 (Cloudflare), packed as "abwAW…". */
+const PACKED = "abwAWafgAFagoAOaiaAIalaAXalbALandADareAEargARarmAMasmASataAQatfTFatgAGausAUautATazeAZbdiBIbelBEbenBJbesBQbfaBFbgdBDbgrBGbhrBHbhsBSbihBAblmBLblrBYblzBZbmuBMbolBObraBRbrbBBbrnBNbtnBTbvtBVbwaBWcafCFcanCAcckCCcheCHchlCLchnCNcivCIcmrCMcodCDcogCGcokCKcolCOcomKMcpvCVcriCRcubCUcuwCWcxrCXcymKYcypCYczeCZdeuDEdjiDJdmaDMdnkDKdomDOdzaDZecuECegyEGeriEReshEHespESestEEethETfinFIfjiFJflkFKfraFRfroFOfsmFMgabGAgbrGBgeoGEggyGGghaGHgibGIginGNglpGPgmbGMgnbGWgnqGQgrcGRgrdGDgrlGLgtmGTgufGFgumGUguyGYhkgHKhmdHMhndHNhrvHRhtiHThunHUidnIDimnIMindINiotIOirlIEirnIRirqIQislISisrILitaITjamJMjeyJEjorJOjpnJPkazKZkenKEkgzKGkhmKHkirKIknaKNkorKRkwtKWlaoLAlbnLBlbrLRlbyLYlcaLClieLIlkaLKlsoLSltuLTluxLUlvaLVmacMOmafMFmarMAmcoMCmdaMDmdgMGmdvMVmexMXmhlMHmkdMKmliMLmltMTmmrMMmneMEmngMNmnpMPmozMZmrtMRmsrMSmtqMQmusMUmwiMWmysMYmytYTnamNAnclNCnerNEnfkNFngaNGnicNIniuNUnldNLnorNOnplNPnruNRnzlNZomnOMpakPKpanPApcnPNperPEphlPHplwPWpngPGpolPLpriPRprkKPprtPTpryPYpsePSpyfPFqatQAreuRErouROrusRUrwaRWsauSAsdnSDsenSNsgpSGsgsGSshnSHsjmSJslbSBsleSLslvSVsmrSMsomSOspmPMsrbRSssdSSstpSTsurSRsvkSKsvnSIsweSEswzSZsxmSXsycSCsyrSYtcaTCtcdTDtgoTGthaTHtjkTJtklTKtkmTMtlsTLtonTOttoTTtunTNturTRtuvTVtwnTWtzaTZugaUGukrUAumiUMuryUYusaUSuzbUZvatVAvctVCvenVEvgbVGvirVIvnmVNvutVUwlfWFwsmWSyemYEzafZAzmbZMzweZW";
+
+let map: Map<string, string> | null = null;
+
+export function countryFromIso3(code: string): string | null {
+  if (!map) {
+    map = new Map();
+    for (let i = 0; i < PACKED.length; i += 5) map.set(PACKED.slice(i, i + 3), PACKED.slice(i + 3, i + 5));
+  }
+  return map.get(code.toLowerCase()) ?? null;
+}

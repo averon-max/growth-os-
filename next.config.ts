@@ -13,11 +13,13 @@ const csp = [
   "form-action 'self'",
   "object-src 'none'",
 ].join("; ");
-const noindex = {
-  devIndicators: { position: "bottom-right" }, key: "X-Robots-Tag", value: "noindex, nofollow" };
+const noindex = { key: "X-Robots-Tag", value: "noindex, nofollow" };
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  devIndicators: { position: "bottom-right" },
+  // Screenshots are served resized for each screen (AVIF/WebP) instead of the 3200px originals.
+  images: { formats: ["image/avif", "image/webp"], qualities: [75, 90], minimumCacheTTL: 2678400 },
   async headers() {
     return [
       {

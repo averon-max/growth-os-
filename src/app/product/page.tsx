@@ -29,7 +29,7 @@ export default function ProductPage() {
         </div>
         <div className={s.container} style={{ marginTop: 56 }}>
           <div className={s.shot}>
-            <Image src="/landing/planner-v10.webp" alt="Hyprlyx Keyword Planner" width={3200} height={2000} priority unoptimized />
+            <Image src="/landing/planner-v10.webp" alt="Hyprlyx Keyword Planner" width={3200} height={2000} priority quality={90} sizes="(max-width: 1240px) 100vw, 1200px" />
           </div>
         </div>
       </section>

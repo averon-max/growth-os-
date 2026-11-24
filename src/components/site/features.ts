@@ -24,7 +24,7 @@ export const FEATURES: Feature[] = [
     short: "Volume, difficulty, CPC and trends for every keyword",
     title: "Know exactly what people search for",
     lede: "Find the keywords worth your time: real search volume, difficulty, cost per click and direction of travel — plus rising searches from Google Trends before your competitors notice them.",
-    shot: { src: "/landing/keywords-v9.webp", alt: "Keyword research with rising searches, volume, difficulty and CPC" },
+    shot: { src: "/landing/keywords-v10.webp", alt: "Keyword research with rising searches, volume, difficulty and CPC" },
     points: [
       { title: "Industry keywords", text: "Start from your niche, not a blank box. Hyprlyx surfaces the searches your market actually makes." },
       { title: "Search momentum", text: "Rising and top searches from Google Trends, so you catch demand while it's growing." },
@@ -44,7 +44,7 @@ export const FEATURES: Feature[] = [
     short: "One plan for every keyword you care about",
     title: "Plan before you publish",
     lede: "Search Console data, live rankings, your existing pages and tracked keywords in one list — grouped into what you already rank for, quick wins, and gaps with no page yet.",
-    shot: { src: "/landing/planner-v9.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps" },
+    shot: { src: "/landing/planner-v10.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps" },
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
       { title: "Gaps", text: "Searches you have no page for yet, with volume and difficulty to prioritize them." },
@@ -63,7 +63,7 @@ export const FEATURES: Feature[] = [
     short: "Impressions, clicks and positions from Search Console",
     title: "See where you stand, every day",
     lede: "Your real Google performance — impressions, clicks, CTR and average position — with the queries closest to page one pulled to the top.",
-    shot: { src: "/landing/search-console-v9.webp", alt: "Search Console view with visibility chart and easiest wins" },
+    shot: { src: "/landing/search-console-v10.webp", alt: "Search Console view with visibility chart and easiest wins" },
     points: [
       { title: "Visibility over time", text: "Impressions, clicks and position on one chart for 7, 28 or 90 days." },
       { title: "Position distribution", text: "How many queries sit in the top 3, top 10, page two and beyond." },
@@ -83,7 +83,7 @@ export const FEATURES: Feature[] = [
     short: "Briefs and drafts based on what already ranks",
     title: "Turn findings into pages",
     lede: "When a gap or quick win needs a page, Hyprlyx prepares a brief from the live search results and can draft it for you to review. Nothing is published without approval.",
-    shot: { src: "/landing/content-v9.webp", alt: "Content library with drafts, approved and published pages" },
+    shot: { src: "/landing/content-v10.webp", alt: "Content library with drafts, approved and published pages" },
     points: [
       { title: "Briefs from real results", text: "Structure, questions and topics taken from the pages that already rank." },
       { title: "Review first", text: "Drafts, approved and published are separate stages — you stay in control." },

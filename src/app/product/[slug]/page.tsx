@@ -37,7 +37,7 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
         </div>
         <div className={s.container} style={{ marginTop: 56 }}>
           {f.shot ? (
-            <div className={s.shot}><Image src={f.shot.src.replace("-v9", "-v10")} alt={f.shot.alt} width={3200} height={2000} priority unoptimized /></div>
+            <div className={s.shot}><Image src={f.shot.src} alt={f.shot.alt} width={3200} height={2000} priority quality={90} sizes="(max-width: 1240px) 100vw, 1200px" /></div>
           ) : f.stats ? (
             <div className={s.stats}>{f.stats.map((st) => <div key={st.label} className={s.stat}><b>{st.value}</b><span>{st.label}</span></div>)}</div>
           ) : null}

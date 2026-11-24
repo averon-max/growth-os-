@@ -1,6 +1,5 @@
 import "server-only";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getWorkspaceBilling } from "./subscription";
 import { SECTION_MIN_PLAN, meetsPlan } from "./access";
@@ -17,7 +16,7 @@ export interface SectionGate {
 export async function sectionGate(section: string): Promise<SectionGate> {
   const required: PlanId = SECTION_MIN_PLAN[section] ?? DEFAULT_PLAN_ID;
 
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   if (!userId) {

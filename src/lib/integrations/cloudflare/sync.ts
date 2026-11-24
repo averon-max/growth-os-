@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -7,6 +8,7 @@ import {
 
 import {
   fetchCloudflarePageTraffic,
+  type PageTrafficRow,
 } from "./page-traffic";
 import {
   getCloudflareConnectionWithToken,
@@ -30,6 +32,59 @@ export interface SyncResult {
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00Z`);
+}
+
+/**
+ * Saves page rows 500 at a time in one statement each, instead of one database round trip per row
+ * (a month of a busy site is thousands of rows, which made "Sync now" crawl). Falls back to one row
+ * at a time if the batch statement is ever rejected, so a sync never loses data.
+ */
+async function savePageRows(connectionId: string, rows: PageTrafficRow[]): Promise<void> {
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500);
+    try {
+      await prisma.$executeRaw`
+        INSERT INTO "PageTrafficSnapshot"
+          ("id", "connectionId", "date", "path", "totalRequests", "visits", "verifiedBotRequests", "unclassifiedRequests", "botCategoryBreakdown", "createdAt", "updatedAt")
+        SELECT r.id, ${connectionId}, r.date, r.path, r.total, r.visits, r.verified, r.unclassified, r.bots, NOW(), NOW()
+        FROM UNNEST(
+          ${chunk.map(() => randomUUID())}::text[],
+          ${chunk.map((r) => r.date)}::date[],
+          ${chunk.map((r) => r.path)}::text[],
+          ${chunk.map((r) => r.totalRequests)}::int[],
+          ${chunk.map((r) => Math.round(r.visits))}::int[],
+          ${chunk.map((r) => r.verifiedBotRequests)}::int[],
+          ${chunk.map((r) => r.unclassifiedRequests)}::int[],
+          ${chunk.map((r) => (r.botCategoryBreakdown.length ? JSON.stringify(r.botCategoryBreakdown) : null))}::jsonb[]
+        ) AS r(id, date, path, total, visits, verified, unclassified, bots)
+        ON CONFLICT ("connectionId", "date", "path") DO UPDATE SET
+          "totalRequests" = EXCLUDED."totalRequests",
+          "visits" = EXCLUDED."visits",
+          "verifiedBotRequests" = EXCLUDED."verifiedBotRequests",
+          "unclassifiedRequests" = EXCLUDED."unclassifiedRequests",
+          "botCategoryBreakdown" = EXCLUDED."botCategoryBreakdown",
+          "updatedAt" = NOW()`;
+    } catch (error) {
+      console.warn("[cloudflare page traffic sync] batch save failed, saving row by row", error instanceof Error ? error.message : error);
+      for (const row of chunk) {
+        const date = utcDate(row.date);
+        const data = {
+          totalRequests: row.totalRequests,
+          visits: Math.round(row.visits),
+          verifiedBotRequests: row.verifiedBotRequests,
+          unclassifiedRequests: row.unclassifiedRequests,
+          botCategoryBreakdown: row.botCategoryBreakdown.length
+            ? (row.botCategoryBreakdown as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+        };
+        await prisma.pageTrafficSnapshot.upsert({
+          where: { connectionId_date_path: { connectionId, date, path: row.path } },
+          create: { connectionId, date, path: row.path, ...data },
+          update: data,
+        });
+      }
+    }
+  }
 }
 
 export async function syncCloudflareTraffic({
@@ -230,85 +285,7 @@ export async function syncCloudflareTraffic({
     });
   }
 
-  for (
-    const row of
-    pageTraffic.rows
-  ) {
-    const snapshotDate =
-      utcDate(
-        row.date
-      );
-
-    await prisma.pageTrafficSnapshot.upsert({
-      where: {
-        connectionId_date_path: {
-          connectionId:
-            connection.id,
-
-          date:
-            snapshotDate,
-
-          path:
-            row.path,
-        },
-      },
-
-      create: {
-        connectionId:
-          connection.id,
-
-        date:
-          snapshotDate,
-
-        path:
-          row.path,
-
-        totalRequests:
-          row.totalRequests,
-
-        visits:
-          Math.round(
-            row.visits
-          ),
-
-        verifiedBotRequests:
-          row.verifiedBotRequests,
-
-        unclassifiedRequests:
-          row.unclassifiedRequests,
-
-        botCategoryBreakdown:
-          row.botCategoryBreakdown.length
-            ? (
-                row.botCategoryBreakdown as unknown as Prisma.InputJsonValue
-              )
-            : Prisma.JsonNull,
-      },
-
-      update: {
-        totalRequests:
-          row.totalRequests,
-
-        visits:
-          Math.round(
-            row.visits
-          ),
-
-        verifiedBotRequests:
-          row.verifiedBotRequests,
-
-        unclassifiedRequests:
-          row.unclassifiedRequests,
-
-        botCategoryBreakdown:
-          row.botCategoryBreakdown.length
-            ? (
-                row.botCategoryBreakdown as unknown as Prisma.InputJsonValue
-              )
-            : Prisma.JsonNull,
-      },
-    });
-  }
+  await savePageRows(connection.id, pageTraffic.rows);
 
   console.info(
     "[cloudflare page traffic sync]",

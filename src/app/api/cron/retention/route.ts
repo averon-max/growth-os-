@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { runRetention } from "@/lib/retention";
+import { refreshAllCloudflare } from "@/lib/traffic/refresh";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -15,5 +16,10 @@ export async function GET(req: Request) {
 
   const result = await runRetention();
   console.log("[retention]", JSON.stringify(result));
-  return NextResponse.json({ ok: true, ...result });
+
+  // Same daily run keeps every connected Cloudflare site up to date (one cron instead of two).
+  const cloudflare = await refreshAllCloudflare().catch((error) => ({ error: error instanceof Error ? error.message : "failed" }));
+  console.log("[cloudflare refresh]", JSON.stringify(cloudflare));
+
+  return NextResponse.json({ ok: true, ...result, cloudflare });
 }

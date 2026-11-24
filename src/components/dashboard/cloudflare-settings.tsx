@@ -108,7 +108,7 @@ function SiteRow({ site }: { site: Site }) {
 /** Cloudflare connection for each website: traffic, countries, pages and search/AI crawlers. */
 export function CloudflareSettings({ websites }: { websites: Site[] }) {
   return (
-    <div>
+    <div id="cloudflare" style={{ scrollMarginTop: 80 }}>
       <div style={{ padding: "12px 16px" }}>
         <div style={{ color: "#e3e5e8", fontSize: 13, fontWeight: 510 }}>Cloudflare</div>
         <p style={muted}>Visitors, countries, pages and search &amp; AI crawlers for sites that run through Cloudflare. Read-only access.</p>

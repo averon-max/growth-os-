@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Newsreader } from "next/font/google";
+import { display, mono } from "./fonts";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
@@ -14,14 +14,6 @@ import styles from "./landing.module.css";
 import { LatestPosts } from "@/components/blog/latest-posts";
 import { SiteHeader, SiteFooter } from "@/components/site/site-shell";
 
-const display = Newsreader({ subsets: ["latin"], variable: "--font-landing-display", display: "swap" });
-
-const mono = Geist_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-landing-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Hyprlyx — plan, write and rank in one SEO workspace",
@@ -105,7 +97,7 @@ export default async function LandingPage() {
                 width={3200}
                 height={2000}
                 priority
-                unoptimized
+                quality={90}
                 sizes="(max-width: 1240px) 100vw, 1200px"
               />
             </div>
@@ -145,7 +137,7 @@ export default async function LandingPage() {
                     width={3200}
                     height={2000}
                     sizes="(max-width: 1240px) 100vw, 1200px"
-                    unoptimized
+                    quality={90}
                   />
                 </div>
               </div>

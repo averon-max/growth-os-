@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSession } from "@/lib/session";
+import { Providers } from "../providers";
 import { isUserAdmin } from "@/lib/auth-helpers";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import styles from "./layout.module.css";
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
   if (!session?.user) {
     redirect("/login");
   }
@@ -24,6 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isAdmin = userId ? await isUserAdmin(userId) : false;
 
   return (
+    <Providers session={session}>
     <div className={styles.shell}>
       <Sidebar isAdmin={isAdmin} />
       <div className={styles.main}><div className="page-shell">
@@ -32,5 +33,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <FeedbackWidget />
       </div></div>
     </div>
+    </Providers>
   );
 }

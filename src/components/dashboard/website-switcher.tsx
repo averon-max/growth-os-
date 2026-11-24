@@ -10,17 +10,28 @@ interface WebsiteOption {
   business: { name: string };
 }
 
+// Reused for a minute instead of being fetched again on every page the user opens.
+const cache = new Map<string, { at: number; list: Promise<WebsiteOption[]> }>();
+function loadWebsites(workspaceId: string) {
+  const hit = cache.get(workspaceId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.list;
+  const list = fetch(`/api/websites?workspaceId=${workspaceId}`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => (Array.isArray(data?.websites) ? (data.websites as WebsiteOption[]) : []))
+    .catch(() => [] as WebsiteOption[]);
+  cache.set(workspaceId, { at: Date.now(), list });
+  return list;
+}
+
 export function WebsiteSwitcher({ workspaceId, currentWebsiteId }: { workspaceId: string; currentWebsiteId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [websites, setWebsites] = useState<WebsiteOption[]>([]);
 
   useEffect(() => {
-    fetch(`/api/websites?workspaceId=${workspaceId}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.websites) setWebsites(data.websites);
-      });
+    let live = true;
+    loadWebsites(workspaceId).then((list) => { if (live) setWebsites(list); });
+    return () => { live = false; };
   }, [workspaceId]);
 
   if (websites.length <= 1) return null;

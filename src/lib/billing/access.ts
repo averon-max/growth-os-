@@ -21,6 +21,7 @@ export const SECTION_MIN_PLAN: Record<string, PlanId> = {
 
   content: "GROWTH",
   audience: "STARTER",
+  traffic: "STARTER",
   competitors: "STARTER",
   backlinks: "STARTER",
   bots: "STARTER",
