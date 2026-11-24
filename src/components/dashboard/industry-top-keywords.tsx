@@ -19,6 +19,7 @@ export function IndustryTopKeywords({ workspaceId, seed, market = "US" }: { work
   const [fromCache, setFromCache] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<Suggestion | null>(null);
   const [filters, setFilters] = useState<SuggestionFilters>(EMPTY_FILTERS);
   const effectiveMarket = market ?? "US";
@@ -41,6 +42,7 @@ export function IndustryTopKeywords({ workspaceId, seed, market = "US" }: { work
         setSuggestions(data.suggestions);
         setTrending(data.trending);
         setFromCache(data.fromCache);
+        setNotice(typeof data.notice === "string" ? data.notice : null);
       })
       .catch(() => setError("Network error."))
       .finally(() => setLoading(false));
@@ -60,6 +62,7 @@ export function IndustryTopKeywords({ workspaceId, seed, market = "US" }: { work
 
       {loading && <p className={styles.empty}>Loading...</p>}
       {error && <p className={styles.error}>{error}</p>}
+      {notice && !error && <p className={styles.empty}>{notice}</p>}
 
       {suggestions && suggestions.length === 0 && !error && !loading && (
         <p className={styles.empty}>No industry keyword data found.</p>

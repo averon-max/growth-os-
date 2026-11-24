@@ -5,6 +5,9 @@ import { extractArticleHeadings } from "@/lib/content/article-analyzer";
 import type { ArticleCategory } from "@/lib/writer/templates";
 import { prisma } from "@/lib/prisma";
 import { cleanExtraKeywords, keywordCoverage } from "@/lib/writer/extra-keywords";
+import { bestPlanForUser } from "@/lib/billing/api-gate";
+import { PLANS } from "@/lib/billing/plans";
+import { articleKey, countUsage, usageCount } from "@/lib/billing/usage";
 
 export async function POST(req: NextRequest) {
   let userId: string;
@@ -69,6 +72,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Writer is not configured" }, { status: 503 });
     }
 
+    // Monthly AI draft allowance of the plan. Checked before any paid call; counted only after a draft is made.
+    const plan = await bestPlanForUser(userId);
+    const allowance = PLANS[plan].limits.articlesPerMonth;
+    if ((await usageCount(articleKey(userId))) >= allowance) {
+      return NextResponse.json(
+        { error: `You've used all ${allowance} AI drafts included this month. More are available on a higher plan or next month.`, upgrade: "/dashboard/settings/billing" },
+        { status: 402 }
+      );
+    }
+
     // Fetch internal links from existing articles
     const internalLinks = websiteId
       ? (await prisma.contentBrief.findMany({
@@ -119,6 +132,8 @@ export async function POST(req: NextRequest) {
         { status: 502 }
       );
     }
+
+    await countUsage(articleKey(userId)).catch((e) => console.error("[writer] usage count failed", e));
 
     // Save to DB if websiteId provided
     let briefId: string | null = null;

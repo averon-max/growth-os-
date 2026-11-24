@@ -9,7 +9,9 @@ import { freeRelated, savedRelated } from "@/lib/keywords/free-suggest";
  * Keyword ideas — сначала бесплатно:
  *   1) сохранённый ответ DataForSEO по этому сиду (любой давности) — 0$
  *   2) Google Autocomplete + уже известные объёмы из базы — 0$
- *   3) платный DataForSEO — только если DATAFORSEO_SUGGEST_PAID=1 или ?paid=1
+ *   3) DataForSEO (volume, difficulty, CPC, trend) — about $0.02 per new seed, saved and reused for every account.
+ *      Protected by the daily budget, the per-workspace daily limit and the trial cap. DATAFORSEO_SUGGEST_PAID=0 turns it off.
+ *   4) Google Autocomplete + metrics already known — only when 3 is unavailable (budget reached, limit, outage).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +20,8 @@ export async function GET(req: NextRequest) {
     const seed = req.nextUrl.searchParams.get("seed")?.trim() ?? "";
     const limitParam = req.nextUrl.searchParams.get("limit");
     const limit = limitParam ? Math.min(50, Math.max(1, Number.parseInt(limitParam, 10) || 50)) : 50;
-    const wantPaid = process.env.DATAFORSEO_SUGGEST_PAID === "1" || req.nextUrl.searchParams.get("paid") === "1";
+    const wantPaid = process.env.DATAFORSEO_SUGGEST_PAID !== "0" || req.nextUrl.searchParams.get("paid") === "1";
+    let notice: string | null = null;
 
     if (workspaceId == null || workspaceId === "") {
       return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
@@ -39,6 +42,9 @@ export async function GET(req: NextRequest) {
       } catch (err) {
         if ((err instanceof DataForSEOError || err instanceof RateLimitError) === false) throw err;
         suggestions = null;
+        notice = err instanceof RateLimitError
+          ? "Today's keyword data limit is used up, so new ideas are shown without volume and difficulty. Full data returns tomorrow."
+          : "Keyword data is unavailable right now, so new ideas are shown without volume and difficulty. Try again later.";
       }
     }
     if (suggestions == null || suggestions.length === 0) {
@@ -51,7 +57,7 @@ export async function GET(req: NextRequest) {
     // Google Trends — бесплатно, сам кэшируется в базе; не ломаем ответ при сбое
     const trending = await fetchTrendingQueries(seed).catch(() => []);
 
-    return NextResponse.json({ seed, suggestions: sorted, fromCache: source === "paid" ? false : true, source, trending });
+    return NextResponse.json({ seed, suggestions: sorted, fromCache: source === "paid" ? false : true, source, trending, notice });
   } catch (err) {
     if (err instanceof RateLimitError) {
       return NextResponse.json({ error: err.message }, { status: 429 });
