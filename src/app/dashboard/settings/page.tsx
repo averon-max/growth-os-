@@ -30,6 +30,7 @@ import {
 } from "@/components/dashboard/ui";
 
 import styles from "@/components/dashboard/ui.module.css";
+import { CloudflareSettings } from "@/components/dashboard/cloudflare-settings";
 
 const CMS_STATUS_TONE:
   Record<
@@ -258,6 +259,8 @@ export default async function SettingsPage() {
                 </Link>
               </div>
             </div>
+
+            <CloudflareSettings websites={websites.map((w) => ({ id: w.id, name: w.business.name, url: w.url }))} />
           </div>
 
           <div className={`${styles.group} ${styles.settingsWide}`}>
