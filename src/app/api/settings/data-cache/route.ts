@@ -34,7 +34,7 @@ async function report() {
   for (const r of spend) {
     const c = DFS_CATEGORY_KEYS.includes(r.category as DfsCategory) ? (r.category as DfsCategory) : categoryOf(r.endpoint);
     spent30[c] = (spent30[c] ?? 0) + r.cost;
-    if (r.date.toISOString().slice(0, 10) === todayKey) today += r.cost;
+    if (r.date.toISOString().slice(0, 10) === todayKey && c !== "ai") today += r.cost;
   }
   const last = await lastCleanup();
   return {

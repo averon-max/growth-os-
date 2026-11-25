@@ -46,11 +46,12 @@ export default function CachePanel() {
 
   return (
     <section style={{ marginTop: 48 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", margin: 0 }}>Saved search data</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", margin: 0 }}>Saved data and AI answers</h2>
       <p style={{ color: "var(--secondary)", fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>
-        Keyword numbers, Google results and backlinks come from DataForSEO, which charges for every request. Hyprlyx saves each
-        answer and reuses it for everyone until it is older than the time you set below, so the same search is paid for only once.
-        Longer means cheaper; shorter means fresher numbers. Expired data is deleted every night. Only admins see this section.
+        Keyword numbers, Google results and backlinks come from DataForSEO, and drafts and research decisions come from the AI
+        model; both charge for every request. Hyprlyx saves each answer and keeps it for the time you set below, so the same
+        search is paid for only once. Longer means cheaper; shorter means fresher numbers and less stored data. Expired answers
+        are deleted every night, and “Delete now” removes a kind at once. Only admins see this section.
       </p>
 
       <p style={{ ...small, fontSize: 13, marginTop: 14 }}>

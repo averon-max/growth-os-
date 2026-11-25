@@ -4,6 +4,7 @@
 // budget and asks for compact JSON; a second failure raises LlmJsonError so callers can
 // record a failed check instead of silently treating it as "no problems found".
 import type OpenAI from "openai";
+import { AI_REUSE } from "@/lib/ai/saved-answers";
 
 export interface LlmJsonAttempt {
   finishReason: string | null;
@@ -23,7 +24,7 @@ export async function chatJson<T>(
   client: OpenAI,
   step: string,
   prompt: string,
-  opts: { maxTokens?: number; validate?: (x: unknown) => boolean; model?: string } = {}
+  opts: { maxTokens?: number; validate?: (x: unknown) => boolean; model?: string; reuse?: boolean } = {}
 ): Promise<T> {
   const attempts: LlmJsonAttempt[] = [];
   let max = opts.maxTokens ?? 6000;
@@ -33,7 +34,7 @@ export async function chatJson<T>(
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: i === 0 ? prompt : `${prompt}\n\nReturn ONLY one compact JSON object. No prose, no markdown.` }],
       max_completion_tokens: max,
-    });
+    }, opts.reuse ? AI_REUSE : undefined);
     const choice = res.choices[0] as { message?: { content?: string | null }; finish_reason?: string | null } | undefined;
     const content = (choice?.message?.content ?? "").trim();
     const finishReason = choice?.finish_reason ?? null;

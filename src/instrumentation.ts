@@ -22,6 +22,7 @@
  */
 
 const DFS = "https://api.dataforseo.com/";
+const OPENAI = "https://api.openai.com/";
 const SETTINGS_TTL = 60 * 1000;
 
 type Json = Record<string, unknown>;
@@ -137,6 +138,7 @@ export async function register() {
   const { prisma } = await import("@/lib/prisma");
   const { categoryOf, normalizeDfs, keepMs, SETTINGS_KEY } = await import("@/lib/dataforseo/cache-settings");
   const { wantsFresh } = await import("@/lib/dataforseo/fresh");
+  const { AI_REUSE_HEADER, aiCost, usableAnswer, asReused } = await import("@/lib/ai/saved-answers");
   const original = globalThis.fetch.bind(globalThis);
   const inflight = new Map<string, Promise<Response>>();
 
@@ -157,7 +159,7 @@ export async function register() {
   const today = () => new Date(new Date().toISOString().slice(0, 10));
   const spentToday = async () => {
     try {
-      const r = await prisma.dfsSpend.aggregate({ where: { date: today() }, _sum: { cost: true } });
+      const r = await prisma.dfsSpend.aggregate({ where: { date: today(), NOT: { category: "ai" } }, _sum: { cost: true } });
       return r._sum.cost ?? 0;
     } catch {
       return 0;
@@ -183,8 +185,66 @@ export async function register() {
     return { res, json };
   };
 
+  /*
+   * OpenAI: every complete answer is saved (ApiCache, category "ai") with its approximate cost, so Settings → Data
+   * shows it and can delete it. A saved answer is returned again only when the call carries the reuse header,
+   * it is younger than the "AI answers" setting, and the same question was not already asked by this server in
+   * the last 10 minutes (a repeat that soon is a retry and must reach the model).
+   */
+  const recentAi = new Map<string, number>();
+  const aiFetch = async (url: string, input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const method = (init?.method ?? "GET").toUpperCase();
+    const body = typeof init?.body === "string" ? init.body : null;
+    if (method !== "POST" || body === null || (typeof input !== "string" && !(input instanceof URL))) return original(input, init);
+    let request: Json;
+    try { request = JSON.parse(body) as Json; } catch { return original(input, init); }
+    if (request.stream === true) return original(input, init);
+
+    const headers = new Headers(init?.headers);
+    const reuse = headers.get(AI_REUSE_HEADER) === "1";
+    headers.delete(AI_REUSE_HEADER);
+    const endpoint = "openai/" + url.slice(OPENAI.length).split("?")[0].replace(/^v1\//, "");
+    const model = typeof request.model === "string" ? request.model : "unknown";
+    const key = await sha256(`AI ${endpoint}\n${body}`);
+    recentAi.forEach((at, k) => { if (Date.now() - at > 600_000) recentAi.delete(k); });
+
+    if (reuse && wantsFresh() === false && recentAi.has(key) === false) {
+      const s = await getSettings();
+      const row = await prisma.apiCache.findUnique({ where: { key }, select: { response: true, createdAt: true } }).catch(() => null);
+      if (row && Date.now() - row.createdAt.getTime() < keepMs(s.days.ai)) {
+        recentAi.set(key, Date.now());
+        await prisma.apiCache.update({ where: { key }, data: { hits: { increment: 1 } } }).catch(() => undefined);
+        console.log(`[openai] saved  ${endpoint}  ${model}`);
+        return jsonResponse(asReused(row.response as Json), "hit");
+      }
+    }
+    recentAi.set(key, Date.now());
+
+    const res = await original(input, { ...init, headers });
+    if (!res.ok) return res;
+    let answer: Json | null = null;
+    try { answer = (await res.clone().json()) as Json; } catch { answer = null; }
+    if (answer && usableAnswer(request, answer)) {
+      const cost = aiCost(model, answer.usage as Json | undefined);
+      await Promise.all([
+        prisma.apiCache.upsert({
+          where: { key },
+          create: { key, endpoint: `${endpoint}:${model}`, category: "ai", response: answer as never, cost },
+          update: { response: answer as never, cost, category: "ai", createdAt: new Date() },
+        }),
+        prisma.dfsSpend.upsert({
+          where: { date_endpoint: { date: today(), endpoint: `${endpoint}:${model}` } },
+          create: { date: today(), endpoint: `${endpoint}:${model}`, category: "ai", calls: 1, cost },
+          update: { calls: { increment: 1 }, cost: { increment: cost } },
+        }),
+      ]).catch((e: Error) => console.warn("[openai] save failed:", e.message));
+    }
+    return res;
+  };
+
   globalThis.fetch = async function cachedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith(OPENAI)) return aiFetch(url, input, init);
     if (url.startsWith(DFS) === false) return original(input, init);
 
     const rawBody = typeof init?.body === "string" ? init.body : "";

@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { AI_REUSE } from "@/lib/ai/saved-answers";
 import { tracked } from "./usage";
 import { log, logError } from "./logger";
 import { chatJson, hasArray } from "./llm-json";
@@ -127,7 +128,7 @@ Return ONLY JSON: {"category": "<one format>", "topics": [{"heading": "...", "su
       ],
       response_format: { type: "json_object" },
       max_completion_tokens: 3000,
-    });
+    }, AI_REUSE);
     const raw = completion.choices[0]?.message?.content?.trim() ?? "";
     const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "{}") as { category?: string; topics?: Array<string | { heading?: string; subtopics?: string[] }> };
     const subtopics: Record<string, string[]> = {};
@@ -190,7 +191,7 @@ async function suggestAuthorityDomains(keyword: string): Promise<string[]> {
   if (!apiKey) return [];
   try {
     const client = tracked(new OpenAI({ maxRetries: 3, timeout: 60000, apiKey }));
-    const parsed = await chatJson<{ domains?: unknown[] }>(client, "AUTHORITY_DOMAINS", `Topic: "${keyword}" (audience: United States).\nList up to 5 website domains that publish PRIMARY, authoritative information on this exact topic: the responsible government agency or regulator, the official safety or standards body, the recognized professional or industry association, or the official documentation of the product, platform or manufacturer the topic is about. Never list blogs, news or media sites, affiliate or review sites, marketplaces or forums. Return bare domains only (for example "example-agency.gov", "docs.example.com"). Return JSON {"domains": [...]}, or {"domains": []} if no such body exists.`, { maxTokens: 2000, validate: hasArray("domains") });
+    const parsed = await chatJson<{ domains?: unknown[] }>(client, "AUTHORITY_DOMAINS", `Topic: "${keyword}" (audience: United States).\nList up to 5 website domains that publish PRIMARY, authoritative information on this exact topic: the responsible government agency or regulator, the official safety or standards body, the recognized professional or industry association, or the official documentation of the product, platform or manufacturer the topic is about. Never list blogs, news or media sites, affiliate or review sites, marketplaces or forums. Return bare domains only (for example "example-agency.gov", "docs.example.com"). Return JSON {"domains": [...]}, or {"domains": []} if no such body exists.`, { maxTokens: 2000, validate: hasArray("domains"), reuse: true });
     return (Array.isArray(parsed.domains) ? parsed.domains : [])
       .map((d) => String(d).toLowerCase().trim().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, ""))
       .filter((d) => /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d))
@@ -210,7 +211,7 @@ async function proposeAuthorityUrls(keyword: string, domains: string[]): Promise
   if (!apiKey) return [];
   try {
     const client = tracked(new OpenAI({ maxRetries: 3, timeout: 60000, apiKey }));
-    const parsed = await chatJson<{ urls?: unknown[] }>(client, "AUTHORITY_URLS", `Topic: "${keyword}" (audience: United States).\nList up to 8 exact URLs of existing pages that explain this topic on these official domains: ${domains.join(", ")}, or on other US government (.gov) or university (.edu) sites. Prefer long-lived overview or guidance pages over news releases. Only URLs you are confident exist. Return JSON {"urls": [...]}.`, { maxTokens: 3000, validate: hasArray("urls") });
+    const parsed = await chatJson<{ urls?: unknown[] }>(client, "AUTHORITY_URLS", `Topic: "${keyword}" (audience: United States).\nList up to 8 exact URLs of existing pages that explain this topic on these official domains: ${domains.join(", ")}, or on other US government (.gov) or university (.edu) sites. Prefer long-lived overview or guidance pages over news releases. Only URLs you are confident exist. Return JSON {"urls": [...]}.`, { maxTokens: 3000, validate: hasArray("urls"), reuse: true });
     return (Array.isArray(parsed.urls) ? parsed.urls : []).map((u) => String(u).trim()).filter((u) => /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}\//i.test(u));
   } catch (err) {
     logError("serp-analyzer", "AUTHORITY_URLS_FAILED", err, { keyword });

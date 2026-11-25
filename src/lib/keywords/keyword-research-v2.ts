@@ -354,7 +354,7 @@ export async function researchKeywordOpportunitiesV2(input: KeywordResearchReque
             gscImpressions: cluster.primary.impressions ?? null, score: cluster.opportunityScore,
             serp: serpResults.find(s => s.clusterId === cluster.id) ?? null })) }) },
       ],
-    });
+    }, { headers: { "x-hyprlyx-ai-reuse": "1" } });
     const output = completion.choices[0]?.message?.content;
     if (!output) throw new Error("KEYWORD_V2_GPT_EMPTY");
     decision = validateKeywordOpportunityChoiceV2(JSON.parse(output), eligibleForGpt);

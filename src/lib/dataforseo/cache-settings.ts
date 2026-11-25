@@ -1,5 +1,5 @@
 /*
- * What each kind of saved DataForSEO answer is, and how long it is kept.
+ * What each kind of saved DataForSEO (and AI) answer is, and how long it is kept.
  * Shared by the fetch cache (src/instrumentation.ts), the nightly cleanup and Settings → Data.
  * Saved answers are shared by every workspace: the same search is paid for once.
  */
@@ -33,6 +33,12 @@ export const DFS_CATEGORIES = {
     label: "Backlinks",
     help: "Sites that link to a domain, their anchor texts and link totals.",
     usedIn: "Backlinks, article backlink checks",
+    def: 30,
+  },
+  ai: {
+    label: "AI answers",
+    help: "Answers from the AI model: article drafts, outlines, checks and research decisions. Research answers (topics from Google results, official sources, keyword choice) are reused when the same question comes again; articles are always written new. Cost is an estimate from token counts.",
+    usedIn: "AI Writer, Keywords",
     def: 30,
   },
   other: {
