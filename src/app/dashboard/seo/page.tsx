@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState } from "@/components/dashboard/ui";
 import { RunAnalysisButton } from "@/components/dashboard/run-analysis-button";
-import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar, TONE } from "@/components/dashboard/insights";
+import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar } from "@/components/dashboard/insights";
+import { TONE } from "@/components/dashboard/insights-tokens";
 import styles from "@/components/dashboard/ui.module.css";
 import s from "./seo.module.css";
 

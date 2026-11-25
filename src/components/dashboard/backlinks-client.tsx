@@ -233,13 +233,13 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           <Meter value={sum?.rank ?? null} max={1000} good={300} warn={100} label={`Domain rank ${fmt(sum?.rank)} of 1000 · DataForSEO authority score`} />
         </InsightCard>
 
-        <InsightCard title="Link quality" meta={`${allDomains.length} domains in sample`}>
+        <InsightCard title="Link quality" meta="by spam score: under 30 · 30–49 · 50+">
           <StackBar
             unit="domains"
             parts={[
-              { key: "clean", label: "Clean (spam score under 30)", value: qualCount("clean"), color: TONE.good, active: qual === "clean", onClick: () => pickQual("clean") },
-              { key: "watch", label: "Watch (30–49)", value: qualCount("watch"), color: TONE.warn, active: qual === "watch", onClick: () => pickQual("watch") },
-              { key: "spam", label: "Spam (50 and above)", value: qualCount("spam"), color: TONE.bad, active: qual === "spam", onClick: () => pickQual("spam") },
+              { key: "clean", label: "Clean", value: qualCount("clean"), color: TONE.good, active: qual === "clean", onClick: () => pickQual("clean") },
+              { key: "watch", label: "Watch", value: qualCount("watch"), color: TONE.warn, active: qual === "watch", onClick: () => pickQual("watch") },
+              { key: "spam", label: "Spam", value: qualCount("spam"), color: TONE.bad, active: qual === "spam", onClick: () => pickQual("spam") },
             ]}
           />
         </InsightCard>
@@ -248,9 +248,9 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           <StackBar
             unit="links"
             parts={[
-              { key: "do", label: "Dofollow — passes ranking value", value: allLinks.filter((l) => l.dofollow).length, color: "#0a84ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
+              { key: "do", label: "Dofollow", value: allLinks.filter((l) => l.dofollow).length, color: "#0a84ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
               { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#a855f7", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
-              { key: "new", label: "New in the latest sample", value: newCount, color: "#0d9488", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
+              { key: "new", label: "New", value: newCount, color: "#0d9488", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
               { key: "lost", label: "Lost", value: lostCount, color: TONE.bad, active: tab === "links" && only === "lost", onClick: () => pickOnly("lost") },
             ]}
           />
@@ -263,7 +263,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           />
         </InsightCard>
 
-        <InsightCard title="Rank of linking sites" meta="referring domains by domain rank">
+        <InsightCard title="Rank of linking sites">
           <Columns
             unit="domains"
             cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: ["#3a3a3a", "#f43f5e", "#d97706", "#0d9488", "#0a84ff", "#16a34a"][i] }))}
