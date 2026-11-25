@@ -558,3 +558,60 @@ export async function fetchRankedKeywords(
     relativeUrl: item.ranked_serp_element?.serp_item?.relative_url ?? null,
   }));
 }
+
+export interface KeywordOverviewResult {
+  keyword: string;
+  searchVolume: number | null;
+  cpc: number | null;
+  competition: number | null;
+  competitionLevel: string | null;
+  keywordDifficulty: number | null;
+  intent: string | null;
+  monthlySearches: { year: number; month: number; searchVolume: number }[];
+  trend: { monthly: number | null; quarterly: number | null; yearly: number | null } | null;
+}
+
+/**
+ * Everything about one keyword in one market from a single DataForSEO Labs call (about $0.01):
+ * volume, CPC, competition, difficulty, intent and 12 months of searches.
+ * Replaces the Google Ads volume call ($0.075) plus the separate difficulty call.
+ */
+export async function fetchKeywordOverview(keyword: string, locationName = "United States", languageName = "English"): Promise<KeywordOverviewResult | null> {
+  const auth = buildAuthHeader();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DATAFORSEO_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${DATAFORSEO_API_BASE}/dataforseo_labs/google/keyword_overview/live`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify([{ keywords: [keyword], location_name: locationName, language_name: languageName }]),
+    });
+    if (!res.ok) throw new DataForSEOError(`DataForSEO HTTP error ${res.status}: ${(await res.text().catch(() => "")).slice(0, 300)}`);
+    const data = await res.json();
+    if (data.status_code !== 20000) throw new DataForSEOError(`DataForSEO API error: ${data.status_message}`);
+    const task = data.tasks?.[0];
+    if (!task || task.status_code !== 20000) throw new DataForSEOError(`DataForSEO task error: ${task?.status_message ?? "no task returned"}`);
+    const item = task.result?.[0]?.items?.[0];
+    if (!item) return null;
+    const info = item.keyword_info ?? {};
+    const trend = info.search_volume_trend ?? null;
+    return {
+      keyword: item.keyword ?? keyword,
+      searchVolume: info.search_volume ?? null,
+      cpc: info.cpc ?? null,
+      competition: info.competition ?? null,
+      competitionLevel: info.competition_level ?? null,
+      keywordDifficulty: item.keyword_properties?.keyword_difficulty ?? null,
+      intent: item.search_intent_info?.main_intent ?? null,
+      monthlySearches: Array.isArray(info.monthly_searches)
+        ? info.monthly_searches
+            .filter((m: { search_volume?: number | null }) => typeof m.search_volume === "number")
+            .map((m: { year: number; month: number; search_volume: number }) => ({ year: m.year, month: m.month, searchVolume: m.search_volume }))
+        : [],
+      trend: trend ? { monthly: trend.monthly ?? null, quarterly: trend.quarterly ?? null, yearly: trend.yearly ?? null } : null,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}

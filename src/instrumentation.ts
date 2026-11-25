@@ -135,7 +135,7 @@ export async function register() {
   g.__dfsCachePatched = true;
 
   const { prisma } = await import("@/lib/prisma");
-  const { categoryOf, normalizeDfs, SETTINGS_KEY } = await import("@/lib/dataforseo/cache-settings");
+  const { categoryOf, normalizeDfs, keepMs, SETTINGS_KEY } = await import("@/lib/dataforseo/cache-settings");
   const { wantsFresh } = await import("@/lib/dataforseo/fresh");
   const original = globalThis.fetch.bind(globalThis);
   const inflight = new Map<string, Promise<Response>>();
@@ -196,7 +196,7 @@ export async function register() {
 
     const category = categoryOf(endpoint);
     const s = await getSettings();
-    const ttl = s.days[category] * 24 * 60 * 60 * 1000;
+    const ttl = keepMs(s.days[category]);
     const key = await sha256(`${(init?.method ?? "GET").toUpperCase()} ${url}\n${body}`);
 
     let cached: { response: unknown; createdAt: Date } | null = null;

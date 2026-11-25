@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { fetchSearchVolume } from "./dataforseo-provider";
+import { fetchKeywordOverview } from "./dataforseo-provider";
+import { isFreshFor, keywordKeepDays } from "@/lib/dataforseo/keep-days";
 import { normalizeKeyword } from "./normalize";
 
-const CACHE_TTL_DAYS = 30;
 
 export const MARKETS = [
   {
@@ -40,9 +40,7 @@ export interface MarketVolume {
   cpc: number | null;
 }
 
-function isFresh(fetchedAt: Date): boolean {
-  return Date.now() - fetchedAt.getTime() < CACHE_TTL_DAYS * 86400000;
-}
+
 
 async function getOneMarket(
   keyword: string,
@@ -60,21 +58,18 @@ async function getOneMarket(
     },
   });
 
-  if (cached && isFresh(cached.fetchedAt)) {
+  if (cached && isFreshFor(cached.fetchedAt, await keywordKeepDays())) {
     return cached.payload as unknown as MarketVolume;
   }
 
-  const [result] = await fetchSearchVolume(
-    [keyword],
-    market.locationName,
-    market.language,
-  );
+  // One Labs overview call (~$0.01) instead of the Google Ads volume call (~$0.075).
+  const result = await fetchKeywordOverview(keyword, market.locationName, market.language);
 
   const value: MarketVolume = {
     market: market.code,
     label: market.label,
     volume: result?.searchVolume ?? null,
-    competitionIndex: result?.competitionIndex ?? null,
+    competitionIndex: result?.competition == null ? null : Math.round(result.competition * 100),
     cpc: result?.cpc ?? null,
   };
 

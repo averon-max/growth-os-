@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { fetchRelatedKeywords, type RelatedKeywordResult } from "./dataforseo-provider";
 import { normalizeKeyword } from "./normalize";
+import { isFreshFor, keywordKeepDays } from "@/lib/dataforseo/keep-days";
 
-const CACHE_TTL_DAYS = 30;
 const DAILY_EXPLORE_LIMIT = 20;
 const SOURCE = "DATAFORSEO_RELATED";
 
@@ -14,9 +14,6 @@ export class RateLimitError extends Error {
   }
 }
 
-function isFresh(fetchedAt: Date, ttlDays: number): boolean {
-  return Date.now() - fetchedAt.getTime() < ttlDays * 24 * 60 * 60 * 1000;
-}
 
 async function checkAndIncrementDailyLimit(workspaceId: string): Promise<void> {
   const today = new Date();
@@ -68,7 +65,7 @@ export async function getCachedRelatedKeywords(
     where: { normalized_source: { normalized: cacheKey, source: SOURCE } },
   });
 
-  if (cached && isFresh(cached.fetchedAt, CACHE_TTL_DAYS)) {
+  if (cached && isFreshFor(cached.fetchedAt, await keywordKeepDays())) {
     return { suggestions: cached.payload as unknown as RelatedKeywordResult[], fromCache: true };
   }
 

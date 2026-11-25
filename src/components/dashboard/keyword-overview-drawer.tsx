@@ -11,6 +11,7 @@ interface OverviewData {
   monthlySearches: MonthlyPoint[];
   trend: { yearly: number | null; quarterly: number | null; monthly: number | null } | null;
   globalVolumes: GlobalVolume[];
+  otherMarketsAvailable?: number;
   metrics: {
     volume: number | null;
     kd: number | null;
@@ -64,6 +65,7 @@ function TrendPill({ value, label }: { value: number | null; label: string }) {
 export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, onClose }: Props) {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [moreBusy, setMoreBusy] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -75,6 +77,17 @@ export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, 
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [keyword, workspaceId, market, language]);
+
+  // Other countries cost about $0.01 each the first time, so they load only on request.
+  const loadOtherMarkets = () => {
+    setMoreBusy(true);
+    const p = new URLSearchParams({ workspaceId, keyword, market, language, markets: "all" });
+    fetch(`/api/keywords/overview?${p}`)
+      .then(r => r.json())
+      .then((d) => { if (d && !d.error) setData(d); })
+      .catch(() => undefined)
+      .finally(() => setMoreBusy(false));
+  };
 
   const volume = data?.metrics?.volume ?? null;
   const kd = data?.metrics?.kd ?? null;
@@ -158,6 +171,17 @@ export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, 
                   ))}
                 </div>
               </div>
+            )}
+
+            {(data?.otherMarketsAvailable ?? 0) > 0 && (
+              <button
+                type="button"
+                onClick={loadOtherMarkets}
+                disabled={moreBusy}
+                style={{ alignSelf: "flex-start", height: 32, padding: "0 12px", border: "1px solid #2e2e2e", borderRadius: 6, background: "#000", color: "#ededed", font: "inherit", fontSize: 13, cursor: moreBusy ? "default" : "pointer", opacity: moreBusy ? 0.6 : 1 }}
+              >
+                {moreBusy ? "Loading…" : `Show volume in ${data!.otherMarketsAvailable} more ${data!.otherMarketsAvailable === 1 ? "country" : "countries"}`}
+              </button>
             )}
 
             {/* Monthly chart */}

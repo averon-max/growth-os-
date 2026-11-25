@@ -151,9 +151,10 @@ export async function cleanGlobal(counts: Counts) {
   // Saved DataForSEO answers: each kind is kept for the days set in Settings → Data.
   const dfs = normalizeDfs((await prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } }).catch(() => null))?.value);
   for (const [category, days] of Object.entries(dfs.days)) {
+    if (days === 0) continue; // "Keep forever"
     await run(counts, `apiCache:${category}`, `DELETE FROM "ApiCache" WHERE category = $1 AND "createdAt" < now() - make_interval(days => $2::int)`, category, days);
   }
-  await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1::int)`, dfs.days.keywords);
+  if (dfs.days.keywords !== 0) await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1::int)`, dfs.days.keywords);
   await run(counts, "rateLimits", `DELETE FROM "AuthRateLimit" WHERE "resetAt" < now() - interval '1 day'`);
   await run(counts, "resetTokens", `DELETE FROM "PasswordResetToken" WHERE "expiresAt" < now() - make_interval(days => $1::int)`, GLOBAL.resetTokenDays);
   await run(counts, "stripeEvents", `DELETE FROM "StripeEvent" WHERE "receivedAt" < now() - make_interval(days => $1::int)`, GLOBAL.stripeEventDays);

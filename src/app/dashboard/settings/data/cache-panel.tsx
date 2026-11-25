@@ -8,7 +8,7 @@ type Cat = {
 };
 type Report = { categories: Cat[]; lastCleanup: { at: string; removedSaved: number; errors: string[] } | null };
 
-const DAYS = [1, 3, 7, 14, 30, 60, 90, 180, 365];
+const DAYS = [1, 3, 7, 14, 30, 60, 90, 180, 365, 0];
 const money = (n: number) => (n < 0.01 && n > 0 ? "<$0.01" : `$${n.toFixed(2)}`);
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—");
 
@@ -83,7 +83,7 @@ export default function CachePanel() {
               </div>
             </div>
             <select style={select} value={c.days} onChange={(e) => setDays(c.key, Number(e.target.value))}>
-              {DAYS.map((d) => <option key={d} value={d}>Keep {d === 1 ? "1 day" : `${d} days`}{d === c.def ? " (default)" : ""}</option>)}
+              {DAYS.map((d) => <option key={d} value={d}>{d === 0 ? "Keep forever" : `Keep ${d === 1 ? "1 day" : `${d} days`}`}{d === c.def ? " (default)" : ""}</option>)}
             </select>
           </div>
         ))}

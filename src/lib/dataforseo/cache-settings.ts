@@ -21,7 +21,7 @@ export const DFS_CATEGORIES = {
     label: "Keyword numbers and ideas",
     help: "Search volume, difficulty, cost per click and related keyword ideas.",
     usedIn: "Keywords, Keyword Planner, AI Writer",
-    def: 30,
+    def: 0,
   },
   domains: {
     label: "Site rankings and competitors",
@@ -45,7 +45,11 @@ export const DFS_CATEGORIES = {
 
 export type DfsCategory = keyof typeof DFS_CATEGORIES;
 export const DFS_CATEGORY_KEYS = Object.keys(DFS_CATEGORIES) as DfsCategory[];
-export const DAY_OPTIONS = [1, 3, 7, 14, 30, 60, 90, 180, 365];
+/** 0 = keep forever: the answer is never paid for again and never deleted. */
+export const DAY_OPTIONS = [1, 3, 7, 14, 30, 60, 90, 180, 365, 0];
+export const KEEP_FOREVER = 0;
+/** Milliseconds a saved answer stays fresh; Infinity when kept forever. */
+export const keepMs = (days: number) => (days === KEEP_FOREVER ? Number.POSITIVE_INFINITY : days * 86_400_000);
 export const SETTINGS_KEY = "dataforseoCache";
 
 /** endpoint is the path after https://api.dataforseo.com/, e.g. "v3/serp/google/organic/live/advanced". */
