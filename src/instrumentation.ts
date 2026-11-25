@@ -296,6 +296,7 @@ export async function register() {
     const refuse = (message: string) =>
       cached ? jsonResponse(cached.response as Json, "stale") : jsonResponse({ status_code: 40200, status_message: message, cost: 0, tasks: [] }, "refused");
     if (process.env.DATAFORSEO_OFFLINE === "1") return refuse("Offline mode: no saved data for this request yet.");
+    if (s.paused) return refuse("Paid data is paused in Settings → Data. Saved data is still shown.");
     const spent = await spentToday();
     if (spent >= s.dailyBudget) {
       console.warn(`[dataforseo] daily budget reached ($${spent.toFixed(2)} of $${s.dailyBudget}), refused ${endpoint}`);

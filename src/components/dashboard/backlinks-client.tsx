@@ -5,9 +5,12 @@ import { ArrowUpRight, Loader2, RefreshCw, Search, Upload } from "lucide-react";
 import type { BacklinksReport } from "@/lib/backlinks/domain";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import s from "./backlinks.module.css";
+import { BarList, Columns, InsightCard, InsightGrid, Meter, StackBar, TONE, fmtNum } from "./insights";
 
 type Tab = "domains" | "links" | "anchors";
-type Only = "all" | "dofollow" | "new" | "lost";
+type Only = "all" | "dofollow" | "nofollow" | "new" | "lost";
+type Qual = "all" | "clean" | "watch" | "spam";
+const qualOf = (spam: number | null): Exclude<Qual, "all"> => ((spam ?? 0) >= 50 ? "spam" : (spam ?? 0) >= 30 ? "watch" : "clean");
 type Link = BacklinksReport["links"][number];
 type Domain = BacklinksReport["domains"][number];
 type Anchor = BacklinksReport["anchors"][number];
@@ -15,7 +18,13 @@ type Anchor = BacklinksReport["anchors"][number];
 const PAGE = 50;
 const fmt = (n: number | null | undefined) =>
   n === null || n === undefined ? "—" : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${Math.round(n / 1e3)}K` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : n.toLocaleString("en-US");
-const date = (v: string | null) => (v ? new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
+// DataForSEO dates look like "2024-03-01 10:20:30 +00:00", which Safari cannot parse: make them ISO first.
+const toDate = (v: string) => new Date(/^\d{4}-\d{2}-\d{2} /.test(v) ? v.replace(" ", "T").replace(/ ([+-]\d{2}):?(\d{2})$/, "$1:$2") : v);
+const date = (v: string | null) => {
+  if (!v) return "—";
+  const d = toDate(v);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
 const short = (url: string) => {
   try {
     const x = new URL(url);
@@ -99,6 +108,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("domains");
   const [only, setOnly] = useState<Only>("all");
+  const [qual, setQual] = useState<Qual>("all");
   const [q, setQ] = useState("");
   const [pg, setPg] = useState(0);
   const [sel, setSel] = useState<DrawerData | null>(null);
@@ -125,8 +135,8 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
 
   const ql = q.trim().toLowerCase();
   const allLinks = data?.links ?? [];
-  const links = allLinks.filter((l) => (only === "all" || (only === "dofollow" && l.dofollow) || (only === "new" && l.isNew) || (only === "lost" && l.isLost)) && (!ql || l.from.toLowerCase().includes(ql) || (l.anchor ?? "").toLowerCase().includes(ql)));
-  const domains = (data?.domains ?? []).filter((d) => !ql || d.domain.includes(ql));
+  const links = allLinks.filter((l) => (only === "all" || (only === "dofollow" && l.dofollow) || (only === "nofollow" && !l.dofollow) || (only === "new" && l.isNew) || (only === "lost" && l.isLost)) && (!ql || l.from.toLowerCase().includes(ql) || (l.anchor ?? "").toLowerCase().includes(ql)));
+  const domains = (data?.domains ?? []).filter((d) => (qual === "all" || qualOf(d.spamScore) === qual) && (!ql || d.domain.includes(ql)));
   const anchors = (data?.anchors ?? []).filter((a) => !ql || a.anchor.toLowerCase().includes(ql));
   const anchorTotal = (data?.anchors ?? []).reduce((a, x) => a + (x.backlinks ?? 0), 0);
 
@@ -164,14 +174,28 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
     setOnly(o);
     setPg(0);
   };
-  const stats: { label: string; value: string; hint: string; active: boolean; onClick?: () => void; tone?: "good" | "bad" }[] = [
-    { label: "Referring domains", value: fmt(sum?.referringDomains), hint: "Different sites that link to you", active: tab === "domains", onClick: () => go("domains") },
-    { label: "Backlinks", value: fmt(sum?.backlinks), hint: "All links pointing to the site", active: tab === "links" && only === "all", onClick: () => go("links") },
-    { label: "Dofollow", value: sum?.dofollowShare == null ? "—" : `${sum.dofollowShare}%`, hint: "Links that pass ranking value", active: tab === "links" && only === "dofollow", onClick: () => go("links", "dofollow") },
-    { label: "New", value: data ? String(allLinks.filter((l) => l.isNew).length) : "—", hint: "New links in the latest sample", active: tab === "links" && only === "new", onClick: () => go("links", "new"), tone: "good" },
-    { label: "Lost", value: data ? String(allLinks.filter((l) => l.isLost).length) : "—", hint: "Links that disappeared", active: tab === "links" && only === "lost", onClick: () => go("links", "lost"), tone: "bad" },
-    { label: "Domain rank", value: fmt(sum?.rank), hint: "DataForSEO authority score of the domain, 0–1000", active: false },
-  ];
+  const allDomains = data?.domains ?? [];
+  const qualCount = (q: Exclude<Qual, "all">) => allDomains.filter((d) => qualOf(d.spamScore) === q).length;
+  const pickQual = (q: Qual) => { go("domains"); setQual((p) => (p === q ? "all" : q)); };
+  const pickOnly = (o: Only) => { go("links", only === o && tab === "links" ? "all" : o); };
+  const rankBuckets: [string, number, number][] = [["0", 0, 0], ["1–100", 1, 100], ["101–200", 101, 200], ["201–300", 201, 300], ["301–500", 301, 500], ["500+", 501, 1e9]];
+  const months = (() => {
+    const out: { key: string; label: string; value: number }[] = [];
+    const now = new Date();
+    for (let k = 11; k >= 0; k--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      out.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString("en-US", { month: "short" }), value: 0 });
+    }
+    for (const d of allDomains) {
+      if (!d.firstSeen) continue;
+      const x = toDate(d.firstSeen);
+      const hit = out.find((m) => m.key === `${x.getFullYear()}-${x.getMonth()}`);
+      if (hit) hit.value += 1;
+    }
+    return out;
+  })();
+  const newCount = allLinks.filter((l) => l.isNew).length;
+  const lostCount = allLinks.filter((l) => l.isLost).length;
 
   const rows = tab === "domains" ? dSort.sorted.length : tab === "links" ? lSort.sorted.length : aSort.sorted.length;
   const pages = Math.max(1, Math.ceil(rows / PAGE));
@@ -194,21 +218,62 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
       {error ? <p className={s.error} role="alert">{error}</p> : null}
       {data?.mode === "free" ? <FreeBanner notice={data.notice ?? ""} websiteId={websiteId} onImported={() => void load(false)} /> : null}
 
-      <div className={s.stats}>
-        {stats.map((st) =>
-          st.onClick ? (
-            <button key={st.label} type="button" className={s.stat} data-active={st.active || undefined} onClick={st.onClick} title={st.hint}>
-              <span className={s.statLabel}>{st.label}</span>
-              <span className={s.statValue} data-tone={Number(st.value) > 0 ? st.tone : undefined}>{st.value}</span>
+      <InsightGrid>
+        <InsightCard title="Link profile" meta={sum?.rank == null ? undefined : `rank ${sum.rank} / 1000`}>
+          <div className={s.profile}>
+            <button type="button" className={s.profileNum} data-active={tab === "domains" || undefined} onClick={() => { go("domains"); setQual("all"); }}>
+              <span>Referring domains</span>
+              <strong>{fmt(sum?.referringDomains)}</strong>
             </button>
-          ) : (
-            <div key={st.label} className={s.stat} title={st.hint}>
-              <span className={s.statLabel}>{st.label}</span>
-              <span className={s.statValue}>{st.value}</span>
-            </div>
-          ),
-        )}
-      </div>
+            <button type="button" className={s.profileNum} data-active={(tab === "links" && only === "all") || undefined} onClick={() => go("links")}>
+              <span>Backlinks</span>
+              <strong>{fmt(sum?.backlinks)}</strong>
+            </button>
+          </div>
+          <Meter value={sum?.rank ?? null} max={1000} good={300} warn={100} label={`Domain rank ${fmt(sum?.rank)} of 1000 · DataForSEO authority score`} />
+        </InsightCard>
+
+        <InsightCard title="Link quality" meta={`${allDomains.length} domains in sample`}>
+          <StackBar
+            unit="domains"
+            parts={[
+              { key: "clean", label: "Clean (spam score under 30)", value: qualCount("clean"), color: TONE.good, active: qual === "clean", onClick: () => pickQual("clean") },
+              { key: "watch", label: "Watch (30–49)", value: qualCount("watch"), color: TONE.warn, active: qual === "watch", onClick: () => pickQual("watch") },
+              { key: "spam", label: "Spam (50 and above)", value: qualCount("spam"), color: TONE.bad, active: qual === "spam", onClick: () => pickQual("spam") },
+            ]}
+          />
+        </InsightCard>
+
+        <InsightCard title="Link types" meta={sum?.dofollowShare == null ? undefined : `${sum.dofollowShare}% dofollow overall`}>
+          <StackBar
+            unit="links"
+            parts={[
+              { key: "do", label: "Dofollow — passes ranking value", value: allLinks.filter((l) => l.dofollow).length, color: "#0a84ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
+              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#a855f7", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
+              { key: "new", label: "New in the latest sample", value: newCount, color: "#0d9488", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
+              { key: "lost", label: "Lost", value: lostCount, color: TONE.bad, active: tab === "links" && only === "lost", onClick: () => pickOnly("lost") },
+            ]}
+          />
+        </InsightCard>
+
+        <InsightCard title="Top anchors" action={<button type="button" onClick={() => go("anchors")}>All anchors</button>}>
+          <BarList
+            empty="No anchor texts yet."
+            rows={(data?.anchors ?? []).slice(0, 6).map((a) => ({ key: a.anchor, label: a.anchor || "(no anchor)", value: a.backlinks ?? 0, color: SPAM.test(a.anchor) ? TONE.bad : undefined, onClick: () => openAnchor(a) }))}
+          />
+        </InsightCard>
+
+        <InsightCard title="Rank of linking sites" meta="referring domains by domain rank">
+          <Columns
+            unit="domains"
+            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: ["#3a3a3a", "#f43f5e", "#d97706", "#0d9488", "#0a84ff", "#16a34a"][i] }))}
+          />
+        </InsightCard>
+
+        <InsightCard title="New linking domains" meta={`last 12 months · ${fmtNum(months.reduce((a, m) => a + m.value, 0))} total`}>
+          <Columns unit="domains" cols={months.map((m) => ({ ...m, color: "#0a84ff" }))} />
+        </InsightCard>
+      </InsightGrid>
 
       <section className={s.panel}>
         <div className={s.toolbar}>
@@ -222,12 +287,17 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           </div>
           {tab === "links" ? (
             <div className={s.segment}>
-              {(["all", "dofollow", "new", "lost"] as const).map((o) => (
+              {(["all", "dofollow", "nofollow", "new", "lost"] as const).map((o) => (
                 <button key={o} type="button" data-active={only === o || undefined} onClick={() => { setOnly(o); setPg(0); }}>
-                  {o === "all" ? "All" : o === "dofollow" ? "Dofollow" : o === "new" ? "New" : "Lost"}
+                  {o === "all" ? "All" : o === "dofollow" ? "Dofollow" : o === "nofollow" ? "Nofollow" : o === "new" ? "New" : "Lost"}
                 </button>
               ))}
             </div>
+          ) : null}
+          {tab === "domains" && qual !== "all" ? (
+            <button type="button" className={s.chip} onClick={() => setQual("all")}>
+              {qual === "spam" ? "Spam" : qual === "watch" ? "Watch" : "Clean"} only <span aria-hidden>×</span>
+            </button>
           ) : null}
           <label className={s.search}>
             <Search size={14} aria-hidden />
@@ -262,7 +332,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                           <span className={s.clip}>{d.domain}</span>
                         </span>
                       </td>
-                      <td><Quality bad={toxicDomain(d)} /></td>
+                      <td><Quality spam={d.spamScore} /></td>
                       <td className={s.num}>{fmt(d.backlinks)}</td>
                       <td className={s.num}>{fmt(d.rank)}</td>
                       <td className={s.num} data-tone={toxicDomain(d) ? "bad" : undefined}>{d.spamScore ?? "—"}</td>
@@ -298,7 +368,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                       <td><span className={s.pill} data-tone={l.dofollow ? "good" : undefined}>{l.dofollow ? "dofollow" : "nofollow"}</span></td>
                       <td className={s.num}>{fmt(l.rank)}</td>
                       <td className={s.num}>{date(l.firstSeen)}</td>
-                      <td>{l.isLost ? <span className={s.pill} data-tone="bad">Lost</span> : toxicLink(l) ? <Quality bad /> : l.isNew ? <span className={s.pill} data-tone="new">New</span> : <span className={s.muted}>Live</span>}</td>
+                      <td>{l.isLost ? <span className={s.pill} data-tone="bad">Lost</span> : toxicLink(l) ? <Quality spam={100} /> : l.isNew ? <span className={s.pill} data-tone="new">New</span> : <span className={s.muted}>Live</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -322,7 +392,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
                         <td title={a.anchor}>
                           <span className={s.primary}>
                             <span className={s.clip}>{a.anchor}</span>
-                            {SPAM.test(a.anchor) ? <Quality bad /> : null}
+                            {SPAM.test(a.anchor) ? <Quality spam={100} /> : null}
                           </span>
                         </td>
                         <td className={s.num}>{fmt(a.backlinks)}</td>
@@ -359,10 +429,12 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
   );
 }
 
-function Quality({ bad }: { bad?: boolean }) {
+function Quality({ spam }: { spam: number | null }) {
+  const q = qualOf(spam);
+  const title = q === "spam" ? "Looks like a paid or spam link. Google may ignore it or treat it as a link scheme." : q === "watch" ? "Some spam signals. Worth a look." : "No spam signals";
   return (
-    <span className={s.quality} data-bad={bad || undefined} title={bad ? "Looks like a paid or spam link. Google may ignore it or treat it as a link scheme." : "No spam signals"}>
-      <i aria-hidden /> {bad ? "Spam" : "Clean"}
+    <span className={s.quality} data-q={q} title={title}>
+      <i aria-hidden /> {q === "spam" ? "Spam" : q === "watch" ? "Watch" : "Clean"}
     </span>
   );
 }

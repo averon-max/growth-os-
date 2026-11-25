@@ -69,7 +69,9 @@ export function categoryOf(endpoint: string): DfsCategory {
   return "other";
 }
 
-export type DfsCacheSettings = { days: Record<DfsCategory, number>; dailyBudget: number };
+/** paused: no new paid DataForSEO request is made; saved answers are still shown. */
+export type DfsCacheSettings = { days: Record<DfsCategory, number>; dailyBudget: number; paused: boolean };
+export const BUDGET_OPTIONS = [0.5, 1, 2, 3, 5, 10, 20, 50];
 
 const envBudget = () => {
   const n = Number(process.env.DATAFORSEO_DAILY_BUDGET);
@@ -87,5 +89,5 @@ export function normalizeDfs(raw: unknown): DfsCacheSettings {
   }
   const b = Number(src.dailyBudget);
   const dailyBudget = Number.isFinite(b) && b >= 0.5 && b <= 200 ? Math.round(b * 100) / 100 : envBudget();
-  return { days: out, dailyBudget };
+  return { days: out, dailyBudget, paused: src.paused === true };
 }

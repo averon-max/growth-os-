@@ -1,4 +1,5 @@
 import "server-only";
+import { serpDomain, serpUrl } from "@/lib/dataforseo/serp-domain";
 
 import {
   load,
@@ -1749,15 +1750,16 @@ function organicResults(
           item.rank_absolute ??
           null,
 
+        // Google redirect links hide the site: read it from the breadcrumb.
         domain:
-          item.domain ??
+          serpDomain(item as unknown as Record<string, unknown>) ||
           safeHostname(
             item.url ??
             ""
           ),
 
         url:
-          item.url ??
+          serpUrl(item as unknown as Record<string, unknown>) ||
           "",
 
         title:

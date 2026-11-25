@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serpDomain, serpUrl } from "@/lib/dataforseo/serp-domain";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { rateLimit } from "@/lib/rate-limit";
 import { dfs, num, str, rec } from "@/lib/dataforseo/client";
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
       if (rateLimit("serp:" + user.id, 300, 3600 * 1000) === false) return NextResponse.json({ error: "Too many SERP lookups this hour." }, { status: 429 });
       const res = await dfs("serp/google/organic/live/regular", { keyword, location_name: "United States", language_name: "English", depth: 10 });
       const raw = ((rec(res[0]).items as unknown[] | undefined) ?? []).map(rec).filter((x) => x.type === "organic").slice(0, 10);
-      hit = { at: Date.now(), rows: raw.map((x) => ({ position: num(x.rank_group) ?? 0, title: str(x.title), url: str(x.url) ?? "", domain: (str(x.domain) ?? "").replace(/^www\./, "") })) };
+      hit = { at: Date.now(), rows: raw.map((x) => ({ position: num(x.rank_group) ?? 0, title: str(x.title), url: serpUrl(x), domain: serpDomain(x) })) };
       cache.set(keyword, hit);
     }
     const items = hit.rows.map((x) => ({ ...x, ours: x.domain === ours || x.domain.endsWith("." + ours), clicks: Math.round(volume * (CTR[x.position - 1] ?? 0.01)) }));

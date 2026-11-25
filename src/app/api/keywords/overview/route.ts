@@ -142,7 +142,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       keyword: keywordText,
-      monthlySearches: [...(main?.monthlySearches ?? [])].sort((a, b) => a.year - b.year || a.month - b.month),
+      // One point per month, the latest 12 (some saved idea lists carry years of history).
+      monthlySearches: [...new Map((main?.monthlySearches ?? []).map((m) => [`${m.year}-${m.month}`, m])).values()]
+        .sort((a, b) => a.year - b.year || a.month - b.month)
+        .slice(-12),
       trend: main?.trend ?? null,
       globalVolumes: globalVolumes.filter((g): g is { code: (typeof MARKETS)[number]["code"]; label: (typeof MARKETS)[number]["label"]; flag: (typeof MARKETS)[number]["flag"]; volume: number } => g.volume !== null),
       otherMarketsAvailable: allMarkets ? 0 : missing,

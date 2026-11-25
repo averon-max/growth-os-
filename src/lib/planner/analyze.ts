@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { serpDomain } from "@/lib/dataforseo/serp-domain";
 import { fetchRankedKeywords, fetchSearchVolume, fetchKeywordDifficulty } from "@/lib/keywords/dataforseo-provider";
 import { fetchSitemapUrls } from "./sitemap";
 import { dfs, num, str, rec } from "@/lib/dataforseo/client";
@@ -120,7 +121,7 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
     await Promise.all(needPos.slice(i, i + 5).map(async (k) => {
       try {
         const res = await dfs("serp/google/organic/live/regular", { keyword: k.keyword, location_name: "United States", language_name: "English", depth: 30 });
-        const hit = ((rec(res[0]).items as unknown[] | undefined) ?? []).map(rec).find((x) => x.type === "organic" && (str(x.domain) ?? "").replace(/^www\./, "").endsWith(domain));
+        const hit = ((rec(res[0]).items as unknown[] | undefined) ?? []).map(rec).find((x) => x.type === "organic" && serpDomain(x).endsWith(domain));
         if (hit) {
           k.position = num(hit.rank_group);
           const u = str(hit.url);

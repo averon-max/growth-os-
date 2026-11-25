@@ -93,3 +93,17 @@
 .ghost:hover, .chip:hover { border-color: rgba(59,130,246,.35) !important; }
 .page:hover { color: #93c5fd !important; }
 .search:focus { border-color: rgba(59,130,246,.55) !important; }
+
+/* Vercel pass: readable 13px controls, clear active state, no tinted blue pills */
+.tabs { gap: 2px !important; padding: 4px !important; border: 1px solid #262626 !important; border-radius: 10px !important; background: #0a0a0a !important; width: fit-content; max-width: 100%; overflow-x: auto; }
+.tab { height: 32px !important; padding: 0 12px !important; color: #a1a1a1 !important; font-size: 13.5px !important; }
+.tab:hover { color: #ededed !important; background: #111 !important; }
+.tab[data-on="true"] { color: #ededed !important; background: #1f1f1f !important; }
+.tab[data-on="true"]::after { display: none !important; }
+.tabCount { margin-left: 6px; color: #8f8f8f !important; font-size: 12px !important; }
+.chip { height: 30px !important; padding: 0 12px !important; border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #0a0a0a !important; color: #a1a1a1 !important; font-size: 13px !important; }
+.chip:hover { color: #ededed !important; background: #111 !important; }
+.chip[data-on="true"] { border-color: #ededed !important; background: #ededed !important; color: #0a0a0a !important; }
+.ghost { height: 32px !important; border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #0a0a0a !important; color: #ededed !important; font-size: 13px !important; }
+.ghost:hover:not(:disabled) { background: #1a1a1a !important; }
+.search { height: 32px !important; border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #000 !important; color: #ededed !important; font-size: 13px !important; }

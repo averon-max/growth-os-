@@ -6,7 +6,15 @@ type Cat = {
   key: string; label: string; help: string; usedIn: string; def: number; days: number;
   rows: number; mb: number; saved: number; spent30: number; last: string | null;
 };
-type Report = { categories: Cat[]; lastCleanup: { at: string; removedSaved: number; errors: string[] } | null };
+type Report = {
+  categories: Cat[];
+  lastCleanup: { at: string; removedSaved: number; errors: string[] } | null;
+  paused: boolean;
+  dailyBudget: number;
+  budgetOptions: number[];
+  spentToday: number;
+  todayByEndpoint: { endpoint: string; category: string; calls: number; cost: number }[];
+};
 
 const DAYS = [1, 3, 7, 14, 30, 60, 90, 180, 365, 0];
 const money = (n: number) => (n < 0.01 && n > 0 ? "<$0.01" : `$${n.toFixed(2)}`);
@@ -59,6 +67,52 @@ export default function CachePanel() {
           ? <>Last cleanup: {new Date(data.lastCleanup.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · removed {data.lastCleanup.removedSaved.toLocaleString()} expired saved answers{data.lastCleanup.errors.length ? ` · failed: ${data.lastCleanup.errors.join(", ")}` : " · no errors"}</>
           : "Cleanup has not run yet. It runs every night; an admin can also run it from the admin console."}
       </p>
+
+      <div style={card}>
+        <div style={{ ...row, borderTop: "none", alignItems: "center" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Paid data requests {data.paused ? <span style={{ color: "#f43f5e" }}>· paused</span> : <span style={{ color: "#16a34a" }}>· on</span>}</div>
+            <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
+              Pause stops every new paid DataForSEO request at once (within a minute). Saved data keeps showing everywhere; buttons that need new data say it is paused.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void send("PUT", { paused: !data.paused })}
+            disabled={state === "saving"}
+            style={{ height: 34, padding: "0 14px", borderRadius: 8, border: "1px solid", borderColor: data.paused ? "#16a34a" : "#f43f5e", background: "transparent", color: data.paused ? "#16a34a" : "#f43f5e", fontSize: 13.5, fontWeight: 500, cursor: "pointer" }}
+          >
+            {data.paused ? "Resume paid data" : "Pause paid data"}
+          </button>
+        </div>
+        <div style={{ ...row, alignItems: "center" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Daily limit · spent today {money(data.spentToday)}</div>
+            <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
+              Once today&apos;s DataForSEO spending reaches the limit, new requests wait until tomorrow (UTC). AI costs are counted separately.
+            </div>
+          </div>
+          <select style={select} value={data.dailyBudget} onChange={(e) => void send("PUT", { dailyBudget: Number(e.target.value) })}>
+            {[...new Set([...data.budgetOptions, data.dailyBudget])].sort((a, b) => a - b).map((b) => <option key={b} value={b}>${b.toFixed(2)} a day</option>)}
+          </select>
+        </div>
+        <div style={{ ...row, flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>What cost money today</div>
+          {data.todayByEndpoint.length === 0 ? (
+            <div style={small}>Nothing paid today.</div>
+          ) : (
+            <div style={{ width: "100%", display: "grid", gap: 4 }}>
+              {data.todayByEndpoint.map((r) => (
+                <div key={r.endpoint} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 80px", gap: 12, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-geist-mono, monospace)", fontSize: 12.5, color: "var(--secondary)" }} title={r.endpoint}>{r.endpoint.replace(/^v3\//, "")}</span>
+                  <span style={{ textAlign: "right", color: "var(--muted)" }}>{r.calls} {r.calls === 1 ? "call" : "calls"}</span>
+                  <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.cost < 0.01 ? `$${r.cost.toFixed(4)}` : money(r.cost)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div style={card}>
         {data.categories.map((c, i) => (

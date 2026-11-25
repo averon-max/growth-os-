@@ -5,6 +5,7 @@ import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import { KeywordCard } from "./keyword-card";
+import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar, PALETTE } from "./insights";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -28,15 +29,6 @@ const CHIPS: { id: string; label: string; test: (k: PlannerKeyword) => boolean }
   { id: "nopage", label: "No page", test: (k) => k.page === null },
   { id: "commercial", label: "Commercial", test: (k) => k.intent === "Commercial" || k.intent === "Transactional" },
 ];
-
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className={u.statCard}>
-      <div className={u.statHeader}><p className={u.statLabel}>{label}</p><span className={u.statAccent} style={{ background: color, color }} /></div>
-      <p className={u.statValue}>{value}</p>
-    </div>
-  );
-}
 
 function KeywordTable({ rows, websiteId, showWrite, onOpen, onTrack }: { rows: PlannerKeyword[]; websiteId: string; showWrite?: boolean; onOpen?: (k: PlannerKeyword) => void; onTrack?: (k: string[]) => void }) {
   const [sort, setSort] = useState<SortKey>("volume");
@@ -288,14 +280,57 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       {error ? <div className={p.err}>{error}</div> : null}
       {report?.warnings.map((w) => <div key={w} className={p.note}>{w}</div>)}
 
-      <div className={`${u.statGrid} ${p.stat6}`}>
-        <Stat label="Keywords" value={t ? fmt(t.keywords) : "—"} color="#3b82f6" />
-        <Stat label="Search volume / mo" value={t ? fmt(t.volume) : "—"} color="#60a5fa" />
-        <Stat label="Clicks · 28d" value={t ? fmt(t.clicks) : "—"} color="#4daf6d" />
-        <Stat label="Impressions · 28d" value={t ? fmt(t.impressions) : "—"} color="#93c5fd" />
-        <Stat label="Top 10" value={t ? `${t.top10}` : "—"} color="#7dd3a0" />
-        <Stat label="Positions 4–20" value={t ? `${t.striking}` : "—"} color="#c9a644" />
-      </div>
+      {(() => {
+        // Every number and bar here is a filter: it opens the keyword list narrowed to that group.
+        const show = (ids: string[]) => { setTab("keywords"); setQ(""); setChips((c) => (c.length === ids.length && ids.every((x) => c.includes(x)) ? [] : ids)); };
+        const on = (ids: string[]) => tab === "keywords" && chips.length === ids.length && ids.every((x) => chips.includes(x));
+        const kws = report?.keywords ?? [];
+        const posBuckets: [string, string, (n: number | null) => boolean, string][] = [
+          ["top3", "1–3", (n) => n !== null && n <= 3, "#16a34a"],
+          ["p4", "4–10", (n) => n !== null && n > 3 && n <= 10, "#0d9488"],
+          ["p11", "11–20", (n) => n !== null && n > 10 && n <= 20, "#0a84ff"],
+          ["p21", "21–50", (n) => n !== null && n > 20 && n <= 50, "#d97706"],
+          ["p51", "51+", (n) => n !== null && n > 50, "#f43f5e"],
+          ["none", "Not ranking", (n) => n === null, "#3a3a3a"],
+        ];
+        const intents = ["Informational", "Commercial", "Transactional", "Navigational"];
+        return (
+          <>
+            <KpiStrip
+              items={[
+                { key: "kw", label: "Keywords", value: t ? fmt(t.keywords) : "—", sub: "all sources", color: PALETTE[0], onClick: () => show([]), active: tab === "keywords" && chips.length === 0 },
+                { key: "vol", label: "Search volume / mo", value: t ? fmt(t.volume) : "—", sub: "click: volume over 1K", color: PALETTE[2], onClick: () => show(["vol"]), active: on(["vol"]) },
+                { key: "clicks", label: "Clicks · 28d", value: t ? fmt(t.clicks) : "—", sub: "from Search Console", color: PALETTE[1] },
+                { key: "impr", label: "Impressions · 28d", value: t ? fmt(t.impressions) : "—", sub: "from Search Console", color: PALETTE[0] },
+                { key: "top10", label: "Top 10", value: t ? String(t.top10) : "—", sub: "on Google page one", color: PALETTE[4], onClick: () => show(["top10"]), active: on(["top10"]) },
+                { key: "strike", label: "Positions 4–20", value: t ? String(t.striking) : "—", sub: "closest to more clicks", color: PALETTE[1], onClick: () => { setTab("wins"); }, active: tab === "wins" },
+              ]}
+            />
+            {report ? (
+              <InsightGrid>
+                <InsightCard title="Where keywords rank" meta="Google position">
+                  <Columns
+                    unit="keywords"
+                    cols={posBuckets.map(([key, label, test, color]) => ({ key, label, value: kws.filter((k) => test(k.position)).length, color, onClick: key === "top3" || key === "p4" ? () => show(["top10"]) : key === "p11" ? () => setTab("wins") : undefined }))}
+                  />
+                </InsightCard>
+                <InsightCard title="Search intent" meta={`${kws.length} keywords`}>
+                  <StackBar
+                    unit="kw"
+                    parts={intents.map((name, i) => ({ key: name, label: name, value: kws.filter((k) => k.intent === name).length, color: PALETTE[i], active: (name === "Commercial" || name === "Transactional") && on(["commercial"]), onClick: name === "Commercial" || name === "Transactional" ? () => show(["commercial"]) : undefined }))}
+                  />
+                </InsightCard>
+                <InsightCard title="Pages with most keywords" action={<button type="button" onClick={() => setTab("pages")}>All pages</button>}>
+                  <BarList
+                    empty="No pages rank yet."
+                    rows={[...report.pages].filter((pg) => pg.keywords > 0).sort((a, b) => b.keywords - a.keywords).slice(0, 6).map((pg) => ({ key: pg.url, label: pg.path, value: pg.keywords, hint: pg.url, onClick: () => setTab("pages") }))}
+                  />
+                </InsightCard>
+              </InsightGrid>
+            ) : null}
+          </>
+        );
+      })()}
 
       <div className={p.tabs}>
         {TABS.map(([id, label, n]) => (

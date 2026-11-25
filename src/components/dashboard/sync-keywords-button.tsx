@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import styles from "./ui.module.css";
+import { Loader2, RefreshCw } from "lucide-react";
+import s from "./keyword-actions.module.css";
 
 export function SyncKeywordsButton({ workspaceId, siteUrl }: { workspaceId: string; siteUrl: string }) {
   const router = useRouter();
@@ -36,17 +37,13 @@ export function SyncKeywordsButton({ workspaceId, siteUrl }: { workspaceId: stri
   };
 
   return (
-    <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
-      <button
-        onClick={sync}
-        disabled={loading}
-        className={styles.link}
-        style={{ background: "none", border: "none", cursor: loading ? "not-allowed" : "pointer", padding: 0, font: "inherit" }}
-      >
-        {loading ? "Syncing..." : "Sync now →"}
+    <span className={s.bar}>
+      <button type="button" onClick={sync} disabled={loading} className={s.button} title="Import the latest queries, clicks and positions from Google Search Console (free)">
+        {loading ? <Loader2 size={14} className={s.spin} /> : <RefreshCw size={14} />}
+        {loading ? "Syncing…" : "Sync Search Console"}
       </button>
-      {result && <span style={{ fontSize: "0.75rem", color: "var(--success)" }}>{result}</span>}
-      {error && <span style={{ fontSize: "0.75rem", color: "var(--danger)" }}>{error}</span>}
-    </div>
+      {result ? <span className={s.ok}>{result}</span> : null}
+      {error ? <span className={s.err}>{error}</span> : null}
+    </span>
   );
 }

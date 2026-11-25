@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser, authErrorResponse } from "@/lib/auth-helpers";
 import { checkRequest } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
-import { DFS_CATEGORIES, DFS_CATEGORY_KEYS, SETTINGS_KEY, categoryOf, normalizeDfs, type DfsCategory } from "@/lib/dataforseo/cache-settings";
+import { BUDGET_OPTIONS, DFS_CATEGORIES, DFS_CATEGORY_KEYS, SETTINGS_KEY, categoryOf, normalizeDfs, type DfsCategory } from "@/lib/dataforseo/cache-settings";
 import { lastCleanup } from "@/lib/retention";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,15 @@ async function report() {
   const last = await lastCleanup();
   return {
     dailyBudget: settings.dailyBudget,
+    budgetOptions: BUDGET_OPTIONS,
+    paused: settings.paused,
     spentToday: Math.round(today * 10000) / 10000,
+    // Today's paid requests by endpoint, most expensive first: shows exactly what cost money.
+    todayByEndpoint: spend
+      .filter((r) => r.date.toISOString().slice(0, 10) === todayKey)
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 12)
+      .map((r) => ({ endpoint: r.endpoint, category: r.category, calls: r.calls, cost: Math.round(r.cost * 10000) / 10000 })),
     lastCleanup: last
       ? {
           at: last.at,
@@ -78,9 +86,13 @@ export async function PUT(req: Request) {
     const bad = checkRequest(req);
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     if (!(await admin())) return NextResponse.json({ error: "Admins only." }, { status: 403 });
-    const body = (await req.json().catch(() => null)) as { days?: unknown } | null;
-    // The daily budget is no longer set here; the stored value (default $3) is kept.
-    const value = normalizeDfs({ days: body?.days, dailyBudget: (await load()).dailyBudget });
+    const body = (await req.json().catch(() => null)) as { days?: unknown; dailyBudget?: unknown; paused?: unknown } | null;
+    const current = await load();
+    const value = normalizeDfs({
+      days: body?.days ?? current.days,
+      dailyBudget: BUDGET_OPTIONS.includes(Number(body?.dailyBudget)) ? Number(body?.dailyBudget) : current.dailyBudget,
+      paused: typeof body?.paused === "boolean" ? body.paused : current.paused,
+    });
     await prisma.appSetting.upsert({ where: { key: SETTINGS_KEY }, create: { key: SETTINGS_KEY, value }, update: { value } });
     return NextResponse.json(await report());
   } catch (err) {

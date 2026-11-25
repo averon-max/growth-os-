@@ -1,10 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import {
-  fetchSearchVolume,
-  fetchKeywordDifficulty,
-} from "./dataforseo-provider";
+import { fetchKeywordOverviews } from "./dataforseo-provider";
 
-const BATCH_SIZE = 1000;
+const BATCH_SIZE = 700;
 
 export interface UpdateKeywordVolumesResult {
   updated: number;
@@ -54,19 +51,15 @@ export async function updateKeywordVolumes(
   for (const batch of batches) {
     const texts = batch.map((k) => k.text);
 
-    const [volumeResults, difficultyResults] = await Promise.all([
-      fetchSearchVolume(texts, locationName, language),
-      fetchKeywordDifficulty(texts, locationName, language),
-    ]);
-
-    const volumes = new Map(volumeResults.map((r) => [r.keyword, r]));
-    const difficulties = new Map(difficultyResults.map((r) => [r.keyword, r]));
+    // One Labs overview call per batch (~$0.01) instead of Google Ads volume ($0.075) + difficulty.
+    const results = await fetchKeywordOverviews(texts, locationName, language);
+    const byText = new Map(results.map((r) => [r.keyword.toLowerCase(), r]));
 
     for (const kw of batch) {
-      const volume = volumes.get(kw.text);
-      const difficulty = difficulties.get(kw.text);
-
-      if (!volume && !difficulty) continue;
+      const r = byText.get(kw.text.toLowerCase());
+      if (!r) continue;
+      const volume = { searchVolume: r.searchVolume, cpc: r.cpc, competitionIndex: r.competition === null ? null : Math.round(r.competition * 100) };
+      const difficulty = { keywordDifficulty: r.keywordDifficulty };
 
       await prisma.keywordMarketMetric.upsert({
         where: {

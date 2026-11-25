@@ -12,6 +12,7 @@ import { GlobalTrending } from "@/components/dashboard/global-trending";
 import { deriveSeedKeyword } from "@/lib/keywords/seed";
 import { Search, Globe } from "lucide-react";
 import styles from "@/components/dashboard/ui.module.css";
+import kw from "@/components/dashboard/keywords-page.module.css";
 
 export default async function KeywordsPage({ searchParams }: { searchParams: Promise<{ websiteId?: string }> }) {
   const user = await requireUser();
@@ -65,8 +66,16 @@ export default async function KeywordsPage({ searchParams }: { searchParams: Pro
         websiteSwitcher={website ? { workspaceId, currentWebsiteId: website.id } : undefined}
       />
       <div className={styles.pageBody}>
-        {website && <SyncKeywordsButton workspaceId={workspaceId} siteUrl={website.url} />}
-        <EnrichVolumeButton workspaceId={workspaceId} />
+        <header className={kw.head}>
+          <div>
+            <h1 className={kw.title}>Keywords</h1>
+            <p className={kw.meta}>{website ? new URL(website.url).hostname.replace(/^www\./, "") : "All websites"} · rankings from Search Console, volume from DataForSEO</p>
+          </div>
+          <div className={kw.actions}>
+            {website && <SyncKeywordsButton workspaceId={workspaceId} siteUrl={website.url} />}
+            <EnrichVolumeButton workspaceId={workspaceId} />
+          </div>
+        </header>
 
         <KeywordRankIntelligence
           workspaceId={workspaceId}

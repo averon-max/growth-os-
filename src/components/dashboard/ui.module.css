@@ -2124,3 +2124,15 @@
 .pageBody { max-width: none !important; margin: 0 !important; padding: 32px 32px 56px !important; }
 .pageBody::before, .pageBody::after { display: none !important; }
 @media (max-width: 900px) { .pageBody { padding: 20px 16px 48px !important; } }
+
+/* Drawers and panels must sit above the sticky top bar: the page body may not start its own stacking layer. */
+.pageBody { isolation: auto !important; }
+.pageBody::before, .pageBody::after { content: none !important; }
+
+/* Strict black panels everywhere (Vercel): cards are near-black on black, rows only change on hover. */
+.group, .contentSection, .card { background: #0a0a0a !important; border-radius: 12px !important; }
+.statCard { background: #0a0a0a !important; border-color: #262626 !important; }
+.table th { color: #a1a1a1 !important; background: #0a0a0a !important; }
+.table td { color: #ededed !important; border-color: #1a1a1a !important; }
+.table tr[data-click] { cursor: pointer; }
+.table tr[data-click]:hover td { background: #111111 !important; }

@@ -4,6 +4,10 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
+import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar } from "./insights";
+
+const GROUP_COLOR: Record<string, string> = { "Search engines": "#16a34a", "AI crawlers & assistants": "#a855f7", "SEO tools": "#d97706", "Other bots": "#0a84ff" };
+const isAsset = (path: string) => /^\/_next\/|\.(js|css|png|jpe?g|webp|svg|ico|woff2?|map|txt|xml)$/i.test(path);
 
 interface BotsData {
   connected: boolean; since?: string; until?: string; skippedDays?: { date: string; reason: string }[];
@@ -14,15 +18,6 @@ interface BotsData {
 }
 type Tab = "categories" | "pages" | "daily";
 const fmt = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(n));
-
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className={u.statCard}>
-      <div className={u.statHeader}><p className={u.statLabel}>{label}</p><span className={u.statAccent} style={{ background: color, color }} /></div>
-      <p className={u.statValue}>{value}</p>
-    </div>
-  );
-}
 
 export function BotsClient({ websiteId, domain }: { websiteId: string; domain: string }) {
   const [days, setDays] = useState(7);
@@ -67,14 +62,28 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
       ) : (
         <>
           {data?.skippedDays && data.skippedDays.length > 0 ? <div className={p.note}>{data.skippedDays.length} day(s) unavailable on this Cloudflare plan: {data.skippedDays.map((d) => d.date).join(", ")}</div> : null}
-          <div className={`${u.statGrid} ${p.stat6}`}>
-            <Stat label="Requests" value={t ? fmt(t.total) : "—"} color="#93c5fd" />
-            <Stat label="Verified bot requests" value={t ? fmt(t.bots) : "—"} color="#3b82f6" />
-            <Stat label="Bot share" value={t ? `${t.share}%` : "—"} color="#60a5fa" />
-            <Stat label="Search engines" value={data ? fmt(g["Search engines"] ?? 0) : "—"} color="#4daf6d" />
-            <Stat label="AI crawlers" value={data ? fmt(g["AI crawlers & assistants"] ?? 0) : "—"} color="#c9a644" />
-            <Stat label="SEO tools" value={data ? fmt(g["SEO tools"] ?? 0) : "—"} color="#d46670" />
-          </div>
+          <KpiStrip
+            items={[
+              { key: "req", label: "Requests", value: t ? fmt(t.total) : "—", sub: "people and bots", color: "#0a84ff" },
+              { key: "bots", label: "Verified bots", value: t ? fmt(t.bots) : "—", sub: t ? `${t.share}% of all requests` : undefined, color: "#ededed" },
+              { key: "se", label: "Search engines", value: data ? fmt(g["Search engines"] ?? 0) : "—", sub: "Google, Bing and others", color: GROUP_COLOR["Search engines"] },
+              { key: "ai", label: "AI crawlers", value: data ? fmt(g["AI crawlers & assistants"] ?? 0) : "—", sub: "ChatGPT, Claude, Perplexity…", color: GROUP_COLOR["AI crawlers & assistants"] },
+              { key: "seo", label: "SEO tools", value: data ? fmt(g["SEO tools"] ?? 0) : "—", sub: "Ahrefs, Semrush…", color: GROUP_COLOR["SEO tools"] },
+            ]}
+          />
+          {data && (data.categories ?? []).length > 0 ? (
+            <InsightGrid>
+              <InsightCard title="Who crawls you" meta={t ? `${fmt(t.bots)} bot requests` : undefined}>
+                <StackBar unit="req" parts={Object.entries(g as Record<string, number>).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ key: name, label: name, value: n, color: GROUP_COLOR[name] ?? "#3a3a3a", onClick: () => setTab("categories") }))} />
+              </InsightCard>
+              <InsightCard title="Bot requests per day" meta={`${days} days`}>
+                <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#a855f7", onClick: () => setTab("daily") }))} />
+              </InsightCard>
+              <InsightCard title="Most crawled pages" action={<button type="button" onClick={() => setTab("pages")}>All pages</button>}>
+                <BarList empty="No page data." rows={(data.pages ?? []).filter((x) => !isAsset(x.path)).sort((a, b) => b.bots - a.bots).slice(0, 6).map((x) => ({ key: x.path, label: x.path, value: x.bots, hint: x.top ? `Mostly ${x.top}` : undefined, color: "#16a34a", onClick: () => setTab("pages") }))} />
+              </InsightCard>
+            </InsightGrid>
+          ) : null}
           <div className={p.tabs}>
             {([["categories", "Categories", data?.categories?.length], ["pages", "Pages", data?.pages?.length], ["daily", "Daily", data?.daily?.length]] as [Tab, string, number | undefined][]).map(([id, label, n]) => (
               <button key={id} className={p.tab} data-on={tab === id ? "true" : "false"} onClick={() => setTab(id)}>{label}{n === undefined ? null : <span className={p.tabCount}>{n}</span>}</button>

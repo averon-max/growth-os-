@@ -21,13 +21,29 @@ function Mark({ size = 20 }: { size?: number }) {
   );
 }
 
+/** Each section keeps one icon colour, so the list reads at a glance (same palette as the charts). */
+const ICON_COLOR: Record<string, string> = {
+  "/dashboard": "#0a84ff",
+  "/dashboard/websites": "#0d9488",
+  "/dashboard/keywords": "#ec4899",
+  "/dashboard/keyword-planner": "#a855f7",
+  "/dashboard/content": "#d97706",
+  "/dashboard/backlinks": "#0a84ff",
+  "/dashboard/competitors": "#f43f5e",
+  "/dashboard/traffic": "#d97706",
+  "/dashboard/audience": "#0d9488",
+  "/dashboard/bots": "#a855f7",
+  "/dashboard/seo": "#16a34a",
+  "/dashboard/cms": "#ec4899",
+};
+
 function NavLink({ item, pathname, site }: { item: NavItem; pathname: string; site: string | null }) {
   const Icon = item.icon;
   const active = isActivePath(pathname, item);
   const href = item.keepSite === false ? item.href : withSite(item.href, site);
   return (
     <Link href={href} className={styles.item} data-active={active || undefined} aria-current={active ? "page" : undefined} title={item.description}>
-      <Icon size={16} strokeWidth={1.6} aria-hidden />
+      <Icon size={16} strokeWidth={1.8} aria-hidden style={ICON_COLOR[item.href] ? { color: ICON_COLOR[item.href] } : undefined} />
       <span className={styles.itemLabel}>{item.label}</span>
       {item.badge ? <span className={styles.badge}>{item.badge}</span> : null}
     </Link>
@@ -96,7 +112,7 @@ function FindDialog({ open, onClose, items, site }: { open: boolean; onClose: ()
             return (
               <li key={item.href} role="option" aria-selected={i === index}>
                 <button type="button" className={styles.findItem} data-active={i === index || undefined} onMouseEnter={() => setIndex(i)} onClick={() => go(item)}>
-                  <Icon size={16} strokeWidth={1.6} aria-hidden />
+                  <Icon size={16} strokeWidth={1.8} aria-hidden style={ICON_COLOR[item.href] ? { color: ICON_COLOR[item.href] } : undefined} />
                   <span>{item.label}</span>
                   <span className={styles.findHint}>{item.description}</span>
                 </button>

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { X, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
-import styles from "./keyword-trend-drawer.module.css";
+import { ExternalLink, X } from "lucide-react";
+import { BarList, Columns, Meter, TONE } from "./insights";
+import s from "./keyword-overview-drawer.module.css";
 
 interface MonthlyPoint { year: number; month: number; searchVolume: number; }
 interface GlobalVolume { code: string; label: string; flag: string; volume: number; }
@@ -12,13 +12,8 @@ interface OverviewData {
   trend: { yearly: number | null; quarterly: number | null; monthly: number | null } | null;
   globalVolumes: GlobalVolume[];
   otherMarketsAvailable?: number;
-  metrics: {
-    volume: number | null;
-    kd: number | null;
-    cpc: number | null;
-    competitionIndex: number | null;
-    intent: string | null;
-  } | null;
+  metrics: { volume: number | null; kd: number | null; cpc: number | null; competitionIndex: number | null; intent: string | null } | null;
+  error?: string;
 }
 
 interface Props {
@@ -29,39 +24,24 @@ interface Props {
   onClose: () => void;
 }
 
-const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmt = (v: number | null | undefined) =>
+  v === null || v === undefined ? "—" : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e4 ? `${Math.round(v / 1e3)}K` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : v.toLocaleString();
+const kdWord = (kd: number) => (kd < 30 ? "Easy" : kd < 60 ? "Moderate" : kd < 80 ? "Hard" : "Very hard");
+const kdTone = (kd: number | null) => (kd === null ? undefined : kd < 30 ? TONE.good : kd < 60 ? TONE.warn : TONE.bad);
 
-function fmt(v: number | null): string {
-  if (v === null) return "n/a";
-  if (v >= 1_000_000) return `${(v/1_000_000).toFixed(1)}M`;
-  if (v >= 10_000) return `${Math.round(v/1_000)}K`;
-  if (v >= 1_000) return `${(v/1_000).toFixed(1)}K`;
-  return v.toLocaleString();
-}
-
-function kdColor(kd: number | null): string {
-  if (kd === null) return "var(--secondary)";
-  if (kd < 30) return "var(--success)";
-  if (kd < 60) return "var(--warning)";
-  return "var(--danger)";
-}
-
-function TrendPill({ value, label }: { value: number | null; label: string }) {
-  if (value === null) return <div style={{ fontSize: "0.7rem", color: "var(--secondary)" }}>{label}: n/a</div>;
-  const sign = value > 0 ? "+" : "";
-  const color = value > 0 ? "var(--success)" : value < 0 ? "var(--danger)" : "var(--secondary)";
-  const abs = Math.abs(value);
-  const display = abs >= 1000 ? `${(value/1000).toFixed(1)}K%` : `${value}%`;
-  const Icon = value > 0 ? TrendingUp : value < 0 ? TrendingDown : Minus;
+function Trend({ value, label }: { value: number | null | undefined; label: string }) {
+  const v = value ?? null;
+  const color = v === null || v === 0 ? "#a1a1a1" : v > 0 ? TONE.good : TONE.bad;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem", color }}>
-      <Icon size={11} />
-      <span style={{ fontWeight: 600 }}>{sign}{display}</span>
-      <span style={{ color: "var(--secondary)", fontWeight: 400 }}>{label}</span>
+    <div className={s.trend}>
+      <span className={s.trendLabel}>{label}</span>
+      <span className={s.trendValue} style={{ color }}>{v === null ? "—" : `${v > 0 ? "+" : ""}${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}K` : v}%`}</span>
     </div>
   );
 }
 
+/** Keyword details: one saved DataForSEO answer per keyword and country (see /api/keywords/overview). */
 export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, onClose }: Props) {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,138 +52,123 @@ export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, 
     setData(null);
     const p = new URLSearchParams({ workspaceId, keyword, market, language });
     fetch(`/api/keywords/overview?${p}`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [keyword, workspaceId, market, language]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   // Other countries cost about $0.01 each the first time, so they load only on request.
   const loadOtherMarkets = () => {
     setMoreBusy(true);
     const p = new URLSearchParams({ workspaceId, keyword, market, language, markets: "all" });
     fetch(`/api/keywords/overview?${p}`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then((d) => { if (d && !d.error) setData(d); })
       .catch(() => undefined)
       .finally(() => setMoreBusy(false));
   };
 
-  const volume = data?.metrics?.volume ?? null;
-  const kd = data?.metrics?.kd ?? null;
-  const cpcNum = data?.metrics?.cpc ?? null;
-  const competitionIndex = data?.metrics?.competitionIndex ?? null;
-  const intent = data?.metrics?.intent ?? null;
-  const compDensity = competitionIndex !== null ? (competitionIndex / 100).toFixed(2) : "n/a";
-
-  const chartData = (data?.monthlySearches ?? []).map(m => ({
-    label: `${MONTH_LABELS[m.month-1]} '${String(m.year).slice(2)}`,
-    volume: m.searchVolume,
-  }));
-
-  const maxGlobal = Math.max(...(data?.globalVolumes ?? []).map(g => g.volume), 1);
+  const m = data?.metrics ?? null;
+  const months = (data?.monthlySearches ?? []).slice(-12);
+  const peak = months.reduce((a, x) => Math.max(a, x.searchVolume), 0);
+  const others = data?.otherMarketsAvailable ?? 0;
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.panel} onClick={e => e.stopPropagation()} style={{ maxWidth: 560, width: "100%" }}>
-        <div className={styles.header}>
-          <div>
-            <div className={styles.title}>{keyword}</div>
-            <div className={styles.subtitle}>Keyword Overview · {market}</div>
+    <>
+      <div className={s.overlay} onClick={onClose} />
+      <aside className={s.panel} role="dialog" aria-label={keyword}>
+        <header className={s.head}>
+          <div className={s.headText}>
+            <h2 className={s.title}>{keyword}</h2>
+            <p className={s.sub}>Keyword · {market}{m?.intent ? ` · ${m.intent}` : ""}</p>
           </div>
-          <button className={styles.closeButton} onClick={onClose} aria-label="Close"><X size={16}/></button>
-        </div>
+          <button type="button" className={s.close} onClick={onClose} aria-label="Close"><X size={16} /></button>
+        </header>
 
-        {loading ? <p className={styles.status}>Loading…</p> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "0 0 8px" }}>
-
-            {/* Metrics row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
-              <div style={{ background: "var(--elevated)", borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Volume</div>
-                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--primary)", lineHeight: 1 }}>{fmt(volume)}</div>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", marginTop: 4 }}>{market} · {language}</div>
-              </div>
-              <div style={{ background: "var(--elevated)", borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Keyword Difficulty</div>
-                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: kdColor(kd), lineHeight: 1 }}>{kd !== null ? kd : "n/a"}</div>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", marginTop: 4 }}>{kd !== null ? (kd < 30 ? "Easy" : kd < 60 ? "Moderate" : "Hard") : "No data"}</div>
-              </div>
-              <div style={{ background: "var(--elevated)", borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>CPC</div>
-                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--primary)", lineHeight: 1 }}>{cpcNum !== null && cpcNum > 0 ? `$${cpcNum.toFixed(2)}` : "n/a"}</div>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", marginTop: 4 }}>Cost per click</div>
-              </div>
-              <div style={{ background: "var(--elevated)", borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Comp. Density</div>
-                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--primary)", lineHeight: 1 }}>{compDensity}</div>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", marginTop: 4 }}>Paid competition</div>
-              </div>
-            </div>
-
-            {/* Intent + Trend */}
-            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ background: "var(--elevated)", borderRadius: 8, padding: "10px 14px", minWidth: 120 }}>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Intent</div>
-                <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--primary)" }}>{intent ?? "n/a"}</div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <TrendPill value={data?.trend?.yearly ?? null} label="YoY" />
-                <TrendPill value={data?.trend?.quarterly ?? null} label="QoQ" />
-                <TrendPill value={data?.trend?.monthly ?? null} label="MoM" />
-              </div>
-            </div>
-
-            {/* Global volume */}
-            {(data?.globalVolumes ?? []).length > 0 && (
-              <div style={{ background: "var(--elevated)", borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Global Volume</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {data!.globalVolumes.sort((a,b) => (b.volume??0)-(a.volume??0)).map(g => (
-                    <div key={g.code} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: "0.75rem", width: 28 }}>{g.flag}</span>
-                      <span style={{ fontSize: "0.72rem", color: "var(--secondary)", width: 24 }}>{g.label}</span>
-                      <div style={{ flex: 1, height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${Math.round((g.volume/maxGlobal)*100)}%`, background: "var(--accent)", borderRadius: 3 }} />
-                      </div>
-                      <span style={{ fontSize: "0.72rem", color: "var(--primary)", fontWeight: 600, width: 48, textAlign: "right" }}>{fmt(g.volume)}</span>
-                    </div>
-                  ))}
+        <div className={s.body}>
+          {loading ? (
+            <p className={s.status}>Loading…</p>
+          ) : !data || data.error ? (
+            <p className={s.status}>{data?.error ?? "Could not load this keyword."}</p>
+          ) : (
+            <>
+              <div className={s.kpis}>
+                <div className={s.kpi}>
+                  <span className={s.kpiLabel}>Volume / mo</span>
+                  <span className={s.kpiValue}>{fmt(m?.volume)}</span>
+                  <span className={s.kpiSub}>Google searches in {market}</span>
+                </div>
+                <div className={s.kpi}>
+                  <span className={s.kpiLabel}>Difficulty</span>
+                  <span className={s.kpiValue} style={{ color: kdTone(m?.kd ?? null) }}>{m?.kd ?? "—"}</span>
+                  <Meter value={m?.kd ?? null} good={30} warn={60} invert label={m?.kd == null ? "No data" : kdWord(m.kd)} />
+                </div>
+                <div className={s.kpi}>
+                  <span className={s.kpiLabel}>Cost per click</span>
+                  <span className={s.kpiValue}>{m?.cpc == null ? "—" : `$${m.cpc.toFixed(2)}`}</span>
+                  <span className={s.kpiSub}>what advertisers pay</span>
+                </div>
+                <div className={s.kpi}>
+                  <span className={s.kpiLabel}>Ad competition</span>
+                  <span className={s.kpiValue}>{m?.competitionIndex == null ? "—" : (m.competitionIndex / 100).toFixed(2)}</span>
+                  <Meter value={m?.competitionIndex ?? null} good={33} warn={66} invert label="0 = no advertisers, 1 = crowded" />
                 </div>
               </div>
-            )}
 
-            {(data?.otherMarketsAvailable ?? 0) > 0 && (
-              <button
-                type="button"
-                onClick={loadOtherMarkets}
-                disabled={moreBusy}
-                style={{ alignSelf: "flex-start", height: 32, padding: "0 12px", border: "1px solid #2e2e2e", borderRadius: 6, background: "#000", color: "#ededed", font: "inherit", fontSize: 13, cursor: moreBusy ? "default" : "pointer", opacity: moreBusy ? 0.6 : 1 }}
-              >
-                {moreBusy ? "Loading…" : `Show volume in ${data!.otherMarketsAvailable} more ${data!.otherMarketsAvailable === 1 ? "country" : "countries"}`}
-              </button>
-            )}
-
-            {/* Monthly chart */}
-            {chartData.length > 0 && (
-              <div>
-                <div style={{ fontSize: "0.65rem", color: "var(--secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Monthly Search Volume</div>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--secondary)" }} />
-                    <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: "var(--secondary)" }} width={40} />
-                    <Tooltip
-                      contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", fontSize: 11 }}
-                      formatter={(v) => [typeof v === "number" ? v.toLocaleString() : v, "volume"]}
-                    />
-                    <Bar dataKey="volume" fill="var(--accent)" radius={[2,2,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className={s.trends}>
+                <Trend value={data.trend?.monthly} label="Last month" />
+                <Trend value={data.trend?.quarterly} label="Last quarter" />
+                <Trend value={data.trend?.yearly} label="Last year" />
               </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+
+              <section className={s.section}>
+                <h3 className={s.sectionTitle}>Search volume, last 12 months <span>peak {fmt(peak)}</span></h3>
+                {months.length ? (
+                  <Columns
+                    height={110}
+                    unit="searches"
+                    cols={months.map((x, i) => ({
+                      key: `${x.year}-${x.month}`,
+                      label: MONTHS[x.month - 1],
+                      value: x.searchVolume,
+                      hint: String(x.year),
+                      color: i === months.length - 1 ? "#ec4899" : "#0a84ff",
+                    }))}
+                  />
+                ) : (
+                  <p className={s.status}>No monthly history for this keyword.</p>
+                )}
+              </section>
+
+              <section className={s.section}>
+                <h3 className={s.sectionTitle}>Volume by country</h3>
+                <BarList
+                  empty="No country data yet."
+                  rows={[...data.globalVolumes].sort((a, b) => b.volume - a.volume).map((g, i) => ({ key: g.code, label: `${g.flag} ${g.label}`, value: g.volume, color: ["#0a84ff", "#0d9488", "#d97706", "#a855f7"][i % 4] }))}
+                />
+                {others > 0 ? (
+                  <button type="button" className={s.more} onClick={loadOtherMarkets} disabled={moreBusy}>
+                    {moreBusy ? "Loading…" : `Show ${others} more ${others === 1 ? "country" : "countries"}`}
+                  </button>
+                ) : null}
+              </section>
+            </>
+          )}
+        </div>
+
+        <footer className={s.actions}>
+          <a className={s.button} href={`https://www.google.com/search?q=${encodeURIComponent(keyword)}`} target="_blank" rel="noreferrer">
+            Google <ExternalLink size={13} />
+          </a>
+        </footer>
+      </aside>
+    </>
   );
 }

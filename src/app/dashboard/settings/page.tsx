@@ -20,6 +20,7 @@ import {
   getProviderConnection,
 } from "@/lib/keywords/repository";
 
+import { SettingsShell } from "@/components/dashboard/settings/settings-shell";
 import {
   Topbar,
 } from "@/components/dashboard/topbar";
@@ -144,13 +145,11 @@ export default async function SettingsPage() {
         : "Connect";
 
   return (
-    <>
-      <Topbar
-        title="Settings"
-        subtitle={workspace.name}
-      />
-
-      <div className={styles.pageBody}>
+    <SettingsShell
+      active="general"
+      title="General"
+      description={`${workspace.name} · connections, websites and shortcuts to every setting.`}
+    >
         <div className={styles.settingsGrid}>
           <div className={styles.group}>
             <div className={styles.groupHeader}><span className={styles.groupLabel}>Account</span></div>
@@ -326,7 +325,9 @@ export default async function SettingsPage() {
                             ]
                           }
                         >
-                          {cmsStatus}
+                          {website.cmsConnection
+                            ? `CMS ${cmsStatus.toLowerCase()}`
+                            : "No CMS"}
                         </Badge>
 
                         <Link
@@ -343,7 +344,6 @@ export default async function SettingsPage() {
             )}
           </div>
         </div>
-      </div>
-    </>
+    </SettingsShell>
   );
 }

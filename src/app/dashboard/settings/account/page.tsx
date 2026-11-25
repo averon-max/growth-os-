@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { Topbar } from "@/components/dashboard/topbar";
-import styles from "@/components/dashboard/ui.module.css";
+import { SettingsShell } from "@/components/dashboard/settings/settings-shell";
 import AccountForms from "./account-forms";
 
 export const metadata: Metadata = { title: "Account · Hyprlyx" };
@@ -18,9 +17,7 @@ export default async function AccountPage() {
   const sub = ws?.subscription;
 
   return (
-    <>
-      <Topbar title="Account" subtitle={user.email} />
-      <div className={styles.pageBody}>
+    <SettingsShell active="account" title="Account" description={user.email}>
         <AccountForms
           email={user.email}
           name={user.name ?? ""}
@@ -30,7 +27,6 @@ export default async function AccountPage() {
           planSource={sub?.source ?? "stripe"}
           renews={sub?.currentPeriodEnd ? sub.currentPeriodEnd.toISOString().slice(0, 10) : null}
         />
-      </div>
-    </>
+    </SettingsShell>
   );
 }

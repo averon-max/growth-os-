@@ -1,4 +1,5 @@
 import { dfs, num, str, rec } from "@/lib/dataforseo/client";
+import { serpDomain, serpUrl } from "@/lib/dataforseo/serp-domain";
 import { analyzeSite, getCachedPlannerReport } from "@/lib/planner/analyze";
 import { isPlatform } from "./tracker";
 
@@ -17,7 +18,7 @@ async function top10(keyword: string): Promise<Hit[]> {
   if (hit && Date.now() - hit.at < 24 * 3600 * 1000) return hit.hits;
   const res = await dfs("serp/google/organic/live/regular", { keyword, location_name: "United States", language_name: "English", depth: 10 });
   const hits = ((rec(res[0]).items as unknown[] | undefined) ?? []).map(rec).filter((x) => x.type === "organic").slice(0, 10)
-    .map((x) => ({ position: num(x.rank_group) ?? 0, domain: (str(x.domain) ?? "").replace(/^www\./, ""), url: str(x.url) ?? "", title: str(x.title) }));
+    .map((x) => ({ position: num(x.rank_group) ?? 0, domain: serpDomain(x), url: serpUrl(x), title: str(x.title) }));
   serpCache.set(keyword, { at: Date.now(), hits });
   return hits;
 }

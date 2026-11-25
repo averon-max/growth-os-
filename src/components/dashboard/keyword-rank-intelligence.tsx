@@ -110,10 +110,10 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
     if (s == null) return [];
     const total = Math.max(s.keywordsWithData, s.top20, 1);
     const parts = [
-      { label: "Top 3", n: s.top3, color: "#3b82f6" },
-      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#60a5fa" },
-      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#93c5fd" },
-      { label: "20+", n: Math.max(total - s.top20, 0), color: "#34343a" },
+      { label: "Top 3", n: s.top3, color: "#16a34a" },
+      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#0d9488" },
+      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#0a84ff" },
+      { label: "20+", n: Math.max(total - s.top20, 0), color: "#3a3a3a" },
     ];
     return parts.map((p) => ({ ...p, pct: (p.n / total) * 100 }));
   }, [s]);
@@ -184,13 +184,22 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
               { label: "Clicks", value: fmt(s?.clicks), sub: s && s.impressions > 0 ? `CTR ${((s.clicks / s.impressions) * 100).toFixed(1)}%` : "CTR —" },
               { label: "Avg position", value: s?.avgPosition == null ? "—" : s.avgPosition.toFixed(1), sub: "lower is better" },
               { label: "Page one", value: fmt(s?.top10), sub: `${fmt(s?.nearFirstPage)} in striking distance` },
-            ].map((m) => (
-              <div key={m.label} className={styles.metric}>
-                <span className={styles.metricLabel}>{m.label}</span>
-                <strong className={styles.metricValue}>{m.value}</strong>
-                <span className={styles.metricSub}>{m.sub}</span>
-              </div>
-            ))}
+            ].map((m) => {
+              const target = m.label === "Impressions" ? "impressions" : m.label === "Clicks" ? "clicks" : m.label === "Avg position" ? "avgPosition" : null;
+              const dot = target === "impressions" ? "#0a84ff" : target === "clicks" ? "#d97706" : target === "avgPosition" ? "#ec4899" : null;
+              const body = (
+                <>
+                  <span className={styles.metricLabel}>{dot ? <i className={styles.metricDot} style={{ background: dot }} /> : null}{m.label}</span>
+                  <strong className={styles.metricValue}>{m.value}</strong>
+                  <span className={styles.metricSub}>{m.sub}</span>
+                </>
+              );
+              return target ? (
+                <button key={m.label} type="button" className={styles.metric} data-on={metric === target ? "true" : undefined} onClick={() => setMetric(target as Metric)} title="Show on the chart">{body}</button>
+              ) : (
+                <div key={m.label} className={styles.metric}>{body}</div>
+              );
+            })}
             <div className={styles.metric}>
               <span className={styles.metricLabel}>Movement</span>
               <strong className={styles.metricValue}>

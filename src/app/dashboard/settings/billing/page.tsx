@@ -1,16 +1,12 @@
-import { Topbar } from "@/components/dashboard/topbar";
-import ui from "@/components/dashboard/ui.module.css";
+import { SettingsShell } from "@/components/dashboard/settings/settings-shell";
 import BillingPanel from "./billing-panel";
 
 export const dynamic = "force-dynamic";
 
 export default function BillingPage() {
   return (
-    <>
-      <Topbar title="Settings" subtitle="Billing" />
-      <div className={ui.pageBody}>
-        <BillingPanel />
-      </div>
-    </>
+    <SettingsShell active="billing" title="Billing" description="Your plan, payment method and invoices.">
+      <BillingPanel />
+    </SettingsShell>
   );
 }

@@ -324,3 +324,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Clickable metric cells pick the chart series; each carries its series colour. */
+button.metric { border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+button.metric:hover { background: #111111; }
+.metric[data-on] { background: #111111; box-shadow: inset 0 -2px 0 #ededed; }
+.metricDot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; vertical-align: 0; }

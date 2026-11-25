@@ -6,12 +6,12 @@ import { signOut } from "next-auth/react";
 
 type Props = { email: string; name: string; since: string; plan: string; planStatus: string; planSource: string; renews: string | null };
 
-const card: React.CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, overflow: "hidden", marginBottom: 16 };
+const card: React.CSSProperties = { border: "1px solid #262626", background: "#0a0a0a", borderRadius: 12, overflow: "hidden", marginBottom: 16 };
 const head: React.CSSProperties = { padding: "14px 18px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--primary)" };
 const body: React.CSSProperties = { padding: "16px 18px", display: "grid", gap: 12 };
 const label: React.CSSProperties = { fontSize: 12.5, color: "var(--secondary)", marginBottom: 6, display: "block" };
-const input: React.CSSProperties = { width: "100%", maxWidth: 380, height: 38, padding: "0 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--primary)", fontSize: 14, outline: "none" };
-const btn: React.CSSProperties = { height: 34, padding: "0 16px", borderRadius: 999, border: 0, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: 13, cursor: "pointer" };
+const input: React.CSSProperties = { width: "100%", maxWidth: 380, height: 38, padding: "0 12px", borderRadius: 8, border: "1px solid var(--border)", background: "#000", color: "#ededed", fontSize: 14, outline: "none" };
+const btn: React.CSSProperties = { height: 34, padding: "0 16px", borderRadius: 6, border: 0, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: 13, cursor: "pointer" };
 const ghost: React.CSSProperties = { ...btn, background: "transparent", color: "var(--primary)", border: "1px solid var(--border)" };
 const danger: React.CSSProperties = { ...btn, background: "var(--danger)", color: "#fff" };
 const note: React.CSSProperties = { fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 };
@@ -79,7 +79,7 @@ export default function AccountForms(p: Props) {
   }
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div>
       <section style={card}>
         <div style={head}>Profile</div>
         <div style={body}>

@@ -20,7 +20,7 @@ type Billing = {
 const card: React.CSSProperties = { border: "1px solid #1d1e22", borderRadius: 10, overflow: "hidden", marginBottom: 16 };
 const head: React.CSSProperties = { padding: "12px 16px", borderBottom: "1px solid #1d1e22", fontSize: 13, fontWeight: 590, color: "#d0d6e0" };
 const body: React.CSSProperties = { padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" };
-const btn: React.CSSProperties = { height: 32, padding: "0 12px", border: "1px solid #2a2c31", borderRadius: 6, background: "#141516", color: "#d0d6e0", fontSize: 12.5, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" };
+const btn: React.CSSProperties = { height: 32, padding: "0 12px", border: "1px solid #2e2e2e", borderRadius: 6, background: "#0a0a0a", color: "#ededed", fontSize: 13, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" };
 const danger: React.CSSProperties = { ...btn, color: "#e08a92", borderColor: "rgba(212,102,112,.3)", background: "rgba(212,102,112,.06)" };
 const muted: React.CSSProperties = { color: "#8a8f98", fontSize: 13, lineHeight: 1.55, margin: 0 };
 const day = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—");
@@ -77,7 +77,7 @@ export default function BillingPanel() {
   const trial = b.status === "trialing";
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div>
       <section style={card}>
         <div style={head}>Plan</div>
         <div style={{ ...body, justifyContent: "space-between" }}>

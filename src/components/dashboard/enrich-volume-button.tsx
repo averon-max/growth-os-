@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import styles from "./ui.module.css";
+import { BarChart3, Loader2 } from "lucide-react";
+import s from "./keyword-actions.module.css";
 
 const MARKET_OPTIONS = [
   { code: "US", label: "United States", language: "English" },
@@ -38,7 +39,7 @@ export function EnrichVolumeButton({ workspaceId }: { workspaceId: string }) {
         setError(data.error || "Enrichment failed.");
         return;
       }
-      setResult(`Updated ${data.updated} of ${data.requested} keyword${data.requested === 1 ? "" : "s"} via DataForSEO`);
+      setResult(`Updated ${data.updated} of ${data.requested} keyword${data.requested === 1 ? "" : "s"} `);
       window.dispatchEvent(new CustomEvent("growth-os:keywords-updated"));
       router.refresh();
     } catch {
@@ -49,29 +50,26 @@ export function EnrichVolumeButton({ workspaceId }: { workspaceId: string }) {
   };
 
   return (
-    <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
-      <select
-        value={market}
-        onChange={(e) => setMarket(e.target.value as (typeof MARKET_OPTIONS)[number]["code"])}
-        disabled={loading}
-        style={{ fontSize: "0.75rem" }}
-      >
-        {MARKET_OPTIONS.map((option) => (
-          <option key={option.code} value={option.code}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={enrich}
-        disabled={loading}
-        className={styles.link}
-        style={{ background: "none", border: "none", cursor: loading ? "not-allowed" : "pointer", padding: 0, font: "inherit" }}
-      >
-        {loading ? "Fetching volume..." : "Enrich with search volume →"}
-      </button>
-      {result && <span style={{ fontSize: "0.75rem", color: "var(--success)" }}>{result}</span>}
-      {error && <span style={{ fontSize: "0.75rem", color: "var(--danger)" }}>{error}</span>}
-    </div>
+    <span className={s.bar}>
+      <span className={s.group}>
+        <select
+          className={s.select}
+          aria-label="Market"
+          value={market}
+          onChange={(e) => setMarket(e.target.value as (typeof MARKET_OPTIONS)[number]["code"])}
+          disabled={loading}
+        >
+          {MARKET_OPTIONS.map((option) => (
+            <option key={option.code} value={option.code}>{option.label}</option>
+          ))}
+        </select>
+        <button type="button" onClick={enrich} disabled={loading} className={s.button} title="Add search volume, difficulty and CPC to keywords that have none yet (about $0.01 per 700 keywords)">
+          {loading ? <Loader2 size={14} className={s.spin} /> : <BarChart3 size={14} />}
+          {loading ? "Fetching…" : "Add search volume"}
+        </button>
+      </span>
+      {result ? <span className={s.ok}>{result}</span> : null}
+      {error ? <span className={s.err}>{error}</span> : null}
+    </span>
   );
 }
