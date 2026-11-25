@@ -62,7 +62,10 @@ export type TrafficReport = {
   queries: QueryRow[];
   countries: CountryRow[];
   devices: DeviceRow[];
+  /** Per day of the current period, for the colour charts: visits by country, by page, and bot requests by category. */
+  series: { countries: SeriesDay[]; pages: SeriesDay[]; bots: SeriesDay[] };
 };
+export type SeriesDay = { date: string; values: Record<string, number> };
 
 type Breakdown = { country?: string; device?: string; requests?: number; visits?: number };
 const list = (v: unknown): Breakdown[] => (Array.isArray(v) ? (v as Breakdown[]) : []);
@@ -219,6 +222,7 @@ export async function buildTrafficReport(opts: { websiteId: string; workspaceId:
     queries: queries.slice(0, 300),
     countries: [...countries.values()].sort((a, b) => b.visits - a.visits || (b.clicks ?? 0) - (a.clicks ?? 0)).slice(0, 20),
     devices: [...devices.values()].filter((d) => d.device).sort((a, b) => b.visits - a.visits),
+    series: cf.series,
   };
 }
 
@@ -241,6 +245,7 @@ async function cloudflarePart(websiteId: string, since: Date, until: Date, prevS
     pagesBefore: [] as { path: string; visits: number }[],
     countries: new Map<string, number>(),
     devices: new Map<string, number>(),
+    series: { countries: [] as SeriesDay[], pages: [] as SeriesDay[], bots: [] as SeriesDay[] },
   };
   const connection = await prisma.cloudflareConnection.findUnique({ where: { websiteId }, select: { id: true, updatedAt: true } });
   if (!connection) return { ...empty, state: { state: "missing" } as CloudflareState };
@@ -248,7 +253,7 @@ async function cloudflarePart(websiteId: string, since: Date, until: Date, prevS
   const [snaps, pagesNow, pagesBefore] = await Promise.all([
     prisma.trafficSnapshot.findMany({
       where: { connectionId: connection.id, date: { gte: prevSince, lte: until } },
-      select: { date: true, totalRequests: true, uniqueVisitors: true, verifiedBotRequests: true, countryBreakdown: true, deviceBreakdown: true },
+      select: { date: true, totalRequests: true, uniqueVisitors: true, verifiedBotRequests: true, countryBreakdown: true, deviceBreakdown: true, botCategoryBreakdown: true },
       orderBy: { date: "asc" },
     }),
     prisma.pageTrafficSnapshot.groupBy({
@@ -289,7 +294,36 @@ async function cloudflarePart(websiteId: string, since: Date, until: Date, prevS
     for (const d of list(s.deviceBreakdown)) if (d.device) devices.set(d.device.toLowerCase(), (devices.get(d.device.toLowerCase()) ?? 0) + (d.visits ?? 0));
   }
 
+  // Day-by-day splits for the colour charts.
+  type Bot = { category?: string; requests?: number };
+  const countrySeries: SeriesDay[] = now.map((snap) => ({
+    date: day(snap.date),
+    values: Object.fromEntries(list(snap.countryBreakdown).filter((c) => c.country).map((c) => [c.country!.toUpperCase(), (c.visits ?? 0) || (c.requests ?? 0)])),
+  }));
+  const botSeries: SeriesDay[] = now.map((snap) => ({
+    date: day(snap.date),
+    values: Object.fromEntries(
+      (Array.isArray(snap.botCategoryBreakdown) ? (snap.botCategoryBreakdown as Bot[]) : []).filter((b) => b.category).map((b) => [b.category!, b.requests ?? 0]),
+    ),
+  }));
+  const topPaths = pagesNow.filter((p) => isPagePath(p.path) && (p._sum.visits ?? 0) > 0).slice(0, 7).map((p) => p.path);
+  const pageRows = topPaths.length
+    ? await prisma.pageTrafficSnapshot.findMany({
+        where: { connectionId: connection.id, date: { gte: since, lte: until }, path: { in: topPaths } },
+        select: { date: true, path: true, visits: true },
+      })
+    : [];
+  const pageDays = new Map<string, Record<string, number>>();
+  for (const r of pageRows) {
+    const key = day(r.date);
+    const v = pageDays.get(key) ?? {};
+    v[r.path] = (v[r.path] ?? 0) + r.visits;
+    pageDays.set(key, v);
+  }
+  const pageSeries: SeriesDay[] = [...pageDays.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([date, values]) => ({ date, values }));
+
   return {
+    series: { countries: countrySeries, pages: pageSeries, bots: botSeries },
     totals: { visitors: a.visitors, visitorsBefore: b?.visitors ?? null, requests: a.requests, requestsBefore: b?.requests ?? null, botShare: a.botShare, botShareBefore: b?.botShare ?? null },
     dailyNow: new Map<string, number>(now.map((s): [string, number] => [day(s.date), s.uniqueVisitors])),
     dailyBefore: new Map<string, number>(before.map((s): [string, number] => [day(s.date), s.uniqueVisitors])),

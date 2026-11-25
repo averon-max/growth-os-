@@ -87,8 +87,17 @@ string {
 }
 
 
+/**
+ * pg warns on every connection ("SECURITY WARNING: The SSL modes 'prefer', 'require'… are treated as aliases
+ * for 'verify-full'") and Vercel shows each one as a red error line. Asking for verify-full explicitly is
+ * exactly what already happens, minus the noise. Local databases without sslmode are left alone.
+ */
+function quietSslMode(url: string): string {
+  return url.replace(/([?&]sslmode=)(prefer|require|verify-ca)\b/i, "$1verify-full");
+}
+
 const databaseUrl =
-  requireDatabaseUrl();
+  quietSslMode(requireDatabaseUrl());
 
 
 const adapter =

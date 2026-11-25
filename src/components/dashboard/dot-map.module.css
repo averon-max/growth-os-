@@ -1,0 +1,20 @@
+/* Dotted world map (Vercel CDN regions style). Pure black, grey dots, blue circles. */
+.wrap { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 24px; align-items: center; padding: 20px 24px; background: #000; }
+.wrapMapOnly { position: relative; padding: 12px; background: #000; }
+.list { margin: 0; padding: 0; list-style: none; }
+.row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 12px; height: 30px; padding: 0 8px; border-radius: 6px; color: var(--ds-gray-1000); font-size: var(--ds-text-14); cursor: default; }
+.row:hover, .row[data-active] { background: var(--ds-gray-100); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #3291ff; }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pct { color: var(--ds-gray-1000); font-variant-numeric: tabular-nums; }
+.empty { padding: 12px 8px; color: var(--ds-gray-900); font-size: var(--ds-text-14); }
+.mapBox { position: relative; min-width: 0; }
+.map { display: block; width: 100%; height: auto; }
+.land { fill: #3d3d3d; }
+.bubble { fill: #2f7df6; stroke: #000; stroke-width: 1.5; cursor: pointer; transition: fill-opacity 0.12s ease; }
+.bubble[data-active] { fill: #52a8ff; }
+.tip { position: absolute; top: 8px; right: 8px; display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; border: 1px solid var(--ds-gray-400); border-radius: 6px; background: #0a0a0a; color: var(--ds-gray-900); font-size: var(--ds-text-13); pointer-events: none; }
+.tip strong { color: var(--ds-gray-1000); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tip em { font-style: normal; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
+@media (prefers-reduced-motion: reduce) { .bubble { transition: none; } }

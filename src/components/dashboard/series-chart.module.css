@@ -1,0 +1,38 @@
+/* Vercel AI Gateway leaderboard look: black plot, grey "track" columns, colour only for data. */
+.section { padding: 24px 0 8px; }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.title { margin: 0; color: var(--ds-gray-1000); font-size: var(--ds-text-24); font-weight: 600; letter-spacing: -0.02em; }
+.desc { margin: 6px 0 0; color: var(--ds-gray-900); font-size: var(--ds-text-14); }
+.toggle { display: inline-flex; padding: 3px; border: 1px solid var(--ds-gray-400); border-radius: 8px; }
+.toggle button { display: inline-grid; width: 32px; height: 28px; place-items: center; border: 0; border-radius: 5px; background: none; color: var(--ds-gray-900); cursor: pointer; }
+.toggle button[data-active] { background: var(--ds-gray-200); color: var(--ds-gray-1000); }
+.toggle button:focus-visible { outline: none; box-shadow: var(--ds-focus); }
+
+.body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); gap: 32px; align-items: start; }
+.plot { position: relative; padding-bottom: 28px; }
+.svg { display: block; width: 100%; height: 320px; background: #000; }
+.grid { stroke: #2a2a2a; stroke-width: 1; stroke-dasharray: 3 4; }
+.cross { stroke: #8f8f8f; stroke-width: 1; stroke-dasharray: 3 3; }
+.yAxis { position: absolute; inset: 0 auto 28px 0; pointer-events: none; }
+.yAxis span { position: absolute; left: 4px; transform: translateY(2px); color: var(--ds-gray-900); font-size: 11px; font-variant-numeric: tabular-nums; }
+.dates { position: absolute; left: 12px; right: 12px; bottom: 0; display: flex; justify-content: space-between; color: var(--ds-gray-900); font-size: var(--ds-text-13); }
+
+.tip { position: absolute; top: 12px; z-index: 5; min-width: 200px; padding: 10px 12px; border: 1px solid var(--ds-gray-400); border-radius: 8px; background: #0a0a0a; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6); pointer-events: none; font-size: var(--ds-text-13); }
+.tipDate { margin-bottom: 6px; color: var(--ds-gray-1000); font-weight: 500; }
+.tipRow, .tipTotal { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 22px; color: var(--ds-gray-900); }
+.tipRow i { width: 8px; height: 8px; border-radius: 50%; }
+.tipRow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tipRow strong, .tipTotal strong { color: var(--ds-gray-1000); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tipTotal { grid-template-columns: minmax(0, 1fr) auto; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--ds-gray-400); }
+
+.legend { margin: 0; padding: 0; list-style: none; }
+.legend li { display: grid; grid-template-columns: 22px 10px minmax(0, 1fr) auto; align-items: center; gap: 12px; height: 38px; color: var(--ds-gray-1000); font-size: var(--ds-text-14); transition: opacity 0.1s ease; }
+.legend li[data-dim] { opacity: 0.4; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; }
+.rank { color: var(--ds-gray-900); font-family: var(--ds-font-mono); font-size: var(--ds-text-13); text-align: right; }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share { font-family: var(--ds-font-mono); font-size: var(--ds-text-14); font-variant-numeric: tabular-nums; }
+.empty { margin: 0; padding: 40px 0; color: var(--ds-gray-900); font-size: var(--ds-text-14); }
+
+@media (max-width: 1100px) { .body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .svg { height: 220px; } .title { font-size: var(--ds-text-20); } }

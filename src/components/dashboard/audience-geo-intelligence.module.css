@@ -3,7 +3,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .header {
@@ -14,7 +14,7 @@
   gap: 14px;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .headerTitle {
@@ -33,7 +33,7 @@
 }
 
 .headerTitle span {
-  color: #62666d;
+  color: #8f8f8f;
 }
 
 .metricSwitch {
@@ -57,7 +57,7 @@
 }
 
 .metricSwitch button[data-active="true"] {
-  background: #1c1d1f;
+  background: #1a1a1a;
   color: var(--primary);
 }
 
@@ -112,7 +112,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   outline: none;
-  background: #0b0d0f;
+  background: #000000;
   color: var(--primary);
   font-size: 11px;
 }
@@ -186,7 +186,7 @@
   justify-content: space-between;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
-  color: #62666d;
+  color: #8f8f8f;
   font-size: 11px;
 }
 
@@ -216,7 +216,7 @@
   right: 10px;
   width: 165px;
   padding: 9px;
-  border: 1px solid #23252a;
+  border: 1px solid #262626;
   border-radius: 5px;
   background: rgba(12,14,16,.94);
   box-shadow: 0 10px 30px rgba(0,0,0,.28);
@@ -235,7 +235,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid #1d1e21;
+  border-top: 1px solid #1f1f1f;
   color: var(--secondary);
   font-size: 11px;
 }
@@ -247,7 +247,7 @@
 
 .sidePanel {
   min-width: 0;
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .sideHeader {
@@ -295,7 +295,7 @@
 }
 
 .rank {
-  color: #62666d;
+  color: #8f8f8f;
   font-size: 11px;
 }
 
@@ -326,7 +326,7 @@
 .countryRow small {
   display: block;
   margin-top: 2px;
-  color: #62666d;
+  color: #8f8f8f;
   font-size: 11px;
 }
 
@@ -416,12 +416,12 @@
   align-items: center;
   gap: 7px;
   padding: 0 10px;
-  border-bottom: 1px solid #1d1e21;
+  border-bottom: 1px solid #1f1f1f;
 }
 
 .miniRow > span {
   overflow: hidden;
-  color: #8a8f98;
+  color: #a1a1a1;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -448,7 +448,7 @@
 
 .empty {
   padding: 14px 10px;
-  color: #62666d;
+  color: #8f8f8f;
   font-size: 11px;
 }
 
@@ -518,7 +518,7 @@
 }
 
 /* ===== map: Linear style ===== */
-.mapWrap { background: #101112 !important; border-radius: 10px !important; }
-.mapWrap svg path { stroke: #08090a !important; stroke-width: .5px !important; outline: none !important; transition: fill .12s ease; }
+.mapWrap { background: #0a0a0a !important; border-radius: 10px !important; }
+.mapWrap svg path { stroke: #000000 !important; stroke-width: .5px !important; outline: none !important; transition: fill .12s ease; }
 .mapWrap svg path:hover { fill: #60a5fa !important; cursor: pointer; }
-.hoverCard { border: 1px solid #23252a !important; border-radius: 10px !important; background: #141516 !important; box-shadow: 0 12px 40px rgba(0,0,0,.45) !important; }
+.hoverCard { border: 1px solid #262626 !important; border-radius: 10px !important; background: #111111 !important; box-shadow: 0 12px 40px rgba(0,0,0,.45) !important; }

@@ -14,6 +14,8 @@ import { PAGE_FILTERS, QUERY_FILTERS, change, fmt } from "@/lib/traffic/filters"
 import { DailyChart } from "./daily-chart";
 import { PagesTable, QueriesTable } from "./report-tables";
 import { SyncButton } from "./sync-button";
+import { DotMap } from "@/components/dashboard/dot-map";
+import { SeriesChart } from "@/components/dashboard/series-chart";
 import s from "./traffic.module.css";
 
 export const metadata = { title: "Traffic report — Hyprlyx" };
@@ -142,18 +144,25 @@ export default async function TrafficPage({ searchParams }: { searchParams: Prom
 
         {report.google.state === "ok" ? <QueriesTable rows={report.queries} /> : null}
 
+        <section className={s.panel} id="countries">
+          <div className={s.panelHead}>
+            <h2 className={s.panelTitle}>Countries</h2>
+            <span className={s.panelHint}>Cloudflare visits, {days} days</span>
+          </div>
+          <DotMap rows={report.countries.map((c) => ({ code: c.code, label: regionName(c.code), value: c.visits }))} unit="visits" />
+        </section>
+
+        <SeriesChart
+          title="Visits by country"
+          description="Share of each day's Cloudflare visits by country."
+          days={report.series.countries}
+          labels={Object.fromEntries(report.series.countries.flatMap((d) => Object.keys(d.values)).map((code) => [code, regionName(code)]))}
+          unit="visits"
+        />
+        <SeriesChart title="Top pages" description="Share of each day's visits among the most visited pages." days={report.series.pages} unit="visits" initialMode="lines" />
+        <SeriesChart title="Crawlers" description="Requests from verified bots each day, by category (search engines, AI crawlers, monitors)." days={report.series.bots} unit="bot requests" />
+
         <div className={s.split}>
-          <section className={s.panel} id="countries">
-            <div className={s.panelHead}>
-              <h2 className={s.panelTitle}>Countries</h2>
-              <span className={s.panelHint}>Cloudflare visits vs. Google clicks</span>
-            </div>
-            <Shares
-              rows={report.countries.slice(0, 12).map((c) => ({ key: c.code, label: regionName(c.code), a: c.visits, b: c.clicks }))}
-              aLabel="Visits"
-              bLabel="Google clicks"
-            />
-          </section>
           <section className={s.panel} id="devices">
             <div className={s.panelHead}>
               <h2 className={s.panelTitle}>Devices</h2>
@@ -161,6 +170,17 @@ export default async function TrafficPage({ searchParams }: { searchParams: Prom
             </div>
             <Shares
               rows={report.devices.map((d) => ({ key: d.device, label: d.device.charAt(0).toUpperCase() + d.device.slice(1), a: d.visits, b: d.clicks }))}
+              aLabel="Visits"
+              bLabel="Google clicks"
+            />
+          </section>
+          <section className={s.panel} id="google-countries">
+            <div className={s.panelHead}>
+              <h2 className={s.panelTitle}>Countries in Google</h2>
+              <span className={s.panelHint}>Cloudflare visits vs. Google clicks</span>
+            </div>
+            <Shares
+              rows={report.countries.slice(0, 8).map((c) => ({ key: c.code, label: regionName(c.code), a: c.visits, b: c.clicks }))}
               aLabel="Visits"
               bLabel="Google clicks"
             />

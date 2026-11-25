@@ -7,12 +7,8 @@ import {
   useState,
 } from "react";
 
-import {
-  ComposableMap,
-  Geographies,
-  Geography,
-  ZoomableGroup,
-} from "react-simple-maps";
+import { DotMap, type DotMapRow } from "./dot-map";
+import { COUNTRY_CENTERS } from "@/lib/geo/dot-map-data";
 
 
 import {
@@ -27,7 +23,6 @@ import {
 } from "lucide-react";
 
 import styles from "./audience-geo-intelligence.module.css";
-import { crimeaToUkraine } from "@/lib/geo/crimea";
 
 interface CloudflareCountry {
   country: string;
@@ -702,6 +697,20 @@ export function AudienceGeoIntelligence({
       metric,
     ]);
 
+  // ISO-2 code for each row, so the dotted map can place it (rows are keyed by normalised country name).
+  const dotRows = useMemo<DotMapRow[]>(() => {
+    const codeByKey = new Map<string, string>();
+    for (const code of Object.keys(COUNTRY_CENTERS)) codeByKey.set(normalizeCountry(code), code);
+    for (const c of cloudflareCountries) if (/^[A-Za-z]{2}$/.test(c.country)) codeByKey.set(normalizeCountry(c.country), c.country.toUpperCase());
+    return combined
+      .map((row) => ({
+        code: (row.countryId && /^[A-Za-z]{2}$/.test(row.countryId) ? row.countryId.toUpperCase() : codeByKey.get(row.key)) ?? "",
+        label: row.country,
+        value: metric === "users" ? row.activeUsers : row.requests,
+      }))
+      .filter((r) => r.code);
+  }, [combined, cloudflareCountries, metric]);
+
   const maxValue =
     Math.max(
       1,
@@ -1185,117 +1194,7 @@ export function AudienceGeoIntelligence({
               styles.mapWrap
             }
           >
-            <ComposableMap
-              projectionConfig={{
-                scale:
-                  142,
-              }}
-              width={800}
-              height={390}
-            >
-              <ZoomableGroup
-                center={[
-                  5,
-                  12,
-                ]}
-                zoom={1}
-                minZoom={1}
-                maxZoom={4}
-              >
-                <Geographies
-                  geography="/world-110m.json"
-                  parseGeographies={crimeaToUkraine}
-                >
-                  {({
-                    geographies,
-                  }) =>
-                    geographies.map(
-                      (
-                        geo
-                      ) => {
-                        const name =
-                          String(
-                            geo
-                              .properties
-                              ?.name ??
-                            ""
-                          );
-
-                        const key =
-                          normalizeCountry(
-                            name
-                          );
-
-                        const isSelected =
-                          selected
-                            ? normalizeCountry(
-                                selected
-                              ) ===
-                              key
-                            : false;
-
-                        return (
-                          <Geography
-                            key={
-                              geo.rsmKey
-                            }
-                            geography={
-                              geo
-                            }
-                            onMouseEnter={() =>
-                              setHovered(
-                                name
-                              )
-                            }
-                            onMouseLeave={() =>
-                              setHovered(
-                                null
-                              )
-                            }
-                            onClick={() =>
-                              setSelected(
-                                (
-                                  current
-                                ) =>
-                                  current &&
-                                  normalizeCountry(
-                                    current
-                                  ) ===
-                                    key
-                                    ? null
-                                    : name
-                              )
-                            }
-                            className={
-                              styles.geoPath
-                            }
-                            fill={
-                              mapColor(
-                                name
-                              )
-                            }
-                            stroke={
-                              isSelected
-                                ? "#d0d6e0"
-                                : "#25282d"
-                            }
-                            strokeWidth={
-                              isSelected
-                                ? 1.1
-                                : 0.45
-                            }
-                            style={{
-                              outline:
-                                "none",
-                            }}
-                          />
-                        );
-                      }
-                    )
-                  }
-                </Geographies>
-              </ZoomableGroup>
-            </ComposableMap>
+            <DotMap rows={dotRows} unit={metric === "users" ? "users" : "requests"} withList={false} />
 
             {hoverRow && (
               <div

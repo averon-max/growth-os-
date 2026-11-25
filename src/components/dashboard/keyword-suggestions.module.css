@@ -41,7 +41,7 @@
 .subtitle {
   margin-top: 3px;
 
-  color: #62666d;
+  color: #8f8f8f;
 
   font-size: 12px;
 }
@@ -72,11 +72,11 @@
   border: 1px solid var(--border);
   border-radius: 6px;
 
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .searchIcon {
-  color: #62666d;
+  color: #8f8f8f;
 }
 
 .searchInput {
@@ -102,7 +102,7 @@
 
   padding: 0 13px;
 
-  border: 1px solid #23252a;
+  border: 1px solid #262626;
   border-radius: 6px;
 
   background: #5687d5;
@@ -159,7 +159,7 @@
 
   padding: 0 14px;
 
-  border-bottom: 1px solid #1d1e21;
+  border-bottom: 1px solid #1f1f1f;
 }
 
 .trendingTitle {
@@ -167,7 +167,7 @@
   align-items: center;
   gap: 7px;
 
-  color: #8a8f98;
+  color: #a1a1a1;
 
   font-size: 12px;
   font-weight: 590;
@@ -205,9 +205,9 @@
 
   padding: 0 14px;
 
-  border-bottom: 1px solid #1d1e21;
+  border-bottom: 1px solid #1f1f1f;
 
-  color: #62666d;
+  color: #8f8f8f;
 
   font-size: 11px;
   font-weight: 590;
@@ -240,7 +240,7 @@
 }
 
 .trendRank {
-  color: #62666d;
+  color: #8f8f8f;
 
   font-family: var(--font-mono);
 
@@ -250,7 +250,7 @@
 .trendName {
   overflow: hidden;
 
-  color: #8a8f98;
+  color: #a1a1a1;
 
   font-size: 12px;
 
@@ -259,7 +259,7 @@
 }
 
 .trendValue {
-  color: #62666d;
+  color: #8f8f8f;
 
   font-family: var(--font-mono);
 
@@ -386,7 +386,7 @@
 .container {
   position: relative;
 
-  border-color: #23252a;
+  border-color: #262626;
 
   background:
     var(--surface);
@@ -433,7 +433,7 @@
 }
 
 .trendColumnLabel {
-  color: #62666d;
+  color: #8f8f8f;
 
   background:
     rgba(255,255,255,.005);
@@ -465,7 +465,7 @@
 }
 
 .trendRow:first-child .trendRank {
-  color: #8a8f98;
+  color: #a1a1a1;
 }
 
 .trendRow:first-child .trendValue {
@@ -495,11 +495,11 @@
   cursor: pointer;
 }
 .trendButton:not(:first-child) { background: transparent; }
-.trendButton:hover .trendName { color: #f7f8f8; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
+.trendButton:hover .trendName { color: #ededed; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
 .trendButton:focus-visible, .clickableRow:focus-visible { outline: 2px solid #4c8df6; outline-offset: -2px; }
 .trendColumnLabel[title] { cursor: help; }
 .clickableRow:hover td { background: rgba(255,255,255,.025); }
-.clickableRow:hover .keywordCell { color: #f7f8f8; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
+.clickableRow:hover .keywordCell { color: #ededed; text-decoration: underline; text-decoration-color: #43464d; text-underline-offset: 3px; }
 .rowChevron { width: 28px; color: #43464d; text-align: right; }
 .clickableRow:hover .rowChevron { color: #d0d6e0; }
 .suggestHead th[title] { cursor: help; }

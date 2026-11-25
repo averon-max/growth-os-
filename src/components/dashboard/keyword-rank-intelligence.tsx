@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 
 import { KeywordCard } from "./keyword-card";
@@ -148,7 +148,8 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
   }, [data]);
 
   const chartKey = metric;
-  const chartColor = metric === "clicks" ? "#4cb782" : "#60a5fa";
+  // Same colours everywhere: blue = impressions, amber = clicks, pink = position.
+  const chartColor = metric === "clicks" ? "#d97706" : metric === "avgPosition" ? "#ec4899" : "#0a84ff";
 
   return (
     <section className={styles.shell}>
@@ -228,38 +229,42 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
             </div>
             <div className={styles.chart}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#1d1e21" vertical={false} />
-                  <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: "#62666d", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={32} />
+                <ComposedChart data={data.chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barCategoryGap={2}>
+                  <CartesianGrid stroke="#262626" strokeDasharray="3 4" vertical={false} />
+                  <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: "#a1a1a1", fontSize: 12 }} axisLine={false} tickLine={false} minTickGap={32} />
                   <YAxis
-                    tick={{ fill: "#62666d", fontSize: 11 }}
+                    tick={{ fill: "#a1a1a1", fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
-                    width={36}
+                    width={40}
                     reversed={metric === "avgPosition"}
                     allowDecimals={metric === "avgPosition"}
                     domain={metric === "avgPosition" ? [1, "dataMax"] : [0, "auto"]}
                   />
                   <Tooltip
-                    cursor={{ stroke: "#34343a" }}
-                    contentStyle={{ background: "#141516", border: "1px solid #23252a", borderRadius: 8, fontSize: 12, color: "#d0d6e0" }}
-                    labelStyle={{ color: "#f7f8f8", marginBottom: 4 }}
+                    cursor={metric === "avgPosition" ? { stroke: "#8f8f8f", strokeDasharray: "3 3" } : { fill: "rgba(255,255,255,0.06)" }}
+                    contentStyle={{ background: "#0a0a0a", border: "1px solid #2e2e2e", borderRadius: 8, fontSize: 13, color: "#ededed", boxShadow: "0 8px 30px rgba(0,0,0,.6)" }}
+                    labelStyle={{ color: "#ededed", marginBottom: 4, fontWeight: 500 }}
+                    itemStyle={{ color: chartColor }}
                     labelFormatter={(label) => shortDate(String(label))}
                     formatter={(v) => [metric === "avgPosition" ? Number(v).toFixed(1) : fmt(Number(v)), METRICS.find((m) => m.id === metric)?.label ?? ""]}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey={chartKey}
-                    stroke={chartColor}
-                    strokeWidth={1.75}
-                    fill={chartColor}
-                    fillOpacity={0.08}
-                    dot={false}
-                    activeDot={{ r: 3, fill: chartColor, stroke: "#101112", strokeWidth: 2 }}
-                    connectNulls
-                    isAnimationActive={false}
-                  />
-                </AreaChart>
+                  {metric === "avgPosition" ? (
+                    <Line
+                      type="linear"
+                      dataKey={chartKey}
+                      stroke={chartColor}
+                      strokeWidth={2}
+                      dot={{ r: 2.5, fill: chartColor, strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: chartColor, stroke: "#000", strokeWidth: 2 }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  ) : (
+                    // Vercel-style columns: a grey track for every day, the colour shows that day's value.
+                    <Bar dataKey={chartKey} fill={chartColor} background={{ fill: "#1a1a1a" }} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                  )}
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>

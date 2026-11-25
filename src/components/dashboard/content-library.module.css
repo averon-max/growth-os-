@@ -15,11 +15,11 @@
 .tabs{display:flex;gap:2px}
 .tab{min-height:26px;padding:0 9px;border:1px solid transparent;border-radius:5px;background:none;color:var(--secondary);font-size:11.5px;cursor:pointer}
 .tab:hover{color:var(--primary)}
-.tab[data-on="true"]{border-color:#34343a;background:#141516;color:var(--primary)}
+.tab[data-on="true"]{border-color:#333333;background:#111111;color:var(--primary)}
 .count{margin-left:5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .row{display:grid;grid-template-columns:96px minmax(0,1fr) 80px 70px auto;gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
 .row:last-child{border-bottom:0}
-.row:hover{background:#141516}
+.row:hover{background:#111111}
 .pill{justify-self:start;padding:2px 7px;border-radius:5px;border:1px solid var(--border);color:var(--secondary);font-size:12px;font-weight:590;letter-spacing:.03em}
 .pill[data-g="published"]{border-color:rgba(77,175,109,.35);background:rgba(77,175,109,.08);color:#7dd3a0}
 .pill[data-g="approved"]{border-color:rgba(59,130,246,.35);background:var(--accent-soft);color:#93c5fd}
@@ -34,8 +34,8 @@
 .btn{min-height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--secondary);font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--border-strong);color:var(--primary)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btnBlue{border-color:#4f8ff7;background:#3b82f6;color:#f7f8f8}
-.btnBlue:hover:not(:disabled){background:#4f8ff7;color:#f7f8f8}
+.btnBlue{border-color:#4f8ff7;background:#3b82f6;color:#ededed}
+.btnBlue:hover:not(:disabled){background:#4f8ff7;color:#ededed}
 .spin{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .opp{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px}

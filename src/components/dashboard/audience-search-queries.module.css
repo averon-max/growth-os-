@@ -3,7 +3,7 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .header {
@@ -14,7 +14,7 @@
   gap: 12px;
   padding: 0 10px;
   border-bottom: 1px solid var(--border);
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .titleLine {
@@ -50,7 +50,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #62666d;
+  color: #8f8f8f;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -68,13 +68,13 @@
   justify-content: center;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #101112;
+  background: #0a0a0a;
   color: var(--secondary);
   cursor: pointer;
 }
 
 .refresh:hover {
-  background: #141516;
+  background: #111111;
   color: var(--primary);
 }
 
@@ -90,7 +90,7 @@
   align-items: center;
   gap: 10px;
   padding: 9px 11px;
-  background: #101112;
+  background: #0a0a0a;
 }
 
 .compactState > i {
@@ -201,7 +201,7 @@
 }
 
 .tableHeader span {
-  color: #62666d;
+  color: #8f8f8f;
   font-size: 11px;
 }
 
@@ -223,8 +223,8 @@
   height: 35px;
   padding: 0 9px;
   border-bottom: 1px solid var(--border);
-  background: #101112;
-  color: #62666d;
+  background: #0a0a0a;
+  color: #8f8f8f;
   font-size: 11px;
   font-weight: 510;
   text-align: left;
@@ -248,7 +248,7 @@
 .table td {
   height: 38px;
   padding: 0 9px;
-  border-bottom: 1px solid #1d1e21;
+  border-bottom: 1px solid #1f1f1f;
   color: var(--secondary);
   font-size: 11px;
 }
@@ -290,7 +290,7 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-  color: #8a8f98;
+  color: #a1a1a1;
   text-decoration: none;
 }
 
@@ -305,7 +305,7 @@
 }
 
 .muted {
-  color: #62666d;
+  color: #8f8f8f;
 }
 
 .spin {
