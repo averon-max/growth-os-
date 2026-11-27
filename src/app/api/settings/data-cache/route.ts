@@ -112,8 +112,16 @@ export async function DELETE(req: Request) {
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     if (!(await admin())) return NextResponse.json({ error: "Admins only." }, { status: 403 });
     const category = new URL(req.url).searchParams.get("category") ?? "";
+    if (category === "journal") {
+      await prisma.appSetting.deleteMany({ where: { key: { startsWith: "dfsLog:" } } });
+      return NextResponse.json(await report());
+    }
     if (!DFS_CATEGORY_KEYS.includes(category as DfsCategory)) return NextResponse.json({ error: "Unknown category." }, { status: 400 });
     await prisma.apiCache.deleteMany({ where: { category } });
+    // Keyword answers are also kept as ready-made suggestions and overviews; delete those too (not Planner reports).
+    if (category === "keywords") await prisma.keywordSuggestionCache.deleteMany({ where: { source: { not: "PLANNER_REPORT" } } });
+    const left = await prisma.apiCache.count({ where: { category } });
+    if (left > 0) console.warn(`[data-cache] ${left} rows of ${category} left after delete`);
     return NextResponse.json(await report());
   } catch (err) {
     const { status, body } = authErrorResponse(err);

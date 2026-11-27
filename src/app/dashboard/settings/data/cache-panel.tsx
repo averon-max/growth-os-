@@ -39,6 +39,10 @@ export default function CachePanel() {
     const res = await fetch(`/api/settings/data-cache${query}`, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { setState("error"); setError(d.error ?? "Couldn't save."); return; }
+    // Deleted on the server → also drop the copies this browser keeps for instant loading.
+    if (method === "DELETE") {
+      try { for (const k of Object.keys(localStorage)) if (k.startsWith("hx:v1:")) localStorage.removeItem(k); } catch { /* storage unavailable */ }
+    }
     setData(d); setState("saved"); setTimeout(() => setState("idle"), 1800);
   }
 
@@ -114,7 +118,10 @@ export default function CachePanel() {
           )}
           {data.journal?.length ? (
             <>
-              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 12 }}>Each purchase today, and the page it came from</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>Each purchase today, and the page it came from</span>
+                <button type="button" style={{ height: 28, padding: "0 10px", border: "1px solid var(--border-hover)", borderRadius: 6, background: "transparent", color: "#ff6369", fontSize: 12.5, cursor: "pointer" }} onClick={() => { if (confirm("Delete the purchase journal of the last 14 days? Spending totals stay.")) void send("DELETE", undefined, "?category=journal"); }}>Delete journal</button>
+              </div>
               <div style={{ width: "100%", display: "grid", gap: 4 }}>
                 {data.journal.map((r, i) => (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "60px minmax(0,1fr) minmax(0,1fr) 80px", gap: 12, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>

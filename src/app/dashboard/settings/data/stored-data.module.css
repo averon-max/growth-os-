@@ -1,0 +1,16 @@
+.panel { overflow: hidden; margin-top: 16px; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; }
+.head { padding: 16px 20px; border-bottom: 1px solid #1a1a1a; }
+.title { margin: 0; color: #ededed; font-size: 14px; font-weight: 500; }
+.sub { margin: 4px 0 0; color: #8f8f8f; font-size: 13px; line-height: 1.5; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #141414; }
+.row:last-of-type { border-bottom: 0; }
+.text { min-width: 0; }
+.label { color: #ededed; font-size: 14px; }
+.help { margin-top: 2px; color: #8f8f8f; font-size: 13px; line-height: 1.45; }
+.note { margin-top: 6px; color: #30a46c; font-size: 13px; }
+.count { color: #a1a1a1; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.delete { height: 30px; padding: 0 12px; border: 1px solid #2e2e2e; border-radius: 6px; background: transparent; color: #ff6369; font: inherit; font-size: 13px; cursor: pointer; }
+.delete:hover:not(:disabled) { border-color: rgba(229, 72, 77, 0.5); background: rgba(229, 72, 77, 0.08); }
+.delete:disabled { color: #5a5a5a; cursor: default; }
+.muted { color: #8f8f8f; font-size: 13px; }
+.error { margin: 0; padding: 12px 20px; color: #e5484d; font-size: 13px; }
