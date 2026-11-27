@@ -26,10 +26,13 @@ export function SeriesChart({
   unit,
   top = 7,
   initialMode = "bars",
+  compact = false,
 }: {
   title: string;
   description: string;
   days: SeriesDay[];
+  /** Inside a dashboard widget: no outer padding, shorter plot. */
+  compact?: boolean;
   labels?: Record<string, string>;
   unit: string;
   top?: number;
@@ -54,7 +57,7 @@ export function SeriesChart({
 
   if (!days.length || grand === 0) {
     return (
-      <section className={s.section}>
+      <section className={compact ? `${s.section} ${s.compact}` : s.section}>
         <Header title={title} description={description} mode={mode} setMode={setMode} />
         <p className={s.empty}>No data for this period yet.</p>
       </section>
@@ -73,7 +76,7 @@ export function SeriesChart({
   const hovered = hoverDay !== null ? days[hoverDay] : null;
 
   return (
-    <section className={s.section}>
+    <section className={compact ? `${s.section} ${s.compact}` : s.section}>
       <Header title={title} description={description} mode={mode} setMode={setMode} />
       <div className={s.body}>
         <div className={s.plot} onMouseLeave={() => setHoverDay(null)}>
