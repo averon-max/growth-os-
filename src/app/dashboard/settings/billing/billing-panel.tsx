@@ -17,21 +17,21 @@ type Billing = {
   switches?: { plan: string; name: string; dueNow: number | null; currency: string }[];
 };
 
-const card: React.CSSProperties = { border: "1px solid #1d1e22", borderRadius: 10, overflow: "hidden", marginBottom: 16 };
-const head: React.CSSProperties = { padding: "12px 16px", borderBottom: "1px solid #1d1e22", fontSize: 13, fontWeight: 590, color: "#d0d6e0" };
+const card: React.CSSProperties = { border: "1px solid #1f1f1f", borderRadius: 10, overflow: "hidden", marginBottom: 16 };
+const head: React.CSSProperties = { padding: "12px 16px", borderBottom: "1px solid #1f1f1f", fontSize: 13, fontWeight: 590, color: "#ededed" };
 const body: React.CSSProperties = { padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" };
 const btn: React.CSSProperties = { height: 32, padding: "0 12px", border: "1px solid #2e2e2e", borderRadius: 6, background: "#0a0a0a", color: "#ededed", fontSize: 13, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" };
-const danger: React.CSSProperties = { ...btn, color: "#e08a92", borderColor: "rgba(229,72,77,.3)", background: "rgba(229,72,77,.06)" };
-const muted: React.CSSProperties = { color: "#8a8f98", fontSize: 13, lineHeight: 1.55, margin: 0 };
+const danger: React.CSSProperties = { ...btn, color: "#ff6369", borderColor: "rgba(229,72,77,.3)", background: "rgba(229,72,77,.06)" };
+const muted: React.CSSProperties = { color: "#8f8f8f", fontSize: 13, lineHeight: 1.55, margin: 0 };
 type Usage = { plan: string; rows: { label: string; used: number; limit: number }[]; data: { today: number; month: number } };
 
 function Bar({ label, value, note }: { label: string; value: number; note: string }) {
-  const tone = value >= 100 ? "#e5484d" : value >= 80 ? "#f5a623" : "#ededed";
+  const tone = value >= 100 ? "#e5484d" : value >= 80 ? "#ffb224" : "#ededed";
   return (
-    <div style={{ padding: "12px 16px", borderBottom: "1px solid #17181b" }}>
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid #1a1a1a" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
-        <span style={{ color: "#d0d6e0" }}>{label}</span>
-        <span style={{ color: "#8a8f98", fontVariantNumeric: "tabular-nums" }}>{note}</span>
+        <span style={{ color: "#ededed" }}>{label}</span>
+        <span style={{ color: "#8f8f8f", fontVariantNumeric: "tabular-nums" }}>{note}</span>
       </div>
       <div style={{ height: 4, borderRadius: 2, background: "#1f1f1f", marginTop: 8, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, value)}%`, height: "100%", background: tone, borderRadius: 2, transition: "width .4s ease" }} />
@@ -121,7 +121,7 @@ export default function BillingPanel() {
         <div style={head}>Plan</div>
         <div style={{ ...body, justifyContent: "space-between" }}>
           <div>
-            <div style={{ color: "#f7f8f8", fontSize: 15, fontWeight: 590 }}>
+            <div style={{ color: "#ededed", fontSize: 15, fontWeight: 590 }}>
               {b.plan}{trial ? " · free trial" : ""}{b.source === "manual" && b.planId !== "FREE" ? " · granted" : ""}
             </div>
             <p style={muted}>
@@ -138,7 +138,7 @@ export default function BillingPanel() {
           <Link href="/pricing" style={btn}>{b.planId === "FREE" ? "See plans" : "Change plan"}</Link>
         </div>
         {live ? (
-          <div style={{ ...body, borderTop: "1px solid #1d1e22" }}>
+          <div style={{ ...body, borderTop: "1px solid #1f1f1f" }}>
             {b.cancelAtPeriodEnd ? (
               <button style={btn} disabled={!!busy} onClick={() => void act("resume", "Resume your subscription? It will renew and charge your card as usual.")}>Resume subscription</button>
             ) : (
@@ -156,9 +156,9 @@ export default function BillingPanel() {
         <section style={card}>
           <div style={head}>Change plan</div>
           {b.switches.map((s) => (
-            <div key={s.plan} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #17181b" }}>
+            <div key={s.plan} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #1a1a1a" }}>
               <div>
-                <div style={{ color: "#f7f8f8", fontSize: 14, fontWeight: 590 }}>{s.name}</div>
+                <div style={{ color: "#ededed", fontSize: 14, fontWeight: 590 }}>{s.name}</div>
                 <p style={muted}>
                   {s.dueNow === null
                     ? "You pay only the difference for the rest of this month."
@@ -179,7 +179,7 @@ export default function BillingPanel() {
         <div style={head}>Payment method</div>
         <div style={{ ...body, justifyContent: "space-between" }}>
           <p style={muted}>
-            {b.card ? <><span style={{ color: "#f7f8f8", textTransform: "capitalize" }}>{b.card.brand}</span> ending in {b.card.last4} · expires {b.card.exp}</> : "No card saved."}
+            {b.card ? <><span style={{ color: "#ededed", textTransform: "capitalize" }}>{b.card.brand}</span> ending in {b.card.last4} · expires {b.card.exp}</> : "No card saved."}
             <br />Cards are stored by Stripe. Hyprlyx never sees the full number.
           </p>
           <span style={{ display: "inline-flex", gap: 8 }}>
@@ -197,16 +197,16 @@ export default function BillingPanel() {
         <section style={card}>
           <div style={head}>Invoices</div>
           {b.invoices.map((i) => (
-            <div key={i.id} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #17181b", padding: "10px 16px" }}>
-              <span style={{ color: "#d0d6e0", fontSize: 13 }}>{day(i.date)}</span>
-              <span style={{ color: "#8a8f98", fontSize: 13 }}>{i.amount} · {i.status}</span>
+            <div key={i.id} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #1a1a1a", padding: "10px 16px" }}>
+              <span style={{ color: "#ededed", fontSize: 13 }}>{day(i.date)}</span>
+              <span style={{ color: "#8f8f8f", fontSize: 13 }}>{i.amount} · {i.status}</span>
               {i.url ? <a href={i.url} target="_blank" rel="noreferrer" style={{ ...btn, height: 26 }}>View</a> : <span />}
             </div>
           ))}
         </section>
       ) : null}
 
-      {msg ? <p style={{ fontSize: 13, color: msg.ok ? "#68b77d" : "#e08a92" }}>{msg.text}</p> : null}
+      {msg ? <p style={{ fontSize: 13, color: msg.ok ? "#30a46c" : "#ff6369" }}>{msg.text}</p> : null}
       <p style={muted}>Deleting your account (Settings → Account) also cancels any subscription and removes your saved card.</p>
     </div>
   );

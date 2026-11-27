@@ -74,7 +74,7 @@ export function PlanForm({ workspaceId, plan, source, stripeActive, cancelAtPeri
           <div className={a.form}>
             <label className={a.field} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} />
-              <span className={a.label} style={{ color: "#d0d6e0" }}>Refund the last payment</span>
+              <span className={a.label} style={{ color: "#ededed" }}>Refund the last payment</span>
             </label>
             <button type="button" className={`${a.btn} ${a.btnDanger}`} disabled={busy} onClick={() => void act("remove", { refund }, `Cancel the Stripe subscription now and remove access${refund ? ", and refund the last payment" : ""}? This cannot be undone.`)}>
               {state.busy === "remove" ? "Cancelling…" : "Cancel now and remove access"}

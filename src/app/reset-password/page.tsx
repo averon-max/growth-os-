@@ -23,7 +23,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         <ResetForm token={token} />
       ) : (
         <p style={{ marginTop: 24 }}>
-          <Link href="/forgot-password" style={{ color: "#f7f8f8" }}>Request a new link →</Link>
+          <Link href="/forgot-password" style={{ color: "#ededed" }}>Request a new link →</Link>
         </p>
       )}
     </AuthShell>

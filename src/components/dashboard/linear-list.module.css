@@ -14,11 +14,19 @@
 .half{background:conic-gradient(currentColor 0 50%,transparent 50% 100%)}
 .full{background:currentColor}
 .empty{padding:36px 16px;color:#8f8f8f;text-align:center}
-.r:hover .tt{color:#93c5fd}
+.r:hover .tt{color:#9ccaff}
 .dot{display:none}
 .a{display:flex;gap:6px;flex:0 0 auto}
 .btn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid #262626;border-radius:7px;background:#1a1a1a;color:#ededed;font-size:12px;font-weight:510;cursor:pointer;text-decoration:none}
-.btn:hover{border-color:rgba(59,130,246,.4)}
+.btn:hover{border-color:rgba(0,144,255,.4)}
 .btn:disabled{opacity:.5;cursor:default}
-.blue{border-color:transparent;background:#3b82f6;color:#ededed}
-.blue:hover{background:#4f8ff7}
+.blue{border-color:transparent;background:#0090ff;color:#ededed}
+.blue:hover{background:#52a9ff}
+
+/* ===== Design lock: the last word in this file. Same values on every page (Vercel dark). ===== */
+.gh { height: 40px !important; border-top: 1px solid #1a1a1a !important; border-bottom: 1px solid #1a1a1a !important; background: #0a0a0a !important; color: #a1a1a1 !important; font-size: 13px !important; font-weight: 500 !important; }
+.r { border-bottom: 1px solid #141414 !important; background: transparent !important; }
+.r:hover { background: #111 !important; }
+.n { color: #6b6b6b !important; }
+.btn { border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #0a0a0a !important; color: #ededed !important; box-shadow: none !important; }
+.btn:hover:not(:disabled) { background: #1a1a1a !important; border-color: #3a3a3a !important; }

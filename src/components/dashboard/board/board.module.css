@@ -6,16 +6,16 @@
 .primary { border-color: #ededed; background: #ededed; color: #0a0a0a; }
 .primary:hover { background: #fff; }
 
-.grid { position: relative; transition: height 0.2s ease; }
+.grid { position: relative; }
 .grid[data-mobile] { display: flex; flex-direction: column; gap: 16px; height: auto !important; }
 
-.widget { position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; transition: left 0.22s cubic-bezier(0.2, 0, 0, 1), top 0.22s cubic-bezier(0.2, 0, 0, 1), width 0.22s cubic-bezier(0.2, 0, 0, 1), height 0.22s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s ease, box-shadow 0.15s ease; }
+.widget { position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; transition: left 0.18s cubic-bezier(0.2, 0, 0, 1), top 0.18s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s ease, box-shadow 0.15s ease; will-change: left, top; }
 .grid[data-mobile] .widget { position: relative; }
 .grid[data-edit] .widget { border-color: #2e2e2e; }
 .grid[data-edit] .widget:hover { border-color: #454545; }
 .widget[data-active] { z-index: 10; transition: none; border-color: #6b6b6b !important; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); }
 .grid[data-dragging] { cursor: grabbing; }
-.ghost { position: absolute; z-index: 1; border: 1px dashed #454545; border-radius: 12px; background: rgba(255, 255, 255, 0.02); transition: left 0.12s ease, top 0.12s ease, width 0.12s ease, height 0.12s ease; pointer-events: none; }
+.ghost { position: absolute; z-index: 1; border: 1px dashed #454545; border-radius: 12px; background: rgba(255, 255, 255, 0.02); pointer-events: none; }
 
 .head { display: flex; flex: none; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 16px; border-bottom: 1px solid #1a1a1a; }
 .title { flex: 1; margin: 0; overflow: hidden; color: #ededed; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
@@ -68,7 +68,7 @@
 .bigLink { display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
 .big { color: #ededed; font-size: 36px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
 .big[data-tone="good"] { color: #30a46c; }
-.big[data-tone="warn"] { color: #f5a623; }
+.big[data-tone="warn"] { color: #ffb224; }
 .big[data-tone="bad"] { color: #e5484d; }
 .seoFacts { display: flex; flex-wrap: wrap; gap: 4px 16px; color: #a1a1a1; font-size: 13px; }
 .seoFacts strong { color: #ededed; font-weight: 600; }

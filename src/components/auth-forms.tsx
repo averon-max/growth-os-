@@ -51,7 +51,7 @@ function score(pw: string): number {
   if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
   return Math.max(1, s);
 }
-const METER = ["#1f2125", "#d46670", "#c9a644", "#7fb0ff", "#4daf6d"];
+const METER = ["#1a1a1a", "#e5484d", "#ffb224", "#7fb0ff", "#30a46c"];
 
 function Meter({ value }: { value: string }) {
   const s = score(value);

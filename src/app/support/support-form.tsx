@@ -41,7 +41,7 @@ export default function SupportForm({ email: initialEmail, name: initialName }: 
       )}
       {initialName ? null : (
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="s-name">Name <span style={{ color: "#62666e" }}>(optional)</span></label>
+          <label className={styles.label} htmlFor="s-name">Name <span style={{ color: "#6b6b6b" }}>(optional)</span></label>
           <input id="s-name" className={styles.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         </div>
       )}

@@ -253,8 +253,8 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
             unit="links"
             parts={[
               { key: "do", label: "Dofollow", value: allLinks.filter((l) => l.dofollow).length, color: "#0090ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
-              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#8e4ec6", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
-              { key: "new", label: "New", value: newCount, color: "#12a594", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
+              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#5a5a5a", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
+              { key: "new", label: "New", value: newCount, color: "#52a9ff", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
               { key: "lost", label: "Lost", value: lostCount, color: TONE.bad, active: tab === "links" && only === "lost", onClick: () => pickOnly("lost") },
             ]}
           />
@@ -270,7 +270,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
         <InsightCard title="Rank of linking sites">
           <Columns
             unit="domains"
-            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: ["#3a3a3a", "#e5484d", "#f5a623", "#12a594", "#0090ff", "#30a46c"][i] }))}
+            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: i === 0 ? "#3a3a3a" : "#0090ff" }))}
           />
         </InsightCard>
 

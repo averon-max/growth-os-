@@ -44,7 +44,7 @@
   border: 1px solid #262626;
   border-radius: 4px;
   background: #111111;
-  color: #d0d6e0;
+  color: #ededed;
   font-size: 0.92em;
 }
 
@@ -73,7 +73,7 @@
 :where(.page-content) :where(td) {
   padding: 10px 12px;
   border-bottom: 1px solid #1f1f1f;
-  color: #d0d6e0;
+  color: #ededed;
   font-size: 13px;
 }
 
@@ -105,7 +105,7 @@
 }
 
 :where(.page-content) :where(input, select, textarea):focus {
-  border-color: #3b82f6;
+  border-color: #0090ff;
 }
 
 :where(.page-content) :where(input, textarea)::placeholder {
@@ -113,11 +113,11 @@
 }
 
 :where(.page-content) :where(input[type="checkbox"], input[type="radio"]) {
-  accent-color: #3b82f6;
+  accent-color: #0090ff;
 }
 
 :where(.page-shell) :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline: 2px solid rgba(0,144,255, 0.55);
   outline-offset: 2px;
 }
 
@@ -149,7 +149,7 @@
   border-radius: 8px !important;
   background: #111111 !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  color: #d0d6e0;
+  color: #ededed;
   font-size: 12px;
 }
 
@@ -167,7 +167,7 @@
 /* ---------- мелочи ---------- */
 
 .page-shell ::selection {
-  background: rgba(59, 130, 246, 0.35);
+  background: rgba(0,144,255, 0.35);
   color: #ededed;
 }
 
@@ -189,4 +189,34 @@
 
 .page-shell ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/*
+ * ===== One look for every dashboard page (Vercel dark) =====
+ * Older components take their colours from these variables; the values below replace the earlier
+ * Linear-style theme (blue-grey borders, #0090ff accent) everywhere in the dashboard at once,
+ * including drawers and dialogs that render outside the page.
+ */
+:root:has(.page-shell) {
+  --background: #000;
+  --sidebar: #000;
+  --workspace: #000;
+  --surface: #0a0a0a;
+  --surface-2: #111;
+  --elevated: #111;
+  --border: #1f1f1f;
+  --border-hover: #2e2e2e;
+  --border-strong: #3a3a3a;
+  --primary: #ededed;
+  --secondary: #a1a1a1;
+  --muted: #8f8f8f;
+  --faint: #454545;
+  --accent: #0090ff;
+  --accent-soft: rgba(0, 144, 255, 0.1);
+  --cyan: #52a9ff;
+  --blue: #0090ff;
+  --success: #30a46c;
+  --warning: #ffb224;
+  --danger: #e5484d;
+  --positive-soft: rgba(48, 164, 108, 0.1);
 }

@@ -151,7 +151,7 @@ export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, 
                 <h3 className={s.sectionTitle}>Volume by country</h3>
                 <BarList
                   empty="No country data yet."
-                  rows={[...data.globalVolumes].sort((a, b) => b.volume - a.volume).map((g, i) => ({ key: g.code, label: `${g.flag} ${g.label}`, value: g.volume, color: ["#0090ff", "#12a594", "#f5a623", "#8e4ec6"][i % 4] }))}
+                  rows={[...data.globalVolumes].sort((a, b) => b.volume - a.volume).map((g, i) => ({ key: g.code, label: `${g.flag} ${g.label}`, value: g.volume, color: undefined }))}
                 />
                 {others > 0 ? (
                   <button type="button" className={s.more} onClick={loadOtherMarkets} disabled={moreBusy}>

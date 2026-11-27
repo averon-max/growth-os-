@@ -97,7 +97,7 @@ export default async function PricingPage() {
             })}
           </div>
           <p className={s.muted} style={{ marginTop: 22, fontSize: 14, textAlign: "center" }}>
-            Just looking? <Link href="/signup" style={{ color: "#f7f8f8" }}>Create a free account</Link> with one website and the overview — no card needed.
+            Just looking? <Link href="/signup" style={{ color: "#ededed" }}>Create a free account</Link> with one website and the overview — no card needed.
           </p>
         </div>
       </section>
@@ -126,8 +126,8 @@ export default async function PricingPage() {
           <h2 className={s.h2} style={{ marginBottom: 28 }}>Billing questions</h2>
           <div className={s.faq}>{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
           <p className={s.muted} style={{ marginTop: 28, fontSize: 14 }}>
-            Still have a question? <Link href="/support" style={{ color: "#f7f8f8" }}>Contact support</Link>. See also our{" "}
-            <Link href="/terms" style={{ color: "#f7f8f8" }}>Terms</Link>.
+            Still have a question? <Link href="/support" style={{ color: "#ededed" }}>Contact support</Link>. See also our{" "}
+            <Link href="/terms" style={{ color: "#ededed" }}>Terms</Link>.
           </p>
         </div>
       </section>

@@ -52,10 +52,10 @@ type AnalyticsResponse = {
 const SIGNAL: Record<KeywordSignal, { label: string; group: string; status: LStatus; tone: string; hint: string; order: number }> = {
   QUICK_WIN: { label: "Quick win", group: "Quick wins", status: "yellow", tone: "#ffb224", hint: "close to the top — push this page", order: 0 },
   RISING: { label: "Rising", group: "Rising", status: "blue", tone: "#0090ff", hint: "climbing — strengthen the page now", order: 1 },
-  DECLINING: { label: "Declining", group: "Declining", status: "red", tone: "#eb5757", hint: "dropping — review page and competitors", order: 2 },
+  DECLINING: { label: "Declining", group: "Declining", status: "red", tone: "#e5484d", hint: "dropping — review page and competitors", order: 2 },
   TOP: { label: "Top", group: "Holding the top", status: "green", tone: "#30a46c", hint: "near the top — hold the position", order: 3 },
-  IMPROVE: { label: "Improve", group: "Room to grow", status: "gray", tone: "#d0d6e0", hint: "find what holds the page back", order: 4 },
-  NO_VISIBILITY: { label: "Not visible", group: "Not visible yet", status: "gray", tone: "#8a8f98", hint: "Google rarely shows the site", order: 5 },
+  IMPROVE: { label: "Improve", group: "Room to grow", status: "gray", tone: "#ededed", hint: "find what holds the page back", order: 4 },
+  NO_VISIBILITY: { label: "Not visible", group: "Not visible yet", status: "gray", tone: "#8f8f8f", hint: "Google rarely shows the site", order: 5 },
 };
 
 const METRICS: { id: Metric; label: string }[] = [

@@ -6,9 +6,9 @@ import s from "./traffic.module.css";
 
 type Key = "clicks" | "impressions" | "visitors";
 const PANELS: { key: Key; title: string; source: string; color: string }[] = [
-  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#f5a623" },
+  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#0090ff" },
   { key: "impressions", title: "Google impressions", source: "Search Console", color: "#0090ff" },
-  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#12a594" },
+  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#0090ff" },
 ];
 const H = 110;
 const PAD = { top: 10, bottom: 6, left: 0, right: 0 };
@@ -68,7 +68,7 @@ export function DailyChart({ now, before, days }: { now: DayPoint[]; before: Day
             return (
               <div key={p.key} className={s.chartRow}>
                 <div className={s.chartMeta}>
-                  <span className={s.chartTitle}><i className={s.seriesDot} style={{ background: p.color }} />{p.title}</span>
+                  <span className={s.chartTitle}>{p.title}</span>
                   <span className={s.chartSource}>{p.source}</span>
                   {hover === null && delta !== null ? (
                     <span className={s.chartDelta} data-tone={delta > 0 ? "up" : delta < 0 ? "down" : undefined}>{delta > 0 ? "+" : ""}{delta}%</span>

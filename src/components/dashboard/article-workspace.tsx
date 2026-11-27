@@ -1868,7 +1868,7 @@ ${article.bodyMarkdown}`
                 {readerPreview.readerMarkdown}
               </ReactMarkdown>
               {readerPreview.researchLinks.length>0 ? (
-                <details style={{fontSize:12,color:"#9CA0A8",marginTop:24}}>
+                <details style={{fontSize:12,color:"#a1a1a1",marginTop:24}}>
                   <summary>Reference links (optional)</summary>
                   <ul style={{paddingLeft:18,marginTop:6}}>
                     {readerPreview.researchLinks.map(ref=>(
@@ -2331,13 +2331,13 @@ ${article.bodyMarkdown}`
                       >
                         <stop
                           offset="0%"
-                          stopColor="#3b82f6"
+                          stopColor="#0090ff"
                           stopOpacity={0.24}
                         />
 
                         <stop
                           offset="100%"
-                          stopColor="#3b82f6"
+                          stopColor="#0090ff"
                           stopOpacity={0}
                         />
                       </linearGradient>
@@ -3378,7 +3378,7 @@ ${article.bodyMarkdown}`
                       type="monotone"
                       dataKey="uniqueVisitors"
                       name="Unique visitors"
-                      stroke="#93c5fd"
+                      stroke="#9ccaff"
                       dot={
                         false
                       }

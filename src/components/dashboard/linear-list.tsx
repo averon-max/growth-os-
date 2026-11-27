@@ -6,15 +6,15 @@ export type LStatus = "red" | "green" | "yellow" | "gray" | "blue";
 export interface LRow { key: string; id?: string; status: LStatus; title: string; hint?: string; pills?: { label: string; dot?: string }[]; metrics?: string[]; date?: string; onClick?: () => void; actions?: ReactNode }
 export interface LGroup { title: string; count: number; status: LStatus; rows: LRow[] }
 
-const COLOR: Record<LStatus, string> = { red: "#eb5757", green: "#30a46c", yellow: "#ffb224", gray: "#62666d", blue: "#3b82f6" };
+const COLOR: Record<LStatus, string> = { red: "#e5484d", green: "#30a46c", yellow: "#ffb224", gray: "#6b6b6b", blue: "#0090ff" };
 const SHAPE: Record<LStatus, string> = { red: s.half, green: s.full, yellow: s.half, gray: "", blue: s.full };
 
 const TONE: Record<string, string> = {
   informational: "#0090ff", commercial: "#ffb224", transactional: "#30a46c", navigational: "#f76b15",
-  dofollow: "#30a46c", nofollow: "#8a8f98", clean: "#30a46c", spam: "#eb5757", pbn: "#eb5757",
-  new: "#ffb224", lost: "#8a8f98", tracked: "#ffb224",
+  dofollow: "#30a46c", nofollow: "#8f8f8f", clean: "#30a46c", spam: "#e5484d", pbn: "#e5484d",
+  new: "#ffb224", lost: "#8f8f8f", tracked: "#ffb224",
 };
-const PALETTE = ["#0090ff", "#ffb224", "#30a46c", "#f76b15", "#d0d6e0"];
+const PALETTE = ["#0090ff", "#ffb224", "#30a46c", "#f76b15", "#ededed"];
 function pillTone(p: { label: string; dot?: string }): string {
   if (p.dot) return p.dot;
   const k = p.label.toLowerCase().trim();
@@ -26,7 +26,7 @@ function pillTone(p: { label: string; dot?: string }): string {
 /** Pills are neutral (Vercel tables keep colour for what needs attention); only red marks a problem. */
 function pillStyle(p: { label: string; dot?: string }) {
   const c = pillTone(p);
-  const bad = c === "#eb5757" || c === "#e5484d";
+  const bad = c === "#e5484d" || c === "#e5484d";
   return bad ? { color: "#e5484d", borderColor: "#e5484d40", background: "#e5484d14" } : { color: "#a1a1a1", borderColor: "#2e2e2e", background: "transparent" };
 }
 

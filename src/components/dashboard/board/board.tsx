@@ -81,7 +81,23 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
     return { rect: { left, top, width: w, height: h }, target };
   };
 
-  const current = drag ? live(drag) : null;
+  // Hysteresis: the drop place changes only once the pointer is well into the next cell, so neighbours don't flicker.
+  const lastTarget = useRef<Item | null>(null);
+  const rawCurrent = drag ? live(drag) : null;
+  let held = rawCurrent;
+  if (rawCurrent && drag) {
+    const prev = lastTarget.current && lastTarget.current.id === drag.id ? lastTarget.current : null;
+    const t = rawCurrent.target;
+    const rx = rawCurrent.rect.left / cw, ry = rawCurrent.rect.top / RH;
+    const rw = (rawCurrent.rect.width + GAP) / cw, rh = (rawCurrent.rect.height + GAP) / RH;
+    const near = prev && Math.abs(rx - prev.x) < 0.7 && Math.abs(ry - prev.y) < 0.7 && Math.abs(rw - prev.w) < 0.7 && Math.abs(rh - prev.h) < 0.7;
+    const target = near && prev ? prev : t;
+    lastTarget.current = target;
+    held = { rect: rawCurrent.rect, target };
+  } else {
+    lastTarget.current = null;
+  }
+  const current = held;
   const shown = current && drag ? resolve(items.map((i) => (i.id === drag.id ? current.target : i)), drag.id) : items;
 
   const save = useCallback((next: Item[]) => {
@@ -192,7 +208,10 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
                   <button type="button" className={s.close} onClick={() => remove(it.id)} aria-label={`Remove ${SPEC[it.type].title}`}><X size={14} /></button>
                 ) : null}
               </header>
-              <div className={s.body}><WidgetBody type={it.type} d={data} w={Math.round(it.w / 2)} /></div>
+              {/* While stretching, the contents keep their size (no chart redraw on every frame) and settle on drop. */}
+              <div className={s.body} style={active && drag && drag.mode !== "move" ? { flex: "none", width: rectOf(drag.orig).width, height: rectOf(drag.orig).height - 44 } : undefined}>
+                <WidgetBody type={it.type} d={data} w={Math.round(it.w / 2)} />
+              </div>
               {edit && !mobile
                 ? EDGES.map((edge) => (
                     <span key={edge} className={s.handle} data-edge={edge} onPointerDown={(e) => start(e, it, edge)} aria-hidden />

@@ -75,3 +75,8 @@ button.kpi:hover { background: #111111; }
 .legendInline { display: flex; flex-wrap: wrap; gap: 4px 14px; color: #8f8f8f; font-size: 12px; }
 .legendInline span { display: inline-flex; align-items: center; gap: 6px; }
 .legendInline b { color: #ededed; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Columns without grey tracks: only the bars and a baseline, like Vercel charts. */
+.colTrack { background: transparent !important; border-bottom: 1px solid #262626; border-radius: 0 !important; }
+.colFill { border-radius: 3px 3px 0 0 !important; }
+button.col:hover .colTrack, .col[data-active] .colTrack { background: rgba(255, 255, 255, 0.03) !important; }

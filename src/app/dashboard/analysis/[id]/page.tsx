@@ -60,12 +60,12 @@ const typeLabel = (t: string, fallback: string) => TYPE_LABEL[t] ?? (fallback ||
 
 function verdict(score: number | null) {
   if (score === null) return { text: "Not scored", tone: "#6b6f76" };
-  if (score >= 90) return { text: "Good", tone: "#4daf6d" };
+  if (score >= 90) return { text: "Good", tone: "#30a46c" };
   if (score >= 70) return { text: "Fair", tone: "#9cc46b" };
   if (score >= 50) return { text: "Needs work", tone: "#d4a94e" };
   return { text: "Poor", tone: "#e5484d" };
 }
-const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#ffb224" } : score >= 60 ? { text: "Medium impact", tone: "#0090ff" } : { text: "Low impact", tone: "#8a8f98" });
+const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#ffb224" } : score >= 60 ? { text: "Medium impact", tone: "#0090ff" } : { text: "Low impact", tone: "#8f8f8f" });
 const path = (u: string) => { try { const x = new URL(u); return x.pathname + x.search || "/"; } catch { return u; } };
 const pl = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const tone = (c: string) => ({ "--tone": c }) as React.CSSProperties;

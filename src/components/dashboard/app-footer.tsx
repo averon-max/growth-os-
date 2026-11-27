@@ -32,7 +32,7 @@ export function AppFooter() {
         <div className={styles.top}>
           <div className={styles.brand}>
             <Link href={withSite("/dashboard", site)} className={styles.brandRow}>
-              <span aria-hidden style={{ width: 24, height: 24, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 6, background: "#000", border: "1px solid #2a2c31", color: "#f7f8f8", fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 16, fontWeight: 500, lineHeight: 1, paddingBottom: 2 }}>h</span>
+              <span aria-hidden style={{ width: 24, height: 24, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 6, background: "#000", border: "1px solid #2a2c31", color: "#ededed", fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 16, fontWeight: 500, lineHeight: 1, paddingBottom: 2 }}>h</span>
               Hyprlyx
             </Link>
             <p className={styles.tagline}>

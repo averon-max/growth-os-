@@ -158,7 +158,7 @@
 }
 
 .down {
-  color: #eb5757;
+  color: #e5484d;
 }
 
 /* распределение позиций */
@@ -265,9 +265,9 @@
 }
 
 .chip[data-on="true"] {
-  border-color: rgba(59, 130, 246, 0.35);
-  background: rgba(59, 130, 246, 0.1);
-  color: #93c5fd;
+  border-color: rgba(0,144,255, 0.35);
+  background: rgba(0,144,255, 0.1);
+  color: #9ccaff;
 }
 
 .chart {
@@ -330,3 +330,18 @@ button.metric { border: 0; background: none; color: inherit; font: inherit; text
 button.metric:hover { background: #111111; }
 .metric[data-on] { background: #111111; box-shadow: inset 0 -2px 0 #ededed; }
 .metricDot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; vertical-align: 0; }
+
+/* ===== Design lock: the last word in this file. Same values on every page (Vercel dark). ===== */
+.segment { display: inline-flex !important; gap: 2px !important; padding: 3px !important; border: 1px solid #1f1f1f !important; border-radius: 8px !important; background: #0a0a0a !important; box-shadow: none !important; }
+.segmentBtn { height: 30px !important; padding: 0 12px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.segmentBtn:hover { background: #141414 !important; color: #ededed !important; }
+.segmentBtn[data-on="true"] { background: #1f1f1f !important; color: #ededed !important; box-shadow: none !important; }
+.chips { display: inline-flex !important; gap: 2px !important; padding: 3px !important; border: 1px solid #1f1f1f !important; border-radius: 8px !important; background: #0a0a0a !important; box-shadow: none !important; }
+.chip { height: 30px !important; padding: 0 12px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.chip:hover { background: #141414 !important; color: #ededed !important; }
+.chip[data-on="true"] { background: #1f1f1f !important; color: #ededed !important; box-shadow: none !important; }
+.panel { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
+.panelHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
+.list { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
+.listHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
+.metricDot { display: none !important; }

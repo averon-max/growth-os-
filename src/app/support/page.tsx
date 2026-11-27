@@ -12,7 +12,7 @@ export default async function SupportPage() {
   return (
     <AuthShell
       title="How can we help?"
-      subtitle={<>We usually reply within one business day. You can also email <a href="mailto:support@hyprlyx.com" style={{ color: "#f7f8f8" }}>support@hyprlyx.com</a>.</>}
+      subtitle={<>We usually reply within one business day. You can also email <a href="mailto:support@hyprlyx.com" style={{ color: "#ededed" }}>support@hyprlyx.com</a>.</>}
       footer={<Link href={session ? "/dashboard" : "/"}>← Back</Link>}
     >
       <SupportForm email={session?.user?.email ?? ""} name={session?.user?.name ?? ""} />

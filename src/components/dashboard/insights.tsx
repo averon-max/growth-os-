@@ -156,13 +156,13 @@ export function Columns({ cols, height = 120, unit }: { cols: Column[]; height?:
   const max = Math.max(...cols.map((c) => c.value), 1);
   return (
     <div className={s.columns} style={{ height: height + 28 }}>
-      {cols.map((c, i) => {
+      {cols.map((c) => {
         const h = c.value === 0 ? 2 : Math.max(4, (c.value / max) * height);
         const bar = (
           <>
             <span className={s.colValue}>{c.value ? fmtNum(c.value) : ""}</span>
             <span className={s.colTrack} style={{ height }}>
-              <span className={s.colFill} style={{ height: h, background: c.value ? (c.color ?? PALETTE[i % PALETTE.length]) : "var(--ds-gray-400)" }} />
+              <span className={s.colFill} style={{ height: h, background: c.value ? (c.color ?? "#0090ff") : "#262626" }} />
             </span>
             <span className={s.colLabel}>{c.label}</span>
           </>

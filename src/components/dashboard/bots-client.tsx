@@ -7,7 +7,7 @@ import u from "./ui.module.css";
 import p from "./planner.module.css";
 import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar } from "./insights";
 
-const GROUP_COLOR: Record<string, string> = { "Search engines": "#30a46c", "AI crawlers & assistants": "#8e4ec6", "SEO tools": "#f5a623", "Other bots": "#0090ff" };
+const GROUP_COLOR: Record<string, string> = { "Search engines": "#0090ff", "AI crawlers & assistants": "#52a9ff", "SEO tools": "#0b68cb", "Other bots": "#5a5a5a" };
 const isAsset = (path: string) => /^\/_next\/|\.(js|css|png|jpe?g|webp|svg|ico|woff2?|map|txt|xml)$/i.test(path);
 
 interface BotsData {
@@ -81,7 +81,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
                 <StackBar unit="req" parts={Object.entries(g as Record<string, number>).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ key: name, label: name, value: n, color: GROUP_COLOR[name] ?? "#3a3a3a", onClick: () => setTab("categories") }))} />
               </InsightCard>
               <InsightCard title="Bot requests per day" meta={`${days} days`}>
-                <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#8e4ec6", onClick: () => setTab("daily") }))} />
+                <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#0090ff", onClick: () => setTab("daily") }))} />
               </InsightCard>
               <InsightCard title="Most crawled pages" action={<button type="button" onClick={() => setTab("pages")}>All pages</button>}>
                 <BarList empty="No page data." rows={(data.pages ?? []).filter((x) => !isAsset(x.path)).sort((a, b) => b.bots - a.bots).slice(0, 6).map((x) => ({ key: x.path, label: x.path, value: x.bots, hint: x.top ? `Mostly ${x.top}` : undefined, onClick: () => setTab("pages") }))} />

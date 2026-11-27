@@ -308,11 +308,11 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
         const on = (ids: string[]) => tab === "keywords" && chips.length === ids.length && ids.every((x) => chips.includes(x));
         const kws = report?.keywords ?? [];
         const posBuckets: [string, string, (n: number | null) => boolean, string][] = [
-          ["top3", "1–3", (n) => n !== null && n <= 3, "#30a46c"],
-          ["p4", "4–10", (n) => n !== null && n > 3 && n <= 10, "#12a594"],
+          ["top3", "1–3", (n) => n !== null && n <= 3, "#0090ff"],
+          ["p4", "4–10", (n) => n !== null && n > 3 && n <= 10, "#0090ff"],
           ["p11", "11–20", (n) => n !== null && n > 10 && n <= 20, "#0090ff"],
-          ["p21", "21–50", (n) => n !== null && n > 20 && n <= 50, "#f5a623"],
-          ["p51", "51+", (n) => n !== null && n > 50, "#e5484d"],
+          ["p21", "21–50", (n) => n !== null && n > 20 && n <= 50, "#0090ff"],
+          ["p51", "51+", (n) => n !== null && n > 50, "#0090ff"],
           ["none", "Not ranking", (n) => n === null, "#3a3a3a"],
         ];
         const intents = ["Informational", "Commercial", "Transactional", "Navigational"];

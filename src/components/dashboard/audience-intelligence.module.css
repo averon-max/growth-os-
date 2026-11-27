@@ -186,14 +186,14 @@
 }
 
 .rangeButton:hover {
-  color: #d0d6e0;
+  color: #ededed;
 
   background:
     rgba(255,255,255,.025);
 }
 
 .rangeButtonActive {
-  color: #d0d6e0;
+  color: #ededed;
 
   background:
     rgba(255,255,255,.09);
@@ -235,7 +235,7 @@
 
 .actionButton:hover,
 .iconButton:hover {
-  color: #d0d6e0;
+  color: #ededed;
 
   border-color:
     #262626;
@@ -245,7 +245,7 @@
 }
 
 .syncButton {
-  color: #d0d6e0;
+  color: #ededed;
 
   border-color:
     rgba(106,149,218,.18);

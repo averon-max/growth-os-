@@ -1,27 +1,36 @@
-/* Dotted world map (Vercel CDN regions style). Pure black, grey dots, blue circles. */
-.wrap { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 24px; align-items: center; padding: 20px 24px; background: #000; }
-.wrapMapOnly { position: relative; padding: 12px; background: #000; }
-.list { margin: 0; padding: 0; list-style: none; }
-.row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 12px; height: 30px; padding: 0 8px; border-radius: 6px; color: var(--ds-gray-1000); font-size: var(--ds-text-14); cursor: default; }
-.row:hover, .row[data-active] { background: var(--ds-gray-100); }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: #3291ff; }
+/* World map with country shapes: dark land, countries with traffic in Vercel blue by share. */
+.wrap { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 32px; align-items: center; padding: 20px 24px; }
+.wrapMapOnly { position: relative; padding: 12px 0; }
+.list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.row { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: #ededed; font-size: 13px; cursor: default; }
+.row:hover, .row[data-active] { background: #111; }
+.rank { color: #6b6b6b; font-size: 12px; font-variant-numeric: tabular-nums; }
 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pct { color: var(--ds-gray-1000); font-variant-numeric: tabular-nums; }
-.empty { padding: 12px 8px; color: var(--ds-gray-900); font-size: var(--ds-text-14); }
+.pct { color: #a1a1a1; font-variant-numeric: tabular-nums; }
+.bar { position: absolute; right: 10px; bottom: 3px; left: 38px; height: 2px; overflow: hidden; border-radius: 1px; background: transparent; }
+.bar i { display: block; height: 100%; border-radius: 1px; background: #0090ff; opacity: 0.55; }
+.row[data-active] .bar i { opacity: 1; }
+.empty { padding: 12px 8px; color: #8f8f8f; font-size: 13px; }
+
 .mapBox { position: relative; min-width: 0; }
-.map { display: block; width: 100%; height: auto; }
-.land { fill: #3d3d3d; }
-.bubble { fill: #2f7df6; stroke: #000; stroke-width: 1.5; cursor: pointer; transition: fill-opacity 0.12s ease; }
-.bubble[data-active] { fill: #52a8ff; }
-.tip { position: absolute; top: 8px; right: 8px; display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; border: 1px solid var(--ds-gray-400); border-radius: 6px; background: #0a0a0a; color: var(--ds-gray-900); font-size: var(--ds-text-13); pointer-events: none; }
-.tip strong { color: var(--ds-gray-1000); font-weight: 500; font-variant-numeric: tabular-nums; }
-.tip em { font-style: normal; }
+.map { display: block; width: 100%; height: auto; overflow: hidden; }
+.land { fill: #1c1c1c; stroke: #0a0a0a; stroke-width: 0.6; stroke-linejoin: round; transition: fill 0.15s ease; }
+.land[data-active] { fill: #2a2a2a; }
+.hot { stroke: #0a0a0a; stroke-width: 0.6; stroke-linejoin: round; cursor: pointer; transition: fill 0.15s ease; }
+
+.pin { cursor: pointer; }
+.pinRing { fill: rgba(0, 144, 255, 0.18); stroke: rgba(82, 169, 255, 0.45); stroke-width: 0.8; transition: r 0.15s ease; }
+.pinDot { fill: #ededed; stroke: #0a0a0a; stroke-width: 0.8; }
+.pin[data-active] .pinRing { fill: rgba(82, 169, 255, 0.3); stroke: #52a9ff; }
+.tip { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; border: 1px solid #2e2e2e; border-radius: 8px; background: rgba(10, 10, 10, 0.96); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); color: #ededed; font-size: 13px; white-space: nowrap; transform: translate(12px, -120%); pointer-events: none; }
+.tip strong { font-weight: 500; font-variant-numeric: tabular-nums; }
+.tip em { color: #8f8f8f; font-style: normal; }
 @media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
-@media (prefers-reduced-motion: reduce) { .bubble { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .land, .hot { transition: none; } }
 
 /* Inside a resizable dashboard widget: the map takes the whole box and grows with it; the list scrolls. */
-.fill { height: 100%; padding: 0; background: transparent; }
-.fill.wrap { grid-template-columns: minmax(160px, 30%) minmax(0, 1fr); padding: 0; }
-.fill .list { max-height: 100%; overflow: auto; }
-.fill .mapBox { height: 100%; }
+.fill { height: 100%; padding: 0; }
+.fill.wrap { grid-template-columns: minmax(170px, 30%) minmax(0, 1fr); gap: 20px; padding: 0; }
+.fill .list { max-height: 100%; overflow: auto; scrollbar-width: none; }
+.fill .mapBox { display: flex; height: 100%; align-items: center; }
 .fill .map { width: 100%; height: 100%; }

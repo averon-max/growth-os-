@@ -135,7 +135,7 @@
 }
 
 .pageButton:hover {
-  color: #d0d6e0;
+  color: #ededed;
 }
 
 .pageButton:disabled {
@@ -202,11 +202,11 @@
 }
 
 .select:hover {
-  color: #d0d6e0;
+  color: #ededed;
 }
 
 .searchBox:focus-within {
-  border-color: rgba(59,130,246,.28);
+  border-color: rgba(0,144,255,.28);
 
   box-shadow:
     none;

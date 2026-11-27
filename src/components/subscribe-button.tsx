@@ -10,7 +10,7 @@ const STYLES: Record<Variant, { background: string; color: string }> = {
   dark: { background: "#0a0a0a", color: "#f2f1ed" },
   gold: { background: "#d4a030", color: "#0a0a0a" },
   light: { background: "#f2f1ed", color: "#0a0a0a" },
-  accent: { background: "#3b82f6", color: "#ffffff" },
+  accent: { background: "#0090ff", color: "#ffffff" },
 };
 
 export default function SubscribeButton({
