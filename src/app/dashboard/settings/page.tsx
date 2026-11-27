@@ -2,10 +2,7 @@ import Link from "next/link";
 import {
   Building2,
   Cable,
-  CreditCard,
-  Database,
   Globe,
-  UserRound,
 } from "lucide-react";
 
 import {
@@ -21,6 +18,7 @@ import {
 } from "@/lib/keywords/repository";
 
 import { SettingsShell } from "@/components/dashboard/settings/settings-shell";
+import shell from "@/components/dashboard/settings/settings-shell.module.css";
 import {
   Topbar,
 } from "@/components/dashboard/topbar";
@@ -148,43 +146,9 @@ export default async function SettingsPage() {
     <SettingsShell
       active="general"
       title="General"
-      description={`${workspace.name} · connections, websites and shortcuts to every setting.`}
+      description={`${workspace.name} · workspace, connections and websites.`}
     >
-        <div className={styles.settingsGrid}>
-          <div className={styles.group}>
-            <div className={styles.groupHeader}><span className={styles.groupLabel}>Account</span></div>
-            <div className={styles.issueRow}>
-              <div className={styles.issueMain}>
-                <UserRound size={14} className={styles.rowIcon} />
-                <div>
-                  <div className={styles.issueTitle}>{user.email}</div>
-                  <div className={styles.issueDesc}>Profile, password, sessions, delete account</div>
-                </div>
-              </div>
-              <div className={styles.issueMeta}><Link href="/dashboard/settings/account" className={styles.link}>Manage →</Link></div>
-            </div>
-            <div className={styles.issueRow}>
-              <div className={styles.issueMain}>
-                <CreditCard size={14} className={styles.rowIcon} />
-                <div>
-                  <div className={styles.issueTitle}>Billing</div>
-                  <div className={styles.issueDesc}>Plan, card, invoices, cancel subscription</div>
-                </div>
-              </div>
-              <div className={styles.issueMeta}><Link href="/dashboard/settings/billing" className={styles.link}>Manage →</Link></div>
-            </div>
-            <div className={styles.issueRow}>
-              <div className={styles.issueMain}>
-                <Database size={14} className={styles.rowIcon} />
-                <div>
-                  <div className={styles.issueTitle}>Data retention</div>
-                  <div className={styles.issueDesc}>How long reports, scans and drafts are kept</div>
-                </div>
-              </div>
-              <div className={styles.issueMeta}><Link href="/dashboard/settings/data" className={styles.link}>Manage →</Link></div>
-            </div>
-          </div>
-
+        <div className={shell.stack}>
           <div className={styles.group}>
             <div className={styles.groupHeader}>
               <span className={styles.groupLabel}>
@@ -289,11 +253,6 @@ export default async function SettingsPage() {
             ) : (
               websites.map(
                 (website) => {
-                  const cmsStatus =
-                    website
-                      .cmsConnection
-                      ?.status ??
-                    "DISCONNECTED";
 
                   return (
                     <div
@@ -318,23 +277,11 @@ export default async function SettingsPage() {
                       </div>
 
                       <div className={styles.issueMeta}>
-                        <Badge
-                          tone={
-                            CMS_STATUS_TONE[
-                              cmsStatus
-                            ]
-                          }
-                        >
-                          {website.cmsConnection
-                            ? `CMS ${cmsStatus.toLowerCase()}`
-                            : "No CMS"}
-                        </Badge>
-
                         <Link
-                          href={`/dashboard/cms/${website.id}`}
+                          href={`/dashboard/seo?websiteId=${website.id}`}
                           className={styles.link}
                         >
-                          Manage →
+                          SEO audit →
                         </Link>
                       </div>
                     </div>

@@ -9,7 +9,8 @@ import a from "./admin.module.css";
 import { CleanupButton } from "./cleanup-button";
 import { planPrices } from "@/lib/billing/prices";
 import { lastCleanup } from "@/lib/retention";
-import { SETTINGS_KEY, normalizeDfs } from "@/lib/dataforseo/cache-settings";
+import { DFS_CATEGORIES, SETTINGS_KEY, normalizeDfs, type DfsCategory } from "@/lib/dataforseo/cache-settings";
+import { BarList, Columns, InsightCard, InsightGrid } from "@/components/dashboard/insights";
 
 export const dynamic = "force-dynamic";
 
@@ -52,13 +53,20 @@ export default async function AdminOverview() {
   const mrr = paying.reduce((sum, s) => sum + prices[s.plan as PlanId], 0);
   const manual = live.filter((s) => s.source !== "stripe").length;
 
+  const spendRows = await prisma.dfsSpend.findMany({ where: { date: { gte: new Date(Date.now() - 30 * 86_400_000) } }, select: { date: true, category: true, cost: true } });
+  const spendDays = Array.from({ length: 30 }, (_, k) => {
+    const d = new Date(Date.now() - (29 - k) * 86_400_000);
+    const key = d.toISOString().slice(0, 10);
+    return { key, label: k % 5 === 4 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "", cost: spendRows.filter((r) => r.date.toISOString().slice(0, 10) === key).reduce((n, r) => n + r.cost, 0) };
+  });
+
   const stats = [
-    { label: "Users", value: users.toLocaleString(), note: <><span className={a.up}>+{new7}</span> this week · +{new30} in 30 days</> },
-    { label: "Paying", value: paying.length.toLocaleString(), note: `${users ? Math.round((paying.length / users) * 1000) / 10 : 0}% of users · ${manual} manual` },
-    { label: "MRR", value: money(mrr), note: "from Stripe subscriptions" },
-    { label: "Free trials", value: trials.length.toLocaleString(), note: trials[0]?.currentPeriodEnd ? `next ends ${day(trials[0].currentPeriodEnd)}` : "7 days, card on file" },
-    { label: "Open inbox", value: openTickets.toLocaleString(), note: `${newTickets} new this week` },
-    { label: "Data spend", value: `$${(spendToday._sum.cost ?? 0).toFixed(2)}`, note: `today, limit $${budget} · $${(spend30._sum.cost ?? 0).toFixed(2)} in 30 days` },
+    { label: "Users", href: "/dashboard/admin/users", value: users.toLocaleString(), note: <><span className={a.up}>+{new7}</span> this week · +{new30} in 30 days</> },
+    { label: "Paying", href: "/dashboard/admin/subscriptions", value: paying.length.toLocaleString(), note: `${users ? Math.round((paying.length / users) * 1000) / 10 : 0}% of users · ${manual} manual` },
+    { label: "MRR", href: "/dashboard/admin/subscriptions", value: money(mrr), note: "from Stripe subscriptions" },
+    { label: "Free trials", href: "/dashboard/admin/subscriptions", value: trials.length.toLocaleString(), note: trials[0]?.currentPeriodEnd ? `next ends ${day(trials[0].currentPeriodEnd)}` : "7 days, card on file" },
+    { label: "Open inbox", href: "/dashboard/admin/inbox", value: openTickets.toLocaleString(), note: `${newTickets} new this week` },
+    { label: "Data spend", href: "/dashboard/settings/data", value: `$${(spendToday._sum.cost ?? 0).toFixed(2)}`, note: `today, limit $${budget} · $${(spend30._sum.cost ?? 0).toFixed(2)} in 30 days` },
   ];
 
   return (
@@ -69,13 +77,32 @@ export default async function AdminOverview() {
 
         <div className={a.stats}>
           {stats.map((s) => (
-            <div key={s.label} className={a.stat}>
+            <Link key={s.label} href={s.href} className={a.stat} style={{ textDecoration: "none" }}>
               <div className={a.statLabel}>{s.label}</div>
               <div className={a.statValue}>{s.value}</div>
               <div className={a.statNote}>{s.note}</div>
-            </div>
+            </Link>
           ))}
         </div>
+
+        <InsightGrid cols={2}>
+          <InsightCard title="Paid data, last 30 days" meta={`$${spendRows.reduce((n, r) => n + r.cost, 0).toFixed(2)} total`} action={<Link href="/dashboard/settings/data">Limits and pause</Link>}>
+            <Columns
+              height={100}
+              unit="USD"
+              cols={spendDays.map((d) => ({ key: d.key, label: d.label, value: Math.round(d.cost * 100) / 100, color: d.cost > budget ? "#f43f5e" : "#0a84ff", hint: `$${d.cost.toFixed(3)}` }))}
+            />
+          </InsightCard>
+          <InsightCard title="Where the money went" meta="30 days, by kind">
+            <BarList
+              unit="USD"
+              empty="Nothing paid in 30 days."
+              rows={Object.entries(spendRows.reduce<Record<string, number>>((acc, r) => { acc[r.category] = (acc[r.category] ?? 0) + r.cost; return acc; }, {}))
+                .sort((x, y) => y[1] - x[1])
+                .map(([cat, cost]) => ({ key: cat, label: DFS_CATEGORIES[cat as DfsCategory]?.label ?? cat, value: Math.round(cost * 100) / 100 }))}
+            />
+          </InsightCard>
+        </InsightGrid>
 
         <div className={a.cols}>
           <section className={a.panel}>

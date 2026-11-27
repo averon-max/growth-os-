@@ -107,3 +107,5 @@
 .ghost { height: 32px !important; border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #0a0a0a !important; color: #ededed !important; font-size: 13px !important; }
 .ghost:hover:not(:disabled) { background: #1a1a1a !important; }
 .search { height: 32px !important; border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #000 !important; color: #ededed !important; font-size: 13px !important; }
+.run { height: 32px !important; border: 1px solid #ededed !important; border-radius: 6px !important; background: #ededed !important; color: #0a0a0a !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.run:hover:not(:disabled) { background: #fff !important; }

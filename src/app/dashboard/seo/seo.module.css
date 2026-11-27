@@ -26,3 +26,6 @@
 .page a { color: #ededed; text-decoration: none; white-space: nowrap; }
 .page a:hover { text-decoration: underline; }
 .fix { min-width: 260px; color: #a1a1a1 !important; }
+.primary { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid #ededed; border-radius: 6px; background: #ededed; color: #0a0a0a; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.primary:hover { background: #fff; }
+.primary:disabled { opacity: 0.6; }

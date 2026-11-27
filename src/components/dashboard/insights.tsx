@@ -63,12 +63,15 @@ export function BarList({ rows, unit, empty = "No data yet.", max: forcedMax }: 
   const max = forcedMax ?? Math.max(...rows.map((r) => r.value), 1);
   return (
     <ul className={s.bars}>
-      {rows.map((r, i) => {
+      {rows.map((r) => {
         const inner = (
           <>
             <span className={s.barTrack}>
-              <span className={s.barFill} style={{ width: `${Math.max(2, (r.value / max) * 100)}%`, background: r.color ?? PALETTE[i % PALETTE.length] }} />
-              <span className={s.barLabel} title={r.hint}>{r.label}</span>
+              <span className={s.barFill} style={{ width: `${Math.max(2, (r.value / max) * 100)}%` }} />
+              <span className={s.barLabel} title={r.hint}>
+                {r.color ? <i className={s.barDot} style={{ background: r.color }} /> : null}
+                {r.label}
+              </span>
             </span>
             <span className={s.barValue}>
               {fmtNum(r.value)}
@@ -183,10 +186,7 @@ export function KpiStrip({ items }: { items: Kpi[] }) {
       {items.map((k) => {
         const body = (
           <>
-            <span className={s.kpiLabel}>
-              {k.color ? <span className={s.dot} style={{ background: k.color }} /> : null}
-              {k.label}
-            </span>
+            <span className={s.kpiLabel}>{k.label}</span>
             <span className={s.kpiValue} style={k.tone ? { color: TONE[k.tone] } : undefined}>{k.value}</span>
             {k.sub ? <span className={s.kpiSub}>{k.sub}</span> : null}
           </>

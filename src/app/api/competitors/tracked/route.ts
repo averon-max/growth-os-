@@ -3,6 +3,7 @@ import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { competitorStats, isPlatform, normalizeDomain, ourKeywordList, ourPositions, type CompStats } from "@/lib/competitors/tracker";
+import { referringDomains } from "@/lib/competitors/ref-domains";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
     const pos = await ourPositions(websiteId, website.business.workspaceId, website.url);
     const stats: CompStats[] = [];
     for (let i = 0; i < rows.length; i += 3) stats.push(...(await Promise.all(rows.slice(i, i + 3).map((r) => competitorStats(r.domain, pos)))));
-    return NextResponse.json({ domain: ours, tracked: rows.map((r, i) => ({ id: r.id, name: r.name, addedAt: r.addedAt, ...stats[i] })), mine });
+    const refs = await referringDomains([ours, ...rows.map((r) => r.domain)]);
+    return NextResponse.json({ domain: ours, ourRefDomains: refs[ours] ?? null, tracked: rows.map((r, i) => ({ id: r.id, name: r.name, addedAt: r.addedAt, refDomains: refs[r.domain] ?? null, ...stats[i] })), mine });
   } catch (err) {
     console.error("[competitors/tracked GET]", err);
     const { status, body } = authErrorResponse(err);

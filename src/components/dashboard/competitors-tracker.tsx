@@ -6,8 +6,9 @@ import { CompetitorsLandscape } from "./competitors-landscape";
 import { KeywordCard } from "./keyword-card";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
+import { KpiStrip } from "./insights";
 
-type Tracked = CompStats & { id: string; name: string | null };
+type Tracked = CompStats & { id: string; name: string | null; refDomains?: number | null };
 interface Suggest { domain: string; shared: number | null; avgPosition: number | null; etv: number | null; keywords: number | null }
 const fmt = (n: number | null) => (n === null ? "—" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(Math.round(n)));
 const money = (n: number | null) => (n === null ? "—" : "$" + n.toFixed(2));
@@ -24,14 +25,7 @@ const CHIPS: { id: string; label: string; test: (k: CompKw) => boolean }[] = [
   { id: "vol", label: "Vol > 1K", test: (k) => (k.volume ?? 0) > 1000 },
 ];
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={u.statCard}>
-      <div className={u.statHeader}><p className={u.statLabel}>{label}</p></div>
-      <p className={u.statValue}>{value}</p>
-    </div>
-  );
-}
+
 
 function Breakdown({ c, onOpen }: { c: Tracked; onOpen: (k: string) => void }) {
   const [chips, setChips] = useState<string[]>([]);
@@ -139,6 +133,7 @@ function Matrix({ mine, comps }: { mine: Mine[]; comps: Tracked[] }) {
 export function CompetitorsTracker({ websiteId, workspaceId, domain }: { websiteId: string; workspaceId: string; domain: string }) {
   const [card, setCard] = useState<string | null>(null);
   const [tracked, setTracked] = useState<Tracked[] | null>(null);
+  const [ourRefs, setOurRefs] = useState<number | null>(null);
   const [suggest, setSuggest] = useState<Suggest[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [finding, setFinding] = useState(false);
@@ -154,6 +149,7 @@ export function CompetitorsTracker({ websiteId, workspaceId, domain }: { website
       const json = await res.json();
       if (res.ok === false) throw new Error(json.error ?? "Could not load competitors.");
       setTracked(json.tracked);
+      setOurRefs(typeof json.ourRefDomains === "number" ? json.ourRefDomains : null);
       setMine(json.mine ?? []);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }, [websiteId]);
@@ -196,29 +192,32 @@ export function CompetitorsTracker({ websiteId, workspaceId, domain }: { website
         </div>
         <form style={{ display: "flex", gap: 8 }} onSubmit={(e) => { e.preventDefault(); if (input.trim()) void add(input); }}>
           <input className={p.search} style={{ marginLeft: 0 }} value={input} onChange={(e) => setInput(e.target.value)} placeholder="Add competitor, e.g. example.com" />
-          <button className={p.run} disabled={input.trim() === ""}><Plus size={13} />Add</button>
+          <button className={p.ghost} disabled={input.trim() === ""}><Plus size={13} />Add</button>
           <button type="button" className={p.ghost} disabled={busy} onClick={() => void load()}>{busy ? <Loader2 size={13} className={p.spin} /> : <RefreshCw size={13} />}</button>
         </form>
       </div>
       {error ? <div className={p.err}>{error}</div> : null}
 
-      <div className={`${u.statGrid} ${p.stat6}`}>
-        <Stat label="Tracked" value={tracked ? String(list.length) : "—"} />
-        <Stat label="Their keywords" value={tracked ? fmt(list.reduce((n, c) => n + (c.overview.keywords ?? 0), 0)) : "—"} />
-        <Stat label="Their traffic / mo" value={tracked ? fmt(list.reduce((n, c) => n + (c.overview.etv ?? 0), 0)) : "—"} />
-        <Stat label="Shared keywords" value={tracked ? fmt(list.reduce((n, c) => n + c.shared, 0)) : "—"} />
-        <Stat label="Gap keywords" value={tracked ? fmt(list.reduce((n, c) => n + c.gaps, 0)) : "—"} />
-        <Stat label="They beat you" value={tracked ? fmt(list.reduce((n, c) => n + c.beats, 0)) : "—"} />
-      </div>
+      <KpiStrip
+        items={[
+          { key: "tracked", label: "Tracked", value: tracked ? String(list.length) : "—", sub: "competitors" },
+          { key: "refs", label: "Your referring domains", value: fmt(ourRefs), sub: "sites linking to you" },
+          { key: "kw", label: "Their keywords", value: tracked ? fmt(list.reduce((n, c) => n + (c.overview.keywords ?? 0), 0)) : "—", sub: "in Google top 100" },
+          { key: "etv", label: "Their traffic / mo", value: tracked ? fmt(list.reduce((n, c) => n + (c.overview.etv ?? 0), 0)) : "—", sub: "estimated clicks" },
+          { key: "gaps", label: "Gap keywords", value: tracked ? fmt(list.reduce((n, c) => n + c.gaps, 0)) : "—", sub: "they rank, you don't" },
+          { key: "beats", label: "They beat you", value: tracked ? fmt(list.reduce((n, c) => n + c.beats, 0)) : "—", sub: "shared keywords", tone: list.some((c) => c.beats > 0) ? "bad" : undefined },
+        ]}
+      />
 
       <div className={u.group} style={{ marginTop: 14 }}>
         {tracked === null ? <div className={p.empty}>{busy ? "Loading tracked competitors…" : "No data."}</div>
           : list.length === 0 ? <div className={p.empty}>No tracked competitors yet. Add a domain above or use Suggested competitors below.</div> : (
           <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
-            <thead><tr><th>Domain</th><th>Keywords</th><th>Traffic / mo</th><th>Top 3</th><th>Top 10</th><th>Shared</th><th>Gaps</th><th>Beat you</th><th>You win</th><th /></tr></thead>
+            <thead><tr><th>Domain</th><th>Referring domains</th><th>Keywords</th><th>Traffic / mo</th><th>Top 3</th><th>Top 10</th><th>Shared</th><th>Gaps</th><th>Beat you</th><th>You win</th><th /></tr></thead>
             <tbody>{list.map((c) => (
-              <tr key={c.domain} data-click="" onClick={() => setOpen(open === c.domain ? null : c.domain)} style={open === c.domain ? { background: "rgba(59,130,246,.08)" } : undefined}>
-                <td>{c.domain}{c.error ? <span className={p.down}> · error</span> : null}</td>
+              <tr key={c.domain} data-click="" onClick={() => setOpen(open === c.domain ? null : c.domain)} style={open === c.domain ? { background: "#111111" } : undefined}>
+                <td><img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(c.domain)}&sz=32`} alt="" width={14} height={14} style={{ borderRadius: 3, marginRight: 8, verticalAlign: -2 }} />{c.domain}{c.error ? <span className={p.down}> · error</span> : null}</td>
+                <td className={p.num}>{fmt(c.refDomains ?? null)}</td>
                 <td className={p.num}>{fmt(c.overview.keywords)}</td>
                 <td className={p.num}>{fmt(c.overview.etv)}</td>
                 <td className={p.num}>{fmt(c.overview.top3)}</td>

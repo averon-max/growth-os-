@@ -5,6 +5,7 @@ import type { Landscape, LandscapeDomain, SerpHit } from "@/lib/competitors/land
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
+import { AddKeyword } from "./add-keyword";
 
 const fmt = (n: number | null) => (n === null ? "—" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(Math.round(n)));
 const kdLevel = (kd: number | null) => (kd === null ? undefined : kd < 30 ? "easy" : kd < 60 ? "mid" : "hard");
@@ -102,7 +103,7 @@ export function CompetitorsLandscape({ websiteId, tracked, onTrack, onOpen }: { 
               <thead><tr><th>Keyword</th><th>Volume</th><th>KD</th><th>You</th><th>#1</th><th>#2</th><th>#3</th><th>#4</th><th>#5</th><th>#1 value / mo</th></tr></thead>
               <tbody>{ks.map((k) => (
                 <tr key={k.keyword} data-click="" onClick={() => onOpen(k.keyword)}>
-                  <td>{k.keyword}</td>
+                  <td>{k.keyword}<AddKeyword keyword={k.keyword} websiteId={websiteId} /></td>
                   <td className={p.num}>{fmt(k.volume)}</td>
                   <td>{k.kd === null ? <span className={p.dim}>—</span> : <span className={p.kd} data-l={kdLevel(k.kd)}>{k.kd}</span>}</td>
                   <td className={k.ours === null ? p.dim : k.ours <= 3 ? p.up : p.num}>{k.ours ?? "—"}</td>

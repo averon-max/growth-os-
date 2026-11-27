@@ -126,3 +126,5 @@
 @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .stat:nth-child(4) { border-left: 0; } .stat:nth-child(n+4) { border-top: 1px solid #1f1f1f; } }
 @media (max-width: 900px) { .cols, .detail { grid-template-columns: 1fr; } .hideSm { display: none; } }
 @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(odd) { border-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid #1f1f1f; } }
+.stat { color: inherit; transition: background 0.1s ease; }
+.stat:hover { background: #111111; }

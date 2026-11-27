@@ -78,7 +78,7 @@ export const NAV: NavSection[] = [
     label: "Site",
     items: [
       { label: "SEO audit", href: "/dashboard/seo", icon: ScanSearch, description: "Technical SEO checks" },
-      { label: "CMS", href: "/dashboard/cms", icon: Plug, description: "Publishing connections" },
+      { label: "CMS", href: "/dashboard/cms", icon: Plug, description: "Publishing connections — coming soon", badge: "Soon" },
     ],
   },
 ];

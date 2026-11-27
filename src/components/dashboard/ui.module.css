@@ -2136,3 +2136,18 @@
 .table td { color: #ededed !important; border-color: #1a1a1a !important; }
 .table tr[data-click] { cursor: pointer; }
 .table tr[data-click]:hover td { background: #111111 !important; }
+
+/* Number strips (Vercel): one bordered row of cells, label on top, big value below. Replaces the old pills. */
+.statGrid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; gap: 0 !important; margin: 0 0 16px !important; overflow: hidden !important; border: 1px solid #262626 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.statCard { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; height: auto !important; padding: 16px 18px !important; border: 0 !important; border-right: 1px solid #1f1f1f !important; border-radius: 0 !important; background: transparent !important; }
+.statCard + .statCard { border-left: 0 !important; padding-left: 18px !important; }
+.statCard:last-child { border-right: 0 !important; }
+.statCard:hover { background: #111111 !important; border-color: #1f1f1f !important; }
+.statLabel { color: #a1a1a1 !important; font-size: 13px !important; font-weight: 400 !important; text-transform: none !important; }
+.statLabel::first-letter { text-transform: uppercase; }
+.statValue { color: #ededed !important; font-size: 24px !important; font-weight: 600 !important; letter-spacing: -0.02em !important; line-height: 1.2 !important; }
+.statAccent { display: none !important; }
+
+/* Primary action = white button on black (Vercel), not blue. */
+.primaryButton { height: 32px !important; padding: 0 12px !important; border: 1px solid #ededed !important; border-radius: 6px !important; background: #ededed !important; color: #0a0a0a !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.primaryButton:hover { background: #fff !important; }

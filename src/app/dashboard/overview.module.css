@@ -59,7 +59,7 @@
 .off { border: 1.5px solid var(--ds-gray-600); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ds-border); border-radius: 999px; color: var(--ds-gray-900); font-size: var(--ds-text-13); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ds-border); border-radius: 6px; color: var(--ds-gray-900); font-size: var(--ds-text-13); }
 .chip[data-on] { color: var(--ds-gray-1000); }
 .chip .ok, .chip .off { width: 8px; height: 8px; }
 

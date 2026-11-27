@@ -4,6 +4,7 @@ import { getProviderConnection } from "@/lib/keywords/repository";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState } from "@/components/dashboard/ui";
 import { KeywordsPageClient } from "@/components/dashboard/keywords-page-client";
+import { PlannerSite } from "@/components/dashboard/add-keyword";
 import { KeywordRankIntelligence } from "@/components/dashboard/keyword-rank-intelligence";
 import { SyncKeywordsButton } from "@/components/dashboard/sync-keywords-button";
 import { EnrichVolumeButton } from "@/components/dashboard/enrich-volume-button";
@@ -77,6 +78,7 @@ export default async function KeywordsPage({ searchParams }: { searchParams: Pro
           </div>
         </header>
 
+        <PlannerSite websiteId={website?.id ?? null}>
         <KeywordRankIntelligence
           workspaceId={workspaceId}
           websiteId={website?.id ?? null}
@@ -87,6 +89,7 @@ export default async function KeywordsPage({ searchParams }: { searchParams: Pro
           websiteId={website?.id ?? null}
           industrySeed={website?.business.industry && !website.business.industry.startsWith("http") ? deriveSearchSeed(website.business.industry) : null}
         />
+        </PlannerSite>
       </div>
     </>
   );

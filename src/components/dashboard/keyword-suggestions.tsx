@@ -5,6 +5,7 @@ import { Sparkles, Search, TrendingUp, TrendingDown, Minus, Zap, Flame, ChevronR
 import uiStyles from "./ui.module.css";
 import styles from "./keyword-suggestions.module.css";
 import { KeywordOverviewDrawer } from "./keyword-overview-drawer";
+import { AddKeyword } from "./add-keyword";
 import { SuggestionFilterBar, applySuggestionFilters, EMPTY_FILTERS, type SuggestionFilters } from "./suggestion-filters";
 
 export interface MonthlySearchPoint {
@@ -144,22 +145,25 @@ export function TrendingQueries({ trending, onPick }: { trending: TrendingData |
                 const inner = (
                   <>
                     <span className={styles.trendRank}>{String(index + 1).padStart(2, "0")}</span>
-                    <span className={styles.trendName} title={q.query}>{q.query}</span>
+                    <span className={styles.trendName} title={q.query}>{q.query}<AddKeyword keyword={q.query} /></span>
                     <span className={col.valueClass}>{col.value(q)}</span>
                   </>
                 );
                 return onPick ? (
-                  <button
+                  <div
                     key={`${col.key}-${q.query}`}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
+                    data-kw=""
                     className={`${styles.trendRow} ${styles.trendButton}`}
                     onClick={() => onPick(q.query)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(q.query); } }}
                     title={`Open volume, difficulty and CPC for "${q.query}"`}
                   >
                     {inner}
-                  </button>
+                  </div>
                 ) : (
-                  <div key={`${col.key}-${q.query}`} className={styles.trendRow}>{inner}</div>
+                  <div key={`${col.key}-${q.query}`} className={styles.trendRow} data-kw="">{inner}</div>
                 );
               })}
             </div>
@@ -235,7 +239,7 @@ export function SuggestionTable({
             tabIndex={0}
             title={`Open details for "${s.keyword}"`}
           >
-            <td className={styles.keywordCell}>{s.keyword}</td>
+            <td className={styles.keywordCell}>{s.keyword}<AddKeyword keyword={s.keyword} /></td>
             <td className={uiStyles.mono}>{formatSuggVol(s.searchVolume)}</td>
             <td><TrendBadge trend={s.trend} /></td>
             <td className={uiStyles.mono}>

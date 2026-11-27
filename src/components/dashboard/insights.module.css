@@ -25,9 +25,10 @@
 .barRow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; }
 button.barRow { cursor: pointer; }
 button.barRow:hover .barTrack, .barRow[data-active] .barTrack { background: #1f1f1f; }
-.barTrack { position: relative; flex: 1; min-width: 0; height: 30px; overflow: hidden; border-radius: 6px; background: #141414; }
-.barFill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; opacity: 0.28; }
-.barRow:hover .barFill, .barRow[data-active] .barFill { opacity: 0.45; }
+.barTrack { position: relative; flex: 1; min-width: 0; height: 32px; overflow: hidden; border-radius: 6px; background: transparent; }
+.barFill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: #1f1f1f; }
+.barRow:hover .barFill, .barRow[data-active] .barFill { background: #2a2a2a; }
+.barDot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; vertical-align: 0; }
 .barLabel { position: relative; display: block; overflow: hidden; padding: 0 10px; color: #ededed; font-size: 13px; line-height: 30px; text-overflow: ellipsis; white-space: nowrap; }
 .barValue { flex: none; min-width: 52px; color: #ededed; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
 .unit { color: #8f8f8f; }

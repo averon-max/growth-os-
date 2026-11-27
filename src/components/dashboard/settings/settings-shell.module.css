@@ -9,3 +9,4 @@
 .head { margin-bottom: 24px; }
 .title { margin: 0; color: #ededed; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
 .desc { max-width: 720px; margin: 6px 0 0; color: #a1a1a1; font-size: 14px; line-height: 1.55; }
+.stack { display: flex; flex-direction: column; gap: 16px; }

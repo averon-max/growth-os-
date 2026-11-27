@@ -111,7 +111,7 @@ export default async function SeoPage({ searchParams }: { searchParams: Promise<
             Full report <ArrowUpRight size={14} />
           </Link>
         ) : null}
-        <RunAnalysisButton websiteId={website.id} />
+        <RunAnalysisButton websiteId={website.id} className={s.primary} label="Run new audit" />
       </div>
     </header>
   );
@@ -177,7 +177,7 @@ export default async function SeoPage({ searchParams }: { searchParams: Promise<
             />
           </InsightCard>
           <InsightCard title="Pages with most issues">
-            <BarList empty="No page-level issues." rows={[...byPage.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([p, n]) => ({ key: p, label: p, value: n, color: "#a855f7" }))} />
+            <BarList empty="No page-level issues." rows={[...byPage.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([p, n]) => ({ key: p, label: p, value: n }))} />
           </InsightCard>
           <InsightCard title="Most common problems" span={3}>
             <BarList

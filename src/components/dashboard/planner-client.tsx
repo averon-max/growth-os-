@@ -177,6 +177,7 @@ function Research({ workspaceId, websiteId, seeds, onAdd, onOpen }: { workspaceI
 
 export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: string; workspaceId: string; domain: string }) {
   const [report, setReport] = useState<PlannerReport | null>(null);
+  const [pending, setPending] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("keywords");
@@ -222,21 +223,32 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       const data = await res.json().catch(() => ({}));
       if (res.ok === false) throw new Error(data.error ?? "Could not add keywords.");
       setAddText("");
-      await analyze(false);
+      await analyze(false, true);
     } catch (err) { setError((err as Error).message); } finally { setAdding(false); }
   }
   async function removeKeyword(keyword: string) {
     await fetch("/api/planner/keywords", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId, keyword }) });
     setSel(null);
-    await analyze(false);
+    await analyze(false, true);
   }
-  async function analyze(refresh: boolean) {
+  // Open with the last saved report (free); "Analyze site" / "Refresh" fetch new data.
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/planner/analyze?websiteId=${encodeURIComponent(websiteId)}`)
+      .then((r) => r.json())
+      .then((d) => { if (live && d?.report) { setReport(d.report); setPending(Array.isArray(d.pending) ? d.pending : []); } })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [websiteId]);
+
+  async function analyze(refresh: boolean, rebuild = false) {
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/planner/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId, refresh }) });
+      const res = await fetch("/api/planner/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId, refresh, rebuild }) });
       const data = await res.json();
       if (res.ok === false) throw new Error(data.error ?? "Analysis failed.");
       setReport(data);
+      setPending([]);
     } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
   }
 
@@ -278,6 +290,12 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       </div>
 
       {error ? <div className={p.err}>{error}</div> : null}
+      {pending.length > 0 ? (
+        <div className={p.note} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span>{pending.length} keyword{pending.length === 1 ? "" : "s"} added since the last analysis ({pending.slice(0, 3).join(", ")}{pending.length > 3 ? "…" : ""}).</span>
+          <button className={p.ghost} disabled={busy} onClick={() => void analyze(false, true)}>{busy ? <Loader2 size={13} className={p.spin} /> : null}Get their numbers</button>
+        </div>
+      ) : null}
       {report?.warnings.map((w) => <div key={w} className={p.note}>{w}</div>)}
 
       {(() => {
@@ -396,7 +414,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
           )}
       </div>
       {sel ? <DetailDrawer data={sel} onClose={() => setSel(null)} /> : null}
-      {card ? <KeywordCard keyword={card} workspaceId={workspaceId} websiteId={websiteId} tracked={report?.keywords.find((x) => x.keyword === card)?.sources.includes("Tracked") ?? false} onChanged={() => void analyze(false)} onClose={() => setCard(null)} /> : null}
+      {card ? <KeywordCard keyword={card} workspaceId={workspaceId} websiteId={websiteId} tracked={report?.keywords.find((x) => x.keyword === card)?.sources.includes("Tracked") ?? false} onChanged={() => void analyze(false, true)} onClose={() => setCard(null)} /> : null}
     </>
   );
 }

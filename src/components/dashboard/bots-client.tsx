@@ -80,7 +80,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
                 <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#a855f7", onClick: () => setTab("daily") }))} />
               </InsightCard>
               <InsightCard title="Most crawled pages" action={<button type="button" onClick={() => setTab("pages")}>All pages</button>}>
-                <BarList empty="No page data." rows={(data.pages ?? []).filter((x) => !isAsset(x.path)).sort((a, b) => b.bots - a.bots).slice(0, 6).map((x) => ({ key: x.path, label: x.path, value: x.bots, hint: x.top ? `Mostly ${x.top}` : undefined, color: "#16a34a", onClick: () => setTab("pages") }))} />
+                <BarList empty="No page data." rows={(data.pages ?? []).filter((x) => !isAsset(x.path)).sort((a, b) => b.bots - a.bots).slice(0, 6).map((x) => ({ key: x.path, label: x.path, value: x.bots, hint: x.top ? `Mostly ${x.top}` : undefined, onClick: () => setTab("pages") }))} />
               </InsightCard>
             </InsightGrid>
           ) : null}

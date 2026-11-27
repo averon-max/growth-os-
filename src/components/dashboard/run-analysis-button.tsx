@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./ui.module.css";
 
-export function RunAnalysisButton({ websiteId }: { websiteId: string }) {
+export function RunAnalysisButton({ websiteId, className, label = "Run analysis →" }: { websiteId: string; className?: string; label?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +36,10 @@ export function RunAnalysisButton({ websiteId }: { websiteId: string }) {
       <button
         onClick={run}
         disabled={loading}
-        className={styles.link}
+        className={className ?? styles.link}
         style={{ background: "none", border: "none", cursor: loading ? "not-allowed" : "pointer", padding: 0, font: "inherit" }}
       >
-        {loading ? "Starting..." : "Run analysis →"}
+        {loading ? "Starting..." : label}
       </button>
       {error && <span style={{ fontSize: "0.68rem", color: "var(--danger)" }}>{error}</span>}
     </div>

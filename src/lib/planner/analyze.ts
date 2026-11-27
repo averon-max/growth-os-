@@ -36,11 +36,38 @@ function intentOf(k: string) {
 
 const cache = new Map<string, { at: number; report: PlannerReport }>();
 const TTL = 30 * 60 * 1000;
+const SAVED_SOURCE = "PLANNER_REPORT";
 
-export async function analyzeSite(opts: { websiteId: string; workspaceId: string; siteUrl: string; refresh?: boolean }): Promise<PlannerReport> {
+/** The last report for a website, saved in the database so reopening the planner costs nothing. */
+export async function savedPlannerReport(websiteId: string): Promise<PlannerReport | null> {
+  const mem = cache.get(websiteId);
+  if (mem) return { ...mem.report, fromCache: true };
+  const row = await prisma.keywordSuggestionCache
+    .findUnique({ where: { normalized_source: { normalized: `planner:${websiteId}`, source: SAVED_SOURCE } } })
+    .catch(() => null);
+  return row ? { ...(row.payload as unknown as PlannerReport), fromCache: true } : null;
+}
+
+/** Tracked keywords that were added after the saved report was made (they have no numbers yet). */
+export async function pendingKeywords(websiteId: string, report: PlannerReport | null): Promise<string[]> {
+  const tracked = await prisma.trackedKeyword.findMany({ where: { websiteId }, select: { keyword: true } }).catch(() => []);
+  const have = new Set((report?.keywords ?? []).map((k) => k.keyword.toLowerCase()));
+  return tracked.map((t) => t.keyword).filter((k) => !have.has(k.toLowerCase()));
+}
+
+/**
+ * refresh: fetch everything again from DataForSEO (paid).
+ * rebuild: build a new report from saved answers, paying only for what is new (e.g. keywords added since).
+ */
+export async function analyzeSite(opts: { websiteId: string; workspaceId: string; siteUrl: string; refresh?: boolean; rebuild?: boolean }): Promise<PlannerReport> {
   if (opts.refresh === true && wantsFresh() === false) return withFreshData(() => analyzeSite(opts));
+  if (opts.rebuild === true) cache.delete(opts.websiteId);
   const hit = cache.get(opts.websiteId);
   if (hit && opts.refresh !== true && Date.now() - hit.at < TTL) return { ...hit.report, fromCache: true };
+  if (opts.refresh !== true && opts.rebuild !== true && !hit) {
+    const saved = await savedPlannerReport(opts.websiteId);
+    if (saved) return saved;
+  }
 
   const warnings: string[] = [];
   const origin = new URL(opts.siteUrl).origin;
@@ -202,6 +229,14 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
     keywords: all, pages, clusters, warnings,
   };
   cache.set(opts.websiteId, { at: Date.now(), report });
+  const payload = JSON.parse(JSON.stringify(report));
+  await prisma.keywordSuggestionCache
+    .upsert({
+      where: { normalized_source: { normalized: `planner:${opts.websiteId}`, source: SAVED_SOURCE } },
+      create: { normalized: `planner:${opts.websiteId}`, source: SAVED_SOURCE, payload },
+      update: { payload, fetchedAt: new Date() },
+    })
+    .catch((e: Error) => console.warn("[planner] save failed:", e.message));
   return report;
 }
 

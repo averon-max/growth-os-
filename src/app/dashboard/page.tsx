@@ -83,7 +83,6 @@ export default async function DashboardOverview({ searchParams }: { searchParams
   const critical = issues(analysis?.id, "CRITICAL");
   const gscOn = gsc?.status === "CONNECTED";
   const cfOn = Boolean(site.cloudflareConnection);
-  const cmsOn = site.cmsConnection?.status === "CONNECTED";
   const q = `?websiteId=${site.id}`;
 
   const steps = [
@@ -92,7 +91,6 @@ export default async function DashboardOverview({ searchParams }: { searchParams
     { done: gscOn, label: "Connect Search Console", href: "/dashboard/settings" },
     { done: cfOn, label: "Connect Cloudflare", href: "/dashboard/settings#cloudflare" },
     { done: keywordCount > 0, label: "Track keywords", href: `/dashboard/keyword-planner${q}` },
-    { done: cmsOn, label: "Connect a CMS for publishing", href: `/dashboard/cms${q}` },
   ];
   const doneCount = steps.filter((x) => x.done).length;
   const version = (analysis?.completedAt ?? analysis?.createdAt ?? site.createdAt).toISOString().slice(0, 10);
@@ -161,7 +159,6 @@ export default async function DashboardOverview({ searchParams }: { searchParams
                 <dd className={s.chips}>
                   <Conn on={gscOn} label="Search Console" />
                   <Conn on={cfOn} label="Cloudflare" />
-                  <Conn on={cmsOn} label={site.cmsConnection ? cmsName(site.cmsConnection.cmsType) : "CMS"} />
                 </dd>
               </div>
             </dl>
@@ -170,7 +167,7 @@ export default async function DashboardOverview({ searchParams }: { searchParams
           {analysis ? (
             <Link href={`/dashboard/analysis/${analysis.id}`} className={s.cardFoot}>
               <span className={s.status}>
-                <i className={critical ? s.bad : s.ok} aria-hidden /> {critical ? `${critical} critical issue${critical === 1 ? "" : "s"}` : "No critical issues"}
+                {critical ? <i className={s.bad} aria-hidden /> : null} {critical ? `${critical} critical issue${critical === 1 ? "" : "s"}` : "No critical issues"}
               </span>
               <span className={s.muted}>
                 {issues(analysis.id)} issues in total{analysis.pagesCount ? ` · ${analysis.pagesCount} page${analysis.pagesCount === 1 ? "" : "s"} checked` : ""}
@@ -191,7 +188,10 @@ export default async function DashboardOverview({ searchParams }: { searchParams
               </span>
             </header>
             <ul className={s.steps}>
-              {steps.map((step) => (
+              {steps.filter((step) => !step.done).length === 0 ? (
+                <li className={s.muted} style={{ padding: "8px 0", fontSize: 14 }}>All set. Every connection is working.</li>
+              ) : null}
+              {steps.filter((step) => !step.done).map((step) => (
                 <li key={step.label}>
                   <Link href={step.href} className={s.step} data-done={step.done || undefined}>
                     <span className={s.stepIcon} aria-hidden>
@@ -270,14 +270,12 @@ export default async function DashboardOverview({ searchParams }: { searchParams
   );
 }
 
-function cmsName(t: string) {
-  return t.charAt(0) + t.slice(1).toLowerCase();
-}
 
+/** A connection: plain text with a check when connected, grey with "+" when not (no status dots). */
 function Conn({ on, label }: { on: boolean; label: string }) {
   return (
     <span className={s.chip} data-on={on || undefined} title={on ? `${label} connected` : `${label} not connected`}>
-      <i className={on ? s.ok : s.off} aria-hidden /> {label}
+      {on ? <Check size={13} strokeWidth={2.2} aria-hidden /> : <span aria-hidden>+</span>} {label}
     </span>
   );
 }
