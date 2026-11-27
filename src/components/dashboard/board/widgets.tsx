@@ -130,7 +130,7 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
     case "google":
       return r?.google.state === "ok" ? (
         <div className={s.metrics}>
-          <MetricRow label="Clicks" m={r.totals.clicks} values={r.daily.now.map((x) => x.clicks)} color="#8e4ec6" show={fmt.n} />
+          <MetricRow label="Clicks" m={r.totals.clicks} values={r.daily.now.map((x) => x.clicks)} color="#e93d82" show={fmt.n} />
           <MetricRow label="Impressions" m={r.totals.impressions} values={r.daily.now.map((x) => x.impressions)} color="#0090ff" show={fmt.compact} />
           <MetricRow label="Avg. position" m={r.totals.position} show={fmt.pos} kind="position" />
         </div>
@@ -140,7 +140,7 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
     case "traffic":
       return r?.cloudflare.state === "ok" ? (
         <div className={s.metrics}>
-          <MetricRow label="Visitors" m={r.totals.visitors} values={r.daily.now.map((x) => x.visitors)} color="#12a594" show={fmt.compact} />
+          <MetricRow label="Visitors" m={r.totals.visitors} values={r.daily.now.map((x) => x.visitors)} color="#8e4ec6" show={fmt.compact} />
           <MetricRow label="Requests" m={r.totals.requests} show={fmt.compact} />
           <MetricRow label="Verified bots" m={r.totals.botShare} show={(v) => fmt.pct(v)} kind="rate" />
         </div>

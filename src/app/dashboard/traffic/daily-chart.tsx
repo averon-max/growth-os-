@@ -6,9 +6,9 @@ import s from "./traffic.module.css";
 
 type Key = "clicks" | "impressions" | "visitors";
 const PANELS: { key: Key; title: string; source: string; color: string }[] = [
-  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#8e4ec6" },
+  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#e93d82" },
   { key: "impressions", title: "Google impressions", source: "Search Console", color: "#0090ff" },
-  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#12a594" },
+  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#8e4ec6" },
 ];
 const H = 110;
 const PAD = { top: 10, bottom: 6, left: 0, right: 0 };
@@ -87,6 +87,12 @@ export function DailyChart({ now, before, days }: { now: DayPoint[]; before: Day
               </div>
             );
           })}
+        {hover !== null && width > 0 ? (
+          // Date of the day under the pointer, like Vercel charts: a dashed line and a small label on top.
+          <span className={s.datePill} style={{ left: 16 + Math.min(width - 60, Math.max(60, (hover + 0.5) * (width / Math.max(1, days)))) }}>
+            {new Date(`${now[hover].date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
+          </span>
+        ) : null}
         <div className={s.chartDates}>
           <span>{label(now[0].date)}</span>
           <span>{label(now[now.length - 1].date)}</span>

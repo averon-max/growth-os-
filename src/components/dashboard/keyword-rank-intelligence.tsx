@@ -4,7 +4,7 @@ import { AddKeyword } from "./add-keyword";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/client-cache";
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Activity, ArrowDownRight, ArrowUpRight, Eye, Loader2, MousePointerClick, RefreshCw, Tag, Target, Trophy } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 
 import { KeywordCard } from "./keyword-card";
 import { LinearList, type LGroup, type LRow, type LStatus } from "./linear-list";
@@ -116,7 +116,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
     if (s == null) return [];
     const total = Math.max(s.keywordsWithData, s.top20, 1);
     const parts = [
-      { label: "Top 3", n: s.top3, color: "#12a594" },
+      { label: "Top 3", n: s.top3, color: "#0090ff" },
       { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#0090ff" },
       { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#8e4ec6" },
       { label: "20+", n: Math.max(total - s.top20, 0), color: "#3a3a3a" },
@@ -191,13 +191,10 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
               { label: "Clicks", value: fmt(s?.clicks), sub: s && s.impressions > 0 ? `CTR ${((s.clicks / s.impressions) * 100).toFixed(1)}%` : "CTR —" },
               { label: "Avg position", value: s?.avgPosition == null ? "—" : s.avgPosition.toFixed(1), sub: "lower is better" },
               { label: "Page one", value: fmt(s?.top10), sub: `${fmt(s?.nearFirstPage)} in striking distance` },
-            ].map((m, i) => {
-              const MIcon = [Tag, Eye, MousePointerClick, Trophy, Target][i] ?? Tag;
-              const mc = ["#0090ff", "#8e4ec6", "#12a594", "#ffb224", "#d6409f"][i] ?? "#0090ff";
+            ].map((m) => {
               const target = m.label === "Impressions" ? "impressions" : m.label === "Clicks" ? "clicks" : m.label === "Avg position" ? "avgPosition" : null;
               const body = (
                 <>
-                  <span className={styles.metricIcon} style={{ color: mc, background: `${mc}1f` }}><MIcon size={14} /></span>
                   <span className={styles.metricLabel}>{m.label}</span>
                   <strong className={styles.metricValue}>{m.value}</strong>
                   <span className={styles.metricSub}>{m.sub}</span>
@@ -210,7 +207,6 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
               );
             })}
             <div className={styles.metric}>
-              <span className={styles.metricIcon} style={{ color: "#52a9ff", background: "#52a9ff1f" }}><Activity size={14} /></span>
               <span className={styles.metricLabel}>Movement</span>
               <strong className={styles.metricValue}>
                 <span className={styles.up}><ArrowUpRight size={15} />{s?.improved ?? 0}</span>

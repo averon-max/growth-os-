@@ -5,7 +5,7 @@ import { BarChart3, LineChart } from "lucide-react";
 import s from "./series-chart.module.css";
 
 /** Categorical colours in fixed order, checked for contrast and colour-blind separation on black. */
-export const SERIES_COLORS = ["#0090ff", "#8e4ec6", "#12a594", "#ffb224", "#d6409f", "#52a9ff", "#5a5a5a"];
+export const SERIES_COLORS = ["#0090ff", "#e93d82", "#8e4ec6", "#f76b15", "#52a9ff", "#ff6369", "#a1a1a1"];
 const OTHER = "#2e2e2e";
 
 export type SeriesDay = { date: string; values: Record<string, number> };

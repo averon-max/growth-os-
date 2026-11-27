@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { after } from "next/server";
-import { Activity, Bot, Eye, Globe, MousePointerClick, Percent, Trophy, Users, type LucideIcon } from "lucide-react";
+import { Globe } from "lucide-react";
 
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
@@ -99,19 +99,17 @@ export default async function TrafficPage({ searchParams }: { searchParams: Prom
 
         <div className={s.cards}>
           {([
-            { label: "Google clicks", m: report.totals.clicks, show: fmt.n, href: "#daily", icon: MousePointerClick, color: "#8e4ec6" },
-            { label: "Impressions", m: report.totals.impressions, show: fmt.compact, href: "#daily", icon: Eye, color: "#0090ff" },
-            { label: "CTR", m: report.totals.ctr, show: (v: number) => fmt.pct(v), kind: "rate", href: "#pages", icon: Percent, color: "#d6409f" },
-            { label: "Avg. position", m: report.totals.position, show: fmt.pos, kind: "position", href: "#pages", icon: Trophy, color: "#ffb224" },
-            { label: "Visitors", m: report.totals.visitors, show: fmt.compact, href: "#daily", icon: Users, color: "#12a594", hint: "Unique visitors per day, added up" },
-            { label: "Requests", m: report.totals.requests, show: fmt.compact, href: "#pages", icon: Activity, color: "#52a9ff" },
-            { label: "Verified bots", m: report.totals.botShare, show: (v: number) => fmt.pct(v), kind: "rate", neutral: true, href: "/dashboard/bots", icon: Bot, color: "#8f8f8f", hint: "Share of requests from search engines and other verified crawlers" },
+            { label: "Google clicks", m: report.totals.clicks, show: fmt.n, href: "#daily" },
+            { label: "Impressions", m: report.totals.impressions, show: fmt.compact, href: "#daily" },
+            { label: "CTR", m: report.totals.ctr, show: (v: number) => fmt.pct(v), kind: "rate", href: "#pages" },
+            { label: "Avg. position", m: report.totals.position, show: fmt.pos, kind: "position", href: "#pages" },
+            { label: "Visitors", m: report.totals.visitors, show: fmt.compact, href: "#daily", hint: "Unique visitors per day, added up" },
+            { label: "Requests", m: report.totals.requests, show: fmt.compact, href: "#pages" },
+            { label: "Verified bots", m: report.totals.botShare, show: (v: number) => fmt.pct(v), kind: "rate", neutral: true, href: "/dashboard/bots", hint: "Share of requests from search engines and other verified crawlers" },
           ] as Card[]).map((k) => {
             const c = k.m ? change(k.m.now, k.m.before, k.kind) : null;
-            const Icon = k.icon;
             return (
               <a key={k.label} href={k.href} className={s.card} title={k.hint}>
-                <span className={s.cardIcon} style={{ color: k.color, background: `${k.color}1f` }}><Icon size={14} /></span>
                 <span className={s.cardLabel}>{k.label}</span>
                 <span className={s.cardValue}>{k.m ? k.show(k.m.now) : "—"}</span>
                 <span className={c ? (k.neutral ? s.flat : s[c.tone]) : s.flat}>{c ? c.text : k.m ? "no earlier data" : "not connected"}</span>
@@ -250,7 +248,7 @@ function Sources({ report, websiteId }: { report: TrafficReport; websiteId: stri
   );
 }
 
-type Card = { label: string; m: Metric | null; show: (v: number) => string; kind?: "count" | "rate" | "position"; neutral?: boolean; hint?: string; href: string; icon: LucideIcon; color: string };
+type Card = { label: string; m: Metric | null; show: (v: number) => string; kind?: "count" | "rate" | "position"; neutral?: boolean; hint?: string; href: string };
 
 function Shares({ rows, aLabel, bLabel }: { rows: { key: string; label: string; a: number; b: number | null }[]; aLabel: string; bLabel: string }) {
   const aTotal = rows.reduce((x, r) => x + r.a, 0);

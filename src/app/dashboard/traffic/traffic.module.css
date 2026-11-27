@@ -150,20 +150,22 @@ td .up, td .down, td .flat { margin-top: 0; }
 .panel { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
 .panelHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
 .chartDelta, .chartDelta[data-tone="up"], .chartDelta[data-tone="down"] { padding: 0 !important; background: transparent !important; }
-.barNow { background: linear-gradient(90deg, #8e4ec6 0 33%, #0090ff 33% 66%, #12a594 66%) !important; }
+.barNow { background: linear-gradient(90deg, #e93d82 0 33%, #0090ff 33% 66%, #8e4ec6 66%) !important; }
 .barB, .swatchB { background: #0090ff !important; }
 
-/* Top numbers: one row of clickable cards with a soft coloured icon each. */
-.cards { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-@media (max-width: 1200px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 700px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.card { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 16px; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; color: inherit; text-decoration: none; transition: border-color 0.15s ease, background 0.15s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.card:hover { border-color: #3a3a3a; background: #0f0f0f; transform: translateY(-2px); }
-.card:active { transform: scale(0.98); }
-.cardIcon { display: grid; width: 28px; height: 28px; margin-bottom: 8px; place-items: center; border-radius: 8px; }
-.cardLabel { overflow: hidden; color: #a1a1a1; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.cardValue { color: #ededed; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.card .up, .card .down, .card .flat { margin-top: 2px; }
+
+/* Numbers, Vercel style: one clean row, no boxes, no icons. */
+.cards { display: grid !important; gap: 0 !important; overflow: visible !important; margin-bottom: 24px !important; padding: 0 !important; border: 0 !important; border-bottom: 1px solid #1f1f1f !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.card { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; min-width: 0 !important; padding: 4px 24px 18px 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; text-align: left !important; transform: none !important; }
+.cardLabel { color: #a1a1a1 !important; font-size: 14px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 0 !important; }
+.cardValue { color: #ededed !important; font-size: 32px !important; font-weight: 600 !important; letter-spacing: -0.03em !important; line-height: 1.15 !important; }
+.cards { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+@media (max-width: 1200px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; } }
+.card { color: inherit; text-decoration: none; }
+.card:hover .cardValue { color: #fff !important; }
 .sources { gap: 8px !important; }
-.source { border-color: #1f1f1f !important; background: #0a0a0a !important; border-radius: 999px !important; }
+.source { border-color: #1f1f1f !important; background: transparent !important; border-radius: 999px !important; }
 .summary { color: #a1a1a1 !important; font-size: 14px !important; }
+.chart { position: relative; cursor: crosshair; }
+.datePill { position: absolute; top: 0; z-index: 3; padding: 4px 10px; border: 1px solid #2e2e2e; border-radius: 6px; background: #0a0a0a; color: #ededed; font-size: 12px; white-space: nowrap; transform: translateX(-50%); pointer-events: none; }
+.cross { stroke: #6b6b6b !important; stroke-dasharray: 3 3; }

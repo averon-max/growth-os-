@@ -7,7 +7,8 @@ type IconComponent = React.ComponentType<{
 }>;
 
 export function EmptyState({
-  icon: Icon,
+  // icon is kept in the props for older callers; Vercel-style empty states show no icon.
+  icon: _icon,
   title,
   description,
   actionLabel,
@@ -21,10 +22,6 @@ export function EmptyState({
 }) {
   return (
     <div className={styles.emptyState}>
-      <div className={styles.emptyIconWrap}>
-        <Icon size={17} className={styles.emptyIcon} />
-      </div>
-
       <p className={styles.emptyTitle}>{title}</p>
       <p className={styles.emptyDescription}>{description}</p>
 
