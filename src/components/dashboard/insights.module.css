@@ -71,3 +71,7 @@ button.kpi:hover { background: #111111; }
 .kpiLabel { display: flex; align-items: center; gap: 6px; overflow: hidden; color: #a1a1a1; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .kpiValue { color: #ededed; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .kpiSub { overflow: hidden; color: #8f8f8f; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+
+.legendInline { display: flex; flex-wrap: wrap; gap: 4px 14px; color: #8f8f8f; font-size: 12px; }
+.legendInline span { display: inline-flex; align-items: center; gap: 6px; }
+.legendInline b { color: #ededed; font-weight: 500; font-variant-numeric: tabular-nums; }

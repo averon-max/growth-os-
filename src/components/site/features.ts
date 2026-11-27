@@ -87,7 +87,7 @@ export const FEATURES: Feature[] = [
     points: [
       { title: "Briefs from real results", text: "Structure, questions and topics taken from the pages that already rank." },
       { title: "Review first", text: "Drafts, approved and published are separate stages — you stay in control." },
-      { title: "Publish to your CMS", text: "Send approved pages to WordPress or your own site through the CMS connection." },
+      { title: "Copy or export", text: "Copy approved pages into your site in one go. Direct publishing to WordPress and other CMSs is coming soon." },
     ],
     steps: ["Pick a gap or quick win", "Review the brief and draft", "Approve and publish"],
     faq: [{ q: "Does it publish automatically?", a: "No. Every page needs your approval first." }],
@@ -102,12 +102,12 @@ export const FEATURES: Feature[] = [
     stats: [
       { value: "40+", label: "checks per page" },
       { value: "4", label: "scores: technical, content, structure, indexability" },
-      { value: "1 click", label: "fixes through your CMS" },
+      { value: "Per page", label: "list of pages each issue affects" },
     ],
     points: [
       { title: "Prioritized issues", text: "Critical problems first, cosmetic ones last — each with the pages affected." },
       { title: "Plain-language fixes", text: "Every issue explains what's wrong and exactly what to change." },
-      { title: "Safe automatic fixes", text: "Titles, descriptions, alt text and more can be fixed through your CMS — with a record of the previous value." },
+      { title: "Fixes in your CMS — coming soon", text: "One-click fixes for titles, descriptions and alt text through your CMS are on the way." },
       { title: "Re-check anytime", text: "Run the audit again after changes and compare scores." },
     ],
     steps: ["Add your website", "Run the audit", "Fix issues in order of impact"],
@@ -181,7 +181,7 @@ export const INTEGRATIONS = [
   { name: "Cloudflare", text: "Traffic, threats and AI crawlers" },
   { name: "DataForSEO", text: "Keyword, SERP and backlink data" },
   { name: "Google Trends", text: "Rising and top searches" },
-  { name: "WordPress & custom CMS", text: "Publish and fix pages", icon: Plug },
+  { name: "WordPress & custom CMS", text: "Coming soon: publish and fix pages", icon: Plug },
 ];
 
 export const featureBySlug = (slug: string) => FEATURES.find((f) => f.slug === slug);

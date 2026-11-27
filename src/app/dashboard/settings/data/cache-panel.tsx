@@ -10,7 +10,7 @@ type Report = {
   categories: Cat[];
   lastCleanup: { at: string; removedSaved: number; errors: string[] } | null;
   paused: boolean;
-  dailyBudget: number;
+  serviceBudget: number;
   budgetOptions: number[];
   spentToday: number;
   todayByEndpoint: { endpoint: string; category: string; calls: number; cost: number }[];
@@ -87,13 +87,13 @@ export default function CachePanel() {
         </div>
         <div style={{ ...row, alignItems: "center" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Daily limit · spent today {money(data.spentToday)}</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Service-wide safety cap · spent today {money(data.spentToday)}</div>
             <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
-              Once today&apos;s DataForSEO spending reaches the limit, new requests wait until tomorrow (UTC). AI costs are counted separately.
+              Each customer has their own daily and monthly data allowance from their plan. This cap is only an emergency stop for everyone together: once reached, new paid requests wait until tomorrow (UTC). AI costs are counted separately.
             </div>
           </div>
-          <select style={select} value={data.dailyBudget} onChange={(e) => void send("PUT", { dailyBudget: Number(e.target.value) })}>
-            {[...new Set([...data.budgetOptions, data.dailyBudget])].sort((a, b) => a - b).map((b) => <option key={b} value={b}>${b.toFixed(2)} a day</option>)}
+          <select style={select} value={data.serviceBudget} onChange={(e) => void send("PUT", { serviceBudget: Number(e.target.value) })}>
+            {[...new Set([...data.budgetOptions, data.serviceBudget])].sort((a, b) => a - b).map((b) => <option key={b} value={b}>${b} a day</option>)}
           </select>
         </div>
         <div style={{ ...row, flexDirection: "column", gap: 8 }}>

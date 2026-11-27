@@ -301,7 +301,7 @@
 
 .trendDown {
   color: var(--danger);
-  background: rgba(212,102,112,.07);
+  background: rgba(229,72,77,.07);
 }
 
 .trendFlat {
@@ -337,7 +337,7 @@
 
 .difficultyBadge[data-tone="danger"] {
   color: var(--danger);
-  background: rgba(212,102,112,.07);
+  background: rgba(229,72,77,.07);
 }
 
 .difficultyBadge[data-tone="muted"] {
@@ -528,3 +528,23 @@
 .trendFlat { color: #a1a1a1 !important; background: #1a1a1a !important; }
 .trendButton { border-color: #2e2e2e !important; color: #a1a1a1 !important; }
 .trendButton[data-on="true"], .trendButton:hover { color: #ededed !important; background: #1a1a1a !important; }
+
+/* Search momentum as chips instead of numbered tables. */
+.momentum { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
+.momentumGroup { display: flex; flex-direction: column; gap: 8px; }
+.momentumLabel { color: #8f8f8f; font-size: 13px; }
+.momentumChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.momentumChip { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 12px; border: 1px solid #262626; border-radius: 999px; background: #0a0a0a; color: #ededed; font-size: 13px; cursor: pointer; transition: border-color 0.12s ease, background 0.12s ease; }
+.momentumChip:hover { border-color: #454545; background: #111; }
+.momentumChip:focus-visible { outline: 2px solid #0090ff; outline-offset: 2px; }
+.momentumName { white-space: nowrap; }
+.momentumValue { color: #8f8f8f; font-size: 12px; font-variant-numeric: tabular-nums; }
+.momentumChip > button { margin-left: 0 !important; }
+
+/* Calmer table cells: colour only on the number, no filled boxes. */
+.trendBadge { background: transparent !important; padding: 0 !important; }
+.trendUp { background: transparent !important; }
+.trendDown { background: transparent !important; }
+.trendFlat { color: #8f8f8f !important; background: transparent !important; }
+.difficultyBadge { min-width: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; font-variant-numeric: tabular-nums; }
+.competition { color: #a1a1a1; text-transform: capitalize; }

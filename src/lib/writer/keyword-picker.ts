@@ -29,7 +29,7 @@ export async function pickBestKeyword(
 
   // 1. Получаем keyword suggestions от DataForSEO
   log("keyword-picker", "FETCH_SUGGESTIONS", {
-    endpoint: "keywords_data/google_ads/search_volume/live",
+    endpoint: "dataforseo_labs/google/keyword_suggestions/live",
     seed: seedKeyword,
   });
 
@@ -38,7 +38,8 @@ export async function pickBestKeyword(
   let rawData: unknown;
   try {
     const res = await fetch(
-      "https://api.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live",
+      // Labs suggestions: ~$0.02 for 100 ideas with real keyword difficulty, vs $0.075 for Google Ads ideas.
+      "https://api.dataforseo.com/v3/dataforseo_labs/google/keyword_suggestions/live",
       {
         method: "POST",
         headers: {
@@ -47,10 +48,11 @@ export async function pickBestKeyword(
         },
         body: JSON.stringify([
           {
-            keywords: [seedKeyword],
+            keyword: seedKeyword,
             language_code: "en",
             location_code: 2840, // USA
-            include_serp_info: true,
+            include_seed_keyword: true,
+            limit: 100,
           },
         ]),
       }
@@ -76,8 +78,24 @@ export async function pickBestKeyword(
       log("keyword-picker", "TASK_NO_RESULT", { task_id: task.id });
       continue;
     }
+    // Labs keeps the numbers in nested objects; flatten them to the shape scored below.
+    const flat = (item: Record<string, unknown>, keyword: unknown): Record<string, unknown> => {
+      const info = (item.keyword_info ?? {}) as Record<string, unknown>;
+      const props = (item.keyword_properties ?? {}) as Record<string, unknown>;
+      const intent = (item.search_intent_info ?? {}) as Record<string, unknown>;
+      return {
+        keyword,
+        search_volume: info.search_volume ?? 0,
+        keyword_difficulty: props.keyword_difficulty ?? undefined,
+        competition_index: typeof info.competition === "number" ? Math.round((info.competition as number) * 100) : undefined,
+        cpc: info.cpc ?? 0,
+        search_intent: typeof intent.main_intent === "string" ? (intent.main_intent as string).toUpperCase() : "UNKNOWN",
+      };
+    };
+    const seed = result.seed_keyword_data as Record<string, unknown> | null | undefined;
+    if (seed) items.push(flat(seed, seedKeyword));
     for (const item of (result.items as Record<string, unknown>[]) ?? []) {
-      items.push(item);
+      if (typeof item.keyword === "string" && item.keyword.toLowerCase() !== seedKeyword.toLowerCase()) items.push(flat(item, item.keyword));
     }
   }
 

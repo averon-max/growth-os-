@@ -1,3 +1,4 @@
+import { asContent } from "@/lib/billing/data-budget";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth-helpers";
 import { runWriter } from "@/lib/writer/orchestrator";
@@ -105,7 +106,8 @@ export async function POST(req: NextRequest) {
       : [];
 
     console.log("[WRITER] internalLinks count:", internalLinks.length, JSON.stringify(internalLinks.slice(0,2)));
-    const result = await runWriter({
+    // Counted for the workspace, but never cut off halfway by the daily data allowance (see asContent).
+    const result = await asContent(() => runWriter({
       seedKeyword,
       category,
       exactKeyword,
@@ -114,7 +116,7 @@ export async function POST(req: NextRequest) {
       openAiKey,
       internalLinks,
       extraKeywords,
-    });
+    }));
 
     const generatedBodyMarkdown =
       result.article?.bodyMarkdown ?? "";

@@ -45,7 +45,7 @@ export default async function AdminOverview() {
     prisma.apiCache.count().catch(() => 0),
     planPrices(),
   ]);
-  const budget = normalizeDfs(dfsRow?.value).dailyBudget;
+  const budget = normalizeDfs(dfsRow?.value).serviceBudget;
 
   const live = subs.map((s) => ({ ...s, plan: effectivePlan(s) })).filter((s) => s.plan !== "FREE");
   const trials = live.filter((s) => s.status === "trialing").sort((x, y) => (x.currentPeriodEnd?.getTime() ?? 0) - (y.currentPeriodEnd?.getTime() ?? 0));
@@ -66,7 +66,7 @@ export default async function AdminOverview() {
     { label: "MRR", href: "/dashboard/admin/subscriptions", value: money(mrr), note: "from Stripe subscriptions" },
     { label: "Free trials", href: "/dashboard/admin/subscriptions", value: trials.length.toLocaleString(), note: trials[0]?.currentPeriodEnd ? `next ends ${day(trials[0].currentPeriodEnd)}` : "7 days, card on file" },
     { label: "Open inbox", href: "/dashboard/admin/inbox", value: openTickets.toLocaleString(), note: `${newTickets} new this week` },
-    { label: "Data spend", href: "/dashboard/settings/data", value: `$${(spendToday._sum.cost ?? 0).toFixed(2)}`, note: `today, limit $${budget} · $${(spend30._sum.cost ?? 0).toFixed(2)} in 30 days` },
+    { label: "Data spend", href: "/dashboard/settings/data", value: `$${(spendToday._sum.cost ?? 0).toFixed(2)}`, note: `today, service cap $${budget} · $${(spend30._sum.cost ?? 0).toFixed(2)} in 30 days` },
   ];
 
   return (

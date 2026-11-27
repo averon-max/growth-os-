@@ -139,7 +139,7 @@ export function KeywordOverviewDrawer({ keyword, workspaceId, market, language, 
                       label: MONTHS[x.month - 1],
                       value: x.searchVolume,
                       hint: String(x.year),
-                      color: i === months.length - 1 ? "#d6409f" : "#0090ff",
+                      color: i === months.length - 1 ? "#70b8ff" : "#0090ff",
                     }))}
                   />
                 ) : (

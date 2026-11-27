@@ -21,6 +21,7 @@ export function AddKeyword({ keyword, websiteId }: { keyword: string; websiteId?
   const site = useContext(SiteContext) ?? websiteId ?? null;
   const key = `${site}:${keyword.toLowerCase()}`;
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">(added.has(key) ? "done" : "idle");
+  const [why, setWhy] = useState("");
   if (!site || !keyword) return null;
 
   const add = async (e: React.MouseEvent) => {
@@ -30,15 +31,16 @@ export function AddKeyword({ keyword, websiteId }: { keyword: string; websiteId?
     setState("busy");
     try {
       const res = await fetch("/api/planner/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteId: site, keywords: [keyword] }) });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "");
       added.add(key);
       setState("done");
-    } catch {
+    } catch (err) {
+      setWhy((err as Error).message);
       setState("error");
     }
   };
 
-  const label = state === "done" ? `“${keyword}” is in the Keyword Planner` : state === "error" ? "Could not add. Try again" : `Add “${keyword}” to the Keyword Planner`;
+  const label = state === "done" ? `“${keyword}” is in the Keyword Planner` : state === "error" ? why || "Could not add. Try again" : `Add “${keyword}” to the Keyword Planner`;
   return (
     <button type="button" className={s.add} data-state={state} onClick={add} title={label} aria-label={label}>
       {state === "busy" ? <Loader2 size={12} className={s.spin} /> : state === "done" ? <Check size={12} /> : <Plus size={12} />}

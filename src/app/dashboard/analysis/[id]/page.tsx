@@ -1,5 +1,6 @@
 "use client";
 
+import { SEVERITY } from "@/components/dashboard/insights-tokens";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +28,7 @@ type Sev = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 type Group = { type: string; title: string; severity: Sev; recommendation: string; items: Issue[] };
 const SEV: Sev[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 const SEV_LABEL: Record<Sev, string> = { CRITICAL: "Critical", HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
-const SEV_TONE: Record<Sev, string> = { CRITICAL: "#d3767f", HIGH: "#d49a4e", MEDIUM: "#60a5fa", LOW: "#6b6f76" };
+const SEV_TONE: Record<Sev, string> = { CRITICAL: SEVERITY.critical, HIGH: SEVERITY.high, MEDIUM: SEVERITY.medium, LOW: SEVERITY.low };
 const sevOf = (v: string): Sev => (SEV.includes(v as Sev) ? (v as Sev) : "LOW");
 
 /** Same grouping as lib/seo-engine/scoring.ts. */
@@ -62,9 +63,9 @@ function verdict(score: number | null) {
   if (score >= 90) return { text: "Good", tone: "#4daf6d" };
   if (score >= 70) return { text: "Fair", tone: "#9cc46b" };
   if (score >= 50) return { text: "Needs work", tone: "#d4a94e" };
-  return { text: "Poor", tone: "#d3767f" };
+  return { text: "Poor", tone: "#e5484d" };
 }
-const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#d49a4e" } : score >= 60 ? { text: "Medium impact", tone: "#60a5fa" } : { text: "Low impact", tone: "#8a8f98" });
+const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#ffb224" } : score >= 60 ? { text: "Medium impact", tone: "#0090ff" } : { text: "Low impact", tone: "#8a8f98" });
 const path = (u: string) => { try { const x = new URL(u); return x.pathname + x.search || "/"; } catch { return u; } };
 const pl = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const tone = (c: string) => ({ "--tone": c }) as React.CSSProperties;

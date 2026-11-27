@@ -136,36 +136,27 @@ export function TrendingQueries({ trending, onPick }: { trending: TrendingData |
         <span className={styles.freeBadge}>Google Trends</span>
       </div>
 
-      <div className={styles.trendColumns}>
+      <div className={styles.momentum}>
         {columns.map((col) => (
-          <div key={col.key} className={styles.trendColumn}>
-            <div className={styles.trendColumnLabel} title={col.hint}>{col.label}</div>
-            <div className={styles.trendList}>
-              {col.rows.map((q, index) => {
-                const inner = (
-                  <>
-                    <span className={styles.trendRank}>{String(index + 1).padStart(2, "0")}</span>
-                    <span className={styles.trendName} title={q.query}>{q.query}<AddKeyword keyword={q.query} /></span>
-                    <span className={col.valueClass}>{col.value(q)}</span>
-                  </>
-                );
-                return onPick ? (
-                  <div
-                    key={`${col.key}-${q.query}`}
-                    role="button"
-                    tabIndex={0}
-                    data-kw=""
-                    className={`${styles.trendRow} ${styles.trendButton}`}
-                    onClick={() => onPick(q.query)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(q.query); } }}
-                    title={`Open volume, difficulty and CPC for "${q.query}"`}
-                  >
-                    {inner}
-                  </div>
-                ) : (
-                  <div key={`${col.key}-${q.query}`} className={styles.trendRow} data-kw="">{inner}</div>
-                );
-              })}
+          <div key={col.key} className={styles.momentumGroup}>
+            <div className={styles.momentumLabel} title={col.hint}>{col.label}</div>
+            <div className={styles.momentumChips}>
+              {col.rows.map((q) => (
+                <div
+                  key={`${col.key}-${q.query}`}
+                  role={onPick ? "button" : undefined}
+                  tabIndex={onPick ? 0 : undefined}
+                  data-kw=""
+                  className={styles.momentumChip}
+                  onClick={onPick ? () => onPick(q.query) : undefined}
+                  onKeyDown={onPick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(q.query); } } : undefined}
+                  title={onPick ? `Open volume, difficulty and CPC for "${q.query}"` : q.query}
+                >
+                  <span className={styles.momentumName}>{q.query}</span>
+                  <span className={styles.momentumValue}>{col.key === "rise" && q.value >= 5000 ? "new" : col.value(q).replace("/100", "")}</span>
+                  <AddKeyword keyword={q.query} />
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -252,7 +243,7 @@ export function SuggestionTable({
               )}
             </td>
             <td className={uiStyles.mono}>{s.cpc != null ? `$${s.cpc.toFixed(2)}` : "\u2014"}</td>
-            <td>{s.competitionLevel ?? "\u2014"}</td>
+            <td className={styles.competition}>{s.competitionLevel ? s.competitionLevel.toLowerCase() : "\u2014"}</td>
             <td className={styles.rowChevron}><ChevronRight size={14} aria-hidden /></td>
           </tr>
         ))}

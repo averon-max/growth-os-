@@ -97,8 +97,24 @@ export function BarList({ rows, unit, empty = "No data yet.", max: forcedMax }: 
 export type Part = { key: string; label: string; value: number; color: string; onClick?: () => void; active?: boolean };
 
 /** One 100% bar split into parts, with a clickable legend underneath. */
-export function StackBar({ parts, unit }: { parts: Part[]; unit?: string }) {
+export function StackBar({ parts, unit, compact }: { parts: Part[]; unit?: string; compact?: boolean }) {
   const total = parts.reduce((a, p) => a + p.value, 0);
+  if (compact) {
+    return (
+      <div className={s.stack}>
+        <div className={s.stackBar} role="img" aria-label={parts.map((p) => `${p.label} ${p.value}`).join(", ")}>
+          {total === 0 ? <span className={s.stackEmpty} /> : parts.filter((p) => p.value > 0).map((p) => (
+            <span key={p.key} style={{ flexGrow: p.value, background: p.color }} title={`${p.label}: ${p.value}`} />
+          ))}
+        </div>
+        <div className={s.legendInline}>
+          {parts.map((p) => (
+            <span key={p.key}><i className={s.dot} style={{ background: p.color }} />{p.label} <b>{fmtNum(p.value)}</b></span>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={s.stack}>
       <div className={s.stackBar} role="img" aria-label={parts.map((p) => `${p.label} ${p.value}`).join(", ")}>

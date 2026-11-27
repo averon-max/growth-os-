@@ -21,8 +21,47 @@ const card: React.CSSProperties = { border: "1px solid #1d1e22", borderRadius: 1
 const head: React.CSSProperties = { padding: "12px 16px", borderBottom: "1px solid #1d1e22", fontSize: 13, fontWeight: 590, color: "#d0d6e0" };
 const body: React.CSSProperties = { padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" };
 const btn: React.CSSProperties = { height: 32, padding: "0 12px", border: "1px solid #2e2e2e", borderRadius: 6, background: "#0a0a0a", color: "#ededed", fontSize: 13, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" };
-const danger: React.CSSProperties = { ...btn, color: "#e08a92", borderColor: "rgba(212,102,112,.3)", background: "rgba(212,102,112,.06)" };
+const danger: React.CSSProperties = { ...btn, color: "#e08a92", borderColor: "rgba(229,72,77,.3)", background: "rgba(229,72,77,.06)" };
 const muted: React.CSSProperties = { color: "#8a8f98", fontSize: 13, lineHeight: 1.55, margin: 0 };
+type Usage = { plan: string; rows: { label: string; used: number; limit: number }[]; data: { today: number; month: number } };
+
+function Bar({ label, value, note }: { label: string; value: number; note: string }) {
+  const tone = value >= 100 ? "#e5484d" : value >= 80 ? "#f5a623" : "#ededed";
+  return (
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid #17181b" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
+        <span style={{ color: "#d0d6e0" }}>{label}</span>
+        <span style={{ color: "#8a8f98", fontVariantNumeric: "tabular-nums" }}>{note}</span>
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: "#1f1f1f", marginTop: 8, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(100, value)}%`, height: "100%", background: tone, borderRadius: 2, transition: "width .4s ease" }} />
+      </div>
+    </div>
+  );
+}
+
+function UsageCard() {
+  const [u, setU] = useState<Usage | null>(null);
+  useEffect(() => {
+    fetch("/api/billing/usage", { cache: "no-store" }).then(async (r) => (r.ok ? setU(await r.json()) : null)).catch(() => undefined);
+  }, []);
+  if (!u) return null;
+  const n = (v: number) => v.toLocaleString("en-US");
+  return (
+    <section style={card}>
+      <div style={head}>Usage · {u.plan}</div>
+      {u.rows.map((r) => (
+        <Bar key={r.label} label={r.label} value={r.limit > 0 ? (r.used / r.limit) * 100 : 0} note={`${n(r.used)} of ${n(r.limit)}`} />
+      ))}
+      <Bar label="New data today" value={u.data.today} note={`${u.data.today}%`} />
+      <Bar label="New data this month" value={u.data.month} note={`${u.data.month}%`} />
+      <div style={{ padding: "10px 16px" }}>
+        <p style={muted}>New data means fresh numbers from Google and link databases. Saved data is always shown, even when the allowance is used up; it refills daily and monthly.</p>
+      </div>
+    </section>
+  );
+}
+
 const day = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—");
 
 export default function BillingPanel() {
@@ -110,6 +149,8 @@ export default function BillingPanel() {
           </div>
         ) : null}
       </section>
+
+      <UsageCard />
 
       {live && !b.cancelAtPeriodEnd && b.switches && b.switches.length > 0 ? (
         <section style={card}>

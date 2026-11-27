@@ -263,11 +263,11 @@
 
 .issueDot[data-tone="danger"] {
   border-color: var(--danger);
-  background: rgba(212,102,112,.13);
+  background: rgba(229,72,77,.13);
 }
 
 .issueDot[data-tone="accent"] {
-  border-color: #60a5fa;
+  border-color: #0090ff;
   background: rgba(59,130,246,.20);
 }
 
@@ -367,9 +367,9 @@
 }
 
 .badgeDanger {
-  color: #d3767f;
-  border-color: rgba(212,102,112,.14);
-  background: rgba(212,102,112,.045);
+  color: #e5484d;
+  border-color: rgba(229,72,77,.14);
+  background: rgba(229,72,77,.045);
 }
 
 .badgeWarning {
@@ -491,7 +491,7 @@
 
   background: var(--surface-2);
 
-  color: #60a5fa;
+  color: #0090ff;
 }
 
 .emptyTitle {
@@ -1222,7 +1222,7 @@
 }
 
 .statusaccent {
-  background: #60a5fa !important;
+  background: #0090ff !important;
 }
 
 .statusmuted {
@@ -1501,7 +1501,7 @@
   bottom: -1px;
   left: 0;
   height: 1px;
-  background: #60a5fa;
+  background: #0090ff;
 }
 
 .resumeSurface {
@@ -1783,7 +1783,7 @@
 }
 
 .contentPriorityDot[data-priority="MEDIUM"] {
-  background: #60a5fa;
+  background: #0090ff;
 }
 
 .contentPriorityDot[data-priority="LOW"] {
@@ -2072,9 +2072,9 @@
   border: 1.5px solid currentColor !important; background: transparent !important; box-shadow: none !important; color: #8f8f8f;
 }
 .issueDot::before, .issueDot::after, .statusMark::before, .statusMark::after { display: none !important; }
-.issueDot[data-tone="success"], .statusgood { color: #4cb782 !important; background: currentColor !important; }
+.issueDot[data-tone="success"], .statusgood { color: #30a46c !important; background: currentColor !important; }
 .issueDot[data-tone="accent"], .statusaccent { color: #3b82f6 !important; background: currentColor !important; }
-.issueDot[data-tone="warning"], .statuswarn { color: #f2c94c !important; background: conic-gradient(currentColor 0 50%, transparent 50% 100%) !important; }
+.issueDot[data-tone="warning"], .statuswarn { color: #ffb224 !important; background: conic-gradient(currentColor 0 50%, transparent 50% 100%) !important; }
 .issueDot[data-tone="danger"], .statusbad, .statusdanger { color: #eb5757 !important; background: conic-gradient(currentColor 0 50%, transparent 50% 100%) !important; }
 .issueDot[data-tone="muted"], .statusmuted { color: #8f8f8f !important; background: transparent !important; }
 
@@ -2085,9 +2085,9 @@
   color: #a1a1a1 !important; font-size: 12px !important; font-weight: 510 !important; letter-spacing: 0 !important; text-transform: none !important; box-shadow: none !important;
 }
 .badgeDanger, .severitydanger, .prioritydanger { color: #eb5757 !important; border-color: rgba(235,87,87,.28) !important; background: rgba(235,87,87,.08) !important; }
-.badgeWarning, .severitywarning, .prioritywarning { color: #f2c94c !important; border-color: rgba(242,201,76,.28) !important; background: rgba(242,201,76,.08) !important; }
-.badgeSuccess { color: #4cb782 !important; border-color: rgba(76,183,130,.28) !important; background: rgba(76,183,130,.08) !important; }
-.badgeAccent, .severityaccent, .priorityaccent, .scorePill { color: #60a5fa !important; border-color: rgba(96,165,250,.28) !important; background: rgba(96,165,250,.08) !important; }
+.badgeWarning, .severitywarning, .prioritywarning { color: #ffb224 !important; border-color: rgba(242,201,76,.28) !important; background: rgba(242,201,76,.08) !important; }
+.badgeSuccess { color: #30a46c !important; border-color: rgba(76,183,130,.28) !important; background: rgba(76,183,130,.08) !important; }
+.badgeAccent, .severityaccent, .priorityaccent, .scorePill { color: #0090ff !important; border-color: rgba(0,144,255,.28) !important; background: rgba(0,144,255,.08) !important; }
 .badgeMuted, .severitymuted, .prioritymuted { color: #a1a1a1 !important; border-color: #262626 !important; background: transparent !important; }
 
 /* кнопки в строках — как Approve/Write */

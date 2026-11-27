@@ -23,16 +23,17 @@ const COPY: Record<string, string> = {
   audience: "Audience from Google Analytics 4",
   bots: "Search engine and AI crawler traffic",
   seo: "Technical SEO audit with clear fixes",
-  cms: "Publish and fix pages in your CMS",
+  cms: "CMS publishing (coming soon)",
 };
 
-export type Feature = { key: string; label: string; text: string; plan: PlanId };
+/** soon: shown on the pricing page as "Soon", not as included (the menu item has the "Soon" badge). */
+export type Feature = { key: string; label: string; text: string; plan: PlanId; soon: boolean };
 
 const sectionOf = (href: string) => href.replace(/^\/dashboard\/?/, "").split(/[/?]/)[0];
 
 export const FEATURES: Feature[] = NAV.flatMap((s) => s.items).map((item) => {
   const key = sectionOf(item.href);
-  return { key, label: item.label, text: COPY[key] ?? item.label, plan: SECTION_MIN_PLAN[key] ?? "FREE" };
+  return { key, label: item.label, text: COPY[key] ?? item.label, plan: SECTION_MIN_PLAN[key] ?? "FREE", soon: item.badge === "Soon" };
 });
 
 export const hasFeature = (plan: PlanId, key: string) =>
@@ -45,7 +46,7 @@ const plural = (v: number, one: string, many: string) => `${n(v)} ${v === 1 ? on
 export function usage(id: PlanId): string[] {
   const l = PLANS[id].limits;
   const out = [plural(l.websites, "website", "websites")];
-  if (hasFeature(id, "keywords")) out.push(`${n(l.keywordRefreshesPerMonth)} keyword data refreshes / month`);
+  if (hasFeature(id, "keywords")) out.push(`${n(l.trackedKeywords)} tracked keywords`);
   if (hasFeature(id, "content")) out.push(`${n(l.articlesPerMonth)} AI article drafts / month`);
   return out;
 }
@@ -57,7 +58,7 @@ export function usage(id: PlanId): string[] {
 export function highlights(id: PlanId): string[] {
   const i = PAID_ORDER.indexOf(id);
   const prev = i > 0 ? PAID_ORDER[i - 1] : null;
-  const added = FEATURES.filter((f) => (prev ? f.plan === id : f.plan !== "FREE" && PLAN_RANK[f.plan] <= PLAN_RANK[id])).map((f) => f.text);
+  const added = FEATURES.filter((f) => !f.soon && (prev ? f.plan === id : f.plan !== "FREE" && PLAN_RANK[f.plan] <= PLAN_RANK[id])).map((f) => f.text);
   return [
     ...(id === TRIAL_PLAN ? [`${TRIAL_DAYS}-day free trial`] : []),
     ...(prev ? [`Everything in ${PLANS[prev].name}`] : []),

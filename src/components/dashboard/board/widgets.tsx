@@ -8,6 +8,7 @@ import { SitePreview } from "../site-preview";
 import { DotMap } from "../dot-map";
 import { SeriesChart } from "../series-chart";
 import { BarList, StackBar } from "../insights";
+import { SEVERITY } from "../insights-tokens";
 import type { WidgetType } from "./layout";
 import s from "./board.module.css";
 
@@ -117,10 +118,10 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
           <StackBar
             unit="issues"
             parts={[
-              { key: "c", label: "Critical", value: d.severity.critical, color: "#e5484d" },
-              { key: "h", label: "High", value: d.severity.high, color: "#d6409f" },
-              { key: "m", label: "Medium", value: d.severity.medium, color: "#f5a623" },
-              { key: "l", label: "Low", value: d.severity.low, color: "#0090ff" },
+              { key: "c", label: "Critical", value: d.severity.critical, color: SEVERITY.critical },
+              { key: "h", label: "High", value: d.severity.high, color: SEVERITY.high },
+              { key: "m", label: "Medium", value: d.severity.medium, color: SEVERITY.medium },
+              { key: "l", label: "Low", value: d.severity.low, color: SEVERITY.low },
             ]}
           />
         </div>
@@ -180,15 +181,25 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
         />
       );
     case "setup": {
-      const todo = d.steps.filter((x) => !x.done);
-      return todo.length === 0 ? (
-        <p className={s.muted} style={{ margin: 0 }}><Check size={14} style={{ verticalAlign: -2 }} /> All set. Every connection is working.</p>
-      ) : (
-        <ul className={s.steps}>
-          {todo.map((x) => (
-            <li key={x.label}><Link href={x.href} className={s.step}><span className={s.stepDot} />{x.label}<ArrowUpRight size={14} className={s.stepArrow} /></Link></li>
-          ))}
-        </ul>
+      const done = d.steps.filter((x) => x.done).length;
+      return (
+        <div className={s.setup}>
+          <div className={s.setupHead}>
+            <span>{done === d.steps.length ? "Everything is connected" : `${done} of ${d.steps.length} done`}</span>
+            <div className={s.setupBar}><span style={{ width: `${(done / Math.max(1, d.steps.length)) * 100}%` }} /></div>
+          </div>
+          <ul className={s.steps}>
+            {d.steps.map((x) => (
+              <li key={x.label}>
+                <Link href={x.href} className={s.step} data-done={x.done || undefined}>
+                  {x.done ? <Check size={14} className={s.stepCheck} /> : <span className={s.stepDot} />}
+                  {x.label}
+                  <ArrowUpRight size={14} className={s.stepArrow} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       );
     }
     case "keywords":

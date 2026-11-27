@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { requireUser, authErrorResponse } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_LAYOUT, sanitize } from "@/components/dashboard/board/layout";
+import { DEFAULT_LAYOUT, sanitize, toStored } from "@/components/dashboard/board/layout";
 
 /* The overview board layout of the signed-in user. */
 const keyOf = (userId: string) => `board:${userId}`;
@@ -30,8 +30,8 @@ export async function PUT(req: NextRequest) {
     if (!layout) return NextResponse.json({ error: "Invalid layout." }, { status: 400 });
     await prisma.appSetting.upsert({
       where: { key: keyOf(user.id) },
-      create: { key: keyOf(user.id), value: layout as unknown as Prisma.InputJsonValue },
-      update: { value: layout as unknown as Prisma.InputJsonValue },
+      create: { key: keyOf(user.id), value: toStored(layout) as unknown as Prisma.InputJsonValue },
+      update: { value: toStored(layout) as unknown as Prisma.InputJsonValue },
     });
     return NextResponse.json({ layout });
   } catch (err) {

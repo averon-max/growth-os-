@@ -53,7 +53,7 @@
 .pages { display: flex; flex-direction: column; gap: 6px; }
 .pagesText { display: flex; justify-content: space-between; color: #a1a1a1; font-size: 12px; font-feature-settings: "tnum" 1; }
 .pagesText b { color: #d0d6e0; font-weight: 590; }
-.meter { height: 6px; border-radius: 3px; background: rgba(212,102,112,.35); overflow: hidden; }
+.meter { height: 6px; border-radius: 3px; background: rgba(229,72,77,.35); overflow: hidden; }
 .meter span { display: block; height: 100%; background: #4daf6d; }
 .meterClean { background: #1f1f1f; }
 
@@ -109,7 +109,7 @@
 /* states */
 .state { padding: 22px; border: 1px solid #1f1f1f; border-radius: 10px; color: #a1a1a1; font-size: 13px; line-height: 1.6; }
 .state strong { display: block; margin-bottom: 6px; color: #ededed; font-size: 14px; }
-.stateBad { border-color: rgba(212,102,112,.3); }
+.stateBad { border-color: rgba(229,72,77,.3); }
 .pulse { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #3b82f6; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }

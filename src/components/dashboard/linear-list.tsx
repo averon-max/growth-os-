@@ -6,15 +6,15 @@ export type LStatus = "red" | "green" | "yellow" | "gray" | "blue";
 export interface LRow { key: string; id?: string; status: LStatus; title: string; hint?: string; pills?: { label: string; dot?: string }[]; metrics?: string[]; date?: string; onClick?: () => void; actions?: ReactNode }
 export interface LGroup { title: string; count: number; status: LStatus; rows: LRow[] }
 
-const COLOR: Record<LStatus, string> = { red: "#eb5757", green: "#4cb782", yellow: "#f2c94c", gray: "#62666d", blue: "#3b82f6" };
+const COLOR: Record<LStatus, string> = { red: "#eb5757", green: "#30a46c", yellow: "#ffb224", gray: "#62666d", blue: "#3b82f6" };
 const SHAPE: Record<LStatus, string> = { red: s.half, green: s.full, yellow: s.half, gray: "", blue: s.full };
 
 const TONE: Record<string, string> = {
-  informational: "#60a5fa", commercial: "#f2c94c", transactional: "#4cb782", navigational: "#f2994a",
-  dofollow: "#4cb782", nofollow: "#8a8f98", clean: "#4cb782", spam: "#eb5757", pbn: "#eb5757",
-  new: "#f2c94c", lost: "#8a8f98", tracked: "#f2c94c",
+  informational: "#0090ff", commercial: "#ffb224", transactional: "#30a46c", navigational: "#f76b15",
+  dofollow: "#30a46c", nofollow: "#8a8f98", clean: "#30a46c", spam: "#eb5757", pbn: "#eb5757",
+  new: "#ffb224", lost: "#8a8f98", tracked: "#ffb224",
 };
-const PALETTE = ["#60a5fa", "#f2c94c", "#4cb782", "#f2994a", "#d0d6e0"];
+const PALETTE = ["#0090ff", "#ffb224", "#30a46c", "#f76b15", "#d0d6e0"];
 function pillTone(p: { label: string; dot?: string }): string {
   if (p.dot) return p.dot;
   const k = p.label.toLowerCase().trim();
@@ -23,16 +23,18 @@ function pillTone(p: { label: string; dot?: string }): string {
   for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return PALETTE[h % PALETTE.length];
 }
+/** Pills are neutral (Vercel tables keep colour for what needs attention); only red marks a problem. */
 function pillStyle(p: { label: string; dot?: string }) {
   const c = pillTone(p);
-  return /^#[0-9a-f]{6}$/i.test(c) ? { color: c, borderColor: c + "40", background: c + "14" } : { color: c, borderColor: c };
+  const bad = c === "#eb5757" || c === "#e5484d";
+  return bad ? { color: "#e5484d", borderColor: "#e5484d40", background: "#e5484d14" } : { color: "#a1a1a1", borderColor: "#2e2e2e", background: "transparent" };
 }
 
 export function StatusIcon({ status }: { status: LStatus }) {
   return <span className={`${s.st} ${SHAPE[status]}`} style={{ color: COLOR[status] }} />;
 }
 
-/** Linear-style grouped list: group headers, status icon, mono ID, title + hint, pills and metrics on the right. */
+/** Grouped list in the Vercel table style: group headers, title + hint, neutral pills and metrics on the right. */
 export function LinearList({ groups, empty = "Nothing here." }: { groups: LGroup[]; empty?: string }) {
   const visible = groups.filter((g) => g.rows.length > 0);
   if (visible.length === 0) return <div className={s.empty}>{empty}</div>;
@@ -40,11 +42,9 @@ export function LinearList({ groups, empty = "Nothing here." }: { groups: LGroup
     <>
       {visible.map((g) => (
         <div key={g.title}>
-          <div className={s.gh}><StatusIcon status={g.status} />{g.title}<span className={s.n}>{g.count}</span></div>
+          <div className={s.gh}>{g.title}<span className={s.n}>{g.count}</span></div>
           {g.rows.map((r) => (
-            <div key={r.key} className={s.r} onClick={r.onClick} role={r.onClick ? "button" : undefined}>
-              {r.id ? <span className={s.id}>{r.id}</span> : null}
-              <StatusIcon status={r.status} />
+            <div key={r.key} className={s.r} onClick={r.onClick} role={r.onClick ? "button" : undefined} data-kw="">
               <span className={s.tt}>{r.title}{r.hint ? <span>· {r.hint}</span> : null}</span>
               {(r.pills ?? []).map((p) => <span key={p.label} className={s.pill} style={pillStyle(p)}>{p.label}</span>)}
               {(r.metrics ?? []).map((m, i) => <span key={i} className={s.m}>{m}</span>)}

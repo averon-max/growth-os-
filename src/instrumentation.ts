@@ -4,9 +4,10 @@
  * 1. Saved answers. A successful (paid) answer is stored in ApiCache and reused by everyone until it is older than
  *    the days set for its kind in Settings → Data. The same search is never paid for twice in that time,
  *    and identical requests running at the same moment share one paid call.
- * 2. Daily budget. Every paid call is logged in DfsSpend with its real cost. When today's total reaches the
- *    daily budget, no new paid calls are made: the last saved answer is used, or the caller gets a
- *    "balance" error and falls back to its free mode.
+ * 2. Allowances. Every paid call is logged in DfsSpend with its real cost and charged to the workspace behind it
+ *    (lib/billing/data-budget.ts). When that workspace has used its plan's daily or monthly data allowance, or the
+ *    whole service has reached its safety cap for the day, no new paid call is made: the last saved answer is
+ *    used, or the caller gets a "balance" error and falls back to its free mode.
  * 3. Cheaper page reads. Reading a page with a full browser costs ~30× more than a plain read.
  *    A plain read is tried first; the browser is used only when the plain read comes back empty.
  * 4. Same question, same answer. "Best CRM", " best  crm" and {a,b} vs {b,a} are one saved answer, not three.
@@ -17,7 +18,7 @@
  * .env:
  *   DATAFORSEO_OFFLINE=1        never call the API, only saved answers
  *   DATAFORSEO_CACHE=0          turn all of this off
- *   DATAFORSEO_DAILY_BUDGET=3   daily budget in USD
+ *   DATAFORSEO_DAILY_BUDGET=25  service-wide safety cap per day in USD (10–200)
  *   DATAFORSEO_MAX_SERP_DEPTH=30  most Google result rows bought per search (10–100)
  */
 
@@ -139,6 +140,7 @@ export async function register() {
   const { categoryOf, normalizeDfs, keepMs, SETTINGS_KEY } = await import("@/lib/dataforseo/cache-settings");
   const { wantsFresh } = await import("@/lib/dataforseo/fresh");
   const { AI_REUSE_HEADER, aiCost, usableAnswer, asReused } = await import("@/lib/ai/saved-answers");
+  const { who, overAllowance, recordSpend } = await import("@/lib/billing/data-budget");
   const original = globalThis.fetch.bind(globalThis);
   const inflight = new Map<string, Promise<Response>>();
 
@@ -167,7 +169,7 @@ export async function register() {
   };
 
   /** One paid request. Logs its cost. Never throws for a provider error — returns the JSON. */
-  const paid = async (url: string, init: RequestInit, endpoint: string, body: string): Promise<{ res: Response; json: Json | null }> => {
+  const paid = async (url: string, init: RequestInit, endpoint: string, body: string, payer: string | null): Promise<{ res: Response; json: Json | null }> => {
     const res = await original(url, { ...init, body });
     let json: Json | null = null;
     try { json = (await res.clone().json()) as Json; } catch { json = null; }
@@ -180,6 +182,7 @@ export async function register() {
           update: { calls: { increment: 1 }, cost: { increment: cost } },
         })
         .catch((e: Error) => console.warn("[dataforseo] spend log failed:", e.message));
+      if (payer) await recordSpend(payer, cost).catch((e: Error) => console.warn("[dataforseo] allowance log failed:", e.message));
     }
     console.log(`[dataforseo] paid  ${endpoint}  $${cost.toFixed(4)}`);
     return { res, json };
@@ -298,20 +301,29 @@ export async function register() {
     if (process.env.DATAFORSEO_OFFLINE === "1") return refuse("Offline mode: no saved data for this request yet.");
     if (s.paused) return refuse("Paid data is paused in Settings → Data. Saved data is still shown.");
     const spent = await spentToday();
-    if (spent >= s.dailyBudget) {
-      console.warn(`[dataforseo] daily budget reached ($${spent.toFixed(2)} of $${s.dailyBudget}), refused ${endpoint}`);
-      return refuse(`Daily data budget reached ($${s.dailyBudget}). Saved data is still shown; new data resumes tomorrow.`);
+    if (spent >= s.serviceBudget) {
+      console.warn(`[dataforseo] service cap reached ($${spent.toFixed(2)} of $${s.serviceBudget}), refused ${endpoint}`);
+      return refuse("New data is paused for today. Saved data is still shown; new data resumes tomorrow.");
     }
+    const payer = await who().catch(() => null);
+    if (payer) {
+      const over = await overAllowance(payer).catch(() => null);
+      if (over) {
+        console.warn(`[dataforseo] allowance used by ${payer.workspaceId}, refused ${endpoint}`);
+        return refuse(over);
+      }
+    }
+    const payerId = payer?.workspaceId ?? null;
 
     const work = (async (): Promise<Response> => {
       const req = { ...(init ?? {}), method: init?.method ?? "POST" };
       const cheaper = cheaperPageRead(endpoint, body);
       let result: { res: Response; json: Json | null } | null = null;
       if (cheaper) {
-        const plain = await paid(url, req, endpoint, cheaper.body).catch(() => null);
+        const plain = await paid(url, req, endpoint, cheaper.body, payerId).catch(() => null);
         if (plain?.json && isOk(plain.json) && cheaper.good(plain.json)) result = plain;
       }
-      result ??= await paid(url, req, endpoint, body);
+      result ??= await paid(url, req, endpoint, body, payerId);
       const { res, json } = result;
       if (json && isOk(json)) {
         const cost = Number(json.cost ?? 0) || 0;

@@ -2413,7 +2413,7 @@ ${article.bodyMarkdown}`
                     <Area
                       type="monotone"
                       dataKey="impressions"
-                      stroke="#60a5fa"
+                      stroke="#0090ff"
                       fill="url(#impressionsFill)"
                       strokeWidth={1.5}
                     />

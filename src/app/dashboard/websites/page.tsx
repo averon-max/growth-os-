@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmptyState } from "@/components/dashboard/ui";
 import { SitePreview } from "@/components/dashboard/site-preview";
+import { KpiStrip, StackBar } from "@/components/dashboard/insights";
+import { SEVERITY } from "@/components/dashboard/insights-tokens";
 import styles from "@/components/dashboard/ui.module.css";
 import s from "./websites.module.css";
 
@@ -32,9 +34,26 @@ export default async function WebsitesPage() {
           business: { select: { name: true } },
           analyses: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true, status: true, overallScore: true, pagesCount: true, completedAt: true, createdAt: true } },
           cloudflareConnection: { select: { id: true } },
+          _count: { select: { trackedKeywords: true } },
         },
       })
     : [];
+  const latestIds = websites.flatMap((w) => (w.analyses[0] ? [w.analyses[0].id] : []));
+  const [issueRows, gsc] = await Promise.all([
+    latestIds.length
+      ? prisma.sEOIssue.groupBy({ by: ["analysisId", "severity"], where: { analysisId: { in: latestIds } }, _count: { _all: true } })
+      : Promise.resolve([] as { analysisId: string; severity: string; _count: { _all: number } }[]),
+    membership
+      ? prisma.providerConnection.findUnique({ where: { workspaceId_provider: { workspaceId: membership.workspaceId, provider: "GOOGLE_SEARCH_CONSOLE" } }, select: { status: true } })
+      : Promise.resolve(null),
+  ]);
+  const gscOn = gsc?.status === "CONNECTED";
+  const sev = (id: string | undefined, level: string) => issueRows.filter((r) => r.analysisId === id && r.severity === level).reduce((a, r) => a + r._count._all, 0);
+  const scores = websites.flatMap((w) => (w.analyses[0]?.overallScore != null ? [w.analyses[0].overallScore] : []));
+  const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const issuesTotal = issueRows.reduce((a, r) => a + r._count._all, 0);
+  const pagesTotal = websites.reduce((a, w) => a + (w.analyses[0]?.pagesCount ?? 0), 0);
+  const tracked = websites.reduce((a, w) => a + w._count.trackedKeywords, 0);
 
   return (
     <>
@@ -51,7 +70,17 @@ export default async function WebsitesPage() {
         {websites.length === 0 ? (
           <EmptyState icon={Globe} title="No websites yet" description="Add a website and Hyprlyx audits it, tracks its keywords and connects its traffic." actionLabel="Add website" actionHref="/dashboard/add-website" />
         ) : (
-          <div className={s.grid}>
+          <>
+          <KpiStrip
+            items={[
+              { key: "sites", label: "Websites", value: websites.length, sub: "in this workspace" },
+              { key: "score", label: "Average SEO score", value: avg ?? "—", sub: "latest audits", tone: avg == null ? undefined : avg >= 80 ? "good" : avg >= 50 ? "warn" : "bad" },
+              { key: "issues", label: "Open issues", value: issuesTotal.toLocaleString("en-US"), sub: "found by the last audits" },
+              { key: "pages", label: "Pages checked", value: pagesTotal.toLocaleString("en-US"), sub: "across all sites" },
+              { key: "kw", label: "Tracked keywords", value: tracked.toLocaleString("en-US"), sub: "in the Keyword Planner" },
+            ]}
+          />
+          <div className={s.grid} data-one={websites.length === 1 || undefined}>
             {websites.map((w) => {
               const a = w.analyses[0];
               const score = a?.overallScore ?? null;
@@ -71,6 +100,23 @@ export default async function WebsitesPage() {
                       <div><dt>Last audit</dt><dd>{a ? ago(a.completedAt ?? a.createdAt) : "never"}</dd></div>
                       <div><dt>Pages</dt><dd>{a?.pagesCount ?? "—"}</dd></div>
                     </dl>
+                    <div className={s.issues}>
+                      <div className={s.issuesHead}><span>Issues</span><span>{a ? (sev(a.id, "CRITICAL") + sev(a.id, "HIGH") + sev(a.id, "MEDIUM") + sev(a.id, "LOW")).toLocaleString("en-US") : "—"}</span></div>
+                      <StackBar
+                        parts={[
+                          { key: "c", label: "Critical", value: sev(a?.id, "CRITICAL"), color: SEVERITY.critical },
+                          { key: "h", label: "High", value: sev(a?.id, "HIGH"), color: SEVERITY.high },
+                          { key: "m", label: "Medium", value: sev(a?.id, "MEDIUM"), color: SEVERITY.medium },
+                          { key: "l", label: "Low", value: sev(a?.id, "LOW"), color: SEVERITY.low },
+                        ]}
+                        compact
+                      />
+                    </div>
+                    <ul className={s.links}>
+                      <li data-on={gscOn || undefined}><span className={s.linkDot} />Search Console</li>
+                      <li data-on={Boolean(w.cloudflareConnection) || undefined}><span className={s.linkDot} />Cloudflare</li>
+                      <li data-on={w._count.trackedKeywords > 0 || undefined}><span className={s.linkDot} />{w._count.trackedKeywords} tracked keywords</li>
+                    </ul>
                     <div className={s.actions}>
                       <Link href={`/dashboard/seo?websiteId=${w.id}`} className={s.button}>SEO audit</Link>
                       <a href={w.url} target="_blank" rel="noreferrer" className={s.button}>Visit <ArrowUpRight size={13} /></a>
@@ -79,7 +125,13 @@ export default async function WebsitesPage() {
                 </article>
               );
             })}
+            <Link href="/dashboard/add-website" className={s.addCard}>
+              <Plus size={18} />
+              <span>Add website</span>
+              <small>Audit it, track its keywords and connect its traffic.</small>
+            </Link>
           </div>
+          </>
         )}
       </div>
     </>

@@ -125,7 +125,7 @@ function fmtImpr(v: number | null): string {
 function kdLabel(kd: number | null): { label: string; desc: string; color: string } {
   if (kd === null) return { label: "—", desc: "No data", color: "var(--secondary)" };
   if (kd < 30) return { label: "Easy", desc: "Low competition", color: "var(--success)" };
-  if (kd < 50) return { label: "Possible", desc: "Moderate competition", color: "#60a5fa" };
+  if (kd < 50) return { label: "Possible", desc: "Moderate competition", color: "#0090ff" };
   if (kd < 70) return { label: "Difficult", desc: "High competition", color: "var(--warning)" };
   return { label: "Hard", desc: "Very high competition", color: "var(--danger)" };
 }
@@ -173,7 +173,7 @@ function oppDecision(vol: number | null, kd: number | null): { action: string; r
   const lowKd = kd < 40;
   const midKd = kd < 70;
   if (highVol && lowKd) return { action: "Prioritize", reason: "High demand + manageable difficulty", color: "var(--success)" };
-  if (highVol && midKd) return { action: "Long-term", reason: "High demand but competitive", color: "#60a5fa" };
+  if (highVol && midKd) return { action: "Long-term", reason: "High demand but competitive", color: "#0090ff" };
   if (highVol && !midKd) return { action: "Hard target", reason: "High demand but very difficult", color: "var(--warning)" };
   if (!highVol && lowKd) return { action: "Niche", reason: "Low volume but easy win", color: "var(--accent)" };
   return { action: "Low priority", reason: "Low demand and high difficulty", color: "var(--secondary)" };

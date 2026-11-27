@@ -18,9 +18,9 @@ export interface LibraryOpportunity { id: string; title: string; reason: string;
 function articleType(a: LibraryArticle): { label: string; dot?: string } {
   const t = (a.title || "").toLowerCase();
   if (a.publishError) return { label: "Error", dot: "#eb5757" };
-  if (/step[- ]by[- ]step/.test(t)) return { label: "Step-by-step", dot: "#f2994a" };
-  if (/complete|ultimate|guide/.test(t)) return { label: "Guide", dot: "#4cb782" };
-  if (/^how (to|do)/.test(t)) return { label: "How-to", dot: "#f2c94c" };
+  if (/step[- ]by[- ]step/.test(t)) return { label: "Step-by-step", dot: "#f76b15" };
+  if (/complete|ultimate|guide/.test(t)) return { label: "Guide", dot: "#30a46c" };
+  if (/^how (to|do)/.test(t)) return { label: "How-to", dot: "#ffb224" };
   if (/^\d+ |best |top /.test(t)) return { label: "List", dot: "#d0d6e0" };
   return { label: "Article", dot: "#8a8f98" };
 }
@@ -31,10 +31,10 @@ function cleanError(e: string): string {
 }
 function oppTag(title: string): { label: string; dot: string } {
   const t = title.toLowerCase();
-  if (/meta|title tag|description/.test(t)) return { label: "Meta", dot: "#60a5fa" };
-  if (/canonical|redirect|index|crawl|speed/.test(t)) return { label: "Technical", dot: "#f2994a" };
-  if (/structured|schema|rich/.test(t)) return { label: "Schema", dot: "#4cb782" };
-  if (/thin|expand|content|word/.test(t)) return { label: "Content", dot: "#f2c94c" };
+  if (/meta|title tag|description/.test(t)) return { label: "Meta", dot: "#0090ff" };
+  if (/canonical|redirect|index|crawl|speed/.test(t)) return { label: "Technical", dot: "#f76b15" };
+  if (/structured|schema|rich/.test(t)) return { label: "Schema", dot: "#30a46c" };
+  if (/thin|expand|content|word/.test(t)) return { label: "Content", dot: "#ffb224" };
   if (/link/.test(t)) return { label: "Links", dot: "#d0d6e0" };
   return { label: "SEO", dot: "#8a8f98" };
 }

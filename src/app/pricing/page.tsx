@@ -31,7 +31,7 @@ const ROWS: { group: string; rows: [string, ...Cell[]][] }[] = [
     group: "Usage",
     rows: [
       ["Websites", ...PAID_ORDER.map((id) => n(PLANS[id].limits.websites))],
-      ["Keyword data refreshes / month", ...PAID_ORDER.map((id) => (hasFeature(id, "keywords") ? n(PLANS[id].limits.keywordRefreshesPerMonth) : false))],
+      ["Tracked keywords", ...PAID_ORDER.map((id) => (hasFeature(id, "keywords") ? n(PLANS[id].limits.trackedKeywords) : false))],
       ["AI article drafts / month", ...PAID_ORDER.map((id) => (hasFeature(id, "content") ? n(PLANS[id].limits.articlesPerMonth) : false))],
     ],
   },
@@ -39,7 +39,7 @@ const ROWS: { group: string; rows: [string, ...Cell[]][] }[] = [
     group: section.label,
     rows: section.items.map((item) => {
       const f = FEATURES.find((x) => x.label === item.label)!;
-      return [f.text, ...PAID_ORDER.map((id) => hasFeature(id, f.key))] as [string, ...Cell[]];
+      return [f.text, ...PAID_ORDER.map((id) => (f.soon ? (hasFeature(id, f.key) ? "Soon" : false) : hasFeature(id, f.key)))] as [string, ...Cell[]];
     }),
   })),
   { group: "Billing & support", rows: [["Free trial", `${TRIAL_DAYS} days`, false, false], ["Cancel anytime in Settings", true, true, true], ["Email support", true, true, true]] },

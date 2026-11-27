@@ -78,7 +78,7 @@ function SiteRow({ site }: { site: Site }) {
           <>
             <button type="button" style={btn} disabled={!!busy} onClick={() => void sync()}>{busy === "sync" ? "Loading…" : "Refresh data"}</button>
             <button type="button" style={btn} disabled={!!busy} onClick={() => setOpen(!open)}>Replace token</button>
-            <button type="button" style={{ ...btn, color: "#e08a92", borderColor: "rgba(212,102,112,.3)" }} disabled={!!busy} onClick={() => void disconnect()}>Disconnect</button>
+            <button type="button" style={{ ...btn, color: "#e08a92", borderColor: "rgba(229,72,77,.3)" }} disabled={!!busy} onClick={() => void disconnect()}>Disconnect</button>
           </>
         ) : (
           <button type="button" style={primary} onClick={() => setOpen(!open)}>Connect</button>

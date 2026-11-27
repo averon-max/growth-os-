@@ -6,7 +6,7 @@
 .primary { border-color: #ededed; background: #ededed; color: #0a0a0a; }
 .primary:hover { background: #fff; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 24px; }
 .card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid #262626; border-radius: 12px; background: #0a0a0a; transition: border-color 0.12s ease; animation: rise 0.25s ease both; }
 .card:hover { border-color: #3a3a3a; }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
@@ -22,6 +22,28 @@
 .facts dt { color: #8f8f8f; font-size: 12px; }
 .facts dd { margin: 2px 0 0; color: #ededed; font-size: 14px; font-variant-numeric: tabular-nums; }
 .facts dd[data-tone="good"] { color: #30a46c; }
-.facts dd[data-tone="warn"] { color: #f5a623; }
+.facts dd[data-tone="warn"] { color: #ffb224; }
 .facts dd[data-tone="bad"] { color: #e5484d; }
 .actions { display: flex; gap: 8px; }
+
+.issues { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #1a1a1a; }
+.issuesHead { display: flex; justify-content: space-between; color: #8f8f8f; font-size: 12px; }
+.issuesHead span:last-child { color: #ededed; font-variant-numeric: tabular-nums; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; color: #8f8f8f; font-size: 12px; }
+.links li { display: inline-flex; align-items: center; gap: 6px; }
+.links li[data-on] { color: #ededed; }
+.linkDot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; }
+.links li[data-on] .linkDot { background: #30a46c; }
+
+.addCard { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 220px; padding: 24px; border: 1px dashed #2e2e2e; border-radius: 12px; color: #a1a1a1; text-align: center; text-decoration: none; transition: border-color 0.12s ease, color 0.12s ease; }
+.addCard:hover { border-color: #6b6b6b; color: #ededed; }
+.addCard span { color: #ededed; font-size: 14px; font-weight: 500; }
+.addCard small { max-width: 240px; font-size: 13px; line-height: 1.5; }
+
+/* One website: a wide card (preview left, details right) instead of one small card in an empty page. */
+@media (min-width: 1000px) {
+  .grid[data-one] { grid-template-columns: minmax(0, 1fr) 280px; }
+  .grid[data-one] .card { flex-direction: row; }
+  .grid[data-one] .preview { flex: 0 0 55%; aspect-ratio: auto; min-height: 320px; border-right: 1px solid #1f1f1f; border-bottom: 0; }
+  .grid[data-one] .body { flex: 1; justify-content: space-between; padding: 20px; }
+}

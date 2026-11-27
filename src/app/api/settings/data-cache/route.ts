@@ -38,7 +38,7 @@ async function report() {
   }
   const last = await lastCleanup();
   return {
-    dailyBudget: settings.dailyBudget,
+    serviceBudget: settings.serviceBudget,
     budgetOptions: BUDGET_OPTIONS,
     paused: settings.paused,
     spentToday: Math.round(today * 10000) / 10000,
@@ -86,11 +86,11 @@ export async function PUT(req: Request) {
     const bad = checkRequest(req);
     if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     if (!(await admin())) return NextResponse.json({ error: "Admins only." }, { status: 403 });
-    const body = (await req.json().catch(() => null)) as { days?: unknown; dailyBudget?: unknown; paused?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as { days?: unknown; serviceBudget?: unknown; paused?: unknown } | null;
     const current = await load();
     const value = normalizeDfs({
       days: body?.days ?? current.days,
-      dailyBudget: BUDGET_OPTIONS.includes(Number(body?.dailyBudget)) ? Number(body?.dailyBudget) : current.dailyBudget,
+      serviceBudget: BUDGET_OPTIONS.includes(Number(body?.serviceBudget)) ? Number(body?.serviceBudget) : current.serviceBudget,
       paused: typeof body?.paused === "boolean" ? body.paused : current.paused,
     });
     await prisma.appSetting.upsert({ where: { key: SETTINGS_KEY }, create: { key: SETTINGS_KEY, value }, update: { value } });

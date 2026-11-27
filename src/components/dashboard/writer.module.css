@@ -45,7 +45,7 @@
 .saved{color:#7dd3a0;font-size:11px;letter-spacing:0;text-transform:none}
 .actions{display:flex;gap:8px;padding:0 12px 12px}
 .preview{max-height:280px;overflow-y:auto;margin:0;padding:12px;border-top:1px solid var(--border);color:var(--secondary);font:12px/1.6 var(--font-mono);white-space:pre-wrap}
-.error{padding:9px 11px;border:1px solid rgba(212,102,112,.3);border-radius:6px;background:rgba(212,102,112,.07);color:#f0a3aa;font-size:12px}
+.error{padding:9px 11px;border:1px solid rgba(229,72,77,.3);border-radius:6px;background:rgba(229,72,77,.07);color:#f0a3aa;font-size:12px}
 .trigger{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 13px;border:1px solid #4f8ff7;border-radius:6px;background:#3b82f6;color:#ededed;font-size:13px;font-weight:510;cursor:pointer;white-space:nowrap}
 .trigger:hover{background:#4f8ff7}
 .overlay{position:fixed;inset:0;z-index:100;display:flex;justify-content:flex-end;background:rgba(0,0,0,.6);backdrop-filter:none}

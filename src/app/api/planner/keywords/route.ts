@@ -3,8 +3,7 @@ import { requireUser, requireWebsiteAccess, authErrorResponse } from "@/lib/auth
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { invalidatePlannerReport } from "@/lib/planner/analyze";
-
-const MAX_PER_SITE = 1000;
+import { getWorkspaceBilling } from "@/lib/billing/subscription";
 const clean = (s: unknown) => (typeof s === "string" ? s.toLowerCase().replace(/\s+/g, " ").trim() : "");
 
 export async function POST(req: NextRequest) {
@@ -17,8 +16,22 @@ export async function POST(req: NextRequest) {
     if (websiteId === "" || keywords.length === 0) return NextResponse.json({ error: "Enter at least one keyword." }, { status: 400 });
     await requireWebsiteAccess(user.id, websiteId);
     if (rateLimit("kw-add:" + user.id, 60, 3600 * 1000) === false) return NextResponse.json({ error: "Too many changes this hour." }, { status: 429 });
-    const count = await prisma.trackedKeyword.count({ where: { websiteId } });
-    if (count + keywords.length > MAX_PER_SITE) return NextResponse.json({ error: `You can track up to ${MAX_PER_SITE} keywords per site.` }, { status: 400 });
+    // The plan's tracked-keyword limit covers all websites of the workspace together.
+    const site = await prisma.website.findUnique({ where: { id: websiteId }, select: { business: { select: { workspaceId: true } } } });
+    const workspaceId = site?.business.workspaceId ?? "";
+    const { plan } = await getWorkspaceBilling(workspaceId);
+    const max = plan.limits.trackedKeywords;
+    const existing = await prisma.trackedKeyword.findMany({ where: { websiteId }, select: { keyword: true } });
+    const have = new Set(existing.map((e) => e.keyword));
+    const fresh = keywords.filter((k) => !have.has(k));
+    const count = await prisma.trackedKeyword.count({ where: { website: { business: { workspaceId } } } });
+    if (count + fresh.length > max) {
+      const left = Math.max(0, max - count);
+      return NextResponse.json(
+        { error: left === 0 ? `The ${plan.name} plan tracks up to ${max.toLocaleString("en-US")} keywords. Remove some or upgrade.` : `The ${plan.name} plan tracks up to ${max.toLocaleString("en-US")} keywords; ${left} left.`, upgrade: "/dashboard/settings/billing" },
+        { status: 402 },
+      );
+    }
     const res = await prisma.trackedKeyword.createMany({ data: keywords.map((keyword) => ({ websiteId, keyword })), skipDuplicates: true });
     invalidatePlannerReport(websiteId);
     return NextResponse.json({ ok: true, added: res.count });

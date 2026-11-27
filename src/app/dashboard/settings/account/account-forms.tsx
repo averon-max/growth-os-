@@ -144,7 +144,7 @@ export default function AccountForms(p: Props) {
         </div>
       </section>
 
-      <section style={{ ...card, borderColor: "rgba(212,102,112,.35)" }}>
+      <section style={{ ...card, borderColor: "rgba(229,72,77,.35)" }}>
         <div style={{ ...head, color: "var(--danger)" }}>Delete account</div>
         <div style={body}>
           <p style={note}>

@@ -69,13 +69,17 @@ export function categoryOf(endpoint: string): DfsCategory {
   return "other";
 }
 
-/** paused: no new paid DataForSEO request is made; saved answers are still shown. */
-export type DfsCacheSettings = { days: Record<DfsCategory, number>; dailyBudget: number; paused: boolean };
-export const BUDGET_OPTIONS = [0.5, 1, 2, 3, 5, 10, 20, 50];
+/**
+ * paused: no new paid DataForSEO request is made; saved answers are still shown.
+ * serviceBudget: emergency stop for the whole service per day. Each workspace has its own, much smaller,
+ * allowance from its plan (PlanLimits.dataPerDayUsd); this only catches something going wrong.
+ */
+export type DfsCacheSettings = { days: Record<DfsCategory, number>; serviceBudget: number; paused: boolean };
+export const BUDGET_OPTIONS = [10, 25, 50, 100, 200];
 
 const envBudget = () => {
   const n = Number(process.env.DATAFORSEO_DAILY_BUDGET);
-  return Number.isFinite(n) && n > 0 ? n : 3;
+  return Number.isFinite(n) && n >= 10 && n <= 200 ? n : 25;
 };
 
 /** Stored JSON → settings with defaults, every value clamped to an allowed choice. */
@@ -87,7 +91,8 @@ export function normalizeDfs(raw: unknown): DfsCacheSettings {
     const v = Math.round(Number(days[key]));
     out[key] = DAY_OPTIONS.includes(v) ? v : DFS_CATEGORIES[key].def;
   }
-  const b = Number(src.dailyBudget);
-  const dailyBudget = Number.isFinite(b) && b >= 0.5 && b <= 200 ? Math.round(b * 100) / 100 : envBudget();
-  return { days: out, dailyBudget, paused: src.paused === true };
+  // The old single "dailyBudget" ($3 for everyone) is ignored on purpose: limits are per workspace now.
+  const b = Number(src.serviceBudget);
+  const serviceBudget = Number.isFinite(b) && b >= 10 && b <= 200 ? Math.round(b) : envBudget();
+  return { days: out, serviceBudget, paused: src.paused === true };
 }

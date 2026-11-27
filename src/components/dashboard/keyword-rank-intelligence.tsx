@@ -1,8 +1,9 @@
 "use client";
 
+import { AddKeyword } from "./add-keyword";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/client-cache";
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 
 import { KeywordCard } from "./keyword-card";
@@ -49,10 +50,10 @@ type AnalyticsResponse = {
 };
 
 const SIGNAL: Record<KeywordSignal, { label: string; group: string; status: LStatus; tone: string; hint: string; order: number }> = {
-  QUICK_WIN: { label: "Quick win", group: "Quick wins", status: "yellow", tone: "#f2c94c", hint: "close to the top — push this page", order: 0 },
-  RISING: { label: "Rising", group: "Rising", status: "blue", tone: "#60a5fa", hint: "climbing — strengthen the page now", order: 1 },
+  QUICK_WIN: { label: "Quick win", group: "Quick wins", status: "yellow", tone: "#ffb224", hint: "close to the top — push this page", order: 0 },
+  RISING: { label: "Rising", group: "Rising", status: "blue", tone: "#0090ff", hint: "climbing — strengthen the page now", order: 1 },
   DECLINING: { label: "Declining", group: "Declining", status: "red", tone: "#eb5757", hint: "dropping — review page and competitors", order: 2 },
-  TOP: { label: "Top", group: "Holding the top", status: "green", tone: "#4cb782", hint: "near the top — hold the position", order: 3 },
+  TOP: { label: "Top", group: "Holding the top", status: "green", tone: "#30a46c", hint: "near the top — hold the position", order: 3 },
   IMPROVE: { label: "Improve", group: "Room to grow", status: "gray", tone: "#d0d6e0", hint: "find what holds the page back", order: 4 },
   NO_VISIBILITY: { label: "Not visible", group: "Not visible yet", status: "gray", tone: "#8a8f98", hint: "Google rarely shows the site", order: 5 },
 };
@@ -115,9 +116,9 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
     if (s == null) return [];
     const total = Math.max(s.keywordsWithData, s.top20, 1);
     const parts = [
-      { label: "Top 3", n: s.top3, color: "#30a46c" },
-      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#12a594" },
-      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#0090ff" },
+      { label: "Top 3", n: s.top3, color: "#70b8ff" },
+      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#0090ff" },
+      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#0b68cb" },
       { label: "20+", n: Math.max(total - s.top20, 0), color: "#3a3a3a" },
     ];
     return parts.map((p) => ({ ...p, pct: (p.n / total) * 100 }));
@@ -144,6 +145,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
           k.volume == null ? "vol —" : `vol ${fmt(k.volume)}`,
         ],
         onClick: () => setCard(k.keyword),
+        actions: <AddKeyword keyword={k.keyword} />,
       };
       byGroup.set(k.signal, [...(byGroup.get(k.signal) ?? []), row]);
     });
@@ -153,8 +155,8 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
   }, [data]);
 
   const chartKey = metric;
-  // Same colours everywhere: blue = impressions, amber = clicks, pink = position.
-  const chartColor = metric === "clicks" ? "#f5a623" : metric === "avgPosition" ? "#d6409f" : "#0090ff";
+  // One accent for every metric, like Vercel Analytics: the tabs say what is shown.
+  const chartColor = "#0090ff";
 
   return (
     <section className={styles.shell}>
@@ -191,10 +193,9 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
               { label: "Page one", value: fmt(s?.top10), sub: `${fmt(s?.nearFirstPage)} in striking distance` },
             ].map((m) => {
               const target = m.label === "Impressions" ? "impressions" : m.label === "Clicks" ? "clicks" : m.label === "Avg position" ? "avgPosition" : null;
-              const dot = target === "impressions" ? "#0090ff" : target === "clicks" ? "#f5a623" : target === "avgPosition" ? "#d6409f" : null;
               const body = (
                 <>
-                  <span className={styles.metricLabel}>{dot ? <i className={styles.metricDot} style={{ background: dot }} /> : null}{m.label}</span>
+                  <span className={styles.metricLabel}>{m.label}</span>
                   <strong className={styles.metricValue}>{m.value}</strong>
                   <span className={styles.metricSub}>{m.sub}</span>
                 </>
@@ -244,7 +245,13 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
             <div className={styles.chart}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={data.chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barCategoryGap={2}>
-                  <CartesianGrid stroke="#262626" strokeDasharray="3 4" vertical={false} />
+                  <defs>
+                    <linearGradient id="kwFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0090ff" stopOpacity={0.28} />
+                      <stop offset="100%" stopColor="#0090ff" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#1f1f1f" vertical={false} />
                   <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: "#a1a1a1", fontSize: 12 }} axisLine={false} tickLine={false} minTickGap={32} />
                   <YAxis
                     tick={{ fill: "#a1a1a1", fontSize: 12 }}
@@ -256,7 +263,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                     domain={metric === "avgPosition" ? [1, "dataMax"] : [0, "auto"]}
                   />
                   <Tooltip
-                    cursor={metric === "avgPosition" ? { stroke: "#8f8f8f", strokeDasharray: "3 3" } : { fill: "rgba(255,255,255,0.06)" }}
+                    cursor={{ stroke: "#454545", strokeDasharray: "3 3" }}
                     contentStyle={{ background: "#0a0a0a", border: "1px solid #2e2e2e", borderRadius: 8, fontSize: 13, color: "#ededed", boxShadow: "0 8px 30px rgba(0,0,0,.6)" }}
                     labelStyle={{ color: "#ededed", marginBottom: 4, fontWeight: 500 }}
                     itemStyle={{ color: chartColor }}
@@ -275,8 +282,8 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                       isAnimationActive={false}
                     />
                   ) : (
-                    // Vercel-style columns: a grey track for every day, the colour shows that day's value.
-                    <Bar dataKey={chartKey} fill={chartColor} background={{ fill: "#1a1a1a" }} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                    // Vercel Analytics style: a line with a soft fill under it.
+                    <Area type="monotone" dataKey={chartKey} stroke={chartColor} strokeWidth={2} fill="url(#kwFill)" connectNulls activeDot={{ r: 4, fill: chartColor, stroke: "#000", strokeWidth: 2 }} isAnimationActive={false} />
                   )}
                 </ComposedChart>
               </ResponsiveContainer>
