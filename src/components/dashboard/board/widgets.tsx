@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
 import { ArrowUpRight, Check, ScanSearch } from "lucide-react";
 import type { TrafficReport, Metric } from "@/lib/traffic/report";
 import { change, fmt } from "@/lib/traffic/filters";
 import { SitePreview } from "../site-preview";
-import { DotMap } from "../dot-map";
+import { CountryMap } from "../country-map";
 import { SeriesChart } from "../series-chart";
 import { BarList, StackBar } from "../insights";
 import { SEVERITY } from "../insights-tokens";
@@ -149,7 +151,7 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
       );
     case "map":
       return r && r.countries.length ? (
-        <DotMap fill withList={wide} limit={12} rows={r.countries.map((c) => ({ code: c.code, label: regionName(c.code), value: c.visits }))} unit="visits" />
+        <CountryMap fill withList={wide} limit={12} rows={r.countries} />
       ) : (
         <Empty text="Countries appear once Cloudflare traffic is loaded." href="/dashboard/settings#cloudflare" action="Connect Cloudflare" />
       );
@@ -173,13 +175,7 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
         <Empty text="Daily countries appear once Cloudflare traffic is loaded." href="/dashboard/settings#cloudflare" action="Connect Cloudflare" />
       );
     case "pages":
-      return (
-        <BarList
-          unit="visits"
-          empty="No page visits yet."
-          rows={(r?.pages ?? []).filter((p) => (p.visits ?? 0) > 0).sort((a, b) => (b.visits ?? 0) - (a.visits ?? 0)).slice(0, 8).map((p) => ({ key: p.path, label: p.path, value: p.visits ?? 0 }))}
-        />
-      );
+      return <TopPages pages={r?.pages ?? []} />;
     case "setup": {
       const done = d.steps.filter((x) => x.done).length;
       return (
@@ -270,4 +266,26 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
         </ul>
       );
   }
+}
+
+/** Top pages with the same source switch as the map: Cloudflare visits or Google clicks. */
+function TopPages({ pages }: { pages: { path: string; visits: number | null; clicks: number | null }[] }) {
+  const [src, setSrc] = useState<"visits" | "clicks">("visits");
+  const hasGoogle = pages.some((p) => p.clicks !== null);
+  const val = (p: { visits: number | null; clicks: number | null }) => (src === "visits" ? p.visits : p.clicks) ?? 0;
+  return (
+    <div className={s.pagesWrap}>
+      {hasGoogle ? (
+        <div className={s.srcSwitch}>
+          <button type="button" data-on={src === "visits" || undefined} onClick={() => setSrc("visits")}>Cloudflare visits</button>
+          <button type="button" data-on={src === "clicks" || undefined} onClick={() => setSrc("clicks")}>Google clicks</button>
+        </div>
+      ) : null}
+      <BarList
+        unit={src}
+        empty={src === "visits" ? "No page visits yet." : "No Google clicks yet."}
+        rows={pages.filter((p) => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 8).map((p) => ({ key: p.path, label: p.path, value: val(p) }))}
+      />
+    </div>
+  );
 }

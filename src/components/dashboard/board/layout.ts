@@ -17,8 +17,8 @@ export type Stored = { v: 2; items: Item[] };
 export const SPEC: Record<WidgetType, { title: string; hint: string; w: number; h: number; minW: number; minH: number }> = {
   site: { title: "Website", hint: "Live preview, status and score", w: 12, h: 10, minW: 6, minH: 6 },
   seo: { title: "SEO overview", hint: "Score and issues by severity", w: 12, h: 6, minW: 6, minH: 5 },
-  google: { title: "Google Search", hint: "Clicks, impressions, position", w: 6, h: 8, minW: 5, minH: 5 },
-  traffic: { title: "Traffic", hint: "Visitors, requests, bots", w: 6, h: 8, minW: 5, minH: 5 },
+  google: { title: "Google Search", hint: "Clicks, impressions, position (28 days)", w: 6, h: 8, minW: 5, minH: 5 },
+  traffic: { title: "Cloudflare traffic", hint: "Visitors, requests, bots (28 days)", w: 6, h: 8, minW: 5, minH: 5 },
   map: { title: "Countries map", hint: "Where visitors come from", w: 12, h: 10, minW: 6, minH: 6 },
   crawlers: { title: "Crawlers", hint: "Bots each day by category", w: 12, h: 10, minW: 8, minH: 6 },
   countries: { title: "Visits by country", hint: "Daily share of each country", w: 12, h: 10, minW: 8, minH: 6 },

@@ -120,3 +120,8 @@
 .setupBar span { display: block; height: 100%; border-radius: 2px; background: #ededed; transition: width 0.4s ease; }
 .step[data-done] { color: #8f8f8f; }
 .stepCheck { flex: none; color: #30a46c; }
+
+.pagesWrap { display: flex; flex-direction: column; gap: 12px; }
+.srcSwitch { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border: 1px solid #1f1f1f; border-radius: 8px; background: #0a0a0a; }
+.srcSwitch button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #a1a1a1; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+.srcSwitch button[data-on] { background: #1f1f1f; color: #ededed; }

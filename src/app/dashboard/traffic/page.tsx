@@ -14,7 +14,7 @@ import { PAGE_FILTERS, QUERY_FILTERS, change, fmt } from "@/lib/traffic/filters"
 import { DailyChart } from "./daily-chart";
 import { PagesTable, QueriesTable } from "./report-tables";
 import { SyncButton } from "./sync-button";
-import { DotMap } from "@/components/dashboard/dot-map";
+import { CountryMap } from "@/components/dashboard/country-map";
 import { SeriesChart } from "@/components/dashboard/series-chart";
 import s from "./traffic.module.css";
 
@@ -146,9 +146,9 @@ export default async function TrafficPage({ searchParams }: { searchParams: Prom
         <section className={s.panel} id="countries">
           <div className={s.panelHead}>
             <h2 className={s.panelTitle}>Countries</h2>
-            <span className={s.panelHint}>Cloudflare visits, {days} days</span>
+            <span className={s.panelHint}>last {days} days</span>
           </div>
-          <DotMap rows={report.countries.map((c) => ({ code: c.code, label: regionName(c.code), value: c.visits }))} unit="visits" />
+          <CountryMap rows={report.countries} />
         </section>
 
         <SeriesChart

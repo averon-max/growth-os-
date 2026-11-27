@@ -23,6 +23,9 @@ import {
 } from "@/components/dashboard/ui";
 
 import styles from "@/components/dashboard/ui.module.css";
+import map from "./audience.module.css";
+import { CountryMap } from "@/components/dashboard/country-map";
+import { buildTrafficReport } from "@/lib/traffic/report";
 
 
 export default async function AudiencePage({
@@ -107,6 +110,11 @@ export default async function AudiencePage({
     );
   }
 
+  // Countries come from the one traffic report (28 days), like every other page.
+  const report = membership
+    ? await buildTrafficReport({ websiteId: website.id, workspaceId: membership.workspaceId, url: website.url, days: 28 }).catch(() => null)
+    : null;
+
   return (
     <>
       <Topbar
@@ -132,6 +140,15 @@ export default async function AudiencePage({
           styles.pageBody
         }
       >
+        {report ? (
+          <section className={map.panel}>
+            <div className={map.head}>
+              <h2 className={map.title}>Countries</h2>
+              <span className={map.hint}>last 28 days · the same numbers as the Overview and Traffic report</span>
+            </div>
+            <CountryMap rows={report.countries} />
+          </section>
+        ) : null}
         <AudienceIntelligence
           websiteId={
             website.id

@@ -1,0 +1,4 @@
+.panel { margin-bottom: 16px; overflow: hidden; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #1a1a1a; }
+.title { margin: 0; color: #ededed; font-size: 14px; font-weight: 500; }
+.hint { color: #8f8f8f; font-size: 13px; }

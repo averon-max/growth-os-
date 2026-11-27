@@ -529,3 +529,6 @@
 .headerTitle svg, .miniHeader svg, .integrationBar svg { display: none !important; }
 .flag { display: none !important; }
 .rank { color: #6b6b6b !important; }
+
+/* Countries now come from the shared 28-day report shown above (one source everywhere). */
+.mapPanel, .sidePanel, .mapWrap { display: none !important; }
