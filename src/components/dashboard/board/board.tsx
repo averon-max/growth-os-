@@ -29,7 +29,8 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const shown = preview ?? items;
-  const rows = Math.max(...shown.map((i) => i.y + i.h), 1) + (edit ? 3 : 0);
+  const bottom = Math.max(...shown.map((i) => i.y + i.h), 1);
+  const rows = bottom + (edit ? 2 : 0);
 
   const save = useCallback((next: Item[]) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -79,19 +80,20 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
     const taken = (x: number, y: number) => shown.some((i) => x >= i.x && x < i.x + i.w && y >= i.y && y < i.y + i.h);
     const used = new Set<string>();
     const out: { x: number; y: number; w: number; h: number }[] = [];
-    for (let y = 0; y < rows; y++) {
+    for (let y = 0; y < bottom; y++) {
       for (let x = 0; x < COLS; x++) {
         if (taken(x, y) || used.has(`${x},${y}`)) continue;
         let w = 0;
         while (x + w < COLS && w < 3 && !taken(x + w, y) && !used.has(`${x + w},${y}`)) w++;
         let h = 1;
-        while (h < 2 && y + h < rows && [...Array(w)].every((_, k) => !taken(x + k, y + h) && !used.has(`${x + k},${y + h}`))) h++;
+        while (h < 2 && y + h < bottom && [...Array(w)].every((_, k) => !taken(x + k, y + h) && !used.has(`${x + k},${y + h}`))) h++;
         for (let a = 0; a < w; a++) for (let b = 0; b < h; b++) used.add(`${x + a},${y + b}`);
         out.push({ x, y, w, h });
       }
     }
+    out.push({ x: 0, y: bottom, w: COLS, h: 2 });
     return out;
-  }, [edit, shown, rows]);
+  }, [edit, shown, bottom]);
 
   const missing = (Object.keys(SPEC) as WidgetType[]).filter((t) => !items.some((i) => i.type === t));
 
@@ -134,9 +136,13 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
             data-dragging={drag?.id === it.id || undefined}
             style={{ gridColumn: `${it.x + 1} / span ${it.w}`, gridRow: `${it.y + 1} / span ${it.h}` }}
           >
-            <header className={s.head}>
+            <header
+              className={s.head}
+              data-drag={edit || undefined}
+              onPointerDown={edit ? (e) => { if (!(e.target as HTMLElement).closest("button")) start(e, it, "move"); } : undefined}
+            >
               {edit ? (
-                <span className={s.grip} onPointerDown={(e) => start(e, it, "move")} title="Drag to move" aria-label={`Move ${SPEC[it.type].title}`}>
+                <span className={s.grip} title="Drag to move" aria-label={`Move ${SPEC[it.type].title}`}>
                   <GripVertical size={14} />
                 </span>
               ) : null}
@@ -145,7 +151,7 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
                 <button type="button" className={s.close} onClick={() => remove(it.id)} aria-label={`Remove ${SPEC[it.type].title}`}><X size={14} /></button>
               ) : null}
             </header>
-            <div className={s.body}><WidgetBody type={it.type} d={data} /></div>
+            <div className={s.body}><WidgetBody type={it.type} d={data} w={it.w} /></div>
             {edit ? <span className={s.resize} onPointerDown={(e) => start(e, it, "resize")} title="Drag to resize" aria-label={`Resize ${SPEC[it.type].title}`} /> : null}
             {edit ? <i className={s.corner} data-c="tl" /> : null}
             {edit ? <i className={s.corner} data-c="tr" /> : null}
@@ -164,6 +170,7 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
             aria-label="Add a widget here"
           >
             <Plus size={18} />
+            {sl.w === COLS ? <span className={s.slotText}>Add widget</span> : null}
           </button>
         ))}
       </div>

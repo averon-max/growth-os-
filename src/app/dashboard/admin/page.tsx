@@ -90,7 +90,7 @@ export default async function AdminOverview() {
             <Columns
               height={100}
               unit="USD"
-              cols={spendDays.map((d) => ({ key: d.key, label: d.label, value: Math.round(d.cost * 100) / 100, color: d.cost > budget ? "#f43f5e" : "#0a84ff", hint: `$${d.cost.toFixed(3)}` }))}
+              cols={spendDays.map((d) => ({ key: d.key, label: d.label, value: Math.round(d.cost * 100) / 100, color: d.cost > budget ? "#e5484d" : "#0090ff", hint: `$${d.cost.toFixed(3)}` }))}
             />
           </InsightCard>
           <InsightCard title="Where the money went" meta="30 days, by kind">

@@ -3,7 +3,7 @@
 export const COLS = 12;
 export const MAX_ROWS = 60;
 
-export type WidgetType = "site" | "seo" | "google" | "traffic" | "map" | "crawlers" | "countries" | "pages" | "setup" | "websites";
+export type WidgetType = "site" | "seo" | "google" | "traffic" | "map" | "crawlers" | "countries" | "pages" | "setup" | "websites" | "keywords" | "articles" | "queries";
 export type Item = { id: string; type: WidgetType; x: number; y: number; w: number; h: number };
 
 export const SPEC: Record<WidgetType, { title: string; hint: string; w: number; h: number; minW: number; minH: number }> = {
@@ -17,6 +17,9 @@ export const SPEC: Record<WidgetType, { title: string; hint: string; w: number; 
   pages: { title: "Top pages", hint: "Most visited pages", w: 4, h: 4, minW: 3, minH: 3 },
   setup: { title: "Setup", hint: "Connections still to do", w: 4, h: 3, minW: 3, minH: 2 },
   websites: { title: "Websites", hint: "All sites in the workspace", w: 12, h: 3, minW: 4, minH: 2 },
+  keywords: { title: "Planner keywords", hint: "Your keywords with volume and position", w: 6, h: 4, minW: 3, minH: 3 },
+  articles: { title: "Articles", hint: "Latest articles from Content", w: 6, h: 4, minW: 3, minH: 3 },
+  queries: { title: "Google queries", hint: "What people searched to find you", w: 6, h: 4, minW: 3, minH: 3 },
 };
 
 export const DEFAULT_LAYOUT: Item[] = [
@@ -26,8 +29,9 @@ export const DEFAULT_LAYOUT: Item[] = [
   { id: "traffic", type: "traffic", x: 9, y: 3, w: 3, h: 4 },
   { id: "map", type: "map", x: 0, y: 5, w: 6, h: 5 },
   { id: "crawlers", type: "crawlers", x: 6, y: 7, w: 6, h: 5 },
-  { id: "pages", type: "pages", x: 0, y: 10, w: 6, h: 4 },
-];
+  { id: "keywords", type: "keywords", x: 0, y: 10, w: 6, h: 4 },
+  { id: "queries", type: "queries", x: 6, y: 12, w: 6, h: 4 },
+]
 
 const overlap = (a: Item, b: Item) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 

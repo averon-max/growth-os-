@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { readCache, writeCache } from "@/lib/client-cache";
 import { Loader2, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
 import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
@@ -234,9 +235,11 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
   // Open with the last saved report (free); "Analyze site" / "Refresh" fetch new data.
   useEffect(() => {
     let live = true;
+    const cached = readCache<PlannerReport>(`planner:${websiteId}`);
+    if (cached) setReport(cached);
     fetch(`/api/planner/analyze?websiteId=${encodeURIComponent(websiteId)}`)
       .then((r) => r.json())
-      .then((d) => { if (live && d?.report) { setReport(d.report); setPending(Array.isArray(d.pending) ? d.pending : []); } })
+      .then((d) => { if (live && d?.report) { setReport(d.report); writeCache(`planner:${websiteId}`, d.report); setPending(Array.isArray(d.pending) ? d.pending : []); } })
       .catch(() => undefined);
     return () => { live = false; };
   }, [websiteId]);
@@ -248,6 +251,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
       const data = await res.json();
       if (res.ok === false) throw new Error(data.error ?? "Analysis failed.");
       setReport(data);
+      writeCache(`planner:${websiteId}`, data);
       setPending([]);
     } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
   }
@@ -304,11 +308,11 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
         const on = (ids: string[]) => tab === "keywords" && chips.length === ids.length && ids.every((x) => chips.includes(x));
         const kws = report?.keywords ?? [];
         const posBuckets: [string, string, (n: number | null) => boolean, string][] = [
-          ["top3", "1–3", (n) => n !== null && n <= 3, "#16a34a"],
-          ["p4", "4–10", (n) => n !== null && n > 3 && n <= 10, "#0d9488"],
-          ["p11", "11–20", (n) => n !== null && n > 10 && n <= 20, "#0a84ff"],
-          ["p21", "21–50", (n) => n !== null && n > 20 && n <= 50, "#d97706"],
-          ["p51", "51+", (n) => n !== null && n > 50, "#f43f5e"],
+          ["top3", "1–3", (n) => n !== null && n <= 3, "#30a46c"],
+          ["p4", "4–10", (n) => n !== null && n > 3 && n <= 10, "#12a594"],
+          ["p11", "11–20", (n) => n !== null && n > 10 && n <= 20, "#0090ff"],
+          ["p21", "21–50", (n) => n !== null && n > 20 && n <= 50, "#f5a623"],
+          ["p51", "51+", (n) => n !== null && n > 50, "#e5484d"],
           ["none", "Not ranking", (n) => n === null, "#3a3a3a"],
         ];
         const intents = ["Informational", "Commercial", "Transactional", "Navigational"];

@@ -8,7 +8,7 @@
 .group { display: inline-flex; }
 .group .select { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0; }
 .group .button { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.ok { color: #16a34a; font-size: 13px; }
-.err { color: #f43f5e; font-size: 13px; }
+.ok { color: #30a46c; font-size: 13px; }
+.err { color: #e5484d; font-size: 13px; }
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

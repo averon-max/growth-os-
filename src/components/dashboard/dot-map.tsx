@@ -35,7 +35,7 @@ const pct = (v: number, total: number) => (total ? `${((v / total) * 100).toFixe
  * Dotted world map like Vercel's CDN regions: grey land dots, one blue circle per country sized by its share.
  * Bigger share = bigger and brighter circle. Hovering a row or a circle highlights both.
  */
-export function DotMap({ rows, unit = "requests", withList = true, limit = 20 }: { rows: DotMapRow[]; unit?: string; withList?: boolean; limit?: number }) {
+export function DotMap({ rows, unit = "requests", withList = true, limit = 20, fill = false }: { rows: DotMapRow[]; unit?: string; withList?: boolean; limit?: number; /** Grow with the box it sits in (dashboard widget). */ fill?: boolean }) {
   const [active, setActive] = useState<string | null>(null);
   const sorted = useMemo(() => [...rows].filter((r) => r.value > 0).sort((a, b) => b.value - a.value), [rows]);
   const total = sorted.reduce((a, r) => a + r.value, 0);
@@ -44,7 +44,7 @@ export function DotMap({ rows, unit = "requests", withList = true, limit = 20 }:
   const hover = active ? sorted.find((r) => r.code === active) : null;
 
   return (
-    <div className={withList ? s.wrap : s.wrapMapOnly}>
+    <div className={`${withList ? s.wrap : s.wrapMapOnly}${fill ? ` ${s.fill}` : ""}`}>
       {withList ? (
         <ul className={s.list}>
           {sorted.slice(0, limit).map((r) => (
@@ -59,7 +59,7 @@ export function DotMap({ rows, unit = "requests", withList = true, limit = 20 }:
       ) : null}
 
       <div className={s.mapBox}>
-        <svg viewBox={`0 ${CELL * 2} ${W} ${H - CELL * 2}`} className={s.map} role="img" aria-label={`World map of ${unit} by country`}>
+        <svg viewBox={`0 ${CELL * 2} ${W} ${H - CELL * 2}`} className={s.map} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`World map of ${unit} by country`}>
           <path d={LAND} className={s.land} />
           {[...placed].reverse().map((r) => {
             const [x, y] = project(...COUNTRY_CENTERS[r.code.toUpperCase()]);

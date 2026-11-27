@@ -71,7 +71,7 @@ export default function CachePanel() {
       <div style={card}>
         <div style={{ ...row, borderTop: "none", alignItems: "center" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Paid data requests {data.paused ? <span style={{ color: "#f43f5e" }}>· paused</span> : <span style={{ color: "#16a34a" }}>· on</span>}</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Paid data requests {data.paused ? <span style={{ color: "#e5484d" }}>· paused</span> : <span style={{ color: "#30a46c" }}>· on</span>}</div>
             <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
               Pause stops every new paid DataForSEO request at once (within a minute). Saved data keeps showing everywhere; buttons that need new data say it is paused.
             </div>
@@ -80,7 +80,7 @@ export default function CachePanel() {
             type="button"
             onClick={() => void send("PUT", { paused: !data.paused })}
             disabled={state === "saving"}
-            style={{ height: 34, padding: "0 14px", borderRadius: 8, border: "1px solid", borderColor: data.paused ? "#16a34a" : "#f43f5e", background: "transparent", color: data.paused ? "#16a34a" : "#f43f5e", fontSize: 13.5, fontWeight: 500, cursor: "pointer" }}
+            style={{ height: 34, padding: "0 14px", borderRadius: 8, border: "1px solid", borderColor: data.paused ? "#30a46c" : "#e5484d", background: "transparent", color: data.paused ? "#30a46c" : "#e5484d", fontSize: 13.5, fontWeight: 500, cursor: "pointer" }}
           >
             {data.paused ? "Resume paid data" : "Pause paid data"}
           </button>

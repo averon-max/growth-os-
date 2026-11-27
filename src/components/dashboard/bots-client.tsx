@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { readCache, writeCache } from "@/lib/client-cache";
 import { Loader2, RefreshCw } from "lucide-react";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar } from "./insights";
 
-const GROUP_COLOR: Record<string, string> = { "Search engines": "#16a34a", "AI crawlers & assistants": "#a855f7", "SEO tools": "#d97706", "Other bots": "#0a84ff" };
+const GROUP_COLOR: Record<string, string> = { "Search engines": "#30a46c", "AI crawlers & assistants": "#8e4ec6", "SEO tools": "#f5a623", "Other bots": "#0090ff" };
 const isAsset = (path: string) => /^\/_next\/|\.(js|css|png|jpe?g|webp|svg|ico|woff2?|map|txt|xml)$/i.test(path);
 
 interface BotsData {
@@ -30,10 +31,13 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
   const load = useCallback(async () => {
     setBusy(true); setError(null);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { const cached = readCache<any>(`bots:${websiteId}:${days}`); if (cached) { setData(cached); } }
       const res = await fetch(`/api/bots?websiteId=${encodeURIComponent(websiteId)}&days=${days}`);
       const json = await res.json();
       if (res.ok === false) throw new Error(json.error ?? "Could not load bot traffic.");
       setData(json);
+      writeCache(`bots:${websiteId}:${days}`, json);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }, [websiteId, days]);
   useEffect(() => { void load(); }, [load]);
@@ -64,7 +68,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
           {data?.skippedDays && data.skippedDays.length > 0 ? <div className={p.note}>{data.skippedDays.length} day(s) unavailable on this Cloudflare plan: {data.skippedDays.map((d) => d.date).join(", ")}</div> : null}
           <KpiStrip
             items={[
-              { key: "req", label: "Requests", value: t ? fmt(t.total) : "—", sub: "people and bots", color: "#0a84ff" },
+              { key: "req", label: "Requests", value: t ? fmt(t.total) : "—", sub: "people and bots", color: "#0090ff" },
               { key: "bots", label: "Verified bots", value: t ? fmt(t.bots) : "—", sub: t ? `${t.share}% of all requests` : undefined, color: "#ededed" },
               { key: "se", label: "Search engines", value: data ? fmt(g["Search engines"] ?? 0) : "—", sub: "Google, Bing and others", color: GROUP_COLOR["Search engines"] },
               { key: "ai", label: "AI crawlers", value: data ? fmt(g["AI crawlers & assistants"] ?? 0) : "—", sub: "ChatGPT, Claude, Perplexity…", color: GROUP_COLOR["AI crawlers & assistants"] },
@@ -77,7 +81,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
                 <StackBar unit="req" parts={Object.entries(g as Record<string, number>).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ key: name, label: name, value: n, color: GROUP_COLOR[name] ?? "#3a3a3a", onClick: () => setTab("categories") }))} />
               </InsightCard>
               <InsightCard title="Bot requests per day" meta={`${days} days`}>
-                <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#a855f7", onClick: () => setTab("daily") }))} />
+                <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#8e4ec6", onClick: () => setTab("daily") }))} />
               </InsightCard>
               <InsightCard title="Most crawled pages" action={<button type="button" onClick={() => setTab("pages")}>All pages</button>}>
                 <BarList empty="No page data." rows={(data.pages ?? []).filter((x) => !isAsset(x.path)).sort((a, b) => b.bots - a.bots).slice(0, 6).map((x) => ({ key: x.path, label: x.path, value: x.bots, hint: x.top ? `Mostly ${x.top}` : undefined, onClick: () => setTab("pages") }))} />

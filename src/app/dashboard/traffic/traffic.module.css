@@ -133,9 +133,9 @@ td .up, td .down, td .flat { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 
 /* Day by day as bars */
-.barNow { width: 10px; height: 10px; border-radius: 2px; background: linear-gradient(90deg, #d97706 0 33%, #0a84ff 33% 66%, #0d9488 66%); }
+.barNow { width: 10px; height: 10px; border-radius: 2px; background: linear-gradient(90deg, #f5a623 0 33%, #0090ff 33% 66%, #12a594 66%); }
 .barBefore { width: 10px; height: 10px; border-radius: 2px; background: #262626; }
 .seriesDot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
 .chartDelta { padding: 1px 6px; border-radius: 4px; background: #1a1a1a; color: #a1a1a1; font-size: 12px; font-variant-numeric: tabular-nums; }
-.chartDelta[data-tone="up"] { background: rgba(22, 163, 74, 0.14); color: #16a34a; }
-.chartDelta[data-tone="down"] { background: rgba(244, 63, 94, 0.14); color: #f43f5e; }
+.chartDelta[data-tone="up"] { background: rgba(22, 163, 74, 0.14); color: #30a46c; }
+.chartDelta[data-tone="down"] { background: rgba(244, 63, 94, 0.14); color: #e5484d; }

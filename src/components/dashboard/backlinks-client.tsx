@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { readCache, writeCache } from "@/lib/client-cache";
 import { ArrowUpRight, Loader2, RefreshCw, Search, Upload } from "lucide-react";
 import type { BacklinksReport } from "@/lib/backlinks/domain";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
@@ -117,10 +118,13 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
     setBusy(true);
     setError(null);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { const cached = readCache<any>(`backlinks:${websiteId}`); if (cached) { if (!refresh) setData(cached); } }
       const res = await fetch(`/api/backlinks?websiteId=${encodeURIComponent(websiteId)}${refresh ? "&refresh=1" : ""}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Could not load backlinks.");
       setData(json);
+      writeCache(`backlinks:${websiteId}`, json);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -248,9 +252,9 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
           <StackBar
             unit="links"
             parts={[
-              { key: "do", label: "Dofollow", value: allLinks.filter((l) => l.dofollow).length, color: "#0a84ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
-              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#a855f7", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
-              { key: "new", label: "New", value: newCount, color: "#0d9488", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
+              { key: "do", label: "Dofollow", value: allLinks.filter((l) => l.dofollow).length, color: "#0090ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
+              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#8e4ec6", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
+              { key: "new", label: "New", value: newCount, color: "#12a594", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
               { key: "lost", label: "Lost", value: lostCount, color: TONE.bad, active: tab === "links" && only === "lost", onClick: () => pickOnly("lost") },
             ]}
           />
@@ -266,12 +270,12 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
         <InsightCard title="Rank of linking sites">
           <Columns
             unit="domains"
-            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: ["#3a3a3a", "#f43f5e", "#d97706", "#0d9488", "#0a84ff", "#16a34a"][i] }))}
+            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: ["#3a3a3a", "#e5484d", "#f5a623", "#12a594", "#0090ff", "#30a46c"][i] }))}
           />
         </InsightCard>
 
         <InsightCard title="New linking domains" meta={`last 12 months · ${fmtNum(months.reduce((a, m) => a + m.value, 0))} total`}>
-          <Columns unit="domains" cols={months.map((m) => ({ ...m, color: "#0a84ff" }))} />
+          <Columns unit="domains" cols={months.map((m) => ({ ...m, color: "#0090ff" }))} />
         </InsightCard>
       </InsightGrid>
 

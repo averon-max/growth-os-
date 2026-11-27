@@ -9,6 +9,7 @@ import type { BoardData } from "@/components/dashboard/board/widgets";
 import { DEFAULT_LAYOUT, sanitize } from "@/components/dashboard/board/layout";
 import ui from "@/components/dashboard/ui.module.css";
 import { buildTrafficReport } from "@/lib/traffic/report";
+import { savedPlannerReport } from "@/lib/planner/analyze";
 
 
 export const metadata = { title: "Overview — Hyprlyx" };
@@ -86,6 +87,12 @@ export default async function DashboardOverview({ searchParams }: { searchParams
   ];
   const version = (analysis?.completedAt ?? analysis?.createdAt ?? site.createdAt).toISOString().slice(0, 10);
 
+  const [plannerReport, articleRows] = await Promise.all([
+    savedPlannerReport(site.id).catch(() => null),
+    prisma.contentArticle
+      .findMany({ where: { brief: { websiteId: site.id } }, orderBy: { updatedAt: "desc" }, take: 8, select: { id: true, title: true, status: true, updatedAt: true, brief: { select: { primaryKeyword: true } } } })
+      .catch(() => []),
+  ]);
   const saved = await prisma.appSetting.findUnique({ where: { key: `board:${user.id}` } }).catch(() => null);
   const layout = sanitize(saved?.value) ?? DEFAULT_LAYOUT;
   const data: BoardData = {
@@ -106,6 +113,12 @@ export default async function DashboardOverview({ searchParams }: { searchParams
       when: w.analyses[0] ? ago(w.analyses[0].completedAt ?? w.analyses[0].createdAt) : ago(w.createdAt),
     })),
     report: report ? JSON.parse(JSON.stringify(report)) : null,
+    keywords: (plannerReport?.keywords ?? [])
+      .slice()
+      .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))
+      .slice(0, 10)
+      .map((k) => ({ keyword: k.keyword, volume: k.volume ?? null, position: k.position ?? null, clicks: k.clicks })),
+    articles: articleRows.map((a) => ({ id: a.id, title: a.title, keyword: a.brief.primaryKeyword, status: a.status, when: ago(a.updatedAt) })),
   };
 
   return (

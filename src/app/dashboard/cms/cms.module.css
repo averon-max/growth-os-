@@ -21,7 +21,7 @@
 .facts div:last-child { border-right: 0; }
 .facts dt { color: #8f8f8f; font-size: 12px; }
 .facts dd { margin: 4px 0 0; overflow: hidden; color: #ededed; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.error { margin: 0; padding: 10px 16px; border-top: 1px solid #1f1f1f; color: #f43f5e; font-size: 13px; }
+.error { margin: 0; padding: 10px 16px; border-top: 1px solid #1f1f1f; color: #e5484d; font-size: 13px; }
 
 .howto { border: 1px solid #262626; border-radius: 12px; background: #0a0a0a; }
 .howTitle { margin: 0; padding: 14px 16px; border-bottom: 1px solid #1f1f1f; color: #ededed; font-size: 14px; font-weight: 500; }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { readCache, writeCache } from "@/lib/client-cache";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 
@@ -88,10 +89,14 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
     setLoading(true);
     setError(null);
     try {
+      const cacheKey = `kw-analytics:${workspaceId}:${days}`;
+      const cached = readCache<AnalyticsResponse>(cacheKey);
+      if (cached) setData(cached);
       const response = await fetch(`/api/keywords/analytics?workspaceId=${encodeURIComponent(workspaceId)}&days=${days}`, { cache: "no-store" });
       const payload = (await response.json()) as AnalyticsResponse & { error?: string };
       if (response.ok === false) throw new Error(payload.error ?? "Could not load data from Google.");
       setData(payload);
+      writeCache(cacheKey, payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load data from Google.");
     } finally {
@@ -110,9 +115,9 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
     if (s == null) return [];
     const total = Math.max(s.keywordsWithData, s.top20, 1);
     const parts = [
-      { label: "Top 3", n: s.top3, color: "#16a34a" },
-      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#0d9488" },
-      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#0a84ff" },
+      { label: "Top 3", n: s.top3, color: "#30a46c" },
+      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#12a594" },
+      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#0090ff" },
       { label: "20+", n: Math.max(total - s.top20, 0), color: "#3a3a3a" },
     ];
     return parts.map((p) => ({ ...p, pct: (p.n / total) * 100 }));
@@ -149,7 +154,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
 
   const chartKey = metric;
   // Same colours everywhere: blue = impressions, amber = clicks, pink = position.
-  const chartColor = metric === "clicks" ? "#d97706" : metric === "avgPosition" ? "#ec4899" : "#0a84ff";
+  const chartColor = metric === "clicks" ? "#f5a623" : metric === "avgPosition" ? "#d6409f" : "#0090ff";
 
   return (
     <section className={styles.shell}>
@@ -186,7 +191,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
               { label: "Page one", value: fmt(s?.top10), sub: `${fmt(s?.nearFirstPage)} in striking distance` },
             ].map((m) => {
               const target = m.label === "Impressions" ? "impressions" : m.label === "Clicks" ? "clicks" : m.label === "Avg position" ? "avgPosition" : null;
-              const dot = target === "impressions" ? "#0a84ff" : target === "clicks" ? "#d97706" : target === "avgPosition" ? "#ec4899" : null;
+              const dot = target === "impressions" ? "#0090ff" : target === "clicks" ? "#f5a623" : target === "avgPosition" ? "#d6409f" : null;
               const body = (
                 <>
                   <span className={styles.metricLabel}>{dot ? <i className={styles.metricDot} style={{ background: dot }} /> : null}{m.label}</span>

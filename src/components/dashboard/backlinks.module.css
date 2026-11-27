@@ -86,11 +86,11 @@ td.num[data-tone="bad"] { color: var(--ds-red-900); }
 
 .quality { display: inline-flex; align-items: center; gap: 6px; color: var(--ds-gray-900); font-size: var(--ds-text-13); font-weight: 400; }
 .quality i { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-green-700); }
-.quality[data-q="spam"] { color: #f43f5e; }
-.quality[data-q="spam"] i { background: #f43f5e; }
-.quality[data-q="watch"] { color: #d97706; }
-.quality[data-q="watch"] i { background: #d97706; }
-.quality[data-q="clean"] i { background: #16a34a; }
+.quality[data-q="spam"] { color: #e5484d; }
+.quality[data-q="spam"] i { background: #e5484d; }
+.quality[data-q="watch"] { color: #f5a623; }
+.quality[data-q="watch"] i { background: #f5a623; }
+.quality[data-q="clean"] i { background: #30a46c; }
 
 .profile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
 .profileNum { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #1f1f1f; border-radius: 8px; background: #000; color: inherit; font: inherit; text-align: left; cursor: pointer; }

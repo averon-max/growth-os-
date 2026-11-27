@@ -2,8 +2,8 @@
 .add { display: inline-grid; flex: none; width: 20px; height: 20px; margin-left: 8px; place-items: center; padding: 0; border: 1px solid #333; border-radius: 5px; background: #0a0a0a; color: #ededed; vertical-align: middle; cursor: pointer; opacity: 0; transition: opacity 0.1s ease; }
 tr:hover .add, li:hover .add, [data-kw]:hover .add, .add:focus-visible, .add[data-state="done"], .add[data-state="busy"], .add[data-state="error"] { opacity: 1; }
 .add:hover { background: #ededed; border-color: #ededed; color: #0a0a0a; }
-.add[data-state="done"] { border-color: #16a34a; color: #16a34a; background: transparent; }
-.add[data-state="error"] { border-color: #f43f5e; color: #f43f5e; }
+.add[data-state="done"] { border-color: #30a46c; color: #30a46c; background: transparent; }
+.add[data-state="error"] { border-color: #e5484d; color: #e5484d; }
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (hover: none) { .add { opacity: 1; } }

@@ -21,6 +21,8 @@ export type BoardData = {
   steps: { label: string; href: string; done: boolean }[];
   websites: { id: string; host: string; score: number | null; status: string | null; critical: number; when: string }[];
   report: TrafficReport | null;
+  keywords: { keyword: string; volume: number | null; position: number | null; clicks: number }[];
+  articles: { id: string; title: string; keyword: string; status: string; when: string }[];
 };
 
 const regionName = (() => {
@@ -76,7 +78,8 @@ function Empty({ text, href, action }: { text: string; href: string; action: str
 }
 
 /** The body of one widget. The board draws the frame, title and handles around it. */
-export function WidgetBody({ type, d }: { type: WidgetType; d: BoardData }) {
+export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData; w?: number }) {
+  const wide = w >= 8;
   const q = `?websiteId=${d.site.id}`;
   const r = d.report;
   switch (type) {
@@ -114,10 +117,10 @@ export function WidgetBody({ type, d }: { type: WidgetType; d: BoardData }) {
           <StackBar
             unit="issues"
             parts={[
-              { key: "c", label: "Critical", value: d.severity.critical, color: "#f43f5e" },
-              { key: "h", label: "High", value: d.severity.high, color: "#ec4899" },
-              { key: "m", label: "Medium", value: d.severity.medium, color: "#d97706" },
-              { key: "l", label: "Low", value: d.severity.low, color: "#0a84ff" },
+              { key: "c", label: "Critical", value: d.severity.critical, color: "#e5484d" },
+              { key: "h", label: "High", value: d.severity.high, color: "#d6409f" },
+              { key: "m", label: "Medium", value: d.severity.medium, color: "#f5a623" },
+              { key: "l", label: "Low", value: d.severity.low, color: "#0090ff" },
             ]}
           />
         </div>
@@ -126,8 +129,8 @@ export function WidgetBody({ type, d }: { type: WidgetType; d: BoardData }) {
     case "google":
       return r?.google.state === "ok" ? (
         <div className={s.metrics}>
-          <MetricRow label="Clicks" m={r.totals.clicks} values={r.daily.now.map((x) => x.clicks)} color="#d97706" show={fmt.n} />
-          <MetricRow label="Impressions" m={r.totals.impressions} values={r.daily.now.map((x) => x.impressions)} color="#0a84ff" show={fmt.compact} />
+          <MetricRow label="Clicks" m={r.totals.clicks} values={r.daily.now.map((x) => x.clicks)} color="#f5a623" show={fmt.n} />
+          <MetricRow label="Impressions" m={r.totals.impressions} values={r.daily.now.map((x) => x.impressions)} color="#0090ff" show={fmt.compact} />
           <MetricRow label="Avg. position" m={r.totals.position} show={fmt.pos} kind="position" />
         </div>
       ) : (
@@ -136,7 +139,7 @@ export function WidgetBody({ type, d }: { type: WidgetType; d: BoardData }) {
     case "traffic":
       return r?.cloudflare.state === "ok" ? (
         <div className={s.metrics}>
-          <MetricRow label="Visitors" m={r.totals.visitors} values={r.daily.now.map((x) => x.visitors)} color="#0d9488" show={fmt.compact} />
+          <MetricRow label="Visitors" m={r.totals.visitors} values={r.daily.now.map((x) => x.visitors)} color="#12a594" show={fmt.compact} />
           <MetricRow label="Requests" m={r.totals.requests} show={fmt.compact} />
           <MetricRow label="Verified bots" m={r.totals.botShare} show={(v) => fmt.pct(v)} kind="rate" />
         </div>
@@ -145,7 +148,7 @@ export function WidgetBody({ type, d }: { type: WidgetType; d: BoardData }) {
       );
     case "map":
       return r && r.countries.length ? (
-        <DotMap rows={r.countries.map((c) => ({ code: c.code, label: regionName(c.code), value: c.visits }))} unit="visits" />
+        <DotMap fill withList={wide} limit={12} rows={r.countries.map((c) => ({ code: c.code, label: regionName(c.code), value: c.visits }))} unit="visits" />
       ) : (
         <Empty text="Countries appear once Cloudflare traffic is loaded." href="/dashboard/settings#cloudflare" action="Connect Cloudflare" />
       );
@@ -188,6 +191,56 @@ export function WidgetBody({ type, d }: { type: WidgetType; d: BoardData }) {
         </ul>
       );
     }
+    case "keywords":
+      return d.keywords.length === 0 ? (
+        <Empty text="Add keywords or analyze the site in the Keyword Planner." href={`/dashboard/keyword-planner${q}`} action="Open Keyword Planner" />
+      ) : (
+        <table className={s.table}>
+          <thead><tr><th>Keyword</th><th>Volume</th><th>Position</th></tr></thead>
+          <tbody>
+            {d.keywords.map((k) => (
+              <tr key={k.keyword}>
+                <td><Link href={`/dashboard/keyword-planner${q}`}>{k.keyword}</Link></td>
+                <td>{k.volume == null ? "—" : fmt.compact(k.volume)}</td>
+                <td>{k.position == null ? "—" : k.position.toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    case "articles":
+      return d.articles.length === 0 ? (
+        <Empty text="No articles yet." href={`/dashboard/content${q}`} action="Write an article" />
+      ) : (
+        <ul className={s.sites}>
+          {d.articles.map((a) => (
+            <li key={a.id}>
+              <Link href={`/dashboard/content/articles/${a.id}`} className={s.listRow}>
+                <span className={s.listMain}><span className={s.siteRowName}>{a.title}</span><span className={s.muted}>{a.keyword}</span></span>
+                <span className={s.muted}>{a.status.toLowerCase().replace(/_/g, " ")} · {a.when}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      );
+    case "queries":
+      return r && r.queries.length ? (
+        <table className={s.table}>
+          <thead><tr><th>Query</th><th>Clicks</th><th>Impr.</th><th>Pos.</th></tr></thead>
+          <tbody>
+            {[...r.queries].sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions).slice(0, 10).map((x) => (
+              <tr key={x.query}>
+                <td>{x.query}</td>
+                <td>{fmt.n(x.clicks)}</td>
+                <td>{fmt.compact(x.impressions)}</td>
+                <td>{x.position.toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <Empty text="Search queries appear once Search Console has data." href="/dashboard/settings" action="Connect Search Console" />
+      );
     case "websites":
       return (
         <ul className={s.sites}>

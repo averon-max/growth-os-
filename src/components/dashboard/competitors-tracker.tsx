@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { readCache, writeCache } from "@/lib/client-cache";
 import { Loader2, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import type { CompKw, CompStats } from "@/lib/competitors/tracker";
 import { CompetitorsLandscape } from "./competitors-landscape";
@@ -145,10 +146,13 @@ export function CompetitorsTracker({ websiteId, workspaceId, domain }: { website
   const load = useCallback(async () => {
     setBusy(true); setError(null);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { const cached = readCache<any>(`competitors:${websiteId}`); if (cached) { setTracked(cached.tracked); setMine(cached.mine ?? []); setOurRefs(typeof cached.ourRefDomains === "number" ? cached.ourRefDomains : null); } }
       const res = await fetch(`/api/competitors/tracked?websiteId=${encodeURIComponent(websiteId)}`);
       const json = await res.json();
       if (res.ok === false) throw new Error(json.error ?? "Could not load competitors.");
       setTracked(json.tracked);
+      writeCache(`competitors:${websiteId}`, json);
       setOurRefs(typeof json.ourRefDomains === "number" ? json.ourRefDomains : null);
       setMine(json.mine ?? []);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
