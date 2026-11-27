@@ -140,7 +140,7 @@ export async function register() {
   const { categoryOf, normalizeDfs, keepMs, SETTINGS_KEY } = await import("@/lib/dataforseo/cache-settings");
   const { wantsFresh } = await import("@/lib/dataforseo/fresh");
   const { AI_REUSE_HEADER, aiCost, usableAnswer, asReused } = await import("@/lib/ai/saved-answers");
-  const { who, overAllowance, recordSpend } = await import("@/lib/billing/data-budget");
+  const { who, overAllowance, recordSpend, currentPage } = await import("@/lib/billing/data-budget");
   const original = globalThis.fetch.bind(globalThis);
   const inflight = new Map<string, Promise<Response>>();
 
@@ -183,8 +183,21 @@ export async function register() {
         })
         .catch((e: Error) => console.warn("[dataforseo] spend log failed:", e.message));
       if (payer) await recordSpend(payer, cost).catch((e: Error) => console.warn("[dataforseo] allowance log failed:", e.message));
+      // Journal: what was bought, when and from which page (kept 14 days, last 300 entries a day).
+      const page = (await currentPage().catch(() => null)) ?? "background";
+      const entry = JSON.stringify([{ at: new Date().toISOString(), endpoint, cost, page }]);
+      const key = `dfsLog:${new Date().toISOString().slice(0, 10)}`;
+      await prisma.$executeRaw`
+        INSERT INTO "AppSetting" ("key", "value", "updatedAt") VALUES (${key}, ${entry}::jsonb, now())
+        ON CONFLICT ("key") DO UPDATE SET "value" = (
+          SELECT COALESCE(jsonb_agg(e), '[]'::jsonb) FROM (
+            SELECT e FROM jsonb_array_elements("AppSetting"."value" || ${entry}::jsonb) AS e OFFSET GREATEST(jsonb_array_length("AppSetting"."value") + 1 - 300, 0)
+          ) t
+        ), "updatedAt" = now()`.catch((e: Error) => console.warn("[dataforseo] journal failed:", e.message));
+      console.log(`[dataforseo] paid  ${endpoint}  $${cost.toFixed(4)}  from ${page}`);
+    } else {
+      console.log(`[dataforseo] paid  ${endpoint}  $0`);
     }
-    console.log(`[dataforseo] paid  ${endpoint}  $${cost.toFixed(4)}`);
     return { res, json };
   };
 

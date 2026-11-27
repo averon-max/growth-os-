@@ -37,7 +37,11 @@ async function report() {
     if (r.date.toISOString().slice(0, 10) === todayKey && c !== "ai") today += r.cost;
   }
   const last = await lastCleanup();
+  // Each purchase today with the page it came from (journal written by the fetch interceptor).
+  const journalRow = await prisma.appSetting.findUnique({ where: { key: `dfsLog:${todayKey}` } }).catch(() => null);
+  const journal = (Array.isArray(journalRow?.value) ? (journalRow.value as { at: string; endpoint: string; cost: number; page: string }[]) : []).slice(-60).reverse();
   return {
+    journal,
     serviceBudget: settings.serviceBudget,
     budgetOptions: BUDGET_OPTIONS,
     paused: settings.paused,

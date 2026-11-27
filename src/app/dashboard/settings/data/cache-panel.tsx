@@ -14,6 +14,7 @@ type Report = {
   budgetOptions: number[];
   spentToday: number;
   todayByEndpoint: { endpoint: string; category: string; calls: number; cost: number }[];
+  journal?: { at: string; endpoint: string; cost: number; page: string }[];
 };
 
 const DAYS = [1, 3, 7, 14, 30, 60, 90, 180, 365, 0];
@@ -111,6 +112,21 @@ export default function CachePanel() {
               ))}
             </div>
           )}
+          {data.journal?.length ? (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 12 }}>Each purchase today, and the page it came from</div>
+              <div style={{ width: "100%", display: "grid", gap: 4 }}>
+                {data.journal.map((r, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "60px minmax(0,1fr) minmax(0,1fr) 80px", gap: 12, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                    <span style={{ color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{new Date(r.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.page}>{r.page}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, color: "var(--secondary)" }} title={r.endpoint}>{r.endpoint.replace(/^v3\//, "")}</span>
+                    <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>${r.cost.toFixed(4)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
 

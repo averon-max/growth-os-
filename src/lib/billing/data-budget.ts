@@ -96,6 +96,22 @@ export function registerUserResolver(fn: UserResolver): void {
   (globalThis as Record<string, unknown>)[RESOLVER] = fn;
 }
 
+/** The page the request came from (its Referer), so every paid call can say where it was made. */
+const PAGE = "__hxRequestPage";
+export function registerPageResolver(fn: () => Promise<string | null>): void {
+  (globalThis as Record<string, unknown>)[PAGE] = fn;
+}
+export async function currentPage(): Promise<string | null> {
+  const fn = (globalThis as Record<string, unknown>)[PAGE] as (() => Promise<string | null>) | undefined;
+  if (!fn) return null;
+  try {
+    const ref = await fn();
+    return ref ? new URL(ref).pathname + new URL(ref).search : null;
+  } catch {
+    return null;
+  }
+}
+
 async function signedInUserId(): Promise<string | null> {
   const fn = (globalThis as Record<string, unknown>)[RESOLVER] as UserResolver | undefined;
   if (!fn) return null;

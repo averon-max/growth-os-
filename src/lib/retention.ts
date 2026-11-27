@@ -154,7 +154,8 @@ export async function cleanGlobal(counts: Counts) {
     if (days === 0) continue; // "Keep forever"
     await run(counts, `apiCache:${category}`, `DELETE FROM "ApiCache" WHERE category = $1 AND "createdAt" < now() - make_interval(days => $2::int)`, category, days);
   }
-  if (dfs.days.keywords !== 0) await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1::int)`, dfs.days.keywords);
+  if (dfs.days.keywords !== 0) await run(counts, "suggestionCache", `DELETE FROM "KeywordSuggestionCache" WHERE "fetchedAt" < now() - make_interval(days => $1::int) AND source <> 'PLANNER_REPORT'`, dfs.days.keywords);
+  await run(counts, "spendJournal", `DELETE FROM "AppSetting" WHERE key LIKE 'dfsLog:%' AND "updatedAt" < now() - interval '14 days'`);
   await run(counts, "rateLimits", `DELETE FROM "AuthRateLimit" WHERE "resetAt" < now() - interval '1 day'`);
   await run(counts, "resetTokens", `DELETE FROM "PasswordResetToken" WHERE "expiresAt" < now() - make_interval(days => $1::int)`, GLOBAL.resetTokenDays);
   await run(counts, "stripeEvents", `DELETE FROM "StripeEvent" WHERE "receivedAt" < now() - make_interval(days => $1::int)`, GLOBAL.stripeEventDays);

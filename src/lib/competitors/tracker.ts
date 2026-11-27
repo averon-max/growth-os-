@@ -23,7 +23,7 @@ async function load(domain: string) {
   if (hit && Date.now() - hit.at < 12 * 3600 * 1000) return hit;
   const [ov, ranked] = await Promise.all([
     dfs("dataforseo_labs/google/domain_rank_overview/live", { target: domain, location_name: "United States", language_name: "English" }).catch(() => []),
-    fetchRankedKeywords(domain, "United States", "English", 200), // 200 rows: ~$0.036 instead of $0.072 per competitor
+    fetchRankedKeywords(domain, "United States", "English", 500), // same request as before: the saved answer is reused, not bought again
   ]);
   const m = rec(rec(rec(((rec(ov[0]).items as unknown[] | undefined) ?? [])[0]).metrics).organic);
   const p1 = num(m.pos_1) ?? 0, p23 = num(m.pos_2_3) ?? 0, p410 = num(m.pos_4_10) ?? 0, p1120 = num(m.pos_11_20) ?? 0;
