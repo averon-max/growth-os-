@@ -34,7 +34,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
     const report = getCachedPlannerReport(websiteId) ?? (await analyzeSite({ websiteId, workspaceId: website.business.workspaceId, siteUrl: website.url }));
     const ourPos = new Map(report.keywords.map((k) => [k.keyword, k.position]));
-    const ranked = await Promise.all(list.slice(0, 5).map((c) => fetchRankedKeywords(c.domain, "United States", "English", 300).catch(() => null)));
+    const ranked = await Promise.all(list.slice(0, 3).map((c) => fetchRankedKeywords(c.domain, "United States", "English", 100).catch(() => null)));
 
     const competitors = list.map((c, i) => {
       const r = ranked[i];

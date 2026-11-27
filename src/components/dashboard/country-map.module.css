@@ -1,6 +1,8 @@
 .wrap { display: flex; flex-direction: column; }
 .fill { display: flex; height: 100%; flex-direction: column; gap: 8px; }
-.switch { display: inline-flex; align-self: flex-start; gap: 2px; margin: 12px 0 0 24px; padding: 3px; border: 1px solid #1f1f1f; border-radius: 8px; background: #0a0a0a; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0 24px; }
+.fill .bar { margin: 0; }
+.switch { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border: 1px solid #1f1f1f; border-radius: 8px; background: #0a0a0a; }
 .fill .switch { margin: 0; }
 .switch button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #a1a1a1; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .switch button:hover { color: #ededed; }

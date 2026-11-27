@@ -148,7 +148,7 @@ export default async function TrafficPage({ searchParams }: { searchParams: Prom
             <h2 className={s.panelTitle}>Countries</h2>
             <span className={s.panelHint}>last {days} days</span>
           </div>
-          <CountryMap rows={report.countries} />
+          <CountryMap rows={report.countries} daily={days === 28 ? report.series.countries : undefined} />
         </section>
 
         <SeriesChart

@@ -27,7 +27,7 @@ export const DFS_CATEGORIES = {
     label: "Site rankings and competitors",
     help: "Which keywords a site ranks for, and which sites compete with it in Google.",
     usedIn: "Keyword Planner, Competitors",
-    def: 14,
+    def: 30,
   },
   backlinks: {
     label: "Backlinks",

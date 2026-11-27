@@ -146,7 +146,7 @@ export default async function AudiencePage({
               <h2 className={map.title}>Countries</h2>
               <span className={map.hint}>last 28 days · the same numbers as the Overview and Traffic report</span>
             </div>
-            <CountryMap rows={report.countries} />
+            <CountryMap rows={report.countries} daily={report.series.countries} />
           </section>
         ) : null}
         <AudienceIntelligence

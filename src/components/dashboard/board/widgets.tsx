@@ -131,27 +131,25 @@ export function WidgetBody({ type, d, w = 6 }: { type: WidgetType; d: BoardData;
     }
     case "google":
       return r?.google.state === "ok" ? (
-        <div className={s.metrics}>
-          <MetricRow label="Clicks" m={r.totals.clicks} values={r.daily.now.map((x) => x.clicks)} color="#0090ff" show={fmt.n} />
-          <MetricRow label="Impressions" m={r.totals.impressions} values={r.daily.now.map((x) => x.impressions)} color="#0090ff" show={fmt.compact} />
-          <MetricRow label="Avg. position" m={r.totals.position} show={fmt.pos} kind="position" />
-        </div>
+        <TrafficWidget r={r} initial="google" wide={wide} />
       ) : (
         <Empty text="See clicks, impressions and positions from Google." href="/dashboard/settings" action="Connect Search Console" />
       );
     case "traffic":
       return r?.cloudflare.state === "ok" ? (
-        <div className={s.metrics}>
-          <MetricRow label="Visitors" m={r.totals.visitors} values={r.daily.now.map((x) => x.visitors)} color="#0090ff" show={fmt.compact} />
-          <MetricRow label="Requests" m={r.totals.requests} show={fmt.compact} />
-          <MetricRow label="Verified bots" m={r.totals.botShare} show={(v) => fmt.pct(v)} kind="rate" />
-        </div>
+        <TrafficWidget r={r} initial="cloudflare" wide={wide} />
       ) : (
         <Empty text="See every visit, country and crawler from Cloudflare." href="/dashboard/settings#cloudflare" action="Connect Cloudflare" />
       );
+    case "botshare":
+      return r && r.series.share.length ? (
+        <SeriesChart compact title="" description="" days={r.series.share} unit="requests" />
+      ) : (
+        <Empty text="See how much of your traffic comes from bots once Cloudflare traffic is loaded." href="/dashboard/settings#cloudflare" action="Connect Cloudflare" />
+      );
     case "map":
       return r && r.countries.length ? (
-        <CountryMap fill withList={wide} limit={12} rows={r.countries} />
+        <CountryMap fill withList={wide} limit={12} rows={r.countries} daily={r.series.countries} />
       ) : (
         <Empty text="Countries appear once Cloudflare traffic is loaded." href="/dashboard/settings#cloudflare" action="Connect Cloudflare" />
       );
@@ -286,6 +284,64 @@ function TopPages({ pages }: { pages: { path: string; visits: number | null; cli
         empty={src === "visits" ? "No page visits yet." : "No Google clicks yet."}
         rows={pages.filter((p) => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 8).map((p) => ({ key: p.path, label: p.path, value: val(p) }))}
       />
+    </div>
+  );
+}
+
+const PERIODS = [7, 14, 28] as const;
+type Period = (typeof PERIODS)[number];
+
+/**
+ * Traffic numbers with a period switch (7 / 14 / 28 days, counted from the same daily data).
+ * Stretched wide, it also gets a Cloudflare / Google switch and daily columns.
+ */
+function TrafficWidget({ r, initial, wide }: { r: TrafficReport; initial: "cloudflare" | "google"; wide: boolean }) {
+  const [src, setSrc] = useState<"cloudflare" | "google">(initial);
+  const [period, setPeriod] = useState<Period>(28);
+  const hasCf = r.cloudflare.state === "ok";
+  const hasG = r.google.state === "ok";
+  const now = r.daily.now.slice(-period);
+  const before = [...r.daily.before, ...r.daily.now].slice(-(period * 2), -period);
+  const sum = (rows: typeof now, k: "visitors" | "clicks" | "impressions") => rows.reduce((a, x) => a + (x[k] ?? 0), 0);
+  const metric = (k: "visitors" | "clicks" | "impressions"): Metric => ({ now: sum(now, k), before: before.length >= period ? sum(before, k) : null });
+  const lines =
+    src === "cloudflare"
+      ? [{ label: "Visitors", k: "visitors" as const }]
+      : [
+          { label: "Clicks", k: "clicks" as const },
+          { label: "Impressions", k: "impressions" as const },
+        ];
+  const main = lines[0].k;
+  const max = Math.max(1, ...now.map((x) => x[main] ?? 0));
+  return (
+    <div className={s.tw}>
+      <div className={s.twBar}>
+        {wide && hasCf && hasG ? (
+          <div className={s.srcSwitch}>
+            <button type="button" data-on={src === "cloudflare" || undefined} onClick={() => setSrc("cloudflare")}>Cloudflare</button>
+            <button type="button" data-on={src === "google" || undefined} onClick={() => setSrc("google")}>Google</button>
+          </div>
+        ) : null}
+        <div className={s.srcSwitch}>
+          {PERIODS.map((p) => (
+            <button key={p} type="button" data-on={period === p || undefined} onClick={() => setPeriod(p)}>{p}d</button>
+          ))}
+        </div>
+      </div>
+      <div className={s.metrics}>
+        {lines.map((l) => (
+          <MetricRow key={l.k} label={l.label} m={metric(l.k)} values={now.map((x) => x[l.k])} color="#0090ff" show={l.k === "impressions" ? fmt.compact : fmt.n} />
+        ))}
+        {src === "google" && r.totals.position ? <MetricRow label="Avg. position (28 days)" m={r.totals.position} show={fmt.pos} kind="position" /> : null}
+        {src === "cloudflare" && r.totals.botShare ? <MetricRow label="Verified bots (28 days)" m={r.totals.botShare} show={(v) => fmt.pct(v)} kind="rate" /> : null}
+      </div>
+      {wide ? (
+        <div className={s.twCols} aria-label={`${lines[0].label} per day`}>
+          {now.map((x) => (
+            <span key={x.date} title={`${x.date}: ${(x[main] ?? 0).toLocaleString("en-US")}`} style={{ height: `${Math.max(2, ((x[main] ?? 0) / max) * 100)}%` }} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

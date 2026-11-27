@@ -10,7 +10,7 @@ export const COLS = 24;
 export const MAX_ROWS = 160;
 export const MAX_H = 30;
 
-export type WidgetType = "site" | "seo" | "google" | "traffic" | "map" | "crawlers" | "countries" | "pages" | "setup" | "websites" | "keywords" | "articles" | "queries";
+export type WidgetType = "site" | "seo" | "google" | "traffic" | "map" | "crawlers" | "countries" | "pages" | "setup" | "websites" | "keywords" | "articles" | "queries" | "botshare";
 export type Item = { id: string; type: WidgetType; x: number; y: number; w: number; h: number };
 export type Stored = { v: 2; items: Item[] };
 
@@ -27,6 +27,7 @@ export const SPEC: Record<WidgetType, { title: string; hint: string; w: number; 
   websites: { title: "Websites", hint: "All sites in the workspace", w: 24, h: 4, minW: 8, minH: 3 },
   keywords: { title: "Planner keywords", hint: "Your keywords with volume and position", w: 12, h: 8, minW: 6, minH: 5 },
   articles: { title: "Articles", hint: "Latest articles from Content", w: 12, h: 8, minW: 6, minH: 5 },
+  botshare: { title: "Bot share", hint: "Share of all requests made by verified bots, per day", w: 12, h: 9, minW: 8, minH: 6 },
   queries: { title: "Google queries", hint: "What people searched to find you", w: 12, h: 8, minW: 6, minH: 5 },
 };
 

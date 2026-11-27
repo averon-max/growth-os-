@@ -64,7 +64,9 @@ export async function analyzeSite(opts: { websiteId: string; workspaceId: string
   if (opts.rebuild === true) cache.delete(opts.websiteId);
   const hit = cache.get(opts.websiteId);
   if (hit && opts.refresh !== true && Date.now() - hit.at < TTL) return { ...hit.report, fromCache: true };
-  if (opts.refresh !== true && opts.rebuild !== true && !hit) {
+  // Without an explicit Refresh, the saved report is always the answer: other pages (Competitors, audit) must never
+  // rebuild it on their own just because the in-memory copy expired or the server restarted.
+  if (opts.refresh !== true && opts.rebuild !== true) {
     const saved = await savedPlannerReport(opts.websiteId);
     if (saved) return saved;
   }

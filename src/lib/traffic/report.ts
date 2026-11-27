@@ -63,7 +63,7 @@ export type TrafficReport = {
   countries: CountryRow[];
   devices: DeviceRow[];
   /** Per day of the current period, for the colour charts: visits by country, by page, and bot requests by category. */
-  series: { countries: SeriesDay[]; pages: SeriesDay[]; bots: SeriesDay[] };
+  series: { countries: SeriesDay[]; pages: SeriesDay[]; bots: SeriesDay[]; share: SeriesDay[] };
 };
 export type SeriesDay = { date: string; values: Record<string, number> };
 
@@ -245,7 +245,7 @@ async function cloudflarePart(websiteId: string, since: Date, until: Date, prevS
     pagesBefore: [] as { path: string; visits: number }[],
     countries: new Map<string, number>(),
     devices: new Map<string, number>(),
-    series: { countries: [] as SeriesDay[], pages: [] as SeriesDay[], bots: [] as SeriesDay[] },
+    series: { countries: [] as SeriesDay[], pages: [] as SeriesDay[], bots: [] as SeriesDay[], share: [] as SeriesDay[] },
   };
   const connection = await prisma.cloudflareConnection.findUnique({ where: { websiteId }, select: { id: true, updatedAt: true } });
   if (!connection) return { ...empty, state: { state: "missing" } as CloudflareState };
@@ -298,13 +298,18 @@ async function cloudflarePart(websiteId: string, since: Date, until: Date, prevS
   type Bot = { category?: string; requests?: number };
   const countrySeries: SeriesDay[] = now.map((snap) => ({
     date: day(snap.date),
-    values: Object.fromEntries(list(snap.countryBreakdown).filter((c) => c.country).map((c) => [c.country!.toUpperCase(), (c.visits ?? 0) || (c.requests ?? 0)])),
+    values: Object.fromEntries(list(snap.countryBreakdown).filter((c) => c.country && (c.visits ?? 0) > 0).map((c) => [c.country!.toUpperCase(), c.visits ?? 0])),
   }));
   const botSeries: SeriesDay[] = now.map((snap) => ({
     date: day(snap.date),
     values: Object.fromEntries(
       (Array.isArray(snap.botCategoryBreakdown) ? (snap.botCategoryBreakdown as Bot[]) : []).filter((b) => b.category).map((b) => [b.category!, b.requests ?? 0]),
     ),
+  }));
+  // Share of all requests made by verified bots, per day (Overview widget "Bot share").
+  const shareSeries: SeriesDay[] = now.map((snap) => ({
+    date: day(snap.date),
+    values: { "Verified bots": snap.verifiedBotRequests, "Everything else": Math.max(0, snap.totalRequests - snap.verifiedBotRequests) },
   }));
   const topPaths = pagesNow.filter((p) => isPagePath(p.path) && (p._sum.visits ?? 0) > 0).slice(0, 7).map((p) => p.path);
   const pageRows = topPaths.length
@@ -323,7 +328,7 @@ async function cloudflarePart(websiteId: string, since: Date, until: Date, prevS
   const pageSeries: SeriesDay[] = [...pageDays.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([date, values]) => ({ date, values }));
 
   return {
-    series: { countries: countrySeries, pages: pageSeries, bots: botSeries },
+    series: { countries: countrySeries, pages: pageSeries, bots: botSeries, share: shareSeries },
     totals: { visitors: a.visitors, visitorsBefore: b?.visitors ?? null, requests: a.requests, requestsBefore: b?.requests ?? null, botShare: a.botShare, botShareBefore: b?.botShare ?? null },
     dailyNow: new Map<string, number>(now.map((s): [string, number] => [day(s.date), s.uniqueVisitors])),
     dailyBefore: new Map<string, number>(before.map((s): [string, number] => [day(s.date), s.uniqueVisitors])),
