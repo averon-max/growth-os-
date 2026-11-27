@@ -8,6 +8,14 @@ import { adminOrNotFound, ago, day, effectivePlan } from "@/lib/admin/core";
 import { AdminNav, PLAN_TONE, STATUS_TONE } from "../../admin-nav";
 import a from "../../admin.module.css";
 import { PlanForm, UserActions } from "./user-actions";
+import { SectionAccess } from "./section-access";
+import { blockedSections } from "@/lib/billing/blocked";
+import { NAV } from "@/lib/nav";
+
+/** Every dashboard section a user can be shut out of (Overview, Admin and Settings always stay open). */
+const SECTIONS = NAV.flatMap((g) => g.items)
+  .map((i) => ({ key: i.href.replace(/^\/dashboard\/?/, "").split(/[/?#]/)[0], label: i.label }))
+  .filter((x) => x.key && !["admin", "settings", "websites"].includes(x.key));
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +69,15 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
 
         <div className={a.detail}>
           <div>
+            <section className={a.panel}>
+              <div className={a.panelHead}>
+                <span className={a.panelTitle}>Page access</span>
+                <span className={a.panelCount}>turn a section off to hide it from this user (menu, page and API)</span>
+              </div>
+              <div className={a.panelBody}>
+                <SectionAccess userId={user.id} sections={SECTIONS} blocked={await blockedSections(user.id)} />
+              </div>
+            </section>
             {user.memberships.length === 0 ? <div className={`${a.panel} ${a.empty}`}>This user has no workspace.</div> : null}
             {user.memberships.map(({ role, workspace: w }) => {
               const sub = w.subscription;

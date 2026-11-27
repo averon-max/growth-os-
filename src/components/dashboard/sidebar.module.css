@@ -202,3 +202,6 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .item { transition: none; }
 }
+
+/* Same small badge everywhere (sidebar and footer): neutral, no colour. */
+.badge { padding: 0 6px !important; border: 1px solid #2e2e2e !important; border-radius: 999px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 11px !important; font-weight: 500 !important; line-height: 18px !important; }

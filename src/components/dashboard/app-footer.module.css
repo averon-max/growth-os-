@@ -159,3 +159,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Same small badge as the sidebar; links turn white on hover, never blue. */
+.badge { padding: 0 6px !important; border: 1px solid #2e2e2e !important; border-radius: 999px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 11px !important; font-weight: 500 !important; line-height: 18px !important; }
+.link:hover, .link[data-active="true"] { color: #ededed !important; }

@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { requestPasswordReset } from "@/lib/password-reset";
 import { audit } from "@/lib/admin/core";
 import { closeBilling } from "@/lib/billing/close";
+import { blockedKey, forgetBlocked } from "@/lib/billing/blocked";
 
 /*
  * Actions on one user. Body: { userId, action, ... }
  *   setAdmin { isAdmin }   make or remove an admin (never yourself)
+ *   sections { blocked }   close dashboard sections for this user (list of section keys; [] opens all)
  *   signOut                end every session on every device
  *   sendReset              email a password reset link
  *   delete { confirm }     delete the account; confirm must be the user's email.
@@ -40,6 +42,16 @@ export async function POST(request: Request) {
         await prisma.user.update({ where: { id: user.id }, data: { isAdmin: body.isAdmin } });
         await audit(admin, body.isAdmin ? "admin.grant" : "admin.remove", target);
         return NextResponse.json({ ok: true });
+      }
+      case "sections": {
+        const list = Array.isArray(body.blocked) ? [...new Set((body.blocked as unknown[]).filter((x): x is string => typeof x === "string" && /^[a-z-]{2,40}$/.test(x)))] : null;
+        if (!list) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+        const key = blockedKey(user.id);
+        if (list.length === 0) await prisma.appSetting.deleteMany({ where: { key } });
+        else await prisma.appSetting.upsert({ where: { key }, create: { key, value: list }, update: { value: list } });
+        forgetBlocked(user.id);
+        await audit(admin, "user.sections", target, { blocked: list });
+        return NextResponse.json({ ok: true, blocked: list });
       }
       case "signOut": {
         await prisma.user.update({ where: { id: user.id }, data: { passwordChangedAt: new Date() } });

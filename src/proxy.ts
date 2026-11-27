@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { clientIp, limit } from "@/lib/auth-guard";
 import { burst } from "@/lib/burst";
-import { bestPlanForUser, isTrialing, planName, requiredPlanFor } from "@/lib/billing/api-gate";
+import { bestPlanForUser, isTrialing, planName, requiredPlanFor, sectionFor } from "@/lib/billing/api-gate";
+import { blockedSections } from "@/lib/billing/blocked";
 import { TRIAL_DAYS, trialPaidRequests } from "@/lib/billing/trial";
 import { PLAN_RANK } from "@/lib/billing/access";
 
@@ -65,6 +66,11 @@ export async function proxy(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     const userId = typeof token?.userId === "string" ? token.userId : null;
     if (userId) {
+      const sections = [sectionFor(path), /^\/api\/planner(\/|$)/.test(path) ? "keyword-planner" : null].filter(Boolean);
+      const closed = sections.length ? await blockedSections(userId) : [];
+      if (sections.some((x) => closed.includes(x as string))) {
+        return NextResponse.json({ error: "This section is turned off for your account. Contact support if you need it." }, { status: 403 });
+      }
       const plan = await bestPlanForUser(userId);
       if (PLAN_RANK[plan] < PLAN_RANK[required]) {
         return NextResponse.json(

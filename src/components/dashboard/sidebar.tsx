@@ -109,7 +109,7 @@ function FindDialog({ open, onClose, items, site }: { open: boolean; onClose: ()
   );
 }
 
-export function Sidebar({ isAdmin = false, planLabel = "Free", email = "", name = "" }: { isAdmin?: boolean; planLabel?: string; email?: string; name?: string }) {
+export function Sidebar({ isAdmin = false, hidden = [], planLabel = "Free", email = "", name = "" }: { isAdmin?: boolean; hidden?: string[]; planLabel?: string; email?: string; name?: string }) {
   const pathname = usePathname() ?? "";
   const params = useSearchParams();
   const site = params?.get("websiteId") ?? null;
@@ -117,7 +117,8 @@ export function Sidebar({ isAdmin = false, planLabel = "Free", email = "", name 
   const [findOpen, setFindOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const groups = NAV.map((s) => s.items.filter((i) => i.sidebar !== false)).filter((g) => g.length);
+  const sectionOf = (href: string) => href.replace(/^\/dashboard\/?/, "").split(/[/?#]/)[0];
+  const groups = NAV.map((s) => s.items.filter((i) => i.sidebar !== false && !hidden.includes(sectionOf(i.href)))).filter((g) => g.length);
   const bottom = [...(isAdmin ? [NAV_ADMIN] : []), ...NAV_BOTTOM.filter((i) => i.sidebar !== false)];
   const all = useMemo(() => [...groups.flat(), ...bottom], [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 

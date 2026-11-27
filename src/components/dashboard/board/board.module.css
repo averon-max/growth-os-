@@ -9,11 +9,16 @@
 .grid { position: relative; }
 .grid[data-mobile] { display: flex; flex-direction: column; gap: 16px; height: auto !important; }
 
-.widget { position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; transition: left 0.18s cubic-bezier(0.2, 0, 0, 1), top 0.18s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s ease, box-shadow 0.15s ease; will-change: left, top; }
+.widget { position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 .grid[data-mobile] .widget { position: relative; }
 .grid[data-edit] .widget { border-color: #2e2e2e; }
 .grid[data-edit] .widget:hover { border-color: #454545; }
-.widget[data-active] { z-index: 10; transition: none; border-color: #6b6b6b !important; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); }
+.widget[data-ready] { transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), height 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), border-color 0.15s ease, box-shadow 0.2s ease; will-change: transform; }
+.widget[data-active] { z-index: 10; transition: box-shadow 0.2s ease, border-color 0.15s ease !important; border-color: #6b6b6b !important; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75); cursor: grabbing; }
+/* Drop: a soft squish, like setting down a piece of clay. */
+.widget[data-dropped] { animation: squish 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes squish { 0% { scale: 1.015; } 35% { scale: 0.985 1.005; } 70% { scale: 1.004 0.998; } 100% { scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .widget[data-ready], .widget[data-dropped] { transition: none; animation: none; } }
 .grid[data-dragging] { cursor: grabbing; }
 .ghost { position: absolute; z-index: 1; border: 1px dashed #454545; border-radius: 12px; background: rgba(255, 255, 255, 0.02); pointer-events: none; }
 

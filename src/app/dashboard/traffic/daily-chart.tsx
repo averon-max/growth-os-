@@ -6,9 +6,9 @@ import s from "./traffic.module.css";
 
 type Key = "clicks" | "impressions" | "visitors";
 const PANELS: { key: Key; title: string; source: string; color: string }[] = [
-  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#0090ff" },
+  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#8e4ec6" },
   { key: "impressions", title: "Google impressions", source: "Search Console", color: "#0090ff" },
-  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#0090ff" },
+  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#12a594" },
 ];
 const H = 110;
 const PAD = { top: 10, bottom: 6, left: 0, right: 0 };

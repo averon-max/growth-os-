@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LayoutGrid, Plus, RotateCcw, X } from "lucide-react";
 import { COLS, SPEC, clampItem, firstFit, resolve, toStored, type Item, type WidgetType } from "./layout";
 import { WidgetBody, type BoardData } from "./widgets";
@@ -26,6 +26,11 @@ type Rect = { left: number; top: number; width: number; height: number };
 
 const EDGES: Edge[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 
+/** Widget contents re-render only when their own inputs change, not on every pointer move of a drag. */
+const Body = memo(function Body({ type, d, w }: { type: WidgetType; d: BoardData; w: number }) {
+  return <WidgetBody type={type} d={d} w={w} />;
+});
+
 export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
   const [items, setItems] = useState<Item[]>(initial);
   const [edit, setEdit] = useState(false);
@@ -48,12 +53,20 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
   const cw = (Math.max(width, 320) + GAP) / COLS;
   const rectOf = (it: Item): Rect => ({ left: it.x * cw, top: it.y * RH, width: it.w * cw - GAP, height: it.h * RH - GAP });
   // Resting places use percentages of the board width, so the first paint (before measuring) is already right.
-  const place = (it: Item): React.CSSProperties => ({
-    left: `calc((100% + ${GAP}px) * ${it.x / COLS})`,
-    width: `calc((100% + ${GAP}px) * ${it.w / COLS} - ${GAP}px)`,
-    top: it.y * RH,
-    height: it.h * RH - GAP,
-  });
+  // Before the board is measured: percentages (right on first paint). After: a GPU transform, so moves glide.
+  const place = (it: Item): React.CSSProperties =>
+    width > 0
+      ? { left: 0, top: 0, width: it.w * cw - GAP, height: it.h * RH - GAP, transform: `translate3d(${it.x * cw}px, ${it.y * RH}px, 0)` }
+      : { left: `calc((100% + ${GAP}px) * ${it.x / COLS})`, width: `calc((100% + ${GAP}px) * ${it.w / COLS} - ${GAP}px)`, top: it.y * RH, height: it.h * RH - GAP };
+  const placeLive = (r: Rect): React.CSSProperties => ({ left: 0, top: 0, width: r.width, height: r.height, transform: `translate3d(${r.left}px, ${r.top}px, 0) scale(1.015)` });
+  const [dropped, setDropped] = useState<string | null>(null);
+  // Animations switch on only after the first measured paint, so widgets don't fly in on load.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (width === 0 || settled) return;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setSettled(true)));
+    return () => cancelAnimationFrame(id);
+  }, [width, settled]);
 
   /** The live pixel box of the widget being dragged, and the grid place it would drop into. */
   const live = (d: Drag): { rect: Rect; target: Item } => {
@@ -123,7 +136,11 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
     const onUp = () => {
       cancelAnimationFrame(frame);
       const d = dragRef.current;
-      if (d) commit(resolve(shownRef.current, d.id, false));
+      if (d) {
+        commit(resolve(shownRef.current, d.id, false));
+        setDropped(d.id);
+        setTimeout(() => setDropped(null), 450);
+      }
       setDrag(null);
     };
     window.addEventListener("pointermove", onMove);
@@ -190,12 +207,14 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
 
         {(mobile ? [...shown].sort((a, b) => a.y - b.y || a.x - b.x) : shown).map((it) => {
           const active = drag?.id === it.id && current;
-          const r = active ? current.rect : place(it);
+          const r = active && current ? placeLive(current.rect) : place(it);
           return (
             <section
               key={it.id}
               className={s.widget}
               data-active={active ? true : undefined}
+              data-dropped={dropped === it.id || undefined}
+              data-ready={settled || undefined}
               style={mobile ? { minHeight: Math.max(240, it.h * RH * 0.7) } : r}
             >
               <header
@@ -210,7 +229,7 @@ export function Board({ data, initial }: { data: BoardData; initial: Item[] }) {
               </header>
               {/* While stretching, the contents keep their size (no chart redraw on every frame) and settle on drop. */}
               <div className={s.body} style={active && drag && drag.mode !== "move" ? { flex: "none", width: rectOf(drag.orig).width, height: rectOf(drag.orig).height - 44 } : undefined}>
-                <WidgetBody type={it.type} d={data} w={Math.round(it.w / 2)} />
+                <Body type={it.type} d={data} w={Math.round(it.w / 2)} />
               </div>
               {edit && !mobile
                 ? EDGES.map((edge) => (

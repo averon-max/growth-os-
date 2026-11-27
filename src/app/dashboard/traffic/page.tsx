@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { after } from "next/server";
-import { Globe } from "lucide-react";
+import { Activity, Bot, Eye, Globe, MousePointerClick, Percent, Trophy, Users, type LucideIcon } from "lucide-react";
 
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
@@ -97,26 +97,27 @@ export default async function TrafficPage({ searchParams }: { searchParams: Prom
 
         {insights.summary ? <p className={s.summary}>{insights.summary}</p> : null}
 
-        <div className={s.kpis}>
-          <KpiGroup
-            title="Google Search"
-            note="Search Console"
-            items={[
-              { label: "Clicks", m: report.totals.clicks, show: fmt.n },
-              { label: "Impressions", m: report.totals.impressions, show: fmt.compact },
-              { label: "CTR", m: report.totals.ctr, show: (v) => fmt.pct(v), kind: "rate" },
-              { label: "Avg. position", m: report.totals.position, show: fmt.pos, kind: "position" },
-            ]}
-          />
-          <KpiGroup
-            title="All visits"
-            note="Cloudflare"
-            items={[
-              { label: "Visitors", m: report.totals.visitors, show: fmt.compact, hint: "Unique visitors per day, added up" },
-              { label: "Requests", m: report.totals.requests, show: fmt.compact },
-              { label: "Verified bots", m: report.totals.botShare, show: (v) => fmt.pct(v), kind: "rate", neutral: true, hint: "Share of requests from search engines and other verified crawlers" },
-            ]}
-          />
+        <div className={s.cards}>
+          {([
+            { label: "Google clicks", m: report.totals.clicks, show: fmt.n, href: "#daily", icon: MousePointerClick, color: "#8e4ec6" },
+            { label: "Impressions", m: report.totals.impressions, show: fmt.compact, href: "#daily", icon: Eye, color: "#0090ff" },
+            { label: "CTR", m: report.totals.ctr, show: (v: number) => fmt.pct(v), kind: "rate", href: "#pages", icon: Percent, color: "#d6409f" },
+            { label: "Avg. position", m: report.totals.position, show: fmt.pos, kind: "position", href: "#pages", icon: Trophy, color: "#ffb224" },
+            { label: "Visitors", m: report.totals.visitors, show: fmt.compact, href: "#daily", icon: Users, color: "#12a594", hint: "Unique visitors per day, added up" },
+            { label: "Requests", m: report.totals.requests, show: fmt.compact, href: "#pages", icon: Activity, color: "#52a9ff" },
+            { label: "Verified bots", m: report.totals.botShare, show: (v: number) => fmt.pct(v), kind: "rate", neutral: true, href: "/dashboard/bots", icon: Bot, color: "#8f8f8f", hint: "Share of requests from search engines and other verified crawlers" },
+          ] as Card[]).map((k) => {
+            const c = k.m ? change(k.m.now, k.m.before, k.kind) : null;
+            const Icon = k.icon;
+            return (
+              <a key={k.label} href={k.href} className={s.card} title={k.hint}>
+                <span className={s.cardIcon} style={{ color: k.color, background: `${k.color}1f` }}><Icon size={14} /></span>
+                <span className={s.cardLabel}>{k.label}</span>
+                <span className={s.cardValue}>{k.m ? k.show(k.m.now) : "—"}</span>
+                <span className={c ? (k.neutral ? s.flat : s[c.tone]) : s.flat}>{c ? c.text : k.m ? "no earlier data" : "not connected"}</span>
+              </a>
+            );
+          })}
         </div>
 
         {insights.items.length ? (
@@ -202,8 +203,7 @@ function Sources({ report, websiteId }: { report: TrafficReport; websiteId: stri
   return (
     <div className={s.sources}>
       <div className={s.source}>
-        <span className={cf.state === "ok" ? s.dotOk : s.dotOff} aria-hidden />
-        <span className={s.sourceName}>Cloudflare</span>
+                <span className={s.sourceName}>Cloudflare</span>
         {cf.state === "missing" ? (
           <>
             <span className={s.sourceText}>Not connected</span>
@@ -227,8 +227,7 @@ function Sources({ report, websiteId }: { report: TrafficReport; websiteId: stri
         )}
       </div>
       <div className={s.source}>
-        <span className={g.state === "ok" ? s.dotOk : g.state === "error" ? s.dotWarn : s.dotOff} aria-hidden />
-        <span className={s.sourceName}>Search Console</span>
+                <span className={s.sourceName}>Search Console</span>
         {g.state === "ok" ? (
           <span className={s.sourceText}>Connected</span>
         ) : g.state === "missing" ? (
@@ -251,30 +250,7 @@ function Sources({ report, websiteId }: { report: TrafficReport; websiteId: stri
   );
 }
 
-type Kpi = { label: string; m: Metric | null; show: (v: number) => string; kind?: "count" | "rate" | "position"; neutral?: boolean; hint?: string };
-
-function KpiGroup({ title, note, items }: { title: string; note: string; items: Kpi[] }) {
-  return (
-    <section className={s.kpiGroup}>
-      <div className={s.kpiHead}>
-        <span>{title}</span>
-        <span className={s.kpiNote}>{note}</span>
-      </div>
-      <div className={s.kpiRow} style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
-        {items.map((k) => {
-          const c = k.m ? change(k.m.now, k.m.before, k.kind) : null;
-          return (
-            <div key={k.label} className={s.kpi} title={k.hint}>
-              <div className={s.kpiLabel}>{k.label}</div>
-              <div className={s.kpiValue}>{k.m ? k.show(k.m.now) : "—"}</div>
-              <div className={c ? (k.neutral ? s.flat : s[c.tone]) : s.flat}>{c ? c.text : k.m ? "no earlier data" : "not connected"}</div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
+type Card = { label: string; m: Metric | null; show: (v: number) => string; kind?: "count" | "rate" | "position"; neutral?: boolean; hint?: string; href: string; icon: LucideIcon; color: string };
 
 function Shares({ rows, aLabel, bLabel }: { rows: { key: string; label: string; a: number; b: number | null }[]; aLabel: string; bLabel: string }) {
   const aTotal = rows.reduce((x, r) => x + r.a, 0);

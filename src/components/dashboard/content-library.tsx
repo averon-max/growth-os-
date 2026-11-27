@@ -1,4 +1,5 @@
 "use client";
+import { KpiStrip } from "./insights";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -52,9 +53,6 @@ const META: Record<Exclude<Filter, "all">, { title: string; status: LGroup["stat
 const ORDER: Exclude<Filter, "all">[] = ["failed", "draft", "approved", "published"];
 const PAGE = 60;
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return <div className={u.statCard}><div className={u.statHeader}><p className={u.statLabel}>{label}</p></div><p className={u.statValue}>{value}</p></div>;
-}
 
 export function ContentLibrary({ websiteId, articles, opportunities }: { websiteId: string; articles: LibraryArticle[]; opportunities: LibraryOpportunity[] }) {
   const router = useRouter();
@@ -119,14 +117,16 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
         </div>
         {websiteId ? <WriterButton websiteId={websiteId} /> : null}
       </div>
-      <div className={u.statGrid}>
-        <Stat label="articles" value={String(counts.all)} />
-        <Stat label="drafts" value={String(counts.draft)} />
-        <Stat label="approved" value={String(counts.approved)} />
-        <Stat label="published" value={String(counts.published)} />
-        <Stat label="failed" value={String(counts.failed)} />
-        <Stat label="avg words" value={avg.toLocaleString()} />
-      </div>
+      <KpiStrip
+        items={[
+          { key: "all", label: "Articles", value: String(counts.all), sub: "all stages", onClick: () => setFilter("all"), active: filter === "all" },
+          { key: "draft", label: "Drafts", value: String(counts.draft), sub: "waiting for review", onClick: () => setFilter("draft"), active: filter === "draft" },
+          { key: "approved", label: "Approved", value: String(counts.approved), sub: "ready to publish", onClick: () => setFilter("approved"), active: filter === "approved" },
+          { key: "published", label: "Published", value: String(counts.published), sub: "live on the site", onClick: () => setFilter("published"), active: filter === "published" },
+          { key: "failed", label: "Failed issues", value: String(counts.failed), sub: "need another try", onClick: () => setFilter("failed"), active: filter === "failed" },
+          { key: "words", label: "Average article length", value: avg.toLocaleString(), sub: "words" },
+        ]}
+      />
       {error ? <div className={p.err}>{error}</div> : null}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div className={p.tabs}>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Globe, Plus } from "lucide-react";
+import { ArrowUpRight, Check, Globe, Minus, Plus, Tag } from "lucide-react";
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
@@ -113,9 +113,9 @@ export default async function WebsitesPage() {
                       />
                     </div>
                     <ul className={s.links}>
-                      <li data-on={gscOn || undefined}><span className={s.linkDot} />Search Console</li>
-                      <li data-on={Boolean(w.cloudflareConnection) || undefined}><span className={s.linkDot} />Cloudflare</li>
-                      <li data-on={w._count.trackedKeywords > 0 || undefined}><span className={s.linkDot} />{w._count.trackedKeywords} tracked keywords</li>
+                      <li data-on={gscOn || undefined}>{gscOn ? <Check size={13} /> : <Minus size={13} />}Search Console</li>
+                      <li data-on={Boolean(w.cloudflareConnection) || undefined}>{w.cloudflareConnection ? <Check size={13} /> : <Minus size={13} />}Cloudflare</li>
+                      <li data-on={w._count.trackedKeywords > 0 || undefined}><Tag size={13} />{w._count.trackedKeywords} tracked keywords</li>
                     </ul>
                     <div className={s.actions}>
                       <Link href={`/dashboard/seo?websiteId=${w.id}`} className={s.button}>SEO audit</Link>

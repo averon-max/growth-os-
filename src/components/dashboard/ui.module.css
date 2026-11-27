@@ -2159,3 +2159,4 @@
 .pageBody > *:nth-child(n + 4) { animation-delay: 0.09s; }
 @keyframes pageIn { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) { .pageBody > * { animation: none; } }
+.issueDot { display: none !important; }

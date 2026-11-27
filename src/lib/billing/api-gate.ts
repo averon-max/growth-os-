@@ -20,6 +20,12 @@ const API_SECTION: [RegExp, string][] = [
   [/^\/api\/cms(\/|$)/, "cms"],
 ];
 
+/** The dashboard section an API path belongs to (for sections an admin closed for a user). */
+export function sectionFor(path: string): string | null {
+  const hit = API_SECTION.find(([re]) => re.test(path));
+  return hit ? hit[1] : null;
+}
+
 export function requiredPlanFor(path: string): PlanId | null {
   const hit = API_SECTION.find(([re]) => re.test(path));
   return hit ? SECTION_MIN_PLAN[hit[1]] ?? null : null;

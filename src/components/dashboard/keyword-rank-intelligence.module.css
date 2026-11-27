@@ -345,3 +345,11 @@ button.metric:hover { background: #111111; }
 .list { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
 .listHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
 .metricDot { display: none !important; }
+
+/* Number cards like everywhere else: separate cards with a soft coloured icon. */
+.metrics { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 12px !important; overflow: visible !important; border: 0 !important; background: transparent !important; }
+@media (max-width: 1100px) { .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
+.metric { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; padding: 16px !important; border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; text-align: left !important; transition: border-color 0.15s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important; }
+button.metric:hover { border-color: #3a3a3a !important; transform: translateY(-2px); }
+.metric[data-on] { border-color: #ededed !important; }
+.metricIcon { display: grid; width: 28px; height: 28px; margin-bottom: 8px; place-items: center; border-radius: 8px; }

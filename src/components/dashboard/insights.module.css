@@ -80,3 +80,12 @@ button.kpi:hover { background: #111111; }
 .colTrack { background: transparent !important; border-bottom: 1px solid #262626; border-radius: 0 !important; }
 .colFill { border-radius: 3px 3px 0 0 !important; }
 button.col:hover .colTrack, .col[data-active] .colTrack { background: rgba(255, 255, 255, 0.03) !important; }
+
+/* Number cards: separate rounded cards with a soft coloured icon (no table grid). */
+.kpis { gap: 12px !important; overflow: visible !important; border: 0 !important; background: transparent !important; }
+.kpi { position: relative; gap: 4px !important; padding: 16px !important; border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; transition: border-color 0.15s ease, background 0.15s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+button.kpi:hover { border-color: #3a3a3a !important; background: #0f0f0f !important; transform: translateY(-2px); }
+button.kpi:active { transform: scale(0.98); }
+.kpi[data-active] { border-color: #ededed !important; background: #0f0f0f !important; box-shadow: none !important; }
+.kpiIcon { display: grid; width: 28px; height: 28px; margin-bottom: 8px; place-items: center; border-radius: 8px; }
+.kpiValue { font-size: 26px !important; }

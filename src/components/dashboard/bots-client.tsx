@@ -7,7 +7,7 @@ import u from "./ui.module.css";
 import p from "./planner.module.css";
 import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar } from "./insights";
 
-const GROUP_COLOR: Record<string, string> = { "Search engines": "#0090ff", "AI crawlers & assistants": "#52a9ff", "SEO tools": "#0b68cb", "Other bots": "#5a5a5a" };
+const GROUP_COLOR: Record<string, string> = { "Search engines": "#0090ff", "AI crawlers & assistants": "#8e4ec6", "SEO tools": "#12a594", "Other bots": "#5a5a5a" };
 const isAsset = (path: string) => /^\/_next\/|\.(js|css|png|jpe?g|webp|svg|ico|woff2?|map|txt|xml)$/i.test(path);
 
 interface BotsData {

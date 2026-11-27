@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Activity, AlertTriangle, BarChart3, Bot, Eye, FileText, Gauge, Globe, Link2, MousePointerClick, PenLine, Sparkles, Swords, Tag, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
 import s from "./insights.module.css";
 
 /*
@@ -196,12 +197,24 @@ export function Meter({ value, max = 100, good = 80, warn = 50, invert = false, 
 
 /** A row of clickable numbers on top of a page (Vercel "Observability" strip). */
 export type Kpi = { key: string; label: string; value: ReactNode; sub?: ReactNode; tone?: keyof typeof TONE; onClick?: () => void; active?: boolean; color?: string };
+const KPI_ICONS: [RegExp, LucideIcon][] = [
+  [/click/i, MousePointerClick], [/impression|visib/i, Eye], [/position|rank|top 10|page one/i, Trophy], [/volume|search/i, BarChart3],
+  [/keyword|quer/i, Tag], [/website|site/i, Globe], [/score/i, Gauge], [/issue|spam|lost/i, AlertTriangle], [/page/i, FileText],
+  [/domain|link|backlink/i, Link2], [/competitor|beat|gap/i, Swords], [/traffic|visit|request/i, TrendingUp], [/bot|crawler/i, Bot],
+  [/ai/i, Sparkles], [/article|draft|publish/i, PenLine],
+];
+const iconFor = (label: string): LucideIcon => KPI_ICONS.find(([re]) => re.test(label))?.[1] ?? Activity;
+
+/** Numbers on top of a page: separate cards, each with its own coloured icon (colours alternate in a fixed order). */
 export function KpiStrip({ items }: { items: Kpi[] }) {
   return (
     <div className={s.kpis} style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
-      {items.map((k) => {
+      {items.map((k, i) => {
+        const Icon = iconFor(k.label);
+        const c = PALETTE[i % 6];
         const body = (
           <>
+            <span className={s.kpiIcon} style={{ color: c, background: `${c}1f` }}><Icon size={14} strokeWidth={2} /></span>
             <span className={s.kpiLabel}>{k.label}</span>
             <span className={s.kpiValue} style={k.tone ? { color: TONE[k.tone] } : undefined}>{k.value}</span>
             {k.sub ? <span className={s.kpiSub}>{k.sub}</span> : null}

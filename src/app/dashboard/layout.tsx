@@ -5,6 +5,7 @@ import { Providers } from "../providers";
 import { isUserAdmin } from "@/lib/auth-helpers";
 import { bestPlanForUser, isTrialing, planName } from "@/lib/billing/api-gate";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { blockedSections } from "@/lib/billing/blocked";
 import styles from "./layout.module.css";
 import { AppFooter } from "@/components/dashboard/app-footer";
 import { FeedbackWidget } from "@/components/feedback-widget";
@@ -22,15 +23,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const userId = (session.user as { id?: string }).id;
-  const [isAdmin, plan, trial] = userId
-    ? await Promise.all([isUserAdmin(userId), bestPlanForUser(userId), isTrialing(userId)])
-    : [false, "FREE" as const, false];
+  const [isAdmin, plan, trial, hidden] = userId
+    ? await Promise.all([isUserAdmin(userId), bestPlanForUser(userId), isTrialing(userId), blockedSections(userId)])
+    : [false, "FREE" as const, false, [] as string[]];
   const planLabel = trial ? "Trial" : planName(plan);
 
   return (
     <Providers session={session}>
     <div className={styles.shell}>
-      <Sidebar isAdmin={isAdmin} planLabel={planLabel} email={session.user.email ?? ""} name={session.user.name ?? ""} />
+      <Sidebar isAdmin={isAdmin} hidden={hidden} planLabel={planLabel} email={session.user.email ?? ""} name={session.user.name ?? ""} />
       <div className={styles.main}><div className="page-shell">
         <div className="page-content">{children}</div>
         <AppFooter />

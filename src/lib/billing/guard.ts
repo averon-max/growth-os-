@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getWorkspaceBilling } from "./subscription";
 import { SECTION_MIN_PLAN, meetsPlan } from "./access";
 import { planFor, PLANS, DEFAULT_PLAN_ID, type PlanId } from "./plans";
+import { redirect } from "next/navigation";
+import { blockedSections } from "./blocked";
 
 export interface SectionGate {
   unauthenticated: boolean;
@@ -28,6 +30,9 @@ export async function sectionGate(section: string): Promise<SectionGate> {
       requiredPlanId: required,
     };
   }
+
+  // A section an admin closed for this user: back to the overview with a note.
+  if ((await blockedSections(userId)).includes(section)) redirect("/dashboard?closed=" + encodeURIComponent(section));
 
   // Plans apply to everyone, admins included: an admin who wants access grants it to their own workspace
   // in /dashboard/admin. Otherwise removing a plan looks broken when testing on an admin account.
