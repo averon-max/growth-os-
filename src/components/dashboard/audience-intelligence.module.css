@@ -299,3 +299,14 @@
       flex-start;
   }
 }
+
+/* ===== Design lock: plain page header like every other page (no box, no small caps label). ===== */
+.hero { padding: 0 0 8px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.hero::after, .hero::before { display: none !important; }
+.eyebrow { display: none !important; }
+.title { margin: 0 !important; color: #ededed !important; font-size: 24px !important; font-weight: 600 !important; letter-spacing: -0.02em !important; }
+.description { color: #a1a1a1 !important; font-size: 14px !important; }
+.source { border-color: #1f1f1f !important; background: transparent !important; color: #a1a1a1 !important; }
+.liveDot { display: none !important; }
+.syncButton { border: 1px solid #ededed !important; background: #ededed !important; color: #0a0a0a !important; }
+.rangeButtonActive { background: #1f1f1f !important; color: #ededed !important; box-shadow: none !important; }

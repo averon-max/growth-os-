@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { CENTER, WORLD, WORLD_H, WORLD_W } from "@/lib/geo/world-paths";
+import { WORLD, WORLD_H, WORLD_W } from "@/lib/geo/world-paths";
 import s from "./dot-map.module.css";
 
 export type DotMapRow = { code: string; label: string; value: number };
@@ -68,18 +68,6 @@ export function DotMap({ rows, unit = "requests", withList = true, limit = 20, f
                 style={r ? { fill: on ? "#52a9ff" : shade(0.15 + 0.85 * Math.sqrt(r.value / max)) } : undefined}
                 onPointerEnter={() => setActive(c.code)}
               />
-            );
-          })}
-          {/* Markers on the top countries, so small ones (Netherlands, Singapore, UAE) are visible too. */}
-          {sorted.slice(0, 6).map((r) => {
-            const c = CENTER[r.code.toUpperCase()];
-            if (!c) return null;
-            const on = active === r.code.toUpperCase();
-            return (
-              <g key={r.code} className={s.pin} data-active={on || undefined} onPointerEnter={() => setActive(r.code.toUpperCase())}>
-                <circle cx={c[0]} cy={c[1]} r={on ? 9 : 7} className={s.pinRing} />
-                <circle cx={c[0]} cy={c[1]} r={2.6} className={s.pinDot} />
-              </g>
             );
           })}
         </svg>

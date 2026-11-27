@@ -1,4 +1,5 @@
 "use client";
+import { useUrlTab } from "@/lib/url-tab";
 import { useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/client-cache";
 import { Loader2, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
@@ -11,6 +12,7 @@ import u from "./ui.module.css";
 import p from "./planner.module.css";
 
 type Tab = "keywords" | "wins" | "pages" | "gaps" | "cannibal" | "clusters" | "research";
+const TAB_KEYS: readonly Tab[] = ["keywords", "wins", "pages", "gaps", "cannibal", "clusters", "research"];
 type SortKey = "volume" | "kd" | "cpc" | "position" | "clicks" | "impressions";
 interface Suggestion { keyword: string; searchVolume: number | null; competitionLevel: string | null; cpc: number | null; keywordDifficulty: number | null; monthlySearches: { year: number; month: number; searchVolume: number }[]; trend: { yearly: number | null } | null }
 
@@ -181,7 +183,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
   const [pending, setPending] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("keywords");
+  const [tab, setTab] = useUrlTab<Tab>("tab", TAB_KEYS, "keywords");
   const [chips, setChips] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<DrawerData | null>(null);

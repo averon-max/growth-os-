@@ -150,7 +150,7 @@ td .up, td .down, td .flat { margin-top: 0; }
 .panel { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
 .panelHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
 .chartDelta, .chartDelta[data-tone="up"], .chartDelta[data-tone="down"] { padding: 0 !important; background: transparent !important; }
-.barNow { background: linear-gradient(90deg, #e93d82 0 33%, #0090ff 33% 66%, #8e4ec6 66%) !important; }
+.barNow { background: #0090ff !important; }
 .barB, .swatchB { background: #0090ff !important; }
 
 
@@ -169,3 +169,5 @@ td .up, td .down, td .flat { margin-top: 0; }
 .chart { position: relative; cursor: crosshair; }
 .datePill { position: absolute; top: 0; z-index: 3; padding: 4px 10px; border: 1px solid #2e2e2e; border-radius: 6px; background: #0a0a0a; color: #ededed; font-size: 12px; white-space: nowrap; transform: translateX(-50%); pointer-events: none; }
 .cross { stroke: #6b6b6b !important; stroke-dasharray: 3 3; }
+.prevLine { stroke: #8f8f8f; stroke-width: 1.5; stroke-dasharray: 4 4; stroke-linejoin: round; opacity: 0.7; }
+.barBefore { height: 0 !important; width: 14px !important; border-top: 2px dashed #8f8f8f !important; background: transparent !important; border-radius: 0 !important; }

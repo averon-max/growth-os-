@@ -124,3 +124,9 @@
   .urlActions { justify-content: flex-start; }
   .fixPages { padding-left: 16px; }
 }
+
+/* Issues | Keywords switch */
+.views { display: inline-flex; gap: 2px; margin: 4px 0 20px; padding: 3px; border: 1px solid #1f1f1f; border-radius: 8px; background: #0a0a0a; }
+.views button { height: 30px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: #a1a1a1; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.views button:hover { color: #ededed; }
+.views button[data-on] { background: #1f1f1f; color: #ededed; }

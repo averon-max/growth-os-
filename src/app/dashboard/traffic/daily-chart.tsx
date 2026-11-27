@@ -6,9 +6,9 @@ import s from "./traffic.module.css";
 
 type Key = "clicks" | "impressions" | "visitors";
 const PANELS: { key: Key; title: string; source: string; color: string }[] = [
-  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#e93d82" },
+  { key: "clicks", title: "Google clicks", source: "Search Console", color: "#0090ff" },
   { key: "impressions", title: "Google impressions", source: "Search Console", color: "#0090ff" },
-  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#8e4ec6" },
+  { key: "visitors", title: "Visitors", source: "Cloudflare", color: "#0090ff" },
 ];
 const H = 110;
 const PAD = { top: 10, bottom: 6, left: 0, right: 0 };
@@ -80,8 +80,9 @@ export function DailyChart({ now, before, days }: { now: DayPoint[]; before: Day
                 </div>
                 <svg width={width} height={H} role="img" aria-label={`${p.title} per day`} className={s.svg}>
                   <line x1={0} x2={width} y1={base} y2={base} className={s.axis} />
-                  {prev.map((v, i) => (v ? <rect key={`b${i}`} x={bx(i)} width={bw} y={y(v)} height={base - y(v)} fill="#2e2e2e" /> : null))}
                   {vals.map((v, i) => (v ? <rect key={`n${i}`} x={bx(i)} width={bw} y={y(v)} height={Math.max(2, base - y(v))} fill={p.color} opacity={hover === i ? 1 : 0.9} /> : null))}
+                  {/* Previous period: a quiet dashed line over the columns (Vercel comparison style). */}
+                  {prev.some(Boolean) ? <polyline points={prev.map((v, i) => `${bx(i) + bw / 2},${y(v || 0)}`).join(" ")} fill="none" className={s.prevLine} /> : null}
                   {hover !== null ? <line x1={bx(hover) + bw / 2} x2={bx(hover) + bw / 2} y1={0} y2={H} className={s.cross} /> : null}
                 </svg>
               </div>

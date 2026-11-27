@@ -522,3 +522,10 @@
 .mapWrap svg path { stroke: #000000 !important; stroke-width: .5px !important; outline: none !important; transition: fill .12s ease; }
 .mapWrap svg path:hover { fill: #0090ff !important; cursor: pointer; }
 .hoverCard { border: 1px solid #262626 !important; border-radius: 10px !important; background: #111111 !important; box-shadow: 0 12px 40px rgba(0,0,0,.45) !important; }
+
+/* ===== Design lock ===== */
+.shell { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.header { background: transparent !important; border-bottom: 1px solid #1a1a1a !important; }
+.headerTitle svg, .miniHeader svg, .integrationBar svg { display: none !important; }
+.flag { display: none !important; }
+.rank { color: #6b6b6b !important; }

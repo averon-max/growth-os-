@@ -1,0 +1,32 @@
+.wrap { display: flex; flex-direction: column; gap: 16px; }
+.panel { overflow: hidden; border: 1px solid #1f1f1f; border-radius: 12px; background: #0a0a0a; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #1a1a1a; }
+.title { margin: 0; color: #ededed; font-size: 14px; font-weight: 500; }
+.sub { margin: 4px 0 0; color: #8f8f8f; font-size: 13px; }
+.search { width: 240px; height: 32px; padding: 0 10px; border: 1px solid #262626; border-radius: 6px; background: #000; color: #ededed; font: inherit; font-size: 13px; }
+.search:focus { border-color: #454545; outline: none; }
+.bands { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px; border-bottom: 1px solid #1a1a1a; }
+.bands button { height: 28px; padding: 0 12px; border: 1px solid #262626; border-radius: 999px; background: transparent; color: #a1a1a1; font: inherit; font-size: 13px; cursor: pointer; }
+.bands button span { margin-left: 4px; color: #6b6b6b; }
+.bands button:hover { border-color: #454545; color: #ededed; }
+.bands button[data-on] { border-color: #ededed; background: #ededed; color: #0a0a0a; }
+.bands button[data-on] span { color: #454545; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th { height: 40px; padding: 0 20px; border-bottom: 1px solid #1a1a1a; color: #a1a1a1; font-weight: 400; text-align: left; }
+.table td { height: 44px; padding: 0 20px; border-bottom: 1px solid #141414; color: #ededed; }
+.table tbody tr:hover td { background: #111; }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; }
+.table td[data-band="top"] { color: #30a46c; }
+.table td[data-band="good"] { color: #52a9ff; }
+.table td[data-band="none"] { color: #6b6b6b; }
+.kw { margin-right: 6px; }
+.page { overflow: hidden; max-width: 260px; color: #a1a1a1 !important; text-overflow: ellipsis; white-space: nowrap; }
+.ideas { display: flex; flex-direction: column; gap: 16px; padding: 16px 20px 20px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.groupLabel { color: #8f8f8f; font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 12px; border: 1px solid #262626; border-radius: 999px; color: #ededed; font-size: 13px; }
+.chip:hover { border-color: #454545; background: #111; }
+.chip em { color: #8f8f8f; font-size: 12px; font-style: normal; }
+.empty { margin: 0; padding: 24px 20px; color: #8f8f8f; font-size: 13px; }
+.empty a { color: #ededed; }

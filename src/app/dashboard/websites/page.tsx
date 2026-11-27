@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Check, Globe, Minus, Plus, Tag } from "lucide-react";
+import { ArrowUpRight, Globe, Plus } from "lucide-react";
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { Topbar } from "@/components/dashboard/topbar";
@@ -71,7 +71,7 @@ export default async function WebsitesPage() {
           <EmptyState icon={Globe} title="No websites yet" description="Add a website and Hyprlyx audits it, tracks its keywords and connects its traffic." actionLabel="Add website" actionHref="/dashboard/add-website" />
         ) : (
           <>
-          <KpiStrip
+          {websites.length > 1 ? <KpiStrip
             items={[
               { key: "sites", label: "Websites", value: websites.length, sub: "in this workspace" },
               { key: "score", label: "Average SEO score", value: avg ?? "—", sub: "latest audits", tone: avg == null ? undefined : avg >= 80 ? "good" : avg >= 50 ? "warn" : "bad" },
@@ -79,7 +79,7 @@ export default async function WebsitesPage() {
               { key: "pages", label: "Pages checked", value: pagesTotal.toLocaleString("en-US"), sub: "across all sites" },
               { key: "kw", label: "Tracked keywords", value: tracked.toLocaleString("en-US"), sub: "in the Keyword Planner" },
             ]}
-          />
+          /> : null}
           <div className={s.grid} data-one={websites.length === 1 || undefined}>
             {websites.map((w) => {
               const a = w.analyses[0];
@@ -95,28 +95,27 @@ export default async function WebsitesPage() {
                       <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host(w.url))}&sz=32`} alt="" width={16} height={16} />
                       <Link href={`/dashboard?websiteId=${w.id}`}>{host(w.url)}</Link>
                     </div>
-                    <dl className={s.facts}>
+                    {/* Details like a Vercel deployment card: a label above each value, room around everything. */}
+                    <dl className={s.details}>
                       <div><dt>SEO score</dt><dd data-tone={score == null ? undefined : score >= 80 ? "good" : score >= 50 ? "warn" : "bad"}>{score ?? "—"}</dd></div>
-                      <div><dt>Last audit</dt><dd>{a ? ago(a.completedAt ?? a.createdAt) : "never"}</dd></div>
-                      <div><dt>Pages</dt><dd>{a?.pagesCount ?? "—"}</dd></div>
+                      <div><dt>Last audit</dt><dd>{a ? `${ago(a.completedAt ?? a.createdAt)} · ${a.pagesCount ?? 0} pages` : "Never"}</dd></div>
+                      <div><dt>Connections</dt><dd>{[gscOn ? "Search Console" : null, w.cloudflareConnection ? "Cloudflare" : null].filter(Boolean).join(", ") || "None yet"}</dd></div>
+                      <div><dt>Tracked keywords</dt><dd><Link href="/dashboard/keyword-planner">{w._count.trackedKeywords}</Link></dd></div>
+                      <div className={s.wide}>
+                        <dt>Issues · {a ? (sev(a.id, "CRITICAL") + sev(a.id, "HIGH") + sev(a.id, "MEDIUM") + sev(a.id, "LOW")).toLocaleString("en-US") : "—"}</dt>
+                        <dd>
+                          <StackBar
+                            parts={[
+                              { key: "c", label: "Critical", value: sev(a?.id, "CRITICAL"), color: SEVERITY.critical },
+                              { key: "h", label: "High", value: sev(a?.id, "HIGH"), color: SEVERITY.high },
+                              { key: "m", label: "Medium", value: sev(a?.id, "MEDIUM"), color: SEVERITY.medium },
+                              { key: "l", label: "Low", value: sev(a?.id, "LOW"), color: SEVERITY.low },
+                            ]}
+                            compact
+                          />
+                        </dd>
+                      </div>
                     </dl>
-                    <div className={s.issues}>
-                      <div className={s.issuesHead}><span>Issues</span><span>{a ? (sev(a.id, "CRITICAL") + sev(a.id, "HIGH") + sev(a.id, "MEDIUM") + sev(a.id, "LOW")).toLocaleString("en-US") : "—"}</span></div>
-                      <StackBar
-                        parts={[
-                          { key: "c", label: "Critical", value: sev(a?.id, "CRITICAL"), color: SEVERITY.critical },
-                          { key: "h", label: "High", value: sev(a?.id, "HIGH"), color: SEVERITY.high },
-                          { key: "m", label: "Medium", value: sev(a?.id, "MEDIUM"), color: SEVERITY.medium },
-                          { key: "l", label: "Low", value: sev(a?.id, "LOW"), color: SEVERITY.low },
-                        ]}
-                        compact
-                      />
-                    </div>
-                    <ul className={s.links}>
-                      <li data-on={gscOn || undefined}>{gscOn ? <Check size={13} /> : <Minus size={13} />}Search Console</li>
-                      <li data-on={Boolean(w.cloudflareConnection) || undefined}>{w.cloudflareConnection ? <Check size={13} /> : <Minus size={13} />}Cloudflare</li>
-                      <li data-on={w._count.trackedKeywords > 0 || undefined}><Tag size={13} />{w._count.trackedKeywords} tracked keywords</li>
-                    </ul>
                     <div className={s.actions}>
                       <Link href={`/dashboard/seo?websiteId=${w.id}`} className={s.button}>SEO audit</Link>
                       <a href={w.url} target="_blank" rel="noreferrer" className={s.button}>Visit <ArrowUpRight size={13} /></a>

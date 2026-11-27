@@ -1009,3 +1009,12 @@
 .geoGrid {
   display: none !important;
 }
+
+/* ===== Design lock: numbers in one clean row like every page (no boxes, no icons). ===== */
+.metrics { display: grid !important; gap: 0 !important; padding: 0 !important; border: 0 !important; border-bottom: 1px solid #1f1f1f !important; border-radius: 0 !important; background: transparent !important; }
+.metric { padding: 8px 24px 18px 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.metricLabel { color: #a1a1a1 !important; font-size: 14px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 0 !important; }
+.metricLabel svg { display: none !important; }
+.metric > strong { color: #ededed !important; font-size: 32px !important; font-weight: 600 !important; letter-spacing: -0.03em !important; }
+.metric > span { color: #8f8f8f !important; }
+.panelHeading svg { display: none !important; }

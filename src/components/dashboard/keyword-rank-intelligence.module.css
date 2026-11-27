@@ -355,3 +355,4 @@ button.metric:hover { background: #111111; }
 .metric[data-on] { box-shadow: inset 0 -2px 0 #ededed !important; }
 button.metric:hover .metricValue { color: #fff !important; }
 .metricSub { color: #8f8f8f !important; }
+.distribution { display: none !important; }

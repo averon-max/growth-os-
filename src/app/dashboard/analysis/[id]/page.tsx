@@ -8,6 +8,7 @@ import { Check, ChevronDown, Copy, ExternalLink, RefreshCw } from "lucide-react"
 import { Topbar } from "@/components/dashboard/topbar";
 import ui from "@/components/dashboard/ui.module.css";
 import s from "./analysis.module.css";
+import { AuditKeywords } from "./audit-keywords";
 
 interface Analysis {
   id: string;
@@ -179,6 +180,25 @@ export default function AnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Sev | "ALL">("ALL");
   const [rerun, setRerun] = useState(false);
+  // Issues (the audit) or Keywords (where the site ranks + Google Trends ideas). ?view=keywords opens the second.
+  const [view, setView] = useState<"issues" | "keywords">("issues");
+  useEffect(() => {
+    const read = () => setView(new URLSearchParams(window.location.search).get("view") === "keywords" ? "keywords" : "issues");
+    read();
+    window.addEventListener("popstate", read);
+    window.addEventListener("hx:subnav-go", read);
+    return () => {
+      window.removeEventListener("popstate", read);
+      window.removeEventListener("hx:subnav-go", read);
+    };
+  }, []);
+  const pick = (v: "issues" | "keywords") => {
+    setView(v);
+    const url = new URL(window.location.href);
+    if (v === "keywords") url.searchParams.set("view", "keywords"); else url.searchParams.delete("view");
+    window.history.replaceState(null, "", url.toString());
+    window.dispatchEvent(new Event("hx:subnav"));
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -294,7 +314,16 @@ export default function AnalysisPage() {
             </div>
           ) : null}
 
-          {done ? (
+          {done && analysis.websiteId ? (
+            <div className={s.views} role="tablist">
+              <button type="button" role="tab" aria-selected={view === "issues"} data-on={view === "issues" || undefined} onClick={() => pick("issues")}>Issues</button>
+              <button type="button" role="tab" aria-selected={view === "keywords"} data-on={view === "keywords" || undefined} onClick={() => pick("keywords")}>Keywords</button>
+            </div>
+          ) : null}
+
+          {done && view === "keywords" && analysis.websiteId ? <AuditKeywords websiteId={analysis.websiteId} /> : null}
+
+          {done && view === "issues" ? (
             <>
               <section className={s.summary}>
                 <div className={s.health}>

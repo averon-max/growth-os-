@@ -117,7 +117,7 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
         </div>
         {websiteId ? <WriterButton websiteId={websiteId} /> : null}
       </div>
-      <KpiStrip
+      {counts.all > 0 ? <KpiStrip
         items={[
           { key: "all", label: "Articles", value: String(counts.all), sub: "all stages", onClick: () => setFilter("all"), active: filter === "all" },
           { key: "draft", label: "Drafts", value: String(counts.draft), sub: "waiting for review", onClick: () => setFilter("draft"), active: filter === "draft" },
@@ -126,7 +126,7 @@ export function ContentLibrary({ websiteId, articles, opportunities }: { website
           { key: "failed", label: "Failed issues", value: String(counts.failed), sub: "need another try", onClick: () => setFilter("failed"), active: filter === "failed" },
           { key: "words", label: "Average article length", value: avg.toLocaleString(), sub: "words" },
         ]}
-      />
+      /> : null}
       {error ? <div className={p.err}>{error}</div> : null}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div className={p.tabs}>

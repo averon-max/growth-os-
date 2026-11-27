@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronsUpDown, LogOut, MoreHorizontal, PanelLeft, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronsUpDown, LogOut, MoreHorizontal, PanelLeft, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
-import { NAV, NAV_ADMIN, NAV_BOTTOM, isActivePath, withSite, type NavItem } from "@/lib/nav";
+import { NAV, NAV_ADMIN, NAV_BOTTOM, SUBNAV, isActivePath, withSite, type NavItem } from "@/lib/nav";
 
 import styles from "./sidebar.module.css";
 
@@ -109,6 +109,56 @@ function FindDialog({ open, onClose, items, site }: { open: boolean; onClose: ()
   );
 }
 
+/** Same tab? "?" means the page's default tab (no tab/view in the address). */
+function sameQuery(search: string, href: string): boolean {
+  const cur = new URLSearchParams(search);
+  const want = new URLSearchParams(href.slice(1));
+  const keys = ["tab", "view"];
+  return keys.every((k) => (cur.get(k) ?? "") === (want.get(k) ?? ""));
+}
+
+const NUDGE_KEY = "hx:nudge-hidden-until";
+
+/** Every few days, a small card above the account suggests the next plan (Vercel-style). Hidden for 3 days on close. */
+function UpgradeNudge({ planLabel }: { planLabel: string }) {
+  const [show, setShow] = useState(false);
+  const next = planLabel === "Free" ? "Starter" : planLabel === "Starter" ? "Growth" : planLabel === "Growth" ? "Autopilot" : null;
+  useEffect(() => {
+    if (!next) return;
+    try {
+      setShow(Number(localStorage.getItem(NUDGE_KEY) ?? 0) < Date.now());
+    } catch {
+      setShow(true);
+    }
+  }, [next]);
+  if (!show || !next) return null;
+  const close = () => {
+    setShow(false);
+    try {
+      localStorage.setItem(NUDGE_KEY, String(Date.now() + 3 * 864e5));
+    } catch {
+      /* private mode: just hide for now */
+    }
+  };
+  const text: Record<string, string> = {
+    Starter: "Track 500 keywords, see backlinks and competitors for one site.",
+    Growth: "5 sites, 1,500 tracked keywords and 50 AI articles a month.",
+    Autopilot: "25 sites, 5,000 tracked keywords and 200 AI articles a month.",
+  };
+  return (
+    <div className={styles.nudge}>
+      <button type="button" className={styles.nudgeClose} onClick={close} aria-label="Hide for a few days">
+        <X size={14} strokeWidth={1.8} />
+      </button>
+      <strong>Upgrade to {next}</strong>
+      <p>{text[next]}</p>
+      <Link href="/dashboard/settings/billing" className={styles.nudgeButton}>
+        See plans
+      </Link>
+    </div>
+  );
+}
+
 export function Sidebar({ isAdmin = false, hidden = [], planLabel = "Free", email = "", name = "" }: { isAdmin?: boolean; hidden?: string[]; planLabel?: string; email?: string; name?: string }) {
   const pathname = usePathname() ?? "";
   const params = useSearchParams();
@@ -116,6 +166,19 @@ export function Sidebar({ isAdmin = false, hidden = [], planLabel = "Free", emai
   const [mobileOpen, setMobileOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Tabs kept in the address (?tab= / ?view=): read them, and follow changes made by the page itself.
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const read = () => setSearch(window.location.search);
+    read();
+    window.addEventListener("hx:subnav", read);
+    window.addEventListener("popstate", read);
+    return () => {
+      window.removeEventListener("hx:subnav", read);
+      window.removeEventListener("popstate", read);
+    };
+  }, [pathname]);
+  const sub = SUBNAV.find((x) => x.match.test(pathname)) ?? null;
 
   const sectionOf = (href: string) => href.replace(/^\/dashboard\/?/, "").split(/[/?#]/)[0];
   const groups = NAV.map((s) => s.items.filter((i) => i.sidebar !== false && !hidden.includes(sectionOf(i.href)))).filter((g) => g.length);
@@ -179,6 +242,42 @@ export function Sidebar({ isAdmin = false, hidden = [], planLabel = "Free", emai
           <kbd className={styles.kbd}>F</kbd>
         </button>
 
+        {sub ? (
+          <nav className={styles.nav} aria-label={sub.title}>
+            <Link href={sub.back} className={styles.subBack}>
+              <ChevronLeft size={16} strokeWidth={1.6} aria-hidden />
+              <span>{sub.title}</span>
+            </Link>
+            <div className={styles.group}>
+              {sub.items.map((it) => {
+                const local = it.href.startsWith("?");
+                const target = local ? `${pathname}${it.href === "?" ? "" : it.href}` : it.href;
+                const active = local ? sameQuery(search, it.href) : pathname === it.href;
+                return (
+                  <Link
+                    key={it.label}
+                    href={target}
+                    className={styles.subItem}
+                    data-active={active || undefined}
+                    onClick={(e) => {
+                      if (!local) return;
+                      e.preventDefault();
+                      const url = new URL(window.location.href);
+                      const q = new URLSearchParams(it.href.slice(1));
+                      ["tab", "view"].forEach((k) => url.searchParams.delete(k));
+                      q.forEach((v, k) => url.searchParams.set(k, v));
+                      window.history.replaceState(window.history.state, "", url.toString());
+                      window.dispatchEvent(new Event("hx:subnav-go"));
+                      setSearch(url.search);
+                    }}
+                  >
+                    {it.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        ) : (
         <nav className={styles.nav} aria-label="Main">
           {groups.map((items, i) => (
             <div key={i} className={styles.group}>
@@ -193,6 +292,9 @@ export function Sidebar({ isAdmin = false, hidden = [], planLabel = "Free", emai
             ))}
           </div>
         </nav>
+        )}
+
+        <UpgradeNudge planLabel={planLabel} />
 
         <div className={styles.account}>
           <Link href="/dashboard/settings/account" className={styles.accountLink} title={email}>

@@ -141,3 +141,45 @@ export function navItemFor(pathname: string): NavItem | undefined {
     .filter((item) => isActivePath(pathname, item))
     .sort((a, b) => b.href.length - a.href.length)[0];
 }
+
+/*
+ * Sections with several tabs get their own menu, like Vercel: inside them the sidebar shows "‹ Section" and the
+ * tabs. An href starting with "?" belongs to the current page (it only changes the open tab).
+ */
+export type SubNav = { match: RegExp; title: string; back: string; items: { label: string; href: string }[] };
+export const SUBNAV: SubNav[] = [
+  {
+    match: /^\/dashboard\/settings(\/|$)/,
+    title: "Settings",
+    back: "/dashboard",
+    items: [
+      { label: "General", href: "/dashboard/settings" },
+      { label: "Account", href: "/dashboard/settings/account" },
+      { label: "Billing", href: "/dashboard/settings/billing" },
+      { label: "Data and costs", href: "/dashboard/settings/data" },
+    ],
+  },
+  {
+    match: /^\/dashboard\/keyword-planner(\/|$)/,
+    title: "Keyword Planner",
+    back: "/dashboard",
+    items: [
+      { label: "Keywords", href: "?" },
+      { label: "Quick wins", href: "?tab=wins" },
+      { label: "Pages", href: "?tab=pages" },
+      { label: "Gaps", href: "?tab=gaps" },
+      { label: "Cannibalization", href: "?tab=cannibal" },
+      { label: "Clusters", href: "?tab=clusters" },
+      { label: "Research", href: "?tab=research" },
+    ],
+  },
+  {
+    match: /^\/dashboard\/analysis\//,
+    title: "SEO audit",
+    back: "/dashboard",
+    items: [
+      { label: "Issues", href: "?" },
+      { label: "Keywords", href: "?view=keywords" },
+    ],
+  },
+];
