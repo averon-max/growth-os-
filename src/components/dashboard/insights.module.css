@@ -89,3 +89,8 @@ button.kpi:hover .kpiValue { color: #fff; }
 .kpi[data-active] { background: transparent !important; box-shadow: inset 0 -2px 0 #ededed !important; }
 .kpiLabel { font-size: 14px !important; }
 .kpiValue { font-size: 32px !important; font-weight: 600 !important; letter-spacing: -0.03em !important; }
+
+/* Columns like Vercel charts: full-width square columns with a thin gap. */
+.columns { gap: 3px !important; }
+.colTrack { max-width: none !important; border-bottom: 0 !important; }
+.colFill { border-radius: 0 !important; }

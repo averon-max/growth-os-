@@ -3,7 +3,7 @@
 import { AddKeyword } from "./add-keyword";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/client-cache";
-import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 
 import { KeywordCard } from "./keyword-card";
@@ -263,7 +263,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                     domain={metric === "avgPosition" ? [1, "dataMax"] : [0, "auto"]}
                   />
                   <Tooltip
-                    cursor={{ stroke: "#454545", strokeDasharray: "3 3" }}
+                    cursor={metric === "avgPosition" ? { stroke: "#454545", strokeDasharray: "3 3" } : { fill: "rgba(255,255,255,0.05)" }}
                     contentStyle={{ background: "#0a0a0a", border: "1px solid #2e2e2e", borderRadius: 8, fontSize: 13, color: "#ededed", boxShadow: "0 8px 30px rgba(0,0,0,.6)" }}
                     labelStyle={{ color: "#ededed", marginBottom: 4, fontWeight: 500 }}
                     itemStyle={{ color: chartColor }}
@@ -282,8 +282,8 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                       isAnimationActive={false}
                     />
                   ) : (
-                    // Vercel Analytics style: a line with a soft fill under it.
-                    <Area type="monotone" dataKey={chartKey} stroke={chartColor} strokeWidth={2} fill="url(#kwFill)" connectNulls activeDot={{ r: 4, fill: chartColor, stroke: "#000", strokeWidth: 2 }} isAnimationActive={false} />
+                    // Same columns as every chart in the app (Vercel style): square, full width, thin gap.
+                    <Bar dataKey={chartKey} fill={chartColor} isAnimationActive={false} />
                   )}
                 </ComposedChart>
               </ResponsiveContainer>

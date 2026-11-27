@@ -204,4 +204,5 @@
 }
 
 /* Same small badge everywhere (sidebar and footer): neutral, no colour. */
-.badge { padding: 0 6px !important; border: 1px solid #2e2e2e !important; border-radius: 999px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 11px !important; font-weight: 500 !important; line-height: 18px !important; }
+/* Same badge everywhere, Vercel blue pill. */
+.badge { padding: 0 7px !important; border: 0 !important; border-radius: 999px !important; background: rgba(0, 144, 255, 0.16) !important; color: #52a9ff !important; font-size: 11px !important; font-weight: 500 !important; line-height: 18px !important; }

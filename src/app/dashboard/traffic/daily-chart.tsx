@@ -62,7 +62,7 @@ export function DailyChart({ now, before, days }: { now: DayPoint[]; before: Day
             const prevTotal = prev.reduce<number>((a, v) => a + (v ?? 0), 0);
             const delta = prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 100) : null;
             const step = days <= 1 ? width : width / days;
-            const bw = Math.max(2, Math.min(28, step * 0.62));
+            const bw = Math.max(2, step - 3); // Vercel columns: full width, a thin gap
             const bx = (i: number) => i * step + (step - bw) / 2;
             const base = H - PAD.bottom;
             return (
@@ -80,8 +80,8 @@ export function DailyChart({ now, before, days }: { now: DayPoint[]; before: Day
                 </div>
                 <svg width={width} height={H} role="img" aria-label={`${p.title} per day`} className={s.svg}>
                   <line x1={0} x2={width} y1={base} y2={base} className={s.axis} />
-                  {prev.map((v, i) => (v ? <rect key={`b${i}`} x={i * step + 1} width={Math.max(1, step - 2)} y={y(v)} height={base - y(v)} rx={3} fill="#1f1f1f" /> : null))}
-                  {vals.map((v, i) => (v ? <rect key={`n${i}`} x={bx(i)} width={bw} y={y(v)} height={Math.max(2, base - y(v))} rx={3} fill={p.color} opacity={hover === null || hover === i ? 1 : 0.45} /> : null))}
+                  {prev.map((v, i) => (v ? <rect key={`b${i}`} x={bx(i)} width={bw} y={y(v)} height={base - y(v)} fill="#2e2e2e" /> : null))}
+                  {vals.map((v, i) => (v ? <rect key={`n${i}`} x={bx(i)} width={bw} y={y(v)} height={Math.max(2, base - y(v))} fill={p.color} opacity={hover === i ? 1 : 0.9} /> : null))}
                   {hover !== null ? <line x1={bx(hover) + bw / 2} x2={bx(hover) + bw / 2} y1={0} y2={H} className={s.cross} /> : null}
                 </svg>
               </div>
