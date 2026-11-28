@@ -111,3 +111,14 @@ button.kpi:hover .kpiValue { color: #fff; }
 .cardTitle { font-size: 14px !important; font-weight: 500 !important; }
 .cardMeta { color: #62666d !important; font-size: 12.5px !important; }
 .cardBody { padding: 14px 18px 18px !important; }
+
+/* ===== v4 — numbers as separate soft tiles, as in Linear's dashboards: no shared frame, no dividers, nothing table-like. ===== */
+.kpis { gap: 8px !important; overflow: visible !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.kpi, .kpi:last-child { padding: 14px 16px 15px !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: 10px !important; background: #0f1011 !important; box-shadow: none !important; }
+button.kpi:hover { background: #131416 !important; border-color: rgba(255, 255, 255, 0.09) !important; }
+.kpi[data-active] { background: #151618 !important; border-color: rgba(255, 255, 255, 0.18) !important; box-shadow: none !important; }
+.kpiLabel { color: #8a8f98 !important; font-size: 13px !important; }
+.kpiValue { margin-top: 6px !important; color: #f7f8f8 !important; font-size: 26px !important; font-weight: 590 !important; letter-spacing: -0.02em !important; }
+.kpiSub { margin-top: 4px !important; color: #62666d !important; font-size: 12.5px !important; }
+@media (max-width: 900px) { .kpi:nth-child(n) { border: 1px solid rgba(255, 255, 255, 0.05) !important; } }
+.card { border-color: rgba(255, 255, 255, 0.06) !important; }

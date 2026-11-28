@@ -379,3 +379,14 @@ button.metric:hover { background: #121315 !important; }
 .segmentBtn, .chip { height: 28px !important; padding: 0 11px !important; border-radius: 6px !important; color: #8a8f98 !important; font-size: 13px !important; font-weight: 400 !important; }
 .segmentBtn[data-on="true"], .chip[data-on="true"] { background: #23252a !important; color: #f7f8f8 !important; }
 @media (max-width: 1100px) { .metric:nth-child(3n) { border-right: 0 !important; } .metric:nth-child(n + 4) { border-top: 1px solid #202124 !important; } }
+
+/* ===== v4 — numbers as separate soft tiles (Linear dashboards); the position bar is a quiet tile too. ===== */
+.metrics { gap: 8px !important; overflow: visible !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.metric, .metric:last-child { padding: 14px 16px 15px !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: 10px !important; background: #0f1011 !important; box-shadow: none !important; }
+button.metric:hover { background: #131416 !important; border-color: rgba(255, 255, 255, 0.09) !important; }
+.metric[data-on] { background: #151618 !important; border-color: rgba(255, 255, 255, 0.18) !important; box-shadow: none !important; }
+.metricValue { margin-top: 6px !important; font-size: 26px !important; font-weight: 590 !important; letter-spacing: -0.02em !important; }
+.metricSub { margin-top: 4px !important; color: #62666d !important; }
+@media (max-width: 1100px) { .metric:nth-child(n) { border: 1px solid rgba(255, 255, 255, 0.05) !important; } }
+.distribution { border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: 10px !important; background: #0f1011 !important; }
+.panel, .list { border-color: rgba(255, 255, 255, 0.06) !important; }

@@ -1026,3 +1026,8 @@
 .metricLabel { font-size: 13px !important; }
 .metric > strong { margin-top: 8px; font-size: 24px !important; letter-spacing: -0.01em !important; }
 .metric > span { font-size: 12.5px !important; }
+
+/* ===== v4 — numbers as separate soft tiles (Linear dashboards). ===== */
+.metrics { gap: 8px !important; overflow: visible !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.metric, .metric:last-child { padding: 14px 16px 15px !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: 10px !important; background: #0f1011 !important; box-shadow: none !important; }
+.metric > strong { margin-top: 6px !important; font-size: 26px !important; font-weight: 590 !important; letter-spacing: -0.02em !important; }

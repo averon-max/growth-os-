@@ -229,3 +229,7 @@
 
 /* v4: the workspace panel draws the edge between sidebar and content, so the sidebar has none of its own. */
 @media (min-width: 901px) { .sidebar { border-right-color: transparent !important; } }
+
+/* v4 (Linear): hover is a faint wash, the open page is clearly marked — the two never look alike. */
+.item:hover, .subItem:hover { background: rgba(255, 255, 255, 0.035) !important; color: #f7f8f8 !important; box-shadow: none !important; }
+.item[data-active], .subItem[data-active] { background: rgba(255, 255, 255, 0.075) !important; color: #fff !important; box-shadow: none !important; }

@@ -1,8 +1,9 @@
 import a from "./step-art.module.css";
 
 /*
- * Small, product-like animations for the "how it works" steps: each one is a tiny piece of Hyprlyx's own UI
- * playing a slow loop. Pure SVG/HTML + CSS — nothing loads, and motion stops for people who turn it off.
+ * Small, product-like animations for the "how it works" steps. Each one is a tiny piece of Hyprlyx playing a
+ * slow loop: data flowing in from three sources, a result climbing Google, a chart drawing itself, an article
+ * moving from draft to live. Pure SVG + CSS, one accent colour, no glow; motion stops for people who turn it off.
  */
 export type StepArtKind = "connect" | "serp" | "chart" | "publish";
 
@@ -14,106 +15,103 @@ export function StepArt({ kind }: { kind: StepArtKind }) {
   );
 }
 
-/* Three sources connect one after another: spinner, then a green check and "Connected". */
+/* Three sources on the left; a pulse travels along each line into Hyprlyx, then the source shows a check. */
 function Connect() {
-  const rows = ["Search Console", "Analytics 4", "Cloudflare"];
+  const rows = [
+    { name: "Search Console", y: 30 },
+    { name: "Analytics 4", y: 75 },
+    { name: "Cloudflare", y: 120 },
+  ];
   return (
     <div className={a.panel}>
+      <svg className={a.wires} viewBox="0 0 300 150" preserveAspectRatio="none">
+        {rows.map((r, i) => (
+          <g key={r.name} style={{ ["--d" as string]: `${i * 0.7}s` }}>
+            <path className={a.wire} d={`M132 ${r.y} C 190 ${r.y}, 200 75, 246 75`} />
+            <path className={a.pulse} d={`M132 ${r.y} C 190 ${r.y}, 200 75, 246 75`} pathLength={100} />
+          </g>
+        ))}
+      </svg>
       {rows.map((r, i) => (
-        <div key={r} className={a.src} style={{ ["--d" as string]: `${i * 0.9}s` }}>
-          <span className={a.srcName}>{r}</span>
-          <span className={a.state}>
-            <span className={a.spin} />
-            <span className={a.ok}>
-              <svg viewBox="0 0 16 16" width="14" height="14">
-                <circle cx="8" cy="8" r="7.25" />
-                <path d="M4.8 8.2 7 10.4l4.2-4.6" />
-              </svg>
-              Connected
-            </span>
-          </span>
+        <div key={r.name} className={a.chip} style={{ top: r.y - 13, ["--d" as string]: `${i * 0.7}s` }}>
+          <span className={a.chipDot} />
+          {r.name}
+          <svg className={a.chipOk} viewBox="0 0 16 16" width="13" height="13">
+            <path d="M4 8.4 6.8 11 12 5.4" />
+          </svg>
         </div>
       ))}
+      <div className={a.hub}>h</div>
     </div>
   );
 }
 
-/* Your result climbs from #9 to #1 while the others shift down. */
+/* A Google result list: nova.example climbs from fourth place to first while the others step down. */
 function Serp() {
+  const others = ["eraseit.example", "privly.example", "clearpath.example"];
   return (
     <div className={a.panel}>
       <div className={a.query}>
-        <svg viewBox="0 0 16 16" width="13" height="13"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>
+        <svg viewBox="0 0 16 16" width="12" height="12"><circle cx="7" cy="7" r="4.5" /><path d="m10.4 10.4 3 3" /></svg>
         data broker removal
       </div>
       <div className={a.results}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className={a.result} style={{ ["--i" as string]: i }}>
-            <i />
-            <b />
+        {others.map((o, i) => (
+          <div key={o} className={a.res} style={{ ["--i" as string]: i }}>
+            <span className={a.fav} />
+            <span className={a.resText}><b>{o}</b><i /></span>
           </div>
         ))}
-        <div className={a.mine}>
-          <span className={a.mineName}>nova.example</span>
-          <span className={a.rank}>
-            <span className={a.rankFrom}>#9</span>
-            <span className={a.rankTo}>#1</span>
-          </span>
+        <div className={`${a.res} ${a.mine}`}>
+          <span className={a.favMine}>h</span>
+          <span className={a.resText}><b>nova.example</b><i /></span>
+          <span className={a.rank}><span>#4</span><span>#1</span></span>
         </div>
       </div>
     </div>
   );
 }
 
-/* Clicks grow: the area draws in, a dot rides the line, then the gain shows up. */
+/* Bars rise day by day, the trend line draws over them and a marker settles on today with the gain. */
 function Chart() {
-  const line = "M4 82 C 30 78, 44 70, 64 72 S 100 60, 120 56 S 160 40, 182 30 S 214 14, 236 10";
+  const bars = [34, 40, 37, 48, 45, 56, 52, 63, 61, 72, 70, 84];
+  const pts = bars.map((v, i) => `${14 + i * 24},${128 - v * 1.1}`).join(" ");
   return (
     <div className={a.panel}>
       <div className={a.chartHead}>
-        <span>Clicks</span>
-        <span className={a.gain}>+38%</span>
+        <span>Clicks · 28 days</span>
+        <span className={a.gain}>↑ 38%</span>
       </div>
-      <svg viewBox="0 0 240 92" className={a.chart}>
-        <defs>
-          <linearGradient id="stepArtFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#0090ff" stopOpacity=".28" />
-            <stop offset="1" stopColor="#0090ff" stopOpacity="0" />
-          </linearGradient>
-          <clipPath id="stepArtReveal">
-            <rect className={a.reveal} x="0" y="0" width="240" height="92" />
-          </clipPath>
-        </defs>
-        {[24, 48, 72].map((y) => (
-          <line key={y} x1="0" x2="240" y1={y} y2={y} className={a.grid} />
+      <svg className={a.chart} viewBox="0 0 300 140" preserveAspectRatio="none">
+        <line x1="0" x2="300" y1="128.5" y2="128.5" className={a.base} />
+        {bars.map((v, i) => (
+          <rect key={i} className={a.bar} x={6 + i * 24} y={128 - v * 1.1} width="16" height={v * 1.1} rx="3" style={{ ["--i" as string]: i }} />
         ))}
-        <g clipPath="url(#stepArtReveal)">
-          <path d={`${line} L236 92 L4 92 Z`} fill="url(#stepArtFill)" />
-          <path d={line} className={a.line} />
-        </g>
-        <circle r="4" className={a.rider}>
-          <animateMotion dur="5.5s" repeatCount="indefinite" path={line} keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="linear" />
-        </circle>
+        <polyline className={a.trend} points={pts} pathLength={100} />
+        <circle className={a.dot} cx={14 + 11 * 24} cy={128 - 84 * 1.1} r="4.5" />
       </svg>
     </div>
   );
 }
 
-/* A draft fills in, then its status moves Draft → Approved → Published. */
+/* A draft writes itself, then moves along Draft → In review → Approved → Live; the last step lights up. */
 function Publish() {
+  const steps = ["Draft", "Review", "Approved", "Live"];
   return (
     <div className={a.panel}>
-      <div className={a.docHead}>
-        <span className={a.docTitle}>How data brokers work</span>
-        <span className={a.status}>
-          <span className={a.s1}>Draft</span>
-          <span className={a.s2}>Approved</span>
-          <span className={a.s3}>Published</span>
-        </span>
+      <div className={a.doc}>
+        <span className={a.docTitle} />
+        <span className={a.line} style={{ ["--w" as string]: "92%", ["--i" as string]: 0 }} />
+        <span className={a.line} style={{ ["--w" as string]: "78%", ["--i" as string]: 1 }} />
+        <span className={a.line} style={{ ["--w" as string]: "86%", ["--i" as string]: 2 }} />
       </div>
-      <div className={a.lines}>
-        {[100, 92, 96, 64, 88].map((w, i) => (
-          <i key={i} style={{ width: `${w}%`, ["--d" as string]: `${i * 0.25}s` }} />
+      <div className={a.track}>
+        <span className={a.trackFill} />
+        {steps.map((s, i) => (
+          <span key={s} className={a.step} style={{ ["--i" as string]: i }}>
+            <span className={a.stepDot} />
+            <span className={a.stepName}>{s}</span>
+          </span>
         ))}
       </div>
     </div>

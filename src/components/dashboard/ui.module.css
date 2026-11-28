@@ -2200,3 +2200,9 @@
 .primaryButton { height: 34px !important; padding: 0 14px !important; border-radius: 8px !important; font-size: 13.5px !important; }
 .secondaryButton { height: 34px !important; padding: 0 13px !important; border: 1px solid #34343a !important; border-radius: 8px !important; background: #0f1011 !important; color: #f7f8f8 !important; font-size: 13.5px !important; box-shadow: none !important; }
 .secondaryButton:hover { border-color: #3e3e44 !important; background: #18191b !important; }
+
+/* ===== v4 — numbers as separate soft tiles (Linear dashboards): no shared frame, no dividers. ===== */
+.statGrid { gap: 8px !important; overflow: visible !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.statCard, .statCard:last-child { padding: 14px 16px 15px !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: 10px !important; background: #0f1011 !important; box-shadow: none !important; }
+.statCard:hover { background: #131416 !important; }
+.group, .contentSection, .card { border-color: rgba(255, 255, 255, 0.06) !important; }

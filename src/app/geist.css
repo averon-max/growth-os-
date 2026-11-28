@@ -30,15 +30,15 @@
   --ds-red-700: #e5484d;
   --ds-red-900: #ff6166;
   --ds-teal-700: #12a594;
-  --ds-purple-700: #8e4ec6;
+  --ds-purple-700: #4d8fd6; /* no purple in the product: kept as a name, mapped to blue */
   --ds-pink-700: #d6409f;
 
   /* chart series, fixed order (checked for colour-blind separation on black) */
-  --ds-chart-1: #0a72ef;
-  --ds-chart-2: #f5a524;
-  --ds-chart-3: #12a594;
-  --ds-chart-4: #d6409f;
-  --ds-chart-5: #8e4ec6;
+  --ds-chart-1: #0090ff;
+  --ds-chart-2: #9ccaff;
+  --ds-chart-3: #0b5cad;
+  --ds-chart-4: #d6eaff;
+  --ds-chart-5: #4d8fd6;
 
   /* type */
   --ds-font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

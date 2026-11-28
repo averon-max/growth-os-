@@ -193,14 +193,14 @@ const PITCH: Record<string, Record<string, Pitch>> = {
   Competitors: {
     "": {
       title: "See who outranks you, and where",
-      text: "Up to 25 competitors: their keywords, your gaps and your wins.",
+      text: "Their keywords, your gaps and your wins, competitor by competitor.",
       rows: [
         { id: "CO-01", state: "bad", title: "pipeline.example", hint: "312 gaps", side: "4,120 keywords" },
         { id: "CO-02", state: "half", title: "crmhub.example", hint: "198 gaps", side: "2,870 keywords" },
         { id: "CO-03", state: "done", title: "salesdesk.example", hint: "you lead", side: "1,940 keywords" },
       ],
       features: [
-        [Users, "Up to 25 sites", "Any competitor in Google."],
+        [Users, "Every competitor", "Any site you meet in Google."],
         [Search, "Keyword gaps", "Their top 10, not yours."],
         [TrendingUp, "Wins and losses", "Keyword by keyword."],
         [Link2, "Referring domains", "For each of them."],

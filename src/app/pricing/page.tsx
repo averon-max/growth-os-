@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const DESC: Record<PlanId, string> = {
   FREE: "",
   STARTER: "Everything you need to grow one website, except the AI writer.",
-  GROWTH: "Adds the AI writer, with room for up to 5 websites.",
+  GROWTH: "Adds the AI writer and room for more websites.",
   AUTOPILOT: "Everything, for agencies and teams running many sites.",
 };
 

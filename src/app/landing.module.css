@@ -136,3 +136,44 @@
 .trustGrid h3 svg { flex: 0 0 auto; color: var(--soft); }
 .trustGrid p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 @media (max-width: 700px) { .trust { padding: 20px; } .trustGrid { grid-template-columns: minmax(0, 1fr); } .trustList li > span:nth-child(3) { display: none; } }
+
+/* ===== Chapters (v5), built like Linear's product pages: a lit frame with one large screen and its caption,
+   then two cards, each explaining one feature with its own chart. No tables, no grid lines. ===== */
+.frame { position: relative; margin: 0; padding: 40px 40px 0; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 42%), #0b0c0d; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.frame::after, .card::after {
+  position: absolute; inset: 0; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: inherit; content: ""; pointer-events: none;
+  -webkit-mask-image: radial-gradient(260px 260px at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 70%);
+  mask-image: radial-gradient(260px 260px at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 70%);
+}
+.frameShot { overflow: hidden; max-height: 600px; border: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 0; border-radius: 10px 10px 0 0; background: #08090a; -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%); mask-image: linear-gradient(180deg, #000 72%, transparent 100%); }
+.frameShot img { display: block; width: 100%; height: auto; }
+.framePair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.frameCaption { position: relative; z-index: 1; max-width: 620px; margin-top: -24px; padding: 0 0 34px; }
+.frameCaption h3, .card h3 { margin: 0 0 8px; color: var(--text); font-size: 16px; font-weight: 510; letter-spacing: -0.012em; }
+.frameCaption p, .card p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.card { position: relative; padding: 0 0 30px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: #0f1011; }
+.cardVisual { padding: 26px 26px 0; }
+.cardVisual img { display: block; width: 100%; height: auto; }
+.card h3 { margin: 24px 30px 8px; }
+.card p { margin: 0 30px; }
+
+/* How it works: four cards with their animation, no dividers */
+.stepCards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.stepCard { position: relative; padding: 22px 22px 26px; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: #0f1011; color: var(--soft); }
+.stepCard > b { display: block; margin: 18px 0 8px; color: var(--text); font-size: 16px; font-weight: 510; letter-spacing: -0.012em; }
+.stepCard > small { display: block; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+
+@media (max-width: 1000px) { .stepCards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .frame { padding: 18px 18px 0; border-radius: 14px; }
+  .framePair { grid-template-columns: minmax(0, 1fr); }
+  .framePair > :last-child { display: none; }
+  .frameCaption { margin-top: -12px; padding-bottom: 24px; }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .card h3 { margin: 20px 22px 8px; }
+  .card p { margin: 0 22px; }
+  .cardVisual { padding: 18px 18px 0; }
+}
+@media (max-width: 560px) { .stepCards { grid-template-columns: minmax(0, 1fr); } }

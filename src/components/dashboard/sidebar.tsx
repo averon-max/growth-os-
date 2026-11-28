@@ -141,9 +141,9 @@ function UpgradeNudge({ planLabel }: { planLabel: string }) {
     }
   };
   const text: Record<string, string> = {
-    Starter: "Track 500 keywords, see backlinks and competitors for one site.",
-    Growth: "5 sites, 1,500 tracked keywords and 50 AI articles a month.",
-    Autopilot: "25 sites, 5,000 tracked keywords and 200 AI articles a month.",
+    Starter: "Rank tracking, the Keyword Planner, backlinks and competitors for your site.",
+    Growth: "The AI writer: briefs and drafts built from live Google results.",
+    Autopilot: "Everything in Hyprlyx, for agencies and teams running many sites.",
   };
   return (
     <div className={styles.nudge}>

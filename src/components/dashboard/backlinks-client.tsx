@@ -253,8 +253,8 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
             unit="links"
             parts={[
               { key: "do", label: "Dofollow", value: allLinks.filter((l) => l.dofollow).length, color: "#0090ff", active: tab === "links" && only === "dofollow", onClick: () => pickOnly("dofollow") },
-              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#8e4ec6", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
-              { key: "new", label: "New", value: newCount, color: "#e93d82", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
+              { key: "no", label: "Nofollow", value: allLinks.filter((l) => !l.dofollow).length, color: "#9ccaff", active: tab === "links" && only === "nofollow", onClick: () => pickOnly("nofollow") },
+              { key: "new", label: "New", value: newCount, color: "#0090ff", active: tab === "links" && only === "new", onClick: () => pickOnly("new") },
               { key: "lost", label: "Lost", value: lostCount, color: TONE.bad, active: tab === "links" && only === "lost", onClick: () => pickOnly("lost") },
             ]}
           />

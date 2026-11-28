@@ -59,7 +59,7 @@ export const FEATURES: Feature[] = [
     seoDescription: "Plan your content from real data: Search Console, live rankings and tracked keywords grouped into quick wins, clusters and gaps with no page yet.",
     shot: { src: "/landing/planner-v11.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps", w: 2048, h: 1110 },
     gallery: [
-      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v18.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 3360, h: 2100 },
+      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v20.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 3360, h: 2100 },
     ],
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
@@ -82,7 +82,7 @@ export const FEATURES: Feature[] = [
     seoDescription: "Track Google rankings, impressions and clicks for every page and query, with the keywords closest to page one surfaced first. Free to start.",
     shot: { src: "/landing/search-console-v19.webp", alt: "Search Console report: queries, impressions, clicks, average position, visibility chart and easiest wins", w: 3360, h: 2100 },
     gallery: [
-      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v18.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 3360, h: 2100 },
+      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v20.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 3360, h: 2100 },
     ],
     points: [
       { title: "Visibility over time", text: "Impressions, clicks and position on one chart for 7, 28 or 90 days." },
@@ -104,7 +104,7 @@ export const FEATURES: Feature[] = [
     lede: "When a gap or quick win needs a page, Hyprlyx prepares a brief from the live search results and can draft it for you to review. Nothing is published without approval.",
     seoTitle: "AI SEO Writer: Briefs and Drafts from What Ranks | Hyprlyx",
     seoDescription: "Turn keyword gaps into pages: SEO content briefs and AI drafts built from what already ranks on Google. You review and approve every page.",
-    shot: { src: "/landing/content-v19.webp", alt: "Content library with drafts, approved and published articles, formats, intent and quality scores", w: 3360, h: 2100 },
+    shot: { src: "/landing/content-v22.webp", alt: "Content library with drafts, approved and published articles, formats, intent and quality scores", w: 3360, h: 2100 },
     gallery: [
       { title: "Start from a real gap", text: "Briefs begin with keywords that have demand and no strong page on your site yet, so every article has a reason to exist.", src: "/landing/planner-v11.webp", alt: "Keyword Planner showing quick wins and gaps to write for", w: 2048, h: 1110 },
       { title: "Follow every page after it ships", text: "Published pages show up in rankings and traffic, so you can see which articles earn clicks.", src: "/landing/search-console-v19.webp", alt: "Search Console report with impressions, clicks and positions", w: 3360, h: 2100 },
@@ -121,7 +121,7 @@ export const FEATURES: Feature[] = [
     slug: "audit",
     name: "Site audit",
     icon: ScanSearch,
-    shot: { src: "/landing/overview-v18.webp", alt: "Overview with the SEO score and issues by severity next to traffic and rankings", w: 3360, h: 2100 },
+    shot: { src: "/landing/overview-v20.webp", alt: "Overview with the SEO score and issues by severity next to traffic and rankings", w: 3360, h: 2100 },
     short: "Technical SEO checks with clear fixes",
     title: "Find what's holding your site back",
     lede: "Hyprlyx crawls your site and checks titles, descriptions, headings, canonicals, indexability, internal links, images and speed — then ranks issues by impact.",
@@ -145,7 +145,7 @@ export const FEATURES: Feature[] = [
     slug: "backlinks",
     name: "Backlinks",
     icon: Link2,
-    shot: { src: "/landing/backlinks-v19.webp", alt: "Backlinks: link quality, link types, anchors and new linking domains", w: 1586, h: 860 },
+    shot: { src: "/landing/backlinks-v20.webp", alt: "Backlinks: link quality, link types, anchors and new linking domains", w: 1586, h: 860 },
     short: "Referring domains, links and anchors",
     title: "Know who links to you",
     lede: "Referring domains, individual links and anchor texts — from DataForSEO or free imports from Search Console, Bing and Ahrefs exports.",
@@ -157,7 +157,7 @@ export const FEATURES: Feature[] = [
       { value: "Anchors", label: "and nofollow / sponsored flags" },
     ],
     gallery: [
-      { title: "See the sites you compete with", text: "Track competitors' keywords and traffic and find the gaps where they rank and you don't — in the same workspace as your links.", src: "/landing/competitors-v19.webp", alt: "Competitors with keyword gaps and tracked domains", w: 1585, h: 930 },
+      { title: "See the sites you compete with", text: "Track competitors' keywords and traffic and find the gaps where they rank and you don't — in the same workspace as your links.", src: "/landing/competitors-v22.webp", alt: "Competitors with keyword gaps and tracked domains", w: 1585, h: 930 },
     ],
     points: [
       { title: "Referring domains", text: "Who links to you, how often, and since when." },
@@ -171,7 +171,7 @@ export const FEATURES: Feature[] = [
     slug: "competitors",
     name: "Competitors",
     icon: Target,
-    shot: { src: "/landing/competitors-v19.webp", alt: "Competitors: tracked domains, keyword gaps and who wins your keywords", w: 1585, h: 930 },
+    shot: { src: "/landing/competitors-v22.webp", alt: "Competitors: tracked domains, keyword gaps and who wins your keywords", w: 1585, h: 930 },
     short: "Track rivals and the keywords they win",
     title: "Watch the sites you compete with",
     lede: "Add competitors and see their pages, ranking keywords and the gaps where they rank and you don't.",
@@ -183,7 +183,7 @@ export const FEATURES: Feature[] = [
       { value: "Snapshots", label: "to see how they change over time" },
     ],
     gallery: [
-      { title: "And the links behind them", text: "Referring domains, link types, anchors and spam score for your own site, so you know which links count and which to ignore.", src: "/landing/backlinks-v19.webp", alt: "Backlinks: link quality, types, anchors and new domains", w: 1586, h: 860 },
+      { title: "And the links behind them", text: "Referring domains, link types, anchors and spam score for your own site, so you know which links count and which to ignore.", src: "/landing/backlinks-v20.webp", alt: "Backlinks: link quality, types, anchors and new domains", w: 1586, h: 860 },
     ],
     points: [
       { title: "Keyword gaps", text: "The searches competitors win that you have no page for." },
@@ -197,7 +197,7 @@ export const FEATURES: Feature[] = [
     slug: "traffic",
     name: "Traffic & bots",
     icon: Bot,
-    shot: { src: "/landing/traffic-v19.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 },
+    shot: { src: "/landing/traffic-v20.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 },
     short: "Visitors, countries, pages — and AI crawlers",
     title: "See who visits — people and bots",
     lede: "Audience data from Google Analytics 4 and traffic from Cloudflare, including which search engines and AI crawlers read your site.",
@@ -210,7 +210,7 @@ export const FEATURES: Feature[] = [
     ],
     gallery: [
       { title: "Where visitors come from", text: "Visits by country on a map, with the top pages for each period. Switch between Cloudflare visits, Google clicks and Google impressions.", src: "/landing/audience-v19.webp", alt: "Audience: countries map and visits by country", w: 2048, h: 1050 },
-      { title: "Every crawler, verified", text: "Search engines, AI assistants and other bots split out from people, with the pages they read most and how often they come back.", src: "/landing/bots-v19.webp", alt: "Bots and crawlers by category with most crawled pages", w: 2048, h: 1110 },
+      { title: "Every crawler, verified", text: "Search engines, AI assistants and other bots split out from people, with the pages they read most and how often they come back.", src: "/landing/bots-v20.webp", alt: "Bots and crawlers by category with most crawled pages", w: 2048, h: 1110 },
     ],
     points: [
       { title: "Audience", text: "Visitors by country, device and page from Google Analytics 4." },

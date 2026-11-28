@@ -318,6 +318,81 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
           ["none", "Not ranking", (n) => n === null, "#3e3e44"],
         ];
         const intents = ["Informational", "Commercial", "Transactional", "Navigational"];
+        // The overview numbers and charts belong to the keyword list; every other tab opens with its own summary,
+        // so switching tabs changes the whole page, not only the table.
+        if (tab !== "keywords") {
+          const sum = (xs: (number | null | undefined)[]) => xs.reduce<number>((a, b) => a + (b ?? 0), 0);
+          const avg = (xs: (number | null | undefined)[]) => {
+            const v = xs.filter((x): x is number => typeof x === "number");
+            return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+          };
+          const pages = report?.pages ?? [];
+          const clusters = report?.clusters ?? [];
+          const topGap = [...gaps].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))[0];
+          const topCluster = [...clusters].sort((a, b) => b.volume - a.volume)[0];
+          const INTRO: Record<Exclude<Tab, "keywords">, { title: string; text: string; tiles: { key: string; label: string; value: string; sub: string }[] }> = {
+            wins: {
+              title: "Quick wins",
+              text: "Keywords where you already rank in positions 4 to 20. A sharper title, a missing section or one internal link is often all a page needs to reach the top three.",
+              tiles: [
+                { key: "n", label: "Quick wins", value: fmt(wins.length), sub: "positions 4–20" },
+                { key: "vol", label: "Their search volume", value: fmt(sum(wins.map((k) => k.volume))), sub: "per month" },
+                { key: "pos", label: "Average position", value: avg(wins.map((k) => k.position))?.toFixed(1) ?? "—", sub: "lower is better" },
+                { key: "clicks", label: "Clicks · 28d", value: fmt(sum(wins.map((k) => k.clicks))), sub: "from these keywords" },
+              ],
+            },
+            pages: {
+              title: "Pages",
+              text: "Every page in your sitemap with the keywords it ranks for, its clicks and its best position. Pages that rank for nothing are the first to rewrite, merge or remove.",
+              tiles: [
+                { key: "all", label: "Pages in sitemap", value: fmt(report?.sitemap.pages ?? 0), sub: "found on your site" },
+                { key: "with", label: "Rank for keywords", value: fmt(pages.filter((pg) => pg.keywords > 0).length), sub: "at least one" },
+                { key: "none", label: "Rank for nothing", value: fmt(pages.filter((pg) => pg.keywords === 0).length), sub: "rewrite, merge or remove" },
+                { key: "ours", label: "Written with Hyprlyx", value: fmt(pages.filter((pg) => pg.hasArticle).length), sub: "articles on the site" },
+              ],
+            },
+            gaps: {
+              title: "Gaps",
+              text: "Searches your site could rank for where no page targets them yet. Each one is a page waiting to be written; the biggest searches come first.",
+              tiles: [
+                { key: "n", label: "Gaps", value: fmt(gaps.length), sub: "no page ranks" },
+                { key: "vol", label: "Their search volume", value: fmt(sum(gaps.map((k) => k.volume))), sub: "per month" },
+                { key: "top", label: "Biggest gap", value: topGap ? fmt(topGap.volume ?? 0) : "—", sub: topGap ? topGap.keyword : "nothing missing" },
+              ],
+            },
+            cannibal: {
+              title: "Cannibalization",
+              text: "Searches where two or more of your pages rank and split the clicks, so neither reaches the top. Keep the strongest page for each search and merge or re-target the rest.",
+              tiles: [
+                { key: "n", label: "Searches affected", value: fmt(cannibal.length), sub: "more than one page ranks" },
+                { key: "pages", label: "Pages involved", value: fmt(sum(cannibal.map((k) => k.pageCount))), sub: "across these searches" },
+                { key: "clicks", label: "Clicks at stake", value: fmt(sum(cannibal.map((k) => k.clicks))), sub: "last 28 days" },
+              ],
+            },
+            clusters: {
+              title: "Clusters",
+              text: "Related keywords grouped into topics. Each cluster is one page to write or improve, with its total demand, how hard it is and where you stand today.",
+              tiles: [
+                { key: "n", label: "Clusters", value: fmt(clusters.length), sub: "topics on your site" },
+                { key: "top", label: "Largest cluster", value: topCluster ? fmt(topCluster.volume) : "—", sub: topCluster ? topCluster.name : "no clusters yet" },
+                { key: "avg", label: "Keywords per cluster", value: avg(clusters.map((c) => c.keywords))?.toFixed(1) ?? "—", sub: "on average" },
+              ],
+            },
+            research: {
+              title: "Research",
+              text: "Start from any seed keyword, or from what your competitors rank for and you don't. Track the ideas worth a page and they join your plan.",
+              tiles: [],
+            },
+          };
+          const it = INTRO[tab];
+          return (
+            <div className={p.intro}>
+              <h2 className={p.introTitle}>{it.title}</h2>
+              <p className={p.introText}>{it.text}</p>
+              {report && it.tiles.length ? <KpiStrip items={it.tiles} /> : null}
+            </div>
+          );
+        }
         return (
           <>
             <KpiStrip
@@ -327,7 +402,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
                 { key: "clicks", label: "Clicks · 28d", value: t ? fmt(t.clicks) : "—", sub: "from Search Console", color: PALETTE[1] },
                 { key: "impr", label: "Impressions · 28d", value: t ? fmt(t.impressions) : "—", sub: "from Search Console", color: PALETTE[0] },
                 { key: "top10", label: "Top 10", value: t ? String(t.top10) : "—", sub: "on Google page one", color: PALETTE[4], onClick: () => show(["top10"]), active: on(["top10"]) },
-                { key: "strike", label: "Positions 4–20", value: t ? String(t.striking) : "—", sub: "closest to more clicks", color: PALETTE[1], onClick: () => { setTab("wins"); }, active: tab === "wins" },
+                { key: "strike", label: "Positions 4–20", value: t ? String(t.striking) : "—", sub: "closest to more clicks", color: PALETTE[1], onClick: () => { setTab("wins"); } },
               ]}
             />
             {report ? (

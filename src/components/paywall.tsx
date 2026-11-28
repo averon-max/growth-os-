@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { PaywallCard } from "@/components/paywall-card";
-import { FEATURES, usage } from "@/lib/billing/features";
+import { FEATURES } from "@/lib/billing/features";
 import { type PlanId } from "@/lib/billing/plans";
 
 import styles from "./paywall.module.css";
@@ -21,7 +21,7 @@ export default function Paywall({
   requiredPlanId: PlanId;
   currentPlan: string;
 }) {
-  const adds = [...FEATURES.filter((f) => f.plan === requiredPlanId && !f.soon).map((f) => f.text), ...usage(requiredPlanId)].slice(0, 4);
+  const adds = FEATURES.filter((f) => f.plan === requiredPlanId && !f.soon).map((f) => f.text).slice(0, 4);
 
   return (
     <div className={styles.wrap}>
