@@ -25,8 +25,6 @@ const COMMON_FAQ = [
 export default async function FeaturePage({ params }: { params: Promise<{ slug: string }> }) {
   const f = featureBySlug((await params).slug);
   if (!f) notFound();
-  const i = FEATURES.findIndex((x) => x.slug === f.slug);
-  const next = FEATURES[(i + 1) % FEATURES.length];
   const faq = [...f.faq, ...COMMON_FAQ];
   const jsonLd = [
     {
@@ -176,26 +174,21 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
         <div className={s.container}>
           <div className={s.sectionHead}>
             <h2 className={s.h2}>More in Hyprlyx</h2>
-            <div>
-              <p className={s.muted}>Every tool reads the same data, so research, plans, pages and traffic stay in step.</p>
-              <Link href={`/product/${next.slug}`} className={s.learn}>
-                Next: {next.name} <ArrowRight size={16} />
-              </Link>
-              <p className={s.small} style={{ marginTop: 16 }}>
-                See <Link href="/pricing" style={{ color: "var(--soft)" }}>plans and pricing</Link>, the <Link href="/product" style={{ color: "var(--soft)" }}>full product overview</Link> or{" "}
-                <Link href="/blog" style={{ color: "var(--soft)" }}>SEO guides on our blog</Link>.
-              </p>
-            </div>
+            <p className={s.muted}>
+              Every tool reads the same data. See <Link href="/pricing">pricing</Link> or the <Link href="/product">product overview</Link>.
+            </p>
           </div>
-          <div className={s.grid4}>
+          <ul className={s.linkList}>
             {FEATURES.filter((x) => x.slug !== f.slug).map((x) => (
-              <Link key={x.slug} href={`/product/${x.slug}`} className={s.cell}>
-                <h3>{x.name}</h3>
-                <p>{x.short}.</p>
-                <span className={s.cellMore}>{x.seoTitle.split(" | ")[0].split(":")[0]}</span>
-              </Link>
+              <li key={x.slug}>
+                <Link href={`/product/${x.slug}`}>
+                  <b>{x.name}</b>
+                  <span>{x.short}</span>
+                  <ArrowRight size={15} aria-hidden />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 

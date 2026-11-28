@@ -71,7 +71,7 @@ export function SiteFooter() {
         <div className={s.footerGrid}>
           <Link href="/" className={s.footerLogo} aria-label="Hyprlyx home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/icon-v1.webp" alt="" width={28} height={28} className={s.footerAvatar} />
+            <img src="/brand/mark-v2.webp" alt="" width={24} height={24} className={s.footerAvatar} />
             Hyprlyx
           </Link>
           {FOOTER.map((col) => (

@@ -33,7 +33,7 @@ export function AppFooter() {
           <div className={styles.brand}>
             <Link href={withSite("/dashboard", site)} className={styles.brandRow}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/icon-v1.webp" alt="" width={24} height={24} style={{ display: "block", flex: "0 0 auto", borderRadius: 6, boxShadow: "0 0 0 1px rgba(255,255,255,.1)" }} />
+              <img src="/brand/mark-v2.webp" alt="" width={22} height={22} style={{ display: "block", flex: "0 0 auto", boxSizing: "border-box", border: "1px solid rgba(255,255,255,.14)", borderRadius: 6 }} />
               Hyprlyx
             </Link>
             <p className={styles.tagline}>

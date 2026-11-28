@@ -1,8 +1,8 @@
 import a from "./step-art.module.css";
 
 /*
- * Line illustrations for the "how it works" steps: thin grey strokes, one blue accent, one slow loop each.
- * Pure SVG + CSS, so nothing loads and motion stops for people who turn it off.
+ * Small, product-like animations for the "how it works" steps: each one is a tiny piece of Hyprlyx's own UI
+ * playing a slow loop. Pure SVG/HTML + CSS — nothing loads, and motion stops for people who turn it off.
  */
 export type StepArtKind = "connect" | "serp" | "chart" | "publish";
 
@@ -14,78 +14,108 @@ export function StepArt({ kind }: { kind: StepArtKind }) {
   );
 }
 
+/* Three sources connect one after another: spinner, then a green check and "Connected". */
 function Connect() {
-  const nodes = [
-    { x: 30, y: 26, t: "GSC" },
-    { x: 30, y: 74, t: "GA4" },
-    { x: 30, y: 122, t: "CF" },
-  ];
+  const rows = ["Search Console", "Analytics 4", "Cloudflare"];
   return (
-    <svg viewBox="0 0 240 148" className={a.svg}>
-      {nodes.map((n, i) => (
-        <g key={n.t}>
-          <path d={`M${n.x + 28} ${n.y} C 120 ${n.y}, 120 74, 176 74`} className={a.wire} />
-          <path d={`M${n.x + 28} ${n.y} C 120 ${n.y}, 120 74, 176 74`} className={a.flow} style={{ animationDelay: `${i * 0.6}s` }} />
-          <rect x={n.x - 26} y={n.y - 15} width="54" height="30" rx="8" className={a.box} />
-          <text x={n.x + 1} y={n.y + 4} className={a.label}>{n.t}</text>
-        </g>
+    <div className={a.panel}>
+      {rows.map((r, i) => (
+        <div key={r} className={a.src} style={{ ["--d" as string]: `${i * 0.9}s` }}>
+          <span className={a.srcName}>{r}</span>
+          <span className={a.state}>
+            <span className={a.spin} />
+            <span className={a.ok}>
+              <svg viewBox="0 0 16 16" width="14" height="14">
+                <circle cx="8" cy="8" r="7.25" />
+                <path d="M4.8 8.2 7 10.4l4.2-4.6" />
+              </svg>
+              Connected
+            </span>
+          </span>
+        </div>
       ))}
-      <rect x="176" y="50" width="56" height="48" rx="12" className={a.hub} />
-      <text x="204" y="80" className={a.hubText}>h</text>
-    </svg>
+    </div>
   );
 }
 
+/* Your result climbs from #9 to #1 while the others shift down. */
 function Serp() {
   return (
-    <svg viewBox="0 0 240 148" className={a.svg}>
-      <rect x="8" y="6" width="224" height="26" rx="13" className={a.box} />
-      <circle cx="24" cy="19" r="5" className={a.stroke} />
-      <path d="M28 23 L32 27" className={a.stroke} />
-      <rect x="42" y="16" width="84" height="6" rx="3" className={a.ghost} />
-      {[44, 72, 100, 128].map((y) => (
-        <g key={y}>
-          <rect x="12" y={y} width="60" height="5" rx="2.5" className={a.ghost} />
-          <rect x="12" y={y + 10} width="150" height="5" rx="2.5" className={a.ghostSoft} />
-        </g>
-      ))}
-      <g className={a.rise}>
-        <rect x="6" y="122" width="228" height="26" rx="7" className={a.mine} />
-        <rect x="12" y="128" width="70" height="5" rx="2.5" className={a.accent} />
-        <rect x="12" y="138" width="130" height="5" rx="2.5" className={a.accentSoft} />
-        <text x="226" y="139" className={a.rank}>#1</text>
-      </g>
-    </svg>
+    <div className={a.panel}>
+      <div className={a.query}>
+        <svg viewBox="0 0 16 16" width="13" height="13"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>
+        data broker removal
+      </div>
+      <div className={a.results}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={a.result} style={{ ["--i" as string]: i }}>
+            <i />
+            <b />
+          </div>
+        ))}
+        <div className={a.mine}>
+          <span className={a.mineName}>nova.example</span>
+          <span className={a.rank}>
+            <span className={a.rankFrom}>#9</span>
+            <span className={a.rankTo}>#1</span>
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
+/* Clicks grow: the area draws in, a dot rides the line, then the gain shows up. */
 function Chart() {
-  const bars = [26, 34, 30, 44, 52, 48, 66, 78, 92, 104];
+  const line = "M4 82 C 30 78, 44 70, 64 72 S 100 60, 120 56 S 160 40, 182 30 S 214 14, 236 10";
   return (
-    <svg viewBox="0 0 240 148" className={a.svg}>
-      {[36, 72, 108].map((y) => (
-        <line key={y} x1="8" x2="232" y1={y} y2={y} className={a.grid} />
-      ))}
-      {bars.map((h, i) => (
-        <rect key={i} x={12 + i * 22} y={140 - h} width="14" height={h} rx="3" className={i === bars.length - 1 ? a.barHot : a.bar} style={{ animationDelay: `${i * 0.08}s` }} />
-      ))}
-      <path d="M19 110 L41 104 L63 108 L85 96 L107 88 L129 92 L151 74 L173 62 L195 48 L217 34" className={a.line} />
-    </svg>
+    <div className={a.panel}>
+      <div className={a.chartHead}>
+        <span>Clicks</span>
+        <span className={a.gain}>+38%</span>
+      </div>
+      <svg viewBox="0 0 240 92" className={a.chart}>
+        <defs>
+          <linearGradient id="stepArtFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="#0090ff" stopOpacity=".28" />
+            <stop offset="1" stopColor="#0090ff" stopOpacity="0" />
+          </linearGradient>
+          <clipPath id="stepArtReveal">
+            <rect className={a.reveal} x="0" y="0" width="240" height="92" />
+          </clipPath>
+        </defs>
+        {[24, 48, 72].map((y) => (
+          <line key={y} x1="0" x2="240" y1={y} y2={y} className={a.grid} />
+        ))}
+        <g clipPath="url(#stepArtReveal)">
+          <path d={`${line} L236 92 L4 92 Z`} fill="url(#stepArtFill)" />
+          <path d={line} className={a.line} />
+        </g>
+        <circle r="4" className={a.rider}>
+          <animateMotion dur="5.5s" repeatCount="indefinite" path={line} keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="linear" />
+        </circle>
+      </svg>
+    </div>
   );
 }
 
+/* A draft fills in, then its status moves Draft → Approved → Published. */
 function Publish() {
   return (
-    <svg viewBox="0 0 240 148" className={a.svg}>
-      <rect x="40" y="6" width="130" height="136" rx="10" className={a.box} />
-      <rect x="54" y="22" width="80" height="8" rx="4" className={a.ghost} />
-      {[44, 58, 72, 86, 100, 114].map((y, i) => (
-        <rect key={y} x="54" y={y} width={i % 3 === 2 ? 70 : 102} height="5" rx="2.5" className={a.type} style={{ animationDelay: `${i * 0.25}s` }} />
-      ))}
-      <g className={a.check}>
-        <circle cx="184" cy="112" r="22" className={a.done} />
-        <path d="M174 112 L181 119 L195 105" className={a.tick} />
-      </g>
-    </svg>
+    <div className={a.panel}>
+      <div className={a.docHead}>
+        <span className={a.docTitle}>How data brokers work</span>
+        <span className={a.status}>
+          <span className={a.s1}>Draft</span>
+          <span className={a.s2}>Approved</span>
+          <span className={a.s3}>Published</span>
+        </span>
+      </div>
+      <div className={a.lines}>
+        {[100, 92, 96, 64, 88].map((w, i) => (
+          <i key={i} style={{ width: `${w}%`, ["--d" as string]: `${i * 0.25}s` }} />
+        ))}
+      </div>
+    </div>
   );
 }

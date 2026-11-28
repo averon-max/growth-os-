@@ -34,7 +34,7 @@ const SECTIONS: Block[] = [
     title: ["Traffic you", "can trust"],
     text: "Cloudflare visits and Google clicks side by side, day by day, with the countries and pages behind every change. One source of numbers on every screen.",
     href: "/product/traffic",
-    shots: [{ src: "/landing/traffic-v11.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 }],
+    shots: [{ src: "/landing/traffic-v19.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 }],
     features: [
       { label: "Traffic report", href: "/product/traffic" },
       { label: "Countries map", href: "/product/traffic" },
@@ -60,7 +60,7 @@ const SECTIONS: Block[] = [
     title: ["Write when the", "data says so"],
     text: "When a gap needs a page, get a brief built from what already ranks, and a draft to review if you want one. Nothing goes live without your approval.",
     href: "/product/content",
-    shots: [{ src: "/landing/content-v12.webp", alt: "Content library with AI-written drafts, formats and approval status", w: 3200, h: 1733 }],
+    shots: [{ src: "/landing/content-v19.webp", alt: "Content library with AI-written drafts, formats and approval status", w: 3360, h: 2100 }],
     features: [
       { label: "Briefs", href: "/product/content" },
       { label: "AI drafts", href: "/product/content" },
@@ -74,8 +74,8 @@ const SECTIONS: Block[] = [
     text: "Track competitors' keywords, traffic and referring domains, and see every link pointing at you — with spam score, link type and anchor text.",
     href: "/product/competitors",
     shots: [
-      { src: "/landing/competitors-v11.webp", alt: "Competitors: tracked domains, gaps and who wins your keywords", w: 1585, h: 930 },
-      { src: "/landing/backlinks-v11.webp", alt: "Backlinks: link quality, types, anchors and new linking domains", w: 1586, h: 860 },
+      { src: "/landing/competitors-v19.webp", alt: "Competitors: tracked domains, gaps and who wins your keywords", w: 1585, h: 930 },
+      { src: "/landing/backlinks-v19.webp", alt: "Backlinks: link quality, types, anchors and new linking domains", w: 1586, h: 860 },
     ],
     features: [
       { label: "Competitors", href: "/product/competitors" },
@@ -88,7 +88,7 @@ const SECTIONS: Block[] = [
     title: ["See every", "crawler"],
     text: "Google, Bing, ChatGPT, Claude and Perplexity — which bots visit, how often and which pages they read, verified by Cloudflare.",
     href: "/product/traffic",
-    shots: [{ src: "/landing/bots-v11.webp", alt: "Bots and crawlers: verified bots by category and most crawled pages", w: 2048, h: 1110 }],
+    shots: [{ src: "/landing/bots-v19.webp", alt: "Bots and crawlers: verified bots by category and most crawled pages", w: 2048, h: 1110 }],
     features: [
       { label: "AI crawlers", href: "/product/traffic" },
       { label: "Search engines", href: "/product/traffic" },
@@ -195,7 +195,7 @@ export default async function LandingPage() {
           </div>
           <div className={styles.heroStage}>
             <div className={styles.heroShot}>
-              <Image src="/landing/overview-v17.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={1586} height={992} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+              <Image src="/landing/overview-v18.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={3360} height={2100} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
             </div>
           </div>
         </section>

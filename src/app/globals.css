@@ -128,3 +128,17 @@ html body, button, input, textarea, select {
 /* Linear-style text */
 html body { font-feature-settings: "cv01", "ss03"; font-optical-sizing: auto; letter-spacing: -0.006em; text-rendering: optimizeLegibility; }
 h1, h2, h3 { font-weight: 510; letter-spacing: -0.022em; }
+
+/*
+ * Small icon controls (arrows, chevrons, close, collapse) keep their size but get a finger-sized hit area,
+ * like the keys on an iPhone keyboard: an invisible 8px margin around them also counts as the button.
+ * :where() keeps this at zero specificity, so any component's own position or ::after wins.
+ */
+:where(button, a, [role="button"], summary):where(:has(> svg:only-child)) {
+  position: relative;
+}
+:where(button, a, [role="button"], summary):where(:has(> svg:only-child))::after {
+  position: absolute;
+  inset: -8px;
+  content: "";
+}
