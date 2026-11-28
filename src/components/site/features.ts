@@ -13,6 +13,8 @@ export type Feature = {
   seoDescription: string;
   shot?: { src: string; alt: string; w?: number; h?: number; extra?: { src: string; alt: string; w: number; h: number } };
   stats?: { value: string; label: string }[];
+  /** Extra product views shown as their own sections (title left, text right, wide screen below). */
+  gallery?: { title: string; text: string; src: string; alt: string; w: number; h: number }[];
   points: { title: string; text: string }[];
   steps: string[];
   faq: { q: string; a: string }[];
@@ -52,6 +54,9 @@ export const FEATURES: Feature[] = [
     seoTitle: "Keyword Planner for SEO: Quick Wins & Content Gaps | Hyprlyx",
     seoDescription: "Plan your content from real data: Search Console, live rankings and tracked keywords grouped into quick wins, clusters and gaps with no page yet.",
     shot: { src: "/landing/planner-v11.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps", w: 2048, h: 1110 },
+    gallery: [
+      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v11.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 2048, h: 1110 },
+    ],
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
       { title: "Gaps", text: "Searches you have no page for yet, with volume and difficulty to prioritize them." },
@@ -73,6 +78,9 @@ export const FEATURES: Feature[] = [
     seoTitle: "Rank Tracker with Google Search Console Data | Hyprlyx",
     seoDescription: "Track Google rankings, impressions and clicks for every page and query, with the keywords closest to page one surfaced first. Free to start.",
     shot: { src: "/landing/search-console-v10.webp", alt: "Search Console view with visibility chart and easiest wins" },
+    gallery: [
+      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v11.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 2048, h: 1110 },
+    ],
     points: [
       { title: "Visibility over time", text: "Impressions, clicks and position on one chart for 7, 28 or 90 days." },
       { title: "Position distribution", text: "How many queries sit in the top 3, top 10, page two and beyond." },
@@ -117,6 +125,9 @@ export const FEATURES: Feature[] = [
       { value: "4", label: "scores: technical, content, structure, indexability" },
       { value: "Per page", label: "list of pages each issue affects" },
     ],
+    gallery: [
+      { title: "Issues next to everything else", text: "Your SEO score, issues by severity and pages checked sit on the overview with traffic and rankings, so fixes compete fairly for your time.", src: "/landing/overview-v11.webp", alt: "Overview with SEO score and issues by severity", w: 2048, h: 1110 },
+    ],
     points: [
       { title: "Prioritized issues", text: "Critical problems first, cosmetic ones last — each with the pages affected." },
       { title: "Plain-language fixes", text: "Every issue explains what's wrong and exactly what to change." },
@@ -141,6 +152,9 @@ export const FEATURES: Feature[] = [
       { value: "Per page", label: "links tracked for each published article" },
       { value: "Anchors", label: "and nofollow / sponsored flags" },
     ],
+    gallery: [
+      { title: "See the sites you compete with", text: "Track competitors' keywords and traffic and find the gaps where they rank and you don't — in the same workspace as your links.", src: "/landing/competitors-v11.webp", alt: "Competitors with keyword gaps and tracked domains", w: 1585, h: 930 },
+    ],
     points: [
       { title: "Referring domains", text: "Who links to you, how often, and since when." },
       { title: "Per-article tracking", text: "See which of your pages actually earn links over time." },
@@ -164,6 +178,9 @@ export const FEATURES: Feature[] = [
       { value: "Top keywords", label: "for every competitor" },
       { value: "Snapshots", label: "to see how they change over time" },
     ],
+    gallery: [
+      { title: "And the links behind them", text: "Referring domains, link types, anchors and spam score for your own site, so you know which links count and which to ignore.", src: "/landing/backlinks-v11.webp", alt: "Backlinks: link quality, types, anchors and new domains", w: 1586, h: 860 },
+    ],
     points: [
       { title: "Keyword gaps", text: "The searches competitors win that you have no page for." },
       { title: "On-page comparison", text: "Titles, headings, length, images and structured data side by side." },
@@ -176,7 +193,7 @@ export const FEATURES: Feature[] = [
     slug: "traffic",
     name: "Traffic & bots",
     icon: Bot,
-    shot: { src: "/landing/traffic-v11.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110, extra: { src: "/landing/bots-v11.webp", alt: "Bots and crawlers: verified bots by category and most crawled pages", w: 2048, h: 1110 } },
+    shot: { src: "/landing/traffic-v11.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 },
     short: "Visitors, countries, pages — and AI crawlers",
     title: "See who visits — people and bots",
     lede: "Audience data from Google Analytics 4 and traffic from Cloudflare, including which search engines and AI crawlers read your site.",
@@ -186,6 +203,10 @@ export const FEATURES: Feature[] = [
       { value: "GA4", label: "visitors, countries, devices, pages" },
       { value: "Cloudflare", label: "requests, threats and bandwidth" },
       { value: "AI bots", label: "GPTBot, ClaudeBot, PerplexityBot and more" },
+    ],
+    gallery: [
+      { title: "Where visitors come from", text: "Visits by country on a map, with the top pages for each period. Switch between Cloudflare visits, Google clicks and Google impressions.", src: "/landing/audience-v11.webp", alt: "Audience: countries map and visits by country", w: 2048, h: 1050 },
+      { title: "Every crawler, verified", text: "Search engines, AI assistants and other bots split out from people, with the pages they read most and how often they come back.", src: "/landing/bots-v11.webp", alt: "Bots and crawlers by category with most crawled pages", w: 2048, h: 1110 },
     ],
     points: [
       { title: "Audience", text: "Visitors by country, device and page from Google Analytics 4." },

@@ -64,20 +64,20 @@
 .heroRow .actions { margin: 0; }
 .h2 { margin: 0; font-family: var(--display); font-size: clamp(34px, 4.6vw, 56px); font-weight: 400; line-height: 1.05; letter-spacing: -.022em; }
 .h3 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 400; letter-spacing: -.02em; }
-.section { padding: 144px 0 0; }
-.sectionHead { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 24px 64px; margin-bottom: 64px; }
+.section { padding: 112px 0 0; }
+.sectionHead { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 24px 64px; margin-bottom: 56px; }
 .muted { margin: 0; color: var(--soft); font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5; letter-spacing: -.01em; }
 .small { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .learn { display: inline-flex; align-items: center; gap: 8px; margin-top: 24px; color: var(--muted); font-size: 16px; text-decoration: none; transition: color .15s ease, gap .2s ease; }
 .learn:hover { gap: 11px; color: var(--text); }
-@media (max-width: 860px) { .sectionHead { grid-template-columns: 1fr; margin-bottom: 44px; } .hero { padding-top: 72px; } .section { padding-top: 104px; } }
+@media (max-width: 860px) { .sectionHead { grid-template-columns: 1fr; margin-bottom: 44px; } .hero { padding-top: 72px; } .section { padding-top: 88px; } }
 
 /* buttons: the dark pill sits next to the light one */
 .pillDark { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: #141516; color: var(--text); font-size: 14px; font-weight: 510; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
 .pillDark:hover { border-color: rgba(255,255,255,.16); background: #1c1d1f; }
 
 /* product screens fade into the page instead of sitting in a box */
-.stage { position: relative; max-width: 1320px; margin: 80px auto 0; padding: 0 24px; }
+.stage { position: relative; max-width: 1320px; margin: 64px auto 0; padding: 0 24px; }
 .shot { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: #000;
   -webkit-mask-image: linear-gradient(180deg, #000 80%, transparent 100%); mask-image: linear-gradient(180deg, #000 80%, transparent 100%); }
 .shot img { display: block; width: 100%; height: auto; }
@@ -190,7 +190,7 @@ a.cell:hover .cellMore { color: var(--text); }
 @media (max-width: 700px) { .log { grid-template-columns: 1fr; gap: 8px; } }
 
 /* closing call to action, the same on every page */
-.cta { padding: 200px 24px 220px; text-align: center; }
+.cta { padding: 160px 24px 180px; text-align: center; }
 .cta .h2 { font-size: clamp(44px, 8vw, 96px); letter-spacing: -.025em; }
 .cta .actions { justify-content: center; margin-top: 44px; }
 .cta .pill, .cta .pillDark { min-height: 52px; padding: 0 28px; font-size: 17px; }

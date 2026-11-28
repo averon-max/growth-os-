@@ -86,6 +86,22 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
         ) : null}
       </section>
 
+      {f.gallery?.map((g) => (
+        <section key={g.src + g.title} className={s.section}>
+          <div className={s.container}>
+            <div className={s.sectionHead}>
+              <h2 className={s.h2}>{g.title}</h2>
+              <p className={s.muted}>{g.text}</p>
+            </div>
+          </div>
+          <div className={s.stage} style={{ marginTop: 0 }}>
+            <div className={s.shot}>
+              <Image src={g.src} alt={g.alt} width={g.w} height={g.h} quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+            </div>
+          </div>
+        </section>
+      ))}
+
       {f.stats ? (
         <section className={s.section}>
           <div className={s.container}>
