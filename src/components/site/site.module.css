@@ -282,3 +282,4 @@ a.cell:hover .cellMore { color: var(--text); }
 .stage .shot { border: 0 !important; box-shadow: none !important; filter: brightness(.86) contrast(1.06);
   -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%), linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
   -webkit-mask-composite: source-in; mask-image: linear-gradient(180deg, #000 55%, transparent 100%), linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%); mask-composite: intersect; }
+.stage .shot { -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent 96%), linear-gradient(90deg, transparent 0, #000 4%, #000 65%, transparent 100%) !important; mask-image: linear-gradient(180deg, #000 40%, transparent 96%), linear-gradient(90deg, transparent 0, #000 4%, #000 65%, transparent 100%) !important; }

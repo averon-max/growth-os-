@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/site/site-shell";
 import styles from "./legal.module.css";
+import { PageIcon } from "./site/page-icon";
 
 export const LEGAL = {
   company: "Hyprlyx",            // replace with your legal entity name once registered, e.g. "Hyprlyx Inc."
@@ -23,6 +24,7 @@ export function LegalShell({ title, current, children }: { title: string; curren
           {link("/privacy", "privacy", "Privacy")}
           {link("/cookies", "cookies", "Cookies")}
         </div>
+        <PageIcon kind={current} />
         <h1>{title}</h1>
         <div className={styles.meta}>Effective {LEGAL.effective} · Last updated {LEGAL.effective}</div>
         {children}

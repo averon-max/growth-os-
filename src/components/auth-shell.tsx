@@ -10,11 +10,13 @@ export function AuthShell({
   subtitle,
   children,
   footer,
+  icon,
 }: {
   title: string;
   subtitle?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
     <main className={`${styles.page} ${sans.variable} ${serif.variable}`}>
@@ -23,6 +25,7 @@ export function AuthShell({
       </Link>
 
       <section className={styles.card}>
+        {icon}
         <h1 className={styles.title}>{title}</h1>
         {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
         {children}

@@ -86,7 +86,7 @@ const CHAPTERS: Chapter[] = [
     text: "Every site that links to you, with its rank, its anchor and a spam score that sorts it into clean, watch or spam. Add the sites you compete with and Hyprlyx puts their referring domains, keywords and traffic next to yours.",
     href: "/product/backlinks",
     link: "Backlinks",
-    shots: [{ src: "/landing/backlinks-v24.webp", alt: "Backlinks: link profile and domain rank, link quality by spam score, link types, top anchors, rank of linking sites, new linking domains and the referring domains table", w: 3360, h: 2100 }],
+    shots: [{ src: "/landing/backlinks-swarm-v25.webp", alt: "New linking domains by domain rank, month by month, over the Backlinks page", w: 3360, h: 2100 }],
     caption: ["Every link, scored", "Referring domains and backlinks with the domain rank, link quality by spam score, link types, top anchors, the rank of the sites that link to you and new linking domains month by month."],
     cards: [
       { src: "/landing/card-link-quality.webp", alt: "Link quality by spam score and link types with their shares", title: "Clean, watch or spam", text: "Each linking domain is sorted by its spam score: under 30 is clean, 30 to 49 is worth a look, 50 and up is spam. Pick a group to see only those domains." },
