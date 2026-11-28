@@ -171,3 +171,18 @@ td .up, td .down, td .flat { margin-top: 0; }
 .cross { stroke: #6b6b6b !important; stroke-dasharray: 3 3; }
 .prevLine { stroke: #8f8f8f; stroke-width: 1.5; stroke-dasharray: 4 4; stroke-linejoin: round; opacity: 0.7; }
 .barBefore { height: 0 !important; width: 14px !important; border-top: 2px dashed #8f8f8f !important; background: transparent !important; border-radius: 0 !important; }
+
+/* ===== v3 — as on the product screens (website): the final word in this file. ===== */
+.cards { gap: 0 !important; overflow: hidden !important; margin: 0 0 16px !important; padding: 0 !important; border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.card { gap: 0 !important; padding: 16px 18px !important; border-right: 1px solid #1c1c1c !important; }
+.card:last-child { border-right: 0 !important; }
+.card:hover { background: #0f0f0f !important; }
+.cardLabel { color: #a1a1a1 !important; font-size: 13px !important; }
+.cardValue { margin-top: 8px; font-size: 24px !important; letter-spacing: -0.01em !important; line-height: 1.2 !important; }
+@media (max-width: 1200px) { .card:nth-child(4n) { border-right: 0 !important; } .card:nth-child(n + 5) { border-top: 1px solid #1c1c1c !important; } }
+.panel { border: 1px solid #232323 !important; }
+.panelHead { min-height: 46px !important; padding-left: 18px !important; padding-right: 18px !important; }
+.tabs { border-color: #232323 !important; border-radius: 9px !important; }
+.tab, .tabOn { border-radius: 7px !important; font-weight: 400 !important; }
+.tabOn { box-shadow: inset 0 0 0 1px #2e2e2e !important; }
+.card > span:last-child { margin-top: 6px; font-size: 12.5px !important; }

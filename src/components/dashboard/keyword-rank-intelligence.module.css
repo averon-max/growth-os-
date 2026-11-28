@@ -356,3 +356,26 @@ button.metric:hover { background: #111111; }
 button.metric:hover .metricValue { color: #fff !important; }
 .metricSub { color: #8f8f8f !important; }
 .distribution { display: none !important; }
+
+/* ===== v3 — as on the product screens (website): the final word in this file. ===== */
+.metrics { gap: 0 !important; overflow: hidden !important; margin: 0 0 14px !important; padding: 0 !important; border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.metric { gap: 0 !important; padding: 16px 18px !important; border: 0 !important; border-right: 1px solid #1c1c1c !important; border-radius: 0 !important; background: transparent !important; }
+.metric:last-child { border-right: 0 !important; }
+button.metric:hover { background: #0f0f0f !important; }
+.metric[data-on] { background: transparent !important; box-shadow: inset 0 -2px 0 #ededed !important; }
+.metricLabel { display: flex !important; align-items: center !important; gap: 8px !important; color: #a1a1a1 !important; font-size: 13px !important; }
+.metricDot { display: inline-block !important; width: 9px !important; height: 9px !important; margin: 0 !important; border-radius: 2px !important; }
+.metricValue { margin-top: 8px; font-size: 24px !important; letter-spacing: -0.01em !important; line-height: 1.2 !important; }
+.metricSub { margin-top: 6px; color: #8f8f8f !important; font-size: 12.5px !important; }
+.distribution { display: grid !important; gap: 12px !important; margin: 0 0 14px !important; padding: 16px 18px !important; border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.distBar { gap: 4px !important; height: 6px !important; }
+.distBar span { border-radius: 3px !important; }
+.distLegend { gap: 6px 22px !important; color: #a1a1a1 !important; font-size: 13px !important; }
+.distItem i { width: 12px !important; height: 2px !important; border-radius: 1px !important; }
+.distItem strong { color: #ededed !important; font-weight: 500 !important; }
+.panel, .list { border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.panelHead, .listHead { min-height: 46px !important; padding: 0 18px !important; border-bottom: 1px solid #1a1a1a !important; }
+.segment, .chips { padding: 3px !important; border: 1px solid #232323 !important; border-radius: 8px !important; background: #0a0a0a !important; }
+.segmentBtn, .chip { height: 28px !important; padding: 0 11px !important; border-radius: 6px !important; color: #8f8f8f !important; font-size: 13px !important; font-weight: 400 !important; }
+.segmentBtn[data-on="true"], .chip[data-on="true"] { background: #1f1f1f !important; color: #ededed !important; }
+@media (max-width: 1100px) { .metric:nth-child(3n) { border-right: 0 !important; } .metric:nth-child(n + 4) { border-top: 1px solid #1c1c1c !important; } }

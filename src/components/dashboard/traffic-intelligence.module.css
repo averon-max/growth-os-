@@ -1018,3 +1018,11 @@
 .metric > strong { color: #ededed !important; font-size: 32px !important; font-weight: 600 !important; letter-spacing: -0.03em !important; }
 .metric > span { color: #8f8f8f !important; }
 .panelHeading svg { display: none !important; }
+
+/* ===== v3 — as on the product screens (website): the final word in this file. ===== */
+.metrics { gap: 0 !important; overflow: hidden !important; margin-bottom: 16px !important; border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.metric { padding: 16px 18px !important; border-right: 1px solid #1c1c1c !important; }
+.metric:last-child { border-right: 0 !important; }
+.metricLabel { font-size: 13px !important; }
+.metric > strong { margin-top: 8px; font-size: 24px !important; letter-spacing: -0.01em !important; }
+.metric > span { font-size: 12.5px !important; }
