@@ -9,6 +9,16 @@ import { burnBcryptTime, clientIp, limit, normalizeEmail } from "@/lib/auth-guar
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   pages: { signIn: "/login" },
+  // Sign-in failures go to the Vercel logs with their code (no tokens or personal data), so a failed Google login can be traced.
+  logger: {
+    error(code, metadata) {
+      const m = metadata as { message?: string; error?: { message?: string } } | undefined;
+      console.error("[auth]", code, (m?.error?.message ?? m?.message ?? "").slice(0, 200));
+    },
+    warn(code) {
+      console.warn("[auth]", code);
+    },
+  },
   providers: [
     ...(process.env.GOOGLE_AUTH_CLIENT_ID && process.env.GOOGLE_AUTH_CLIENT_SECRET
       ? [GoogleProvider({ clientId: process.env.GOOGLE_AUTH_CLIENT_ID, clientSecret: process.env.GOOGLE_AUTH_CLIENT_SECRET })]

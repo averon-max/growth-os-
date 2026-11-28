@@ -99,12 +99,24 @@ function safeNext(raw: string | null): string {
   return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
 }
 
+/** Clear words for NextAuth's error codes instead of one generic line. */
+function loginError(code: string | null): string {
+  if (!code) return "";
+  if (code === "SessionRequired") return "Please log in to continue.";
+  if (code === "AccessDenied") return "Google didn't confirm this email address, so we couldn't sign you in. Use a verified Google account or log in with email.";
+  if (code === "OAuthAccountNotLinked") return "This email already has an account. Log in with your email and password.";
+  if (["OAuthSignin", "OAuthCallback", "Callback", "OAuthCreateAccount", "State", "Verification"].includes(code))
+    return "Google sign-in was interrupted (often a second tab or an old link). Press Continue with Google once more.";
+  if (code === "CredentialsSignin") return "Wrong email or password.";
+  return "Sign-in didn't finish. Please try again.";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(params.get("error") ? "Please log in to continue." : "");
+  const [error, setError] = useState(loginError(params.get("error")));
   const [busy, setBusy] = useState(false);
   const reset = params.get("reset") === "1";
 

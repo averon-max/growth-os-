@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
     // Local images may carry a query string (the Overview site preview: /api/site-preview?url=…).
     localPatterns: [{ pathname: "/**" }],
   },
+  // One address for the whole site: www.hyprlyx.com → hyprlyx.com. Signing in with Google started on one host and
+  // returned to the other lost its security cookies and failed "every other time".
+  async redirects() {
+    return [{ source: "/:path*", has: [{ type: "host", value: "www.hyprlyx.com" }], destination: "https://hyprlyx.com/:path*", permanent: true }];
+  },
   async headers() {
     return [
       {
