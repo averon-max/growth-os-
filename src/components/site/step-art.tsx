@@ -45,6 +45,8 @@ function Connect() {
       <div className={a.hub}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/mark-v2.webp" alt="" width={26} height={26} />
+        <span className={a.ripple} />
+        <span className={a.ripple} style={{ animationDelay: "3.35s" }} />
       </div>
     </div>
   );
@@ -71,6 +73,7 @@ function Serp() {
           <img className={a.favMine} src="/brand/mark-v2.webp" alt="" width={12} height={12} />
           <span className={a.resText}><b>nova.example</b><i /></span>
           <span className={a.rank}><span>#4</span><span>#1</span></span>
+          <span className={a.up}>↑3</span>
         </div>
       </div>
     </div>
@@ -96,6 +99,9 @@ function Chart() {
           <rect key={i} className={i === bars.length - 1 ? `${a.bar} ${a.barNow}` : a.bar} x={6 + i * 24} y={128 - v * 1.1} width="16" height={v * 1.1} rx="3" style={{ ["--i" as string]: i }} />
         ))}
         <polyline className={a.trend} points={pts} pathLength={100} />
+        {[40, 80].map((y) => <line key={y} x1="0" x2="300" y1={y + 0.5} y2={y + 0.5} className={a.gridLine} />)}
+        <polygon className={a.area} points={`14,128 ${pts} ${14 + 11 * 24},128`} />
+        <circle className={a.dotRing} cx={14 + 11 * 24} cy={128 - 84 * 1.1} r="4.5" />
         <circle className={a.dot} cx={14 + 11 * 24} cy={128 - 84 * 1.1} r="4.5" />
       </svg>
     </div>
@@ -112,6 +118,7 @@ function Publish() {
         <span className={a.line} style={{ ["--w" as string]: "92%", ["--i" as string]: 0 }} />
         <span className={a.line} style={{ ["--w" as string]: "78%", ["--i" as string]: 1 }} />
         <span className={a.line} style={{ ["--w" as string]: "86%", ["--i" as string]: 2 }} />
+        <span className={a.caret} />
       </div>
       <div className={a.track}>
         <span className={a.trackFill} />
