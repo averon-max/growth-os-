@@ -14,9 +14,9 @@ const VALUES = [
 
 const PROMISES = [
   ["Read-only by default", "Search Console, Analytics and Cloudflare are connected with read access. Nothing on your site changes unless you approve it."],
-  ["You press the button", "Paid data is bought only when you ask for it, then saved and reused. Opening a report again costs nothing."],
   ["Drafts, not autopilot", "The AI writer prepares drafts from what already ranks. A person reviews and approves every page before it goes anywhere."],
-  ["Clear limits", "Each plan has a daily and monthly data allowance, shown in Billing, so there are no surprises on either side."],
+  ["Delete anything", "Settings shows everything stored for your workspace, and each kind of data can be deleted with one button."],
+  ["No lock-in", "Cancel anytime in Settings. Your keywords, plans and approved articles stay yours."],
 ];
 
 export default function AboutPage() {

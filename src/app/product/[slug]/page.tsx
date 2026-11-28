@@ -20,7 +20,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 const COMMON_FAQ = [
   { q: "Can I try it for free?", a: "Yes. A free account includes one website and the overview, no card needed. Starter is free for 7 days and unlocks the full toolset." },
-  { q: "Does looking at the same data twice cost anything?", a: "No. Paid data is saved after the first lookup and reused until you press Refresh, so browsing your reports never spends your allowance." },
 ];
 
 export default async function FeaturePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -44,6 +43,12 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
       "@context": "https://schema.org",
       "@type": "FAQPage",
       mainEntity: faq.map((q) => ({ "@type": "Question", name: q.q, acceptedAnswer: { "@type": "Answer", text: q.a } })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "DefinedTermSet",
+      name: `${f.name} terms`,
+      hasDefinedTerm: f.terms.map((t) => ({ "@type": "DefinedTerm", name: t.term, description: t.def })),
     },
     breadcrumbs([
       { name: "Home", path: "/" },
@@ -120,7 +125,7 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
       <section className={s.section}>
         <div className={s.container}>
           <div className={s.sectionHead}>
-            <h2 className={s.h2}>What you get</h2>
+            <h2 className={s.h2}>{f.name} in Hyprlyx</h2>
             <p className={s.muted}>{f.short}.</p>
           </div>
           <div className={f.points.length === 4 ? s.grid4 : f.points.length % 3 === 0 ? s.grid3 : s.grid2}>
@@ -137,14 +142,17 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
       <section className={s.section}>
         <div className={s.container}>
           <div className={s.sectionHead}>
-            <h2 className={s.h2}>How it works</h2>
-            <p className={s.muted}>From a new account to your first results in a few minutes.</p>
+            <h2 className={s.h2}>Key terms</h2>
+            <p className={s.muted}>The numbers on this page, in plain words.</p>
           </div>
-          <div className={s.steps}>
-            {f.steps.map((st) => (
-              <div key={st} className={s.step}>{st}</div>
+          <dl className={s.grid2}>
+            {f.terms.map((t) => (
+              <div key={t.term} className={s.cell}>
+                <dt>{t.term}</dt>
+                <dd>{t.def}</dd>
+              </div>
             ))}
-          </div>
+          </dl>
         </div>
       </section>
 

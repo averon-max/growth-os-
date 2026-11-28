@@ -24,7 +24,7 @@ export function SeriesChart({
   days,
   labels,
   unit,
-  top = 7,
+  top = 5,
   initialMode = "bars",
   compact = false,
 }: {
@@ -87,15 +87,20 @@ export function SeriesChart({
                   const w = Math.max(1, colW - gap);
                   let y = H;
                   const sh = shares[i];
+                  // Largest item at the bottom, the rest above it in the same order every day, "Other" on top;
+                  // a thin gap of background between segments keeps neighbouring colours apart.
+                  const segGap = 3;
                   return (
                     <g key={d.date} onMouseEnter={() => setHoverDay(i)} opacity={hoverDay === null || hoverDay === i ? 1 : 0.55}>
-                      <rect x={x} y={0} width={w} height={H} fill={OTHER} />
+                      <rect x={x} y={0} width={w} height={H} fill="transparent" />
                       {keys.map((k) => {
                         const h = sh[k] * H;
                         y -= h;
                         if (h <= 0) return null;
-                        return <rect key={k} x={x} y={y} width={w} height={h} fill={color(k)} opacity={focus && focus !== k ? 0.25 : 1} />;
+                        const visible = h > segGap * 2 ? h - segGap : h;
+                        return <rect key={k} x={x} y={y + (h - visible)} width={w} height={visible} fill={color(k)} opacity={focus && focus !== k ? 0.25 : 1} />;
                       })}
+                      {y > segGap * 2 ? <rect x={x} y={0} width={w} height={y - segGap} fill={OTHER} opacity={focus ? 0.25 : 1} /> : null}
                     </g>
                   );
                 })

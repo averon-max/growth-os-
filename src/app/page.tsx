@@ -14,6 +14,7 @@ import styles from "./landing.module.css";
 import { LatestPosts } from "@/components/blog/latest-posts";
 import { SiteHeader, SiteFooter, siteStyles as s } from "@/components/site/site-shell";
 import { INTEGRATIONS } from "@/components/site/features";
+import { StepArt, type StepArtKind } from "@/components/site/step-art";
 import { pageMeta, ORGANIZATION } from "@/lib/seo";
 import { SITE_URL } from "@/lib/site";
 
@@ -59,7 +60,7 @@ const SECTIONS: Block[] = [
     title: ["Write when the", "data says so"],
     text: "When a gap needs a page, get a brief built from what already ranks, and a draft to review if you want one. Nothing goes live without your approval.",
     href: "/product/content",
-    shots: [{ src: "/landing/content-v10.webp", alt: "Content library with AI-written drafts, formats and approval status", w: 3200, h: 2000 }],
+    shots: [{ src: "/landing/content-v12.webp", alt: "Content library with AI-written drafts, formats and approval status", w: 3200, h: 1733 }],
     features: [
       { label: "Briefs", href: "/product/content" },
       { label: "AI drafts", href: "/product/content" },
@@ -70,7 +71,7 @@ const SECTIONS: Block[] = [
   {
     id: "competitors",
     title: ["Know who", "you're up against"],
-    text: "Track competitors' keywords, traffic and referring domains, and see the links pointing at you — spam and all. Paid data is saved, so looking again costs nothing.",
+    text: "Track competitors' keywords, traffic and referring domains, and see every link pointing at you — with spam score, link type and anchor text.",
     href: "/product/competitors",
     shots: [
       { src: "/landing/competitors-v11.webp", alt: "Competitors: tracked domains, gaps and who wins your keywords", w: 1585, h: 930 },
@@ -99,14 +100,14 @@ const SECTIONS: Block[] = [
 const PRINCIPLES = [
   ["Real data, not guesses", "Impressions, clicks, visits and rankings come straight from Google, Cloudflare and DataForSEO. If the evidence is thin, Hyprlyx says so."],
   ["One source of numbers", "The overview, the map and every report read the same traffic data, so the figures agree wherever you look."],
-  ["You stay in control", "Read-only connections, paid data only when you press the button, and a person approves every page."],
+  ["You stay in control", "Read-only connections to Google and Cloudflare, and a person approves every page before it goes anywhere."],
 ];
 
-const STEPS = [
-  ["Add your website", "Connect Search Console, Analytics or Cloudflare in a couple of clicks. Read-only."],
-  ["See where you stand", "Traffic, rankings, countries and crawlers in one overview, from day one."],
-  ["Pick what to work on", "Quick wins, gaps and audit issues, ordered by how much traffic they can move."],
-  ["Publish and measure", "Brief, draft, approve, publish — then watch the page in rankings and traffic."],
+const STEPS: [StepArtKind, string, string][] = [
+  ["connect", "Connect your data", "Search Console, Google Analytics 4 and Cloudflare in a couple of clicks, with read-only access."],
+  ["serp", "See where you rank", "Positions, impressions and clicks for every query, with the ones closest to page one pulled to the top."],
+  ["chart", "Grow the pages that can move", "Quick wins, keyword gaps and audit issues, ordered by how much traffic each one can bring."],
+  ["publish", "Publish and measure", "Brief, draft, approve and publish — then follow the new page in rankings and traffic."],
 ];
 
 const COMPARE = [
@@ -128,7 +129,6 @@ const FAQ: [string, string][] = [
   ["Where does the data come from?", "Google Search Console for impressions, clicks and positions; Google Analytics 4 and Cloudflare for visits, countries and crawlers; DataForSEO for keyword, SERP, competitor and backlink data; Google Trends for rising searches."],
   ["Do I need Search Console or Google Analytics?", "No, but connecting them unlocks your real rankings and traffic. Both are free Google products, and Hyprlyx only reads from them."],
   ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. Cancel before it ends in Settings → Billing and you pay nothing.`],
-  ["Will I be charged extra for data?", "No. Data is included in your plan with a daily and monthly allowance shown in Billing. Paid data is bought only when you ask for it, then saved — opening the same report again costs nothing."],
   ["How many websites and keywords can I track?", `Starter: ${n(PLANS.STARTER.limits.websites)} website and ${n(PLANS.STARTER.limits.trackedKeywords)} tracked keywords. Growth: ${n(PLANS.GROWTH.limits.websites)} websites and ${n(PLANS.GROWTH.limits.trackedKeywords)}. Autopilot: ${n(PLANS.AUTOPILOT.limits.websites)} websites and ${n(PLANS.AUTOPILOT.limits.trackedKeywords)}.`],
   ["Does the AI publish to my site?", "No. The writer prepares briefs and drafts; a person reviews and approves every page. Direct publishing to WordPress and other CMSs is coming soon."],
   ["Can I see AI crawlers like GPTBot or ClaudeBot?", "Yes. Connect Cloudflare and Hyprlyx shows verified search and AI crawlers, how often they visit and which pages they read."],
@@ -193,7 +193,7 @@ export default async function LandingPage() {
           </div>
           <div className={styles.heroStage}>
             <div className={styles.heroShot}>
-              <Image src="/landing/overview-v11.webp" alt="Hyprlyx overview: website, Google Search, traffic, countries map and keywords" width={2048} height={1110} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+              <Image src="/landing/overview-v16.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={2400} height={1500} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
             </div>
           </div>
         </section>
@@ -272,13 +272,14 @@ export default async function LandingPage() {
               <h2 className={styles.blockTitle}>
                 From signup
                 <br />
-                to your first page
+                to page one
               </h2>
-              <p className={styles.blockText}>Four steps. The first two take a few minutes; the rest is the work that actually grows traffic.</p>
+              <p className={styles.blockText}>Connecting takes a few minutes. After that, Hyprlyx keeps a short, ordered list of what will move your search traffic most.</p>
             </div>
             <div className={s.steps}>
-              {STEPS.map(([t, d]) => (
+              {STEPS.map(([kind, t, d]) => (
                 <div key={t} className={s.step}>
+                  <StepArt kind={kind} />
                   <b>{t}</b>
                   <small>{d}</small>
                 </div>
@@ -318,12 +319,12 @@ export default async function LandingPage() {
           <div className={styles.container}>
             <div className={styles.blockHead}>
               <h2 className={styles.blockTitle}>
-                Predictable cost,
+                Your site,
                 <br />
-                your data, your call
+                your data
               </h2>
               <div>
-                <p className={styles.blockText}>Paid data is bought only when you press the button, then saved. Your plan&apos;s allowance is visible in Billing, and anything stored can be deleted.</p>
+                <p className={styles.blockText}>Hyprlyx reads what you connect and never changes your site on its own. Everything it stores can be seen and deleted in Settings.</p>
                 <Link href="/about" className={styles.learn}>
                   How we handle data <ArrowRight size={16} />
                 </Link>
@@ -331,12 +332,8 @@ export default async function LandingPage() {
             </div>
             <div className={`${s.stats} ${s.stats4}`}>
               <div className={s.stat}>
-                <b>$0</b>
-                <span>to open a saved report again</span>
-              </div>
-              <div className={s.stat}>
                 <b>Read-only</b>
-                <span>connections to Google and Cloudflare</span>
+                <span>connections to Search Console, Analytics and Cloudflare</span>
               </div>
               <div className={s.stat}>
                 <b>100%</b>
@@ -345,6 +342,10 @@ export default async function LandingPage() {
               <div className={s.stat}>
                 <b>1 click</b>
                 <span>to delete any stored data in Settings</span>
+              </div>
+              <div className={s.stat}>
+                <b>0</b>
+                <span>data sold or used to train AI models</span>
               </div>
             </div>
           </div>

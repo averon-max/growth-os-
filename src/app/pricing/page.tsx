@@ -51,7 +51,7 @@ const ROWS: { group: string; rows: [string, ...Cell[]][] }[] = [
 ];
 
 const FAQ = [
-  ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. When it ends, the Starter monthly price is charged and the plan renews every month. Cancel before the trial ends in Settings → Billing and you pay nothing. One trial per workspace; it includes a limited amount of fresh keyword, backlink and competitor data.`],
+  ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. When it ends, the Starter monthly price is charged and the plan renews every month. Cancel before the trial ends in Settings → Billing and you pay nothing. One trial per workspace.`],
   ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately and you pay only the difference for the rest of the month; downgrades credit the difference to your next invoices. Cancel in Settings → Billing and keep access until the end of the period you paid for."],
   ["Can I use Hyprlyx without paying?", "Yes. A free account includes one website and the overview. Keyword data, audits, backlinks and the AI writer start with Starter."],
   ["Do you offer refunds?", "Plans are billed monthly in advance. If something went wrong, write to support@hyprlyx.com within 30 days and we'll look into it."],
@@ -134,7 +134,7 @@ export default async function PricingPage() {
 
       <section className={s.section}>
         <div className={s.container}>
-          <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side. Paid data you have already looked at is saved and never charged twice.</p></div>
+          <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side.</p></div>
           <div className={s.tableWrap}>
             <table className={s.table}>
               <thead><tr><th>Feature</th>{PAID_ORDER.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>

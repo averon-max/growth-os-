@@ -11,7 +11,7 @@ const ENTRIES = [
     "One traffic report everywhere: switch between Cloudflare and Google, pick 7, 14 or 28 days, and see countries on a new map.",
     "Bot share widget: verified search and AI crawlers against everything else, day by day.",
     "Competitor and backlink tracking, plus a Keywords tab in Site audit with rising searches from Google Trends.",
-    "Settings → Data: see what is stored and delete any of it, plus a log of every paid data lookup.",
+    "Settings → Data: see what is stored and delete any of it.",
     "Plan usage in Billing, and a redesigned website.",
   ]},
   { date: "November 13, 2026", title: "Support, feedback and account settings", items: [

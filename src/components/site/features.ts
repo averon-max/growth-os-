@@ -16,7 +16,8 @@ export type Feature = {
   /** Extra product views shown as their own sections (title left, text right, wide screen below). */
   gallery?: { title: string; text: string; src: string; alt: string; w: number; h: number }[];
   points: { title: string; text: string }[];
-  steps: string[];
+  /** Short definitions of the terms the page uses — useful for readers and for search. */
+  terms: { term: string; def: string }[];
   faq: { q: string; a: string }[];
 };
 
@@ -31,18 +32,21 @@ export const FEATURES: Feature[] = [
     lede: "Find the keywords worth your time: real search volume, difficulty, cost per click and direction of travel — plus rising searches from Google Trends before your competitors notice them.",
     seoTitle: "Keyword Research Tool: Volume, Difficulty & Trends | Hyprlyx",
     seoDescription: "Find keywords worth ranking for: search volume, keyword difficulty, CPC and rising searches from Google Trends, for any market. Try Hyprlyx free.",
-    shot: { src: "/landing/keywords-v10.webp", alt: "Keyword research with rising searches, volume, difficulty and CPC" },
+    shot: { src: "/landing/keywords-v12.webp", alt: "Keyword research: top keywords in your industry with rising and top searches from Google Trends, volume, trend, difficulty and CPC", w: 2400, h: 1306 },
+    gallery: [
+      { title: "Every number behind a keyword", text: "Open any keyword for monthly volume, difficulty, cost per click, ad competition, change over the last month, quarter and year, a 12-month volume chart and volume by country.", src: "/landing/keyword-detail-v12.webp", alt: "Keyword detail: volume, difficulty, CPC, ad competition, 12-month search volume and volume by country", w: 2400, h: 1306 },
+      { title: "From research to a plan", text: "Keywords you track land in Keyword Planner next to your rankings and pages, grouped into quick wins, gaps and clusters.", src: "/landing/planner-v11.webp", alt: "Keyword Planner with tracked keywords, positions and pages", w: 2048, h: 1110 },
+    ],
     points: [
       { title: "Industry keywords", text: "Start from your niche, not a blank box. Hyprlyx surfaces the searches your market actually makes." },
       { title: "Search momentum", text: "Rising and top searches from Google Trends, so you catch demand while it's growing." },
       { title: "Filters that matter", text: "Low difficulty, high volume, commercial CPC, growing trend — one click each." },
-      { title: "Cached and reused", text: "Metrics are cached and shared across your workspace, so refreshing data doesn't burn your budget." },
+      { title: "Saved for your team", text: "Keyword metrics are saved in your workspace, so everyone on the team works from the same numbers." },
     ],
-    steps: ["Add your website and niche", "Review suggested and rising keywords", "Track the ones that matter in Keyword Planner"],
+    terms: [{ term: "Search volume", def: "How many times a keyword is searched on Google per month in the market you pick, averaged over the last 12 months." }, { term: "Keyword difficulty", def: "A 0–100 estimate of how hard it is to reach the top 10, based on the strength of the pages already ranking. Lower is easier." }, { term: "CPC", def: "Cost per click: what advertisers pay for one click on this keyword in Google Ads. A high CPC usually means the search is close to a purchase." }, { term: "Rising searches", def: "Queries whose Google Trends interest grew fastest recently — demand you can catch before it peaks." }],
     faq: [
       { q: "Where does the data come from?", a: "Volume, difficulty and CPC come from DataForSEO. Trend and rising searches come from Google Trends." },
-      { q: "Which countries are supported?", a: "Any market and language DataForSEO covers. You choose the market per website." },
-    ],
+      { q: "Which countries are supported?", a: "Any market and language DataForSEO covers. You choose the market per website." }, { q: "How is keyword difficulty calculated?", a: "Difficulty comes from DataForSEO and reflects the strength of the pages already in the top results. Use it to compare keywords, not as an exact promise." }, { q: "Can I track a keyword I find here?", a: "Yes. Add it to Keyword Planner in one click and Hyprlyx follows its volume, position and the page that should win it." }],
   },
   {
     slug: "planner",
@@ -55,7 +59,7 @@ export const FEATURES: Feature[] = [
     seoDescription: "Plan your content from real data: Search Console, live rankings and tracked keywords grouped into quick wins, clusters and gaps with no page yet.",
     shot: { src: "/landing/planner-v11.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps", w: 2048, h: 1110 },
     gallery: [
-      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v11.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 2048, h: 1110 },
+      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v16.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 2400, h: 1500 },
     ],
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
@@ -63,10 +67,9 @@ export const FEATURES: Feature[] = [
       { title: "Clusters", text: "Related keywords grouped so one page can win a whole topic instead of one phrase." },
       { title: "Evidence, not guesses", text: "Every recommendation shows the data behind it. If the evidence is thin, Hyprlyx says so." },
     ],
-    steps: ["Connect Search Console", "Track keywords from research or import them", "Work through quick wins and gaps"],
+    terms: [{ term: "Quick win", def: "A query where your page already ranks on page two, around positions 11–20, with real impressions. A better page often moves it onto page one." }, { term: "Content gap", def: "A keyword with search demand where you have no page at all." }, { term: "Keyword cluster", def: "A group of closely related searches that one strong page can rank for together." }, { term: "Tracked keyword", def: "A keyword you add to the plan so its volume, position and page are followed over time." }],
     faq: [
-      { q: "Do I need Search Console?", a: "It's strongly recommended — it's where your real impressions and positions come from. Planner still works with tracked keywords without it." },
-    ],
+      { q: "Do I need Search Console?", a: "It's strongly recommended — it's where your real impressions and positions come from. Planner still works with tracked keywords without it." }, { q: "What counts as a quick win?", a: "A query where you already rank around positions 11–20 with real impressions. Improving the existing page is usually faster than writing a new one." }, { q: "How many keywords can I track?", a: "It depends on your plan, from 500 on Starter upward. See the pricing page for each plan." }],
   },
   {
     slug: "rankings",
@@ -77,9 +80,9 @@ export const FEATURES: Feature[] = [
     lede: "Your real Google performance — impressions, clicks, CTR and average position — with the queries closest to page one pulled to the top.",
     seoTitle: "Rank Tracker with Google Search Console Data | Hyprlyx",
     seoDescription: "Track Google rankings, impressions and clicks for every page and query, with the keywords closest to page one surfaced first. Free to start.",
-    shot: { src: "/landing/search-console-v10.webp", alt: "Search Console view with visibility chart and easiest wins" },
+    shot: { src: "/landing/search-console-v12.webp", alt: "Search Console report: queries, impressions, clicks, average position, visibility chart and easiest wins", w: 3200, h: 1760 },
     gallery: [
-      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v11.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 2048, h: 1110 },
+      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v16.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 2400, h: 1500 },
     ],
     points: [
       { title: "Visibility over time", text: "Impressions, clicks and position on one chart for 7, 28 or 90 days." },
@@ -87,11 +90,10 @@ export const FEATURES: Feature[] = [
       { title: "Movement", text: "Which queries went up and which went down since the last period." },
       { title: "History that lasts", text: "Daily detail for a month, then compact weekly and monthly history for years." },
     ],
-    steps: ["Connect Google Search Console", "Pick the property", "Rankings refresh automatically"],
+    terms: [{ term: "Impressions", def: "How many times your pages appeared in Google results for a query, whether or not anyone clicked." }, { term: "Clicks", def: "How many times searchers clicked through to your site from Google." }, { term: "CTR", def: "Click-through rate: clicks divided by impressions. It shows how compelling your result is at its position." }, { term: "Average position", def: "Your mean ranking for a query across all impressions. Position 1 is the top result; lower numbers are better." }],
     faq: [
       { q: "Is this the same data as Search Console?", a: "Yes — it's read directly from Google's Search Console API, nothing is estimated." },
-      { q: "How fresh is it?", a: "Google publishes Search Console data with a 2–3 day delay; Hyprlyx picks it up as soon as it's available." },
-    ],
+      { q: "How fresh is it?", a: "Google publishes Search Console data with a 2–3 day delay; Hyprlyx picks it up as soon as it's available." }, { q: "How fresh is the data?", a: "Search Console publishes data with a delay of about two days. Hyprlyx shows the latest days Google has released." }, { q: "Which periods can I compare?", a: "7, 28 and 90 days, each compared with the period before it." }],
   },
   {
     slug: "content",
@@ -102,19 +104,24 @@ export const FEATURES: Feature[] = [
     lede: "When a gap or quick win needs a page, Hyprlyx prepares a brief from the live search results and can draft it for you to review. Nothing is published without approval.",
     seoTitle: "AI SEO Writer: Briefs and Drafts from What Ranks | Hyprlyx",
     seoDescription: "Turn keyword gaps into pages: SEO content briefs and AI drafts built from what already ranks on Google. You review and approve every page.",
-    shot: { src: "/landing/content-v10.webp", alt: "Content library with drafts, approved and published pages" },
+    shot: { src: "/landing/content-v12.webp", alt: "Content library with drafts, approved and published articles, formats, intent and quality scores", w: 3200, h: 1733 },
+    gallery: [
+      { title: "Start from a real gap", text: "Briefs begin with keywords that have demand and no strong page on your site yet, so every article has a reason to exist.", src: "/landing/planner-v11.webp", alt: "Keyword Planner showing quick wins and gaps to write for", w: 2048, h: 1110 },
+      { title: "Follow every page after it ships", text: "Published pages show up in rankings and traffic, so you can see which articles earn clicks.", src: "/landing/search-console-v12.webp", alt: "Search Console report with impressions, clicks and positions", w: 3200, h: 1760 },
+    ],
     points: [
       { title: "Briefs from real results", text: "Structure, questions and topics taken from the pages that already rank." },
       { title: "Review first", text: "Drafts, approved and published are separate stages — you stay in control." },
       { title: "Copy or export", text: "Copy approved pages into your site in one go. Direct publishing to WordPress and other CMSs is coming soon." },
     ],
-    steps: ["Pick a gap or quick win", "Review the brief and draft", "Approve and publish"],
-    faq: [{ q: "Does it publish automatically?", a: "No. Every page needs your approval first." }],
+    terms: [{ term: "Content brief", def: "A plan for one page: the target keyword, search intent, format, the questions to answer and what the top results cover." }, { term: "Search intent", def: "What the searcher wants — to learn, compare or buy. Pages that match intent rank; pages that don't, rarely do." }, { term: "Article format", def: "Guide, how-to, step-by-step, comparison or listicle — chosen to match what already ranks for the keyword." }, { term: "Approval", def: "Every draft waits for a person to review and approve it. Nothing is published on its own." }],
+    faq: [{ q: "Does it publish automatically?", a: "No. Every page needs your approval first." }, { q: "What goes into a brief?", a: "The target keyword, search intent, the article format, the questions searchers ask and what the top-ranking pages cover." }, { q: "Which formats can it write?", a: "Guides, how-tos, step-by-step articles, comparisons and listicles — picked to match what already ranks for the keyword." }],
   },
   {
     slug: "audit",
     name: "Site audit",
     icon: ScanSearch,
+    shot: { src: "/landing/overview-v16.webp", alt: "Overview with the SEO score and issues by severity next to traffic and rankings", w: 2400, h: 1500 },
     short: "Technical SEO checks with clear fixes",
     title: "Find what's holding your site back",
     lede: "Hyprlyx crawls your site and checks titles, descriptions, headings, canonicals, indexability, internal links, images and speed — then ranks issues by impact.",
@@ -125,17 +132,14 @@ export const FEATURES: Feature[] = [
       { value: "4", label: "scores: technical, content, structure, indexability" },
       { value: "Per page", label: "list of pages each issue affects" },
     ],
-    gallery: [
-      { title: "Issues next to everything else", text: "Your SEO score, issues by severity and pages checked sit on the overview with traffic and rankings, so fixes compete fairly for your time.", src: "/landing/overview-v11.webp", alt: "Overview with SEO score and issues by severity", w: 2048, h: 1110 },
-    ],
     points: [
       { title: "Prioritized issues", text: "Critical problems first, cosmetic ones last — each with the pages affected." },
       { title: "Plain-language fixes", text: "Every issue explains what's wrong and exactly what to change." },
       { title: "Fixes in your CMS — coming soon", text: "One-click fixes for titles, descriptions and alt text through your CMS are on the way." },
       { title: "Re-check anytime", text: "Run the audit again after changes and compare scores." },
     ],
-    steps: ["Add your website", "Run the audit", "Fix issues in order of impact"],
-    faq: [{ q: "Will the crawl slow my site down?", a: "No. Pages are fetched gently, one at a time, like a regular search engine bot." }],
+    terms: [{ term: "Indexability", def: "Whether Google is allowed and able to add a page to its index — blocked by robots rules, noindex tags or errors, it can't rank." }, { term: "Canonical tag", def: "A tag that tells search engines which URL is the main version of a page, so duplicates don't compete." }, { term: "Title tag", def: "The page title shown as the blue headline in search results. One clear, unique title per page." }, { term: "Meta description", def: "The short summary under the title in results. It doesn't rank by itself, but a good one earns more clicks." }],
+    faq: [{ q: "Will the crawl slow my site down?", a: "No. Pages are fetched gently, one at a time, like a regular search engine bot." }, { q: "What does the audit check?", a: "Titles, meta descriptions, headings, canonical tags, indexability, internal links, images and page speed on every page it crawls." }, { q: "How is the SEO score worked out?", a: "It summarises the issues found, weighted by severity — critical and high issues lower it most." }],
   },
   {
     slug: "backlinks",
@@ -160,8 +164,8 @@ export const FEATURES: Feature[] = [
       { title: "Per-article tracking", text: "See which of your pages actually earn links over time." },
       { title: "Link attributes", text: "Nofollow, sponsored and UGC flags so you know which links count." },
     ],
-    steps: ["Import a CSV or connect the data source", "Review domains and anchors", "Track new and lost links"],
-    faq: [{ q: "Do I need a paid data source?", a: "No. Free imports from Search Console and Bing work on every plan." }],
+    terms: [{ term: "Backlink", def: "A link from another website to yours. Links from relevant, trusted sites are one of Google's strongest ranking signals." }, { term: "Referring domain", def: "A unique website that links to you. Ten links from one site count as one referring domain." }, { term: "Anchor text", def: "The clickable words of a link. It tells search engines what the linked page is about." }, { term: "Nofollow, sponsored, UGC", def: "Link attributes telling Google not to pass ranking credit — used for ads, paid placements and user comments." }],
+    faq: [{ q: "Do I need a paid data source?", a: "No. Free imports from Search Console and Bing work on every plan." }, { q: "What is spam score?", a: "An estimate of how likely a linking site is low quality or manipulative. A few high-spam links are normal; many can be worth a closer look." }, { q: "Can I see new and lost links?", a: "Yes. New linking domains and links that disappeared are listed by date." }],
   },
   {
     slug: "competitors",
@@ -172,7 +176,7 @@ export const FEATURES: Feature[] = [
     title: "Watch the sites you compete with",
     lede: "Add competitors and see their pages, ranking keywords and the gaps where they rank and you don't.",
     seoTitle: "SEO Competitor Analysis & Keyword Gap Tool | Hyprlyx",
-    seoDescription: "Track competitors' ranking keywords, traffic and backlinks, and find the keyword gaps where they rank and you don't. Paid data saved and reused.",
+    seoDescription: "Track competitors' ranking keywords, traffic and backlinks, and find the keyword gaps where they rank and you don't.",
     stats: [
       { value: "Gaps", label: "keywords they rank for and you don't" },
       { value: "Top keywords", label: "for every competitor" },
@@ -186,8 +190,8 @@ export const FEATURES: Feature[] = [
       { title: "On-page comparison", text: "Titles, headings, length, images and structured data side by side." },
       { title: "History", text: "Regular snapshots show what competitors changed and when." },
     ],
-    steps: ["Add a competitor domain", "Review their keywords and gaps", "Send the best gaps to your plan"],
-    faq: [{ q: "How many competitors can I track?", a: "It depends on your plan — see the comparison on the pricing page." }],
+    terms: [{ term: "Organic competitor", def: "A site that ranks for the same keywords you target — often different from your business competitors." }, { term: "Keyword gap", def: "Searches where a competitor ranks and you don't. The best gaps have demand and a reachable difficulty." }, { term: "Ranking keywords", def: "All the queries a domain appears for in Google's top results, with position and estimated traffic." }, { term: "Estimated traffic", def: "Visits a page or domain likely gets from its rankings, estimated from search volume and click-through by position." }],
+    faq: [{ q: "How many competitors can I track?", a: "It depends on your plan — see the comparison on the pricing page." }, { q: "Where does competitor data come from?", a: "Ranking keywords, traffic estimates and backlinks come from DataForSEO." }, { q: "How do I use a keyword gap?", a: "Send the best gaps to Keyword Planner, then write or improve the page that should rank for them." }],
   },
   {
     slug: "traffic",
@@ -213,8 +217,8 @@ export const FEATURES: Feature[] = [
       { title: "Bots & crawlers", text: "Search engines and AI crawlers separated from human traffic." },
       { title: "Per-page traffic", text: "Which pages get visits and which only get crawled." },
     ],
-    steps: ["Connect GA4 and/or Cloudflare", "Choose the property or zone", "Traffic updates daily"],
-    faq: [{ q: "Do I need both?", a: "No. Either one works on its own; together they give the full picture." }],
+    terms: [{ term: "Verified bot", def: "A crawler Cloudflare has confirmed is who it claims to be — Googlebot, Bingbot and similar — rather than a fake user agent." }, { term: "AI crawler", def: "A bot that reads pages for AI products, such as GPTBot (OpenAI), ClaudeBot (Anthropic) or PerplexityBot." }, { term: "Human visits", def: "Requests from real browsers after known bots are separated out." }, { term: "Bot share", def: "The part of all traffic that comes from verified bots, day by day." }],
+    faq: [{ q: "Do I need both?", a: "No. Either one works on its own; together they give the full picture." }, { q: "What is a verified bot?", a: "A crawler Cloudflare has confirmed is genuine — Googlebot, Bingbot and others — so fake user agents don't inflate the numbers." }, { q: "Which AI crawlers can I see?", a: "GPTBot, ClaudeBot, PerplexityBot and the other AI crawlers Cloudflare identifies, with the pages they read most." }],
   },
 ];
 

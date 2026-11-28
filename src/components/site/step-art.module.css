@@ -1,0 +1,44 @@
+.art { margin: 0 0 32px; }
+.svg { display: block; width: 100%; max-width: 280px; height: auto; overflow: visible; }
+
+.box { fill: #0d0e10; stroke: #26282c; stroke-width: 1; }
+.hub { fill: #f7f8f8; }
+.hubText { fill: #08090a; font-family: Georgia, serif; font-size: 24px; text-anchor: middle; }
+.label { fill: #8a8f98; font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 11px; text-anchor: middle; }
+.wire { fill: none; stroke: #26282c; stroke-width: 1.2; }
+.flow { fill: none; stroke: #52a9ff; stroke-width: 1.6; stroke-dasharray: 10 200; stroke-linecap: round; animation: flow 2.4s linear infinite; }
+@keyframes flow { from { stroke-dashoffset: 210; } to { stroke-dashoffset: 0; } }
+
+.stroke { fill: none; stroke: #62666d; stroke-width: 1.6; stroke-linecap: round; }
+.ghost { fill: #2a2c30; }
+.ghostSoft { fill: #1a1b1e; }
+.mine { fill: #0a1724; stroke: rgba(82, 169, 255, 0.5); stroke-width: 1; }
+.accent { fill: #52a9ff; }
+.accentSoft { fill: rgba(82, 169, 255, 0.35); }
+.rank { fill: #52a9ff; font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 11px; font-weight: 600; text-anchor: end; }
+.rise { animation: rise 5s cubic-bezier(.6,.1,.2,1) infinite; }
+@keyframes rise {
+  0%, 12% { transform: translateY(0); }
+  45%, 85% { transform: translateY(-82px); }
+  100% { transform: translateY(0); }
+}
+
+.grid { stroke: #17181b; stroke-width: 1; }
+.bar { fill: #26282c; transform-box: fill-box; transform-origin: bottom; animation: grow 4.5s ease-out infinite; }
+.barHot { fill: #0090ff; transform-box: fill-box; transform-origin: bottom; animation: grow 4.5s ease-out infinite; }
+@keyframes grow { 0% { transform: scaleY(.15); } 30%, 88% { transform: scaleY(1); } 100% { transform: scaleY(.15); } }
+.line { fill: none; stroke: #52a9ff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 260; animation: draw 4.5s ease-out infinite; }
+@keyframes draw { 0% { stroke-dashoffset: 260; } 35%, 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 260; } }
+
+.type { fill: #26282c; transform-box: fill-box; transform-origin: left; animation: type 5s ease-out infinite; }
+@keyframes type { 0% { transform: scaleX(0); } 25%, 90% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+.check { transform-box: fill-box; transform-origin: center; animation: pop 5s ease-out infinite; }
+@keyframes pop { 0%, 45% { opacity: 0; transform: scale(.6); } 55%, 90% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+.done { fill: #f7f8f8; }
+.tick { fill: none; stroke: #08090a; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow, .rise, .bar, .barHot, .line, .type, .check { animation: none; }
+  .rise { transform: translateY(-82px); }
+  .check { opacity: 1; }
+}
