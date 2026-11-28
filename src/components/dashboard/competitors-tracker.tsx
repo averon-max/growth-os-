@@ -42,7 +42,7 @@ function Breakdown({ c, onOpen }: { c: Tracked; onOpen: (k: string) => void }) {
   return (
     <div className={u.group} style={{ marginTop: 14 }}>
       <div className={p.toolbar}>
-        <strong style={{ color: "#e7e8ea", fontSize: 12, fontWeight: 560, marginRight: 8 }}>{c.domain}</strong>
+        <strong style={{ color: "#e8e8e8", fontSize: 12, fontWeight: 560, marginRight: 8 }}>{c.domain}</strong>
         {CHIPS.map((x) => <button key={x.id} className={p.chip} data-on={chips.includes(x.id) ? "true" : "false"} onClick={() => { setChips(chips.includes(x.id) ? chips.filter((y) => y !== x.id) : [...chips, x.id]); setPage(0); }}>{x.label}</button>)}
         <input className={p.search} value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Filter keywords…" />
         <span className={p.count}>{rows.length}</span>
@@ -219,7 +219,7 @@ export function CompetitorsTracker({ websiteId, workspaceId, domain }: { website
           <table className={u.table} style={{ border: 0, borderRadius: 0 }}>
             <thead><tr><th>Domain</th><th>Referring domains</th><th>Keywords</th><th>Traffic / mo</th><th>Top 3</th><th>Top 10</th><th>Shared</th><th>Gaps</th><th>Beat you</th><th>You win</th><th /></tr></thead>
             <tbody>{list.map((c) => (
-              <tr key={c.domain} data-click="" onClick={() => setOpen(open === c.domain ? null : c.domain)} style={open === c.domain ? { background: "#141516" } : undefined}>
+              <tr key={c.domain} data-click="" onClick={() => setOpen(open === c.domain ? null : c.domain)} style={open === c.domain ? { background: "#111111" } : undefined}>
                 <td><img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(c.domain)}&sz=32`} alt="" width={14} height={14} style={{ borderRadius: 3, marginRight: 8, verticalAlign: -2 }} />{c.domain}{c.error ? <span className={p.down}> · error</span> : null}</td>
                 <td className={p.num}>{fmt(c.refDomains ?? null)}</td>
                 <td className={p.num}>{fmt(c.overview.keywords)}</td>

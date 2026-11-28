@@ -54,8 +54,8 @@ const SIGNAL: Record<KeywordSignal, { label: string; group: string; status: LSta
   RISING: { label: "Rising", group: "Rising", status: "blue", tone: "#0090ff", hint: "climbing — strengthen the page now", order: 1 },
   DECLINING: { label: "Declining", group: "Declining", status: "red", tone: "#e5484d", hint: "dropping — review page and competitors", order: 2 },
   TOP: { label: "Top", group: "Holding the top", status: "green", tone: "#30a46c", hint: "near the top — hold the position", order: 3 },
-  IMPROVE: { label: "Improve", group: "Room to grow", status: "gray", tone: "#f7f8f8", hint: "find what holds the page back", order: 4 },
-  NO_VISIBILITY: { label: "Not visible", group: "Not visible yet", status: "gray", tone: "#8a8f98", hint: "Google rarely shows the site", order: 5 },
+  IMPROVE: { label: "Improve", group: "Room to grow", status: "gray", tone: "#ededed", hint: "find what holds the page back", order: 4 },
+  NO_VISIBILITY: { label: "Not visible", group: "Not visible yet", status: "gray", tone: "#8f8f8f", hint: "Google rarely shows the site", order: 5 },
 };
 
 const METRICS: { id: Metric; label: string }[] = [
@@ -116,11 +116,10 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
     if (s == null) return [];
     const total = Math.max(s.keywordsWithData, s.top20, 1);
     const parts = [
-      // One hue, brighter = closer to the top (no rainbow).
-      { label: "Top 3", n: s.top3, color: "#0090ff" },
-      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "rgba(0, 144, 255, 0.55)" },
-      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "rgba(0, 144, 255, 0.28)" },
-      { label: "20+", n: Math.max(total - s.top20, 0), color: "#2c2e33" },
+      { label: "Top 3", n: s.top3, color: "#30a46c" },
+      { label: "4–10", n: Math.max(s.top10 - s.top3, 0), color: "#12a594" },
+      { label: "11–20", n: Math.max(s.top20 - s.top10, 0), color: "#0090ff" },
+      { label: "20+", n: Math.max(total - s.top20, 0), color: "#3a3a3a" },
     ];
     return parts.map((p) => ({ ...p, pct: (p.n / total) * 100 }));
   }, [s]);
@@ -194,9 +193,11 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
               { label: "Page one", value: fmt(s?.top10), sub: `${fmt(s?.nearFirstPage)} in striking distance` },
             ].map((m) => {
               const target = m.label === "Impressions" ? "impressions" : m.label === "Clicks" ? "clicks" : m.label === "Avg position" ? "avgPosition" : null;
+              // Each chart series keeps its colour in the label, as on the product screens.
+              const dot = target === "impressions" ? "#0090ff" : target === "clicks" ? "#ffb224" : target === "avgPosition" ? "#e93d82" : null;
               const body = (
                 <>
-                  <span className={styles.metricLabel}>{m.label}</span>
+                  <span className={styles.metricLabel}>{dot ? <i className={styles.metricDot} style={{ background: dot }} /> : null}{m.label}</span>
                   <strong className={styles.metricValue}>{m.value}</strong>
                   <span className={styles.metricSub}>{m.sub}</span>
                 </>
@@ -252,10 +253,10 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                       <stop offset="100%" stopColor="#0090ff" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#23252a" vertical={false} />
-                  <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: "#a0a5ae", fontSize: 12 }} axisLine={false} tickLine={false} minTickGap={32} />
+                  <CartesianGrid stroke="#1f1f1f" vertical={false} />
+                  <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: "#a1a1a1", fontSize: 12 }} axisLine={false} tickLine={false} minTickGap={32} />
                   <YAxis
-                    tick={{ fill: "#a0a5ae", fontSize: 12 }}
+                    tick={{ fill: "#a1a1a1", fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     width={40}
@@ -264,9 +265,9 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                     domain={metric === "avgPosition" ? [1, "dataMax"] : [0, "auto"]}
                   />
                   <Tooltip
-                    cursor={metric === "avgPosition" ? { stroke: "#45474d", strokeDasharray: "3 3" } : { fill: "rgba(255,255,255,0.05)" }}
-                    contentStyle={{ background: "#0f1011", border: "1px solid #34343a", borderRadius: 8, fontSize: 13, color: "#f7f8f8", boxShadow: "0 8px 30px rgba(0,0,0,.6)" }}
-                    labelStyle={{ color: "#f7f8f8", marginBottom: 4, fontWeight: 500 }}
+                    cursor={metric === "avgPosition" ? { stroke: "#454545", strokeDasharray: "3 3" } : { fill: "rgba(255,255,255,0.05)" }}
+                    contentStyle={{ background: "#0a0a0a", border: "1px solid #2e2e2e", borderRadius: 8, fontSize: 13, color: "#ededed", boxShadow: "0 8px 30px rgba(0,0,0,.6)" }}
+                    labelStyle={{ color: "#ededed", marginBottom: 4, fontWeight: 500 }}
                     itemStyle={{ color: chartColor }}
                     labelFormatter={(label) => shortDate(String(label))}
                     formatter={(v) => [metric === "avgPosition" ? Number(v).toFixed(1) : fmt(Number(v)), METRICS.find((m) => m.id === metric)?.label ?? ""]}
@@ -278,7 +279,7 @@ export function KeywordRankIntelligence({ workspaceId, websiteId = null }: { wor
                       stroke={chartColor}
                       strokeWidth={2}
                       dot={{ r: 2.5, fill: chartColor, strokeWidth: 0 }}
-                      activeDot={{ r: 4, fill: chartColor, stroke: "#08090a", strokeWidth: 2 }}
+                      activeDot={{ r: 4, fill: chartColor, stroke: "#000", strokeWidth: 2 }}
                       connectNulls
                       isAnimationActive={false}
                     />

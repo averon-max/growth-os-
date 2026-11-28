@@ -24,12 +24,12 @@
   overflow: hidden;
 
   border:
-    1px solid #28292e;
+    1px solid #262626;
 
   border-radius: 12px;
 
   background:
-    #0f1011;
+    #0a0a0a;
 }
 
 .hero::after {
@@ -54,7 +54,7 @@
 .eyebrow {
   margin-bottom: 7px;
 
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-size: 12px;
   font-weight: 590;
@@ -67,7 +67,7 @@
 .title {
   margin: 0;
 
-  color: #f7f8f8;
+  color: #ededed;
 
   font-size: 22px;
   font-weight: 590;
@@ -80,7 +80,7 @@
 
   margin: 7px 0 0;
 
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 13px;
 
@@ -109,20 +109,20 @@
   padding: 0 8px;
 
   border:
-    1px solid #23252a;
+    1px solid #1f1f1f;
 
   border-radius: 6px;
 
   background:
     rgba(255,255,255,.015);
 
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 11px;
 }
 
 .syncStatus {
-  color: #8a8f98;
+  color: #8f8f8f;
 }
 
 .liveDot {
@@ -158,7 +158,7 @@
   padding: 3px;
 
   border:
-    1px solid #28292e;
+    1px solid #262626;
 
   border-radius: 7px;
 
@@ -177,7 +177,7 @@
 
   background: transparent;
 
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-size: 12px;
   font-weight: 590;
@@ -186,14 +186,14 @@
 }
 
 .rangeButton:hover {
-  color: #f7f8f8;
+  color: #ededed;
 
   background:
     rgba(255,255,255,.025);
 }
 
 .rangeButtonActive {
-  color: #f7f8f8;
+  color: #ededed;
 
   background:
     rgba(255,255,255,.09);
@@ -216,14 +216,14 @@
   padding: 0 10px;
 
   border:
-    1px solid #28292e;
+    1px solid #262626;
 
   border-radius: 7px;
 
   background:
     rgba(255,255,255,.018);
 
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 12px;
   font-weight: 590;
@@ -235,17 +235,17 @@
 
 .actionButton:hover,
 .iconButton:hover {
-  color: #f7f8f8;
+  color: #ededed;
 
   border-color:
-    #28292e;
+    #262626;
 
   background:
     rgba(255,255,255,.035);
 }
 
 .syncButton {
-  color: #f7f8f8;
+  color: #ededed;
 
   border-color:
     rgba(106,149,218,.18);
@@ -304,9 +304,9 @@
 .hero { padding: 0 0 8px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
 .hero::after, .hero::before { display: none !important; }
 .eyebrow { display: none !important; }
-.title { margin: 0 !important; color: #f7f8f8 !important; font-size: 24px !important; font-weight: 600 !important; letter-spacing: -0.02em !important; }
-.description { color: #a0a5ae !important; font-size: 14px !important; }
-.source { border-color: #23252a !important; background: transparent !important; color: #a0a5ae !important; }
+.title { margin: 0 !important; color: #ededed !important; font-size: 24px !important; font-weight: 600 !important; letter-spacing: -0.02em !important; }
+.description { color: #a1a1a1 !important; font-size: 14px !important; }
+.source { border-color: #1f1f1f !important; background: transparent !important; color: #a1a1a1 !important; }
 .liveDot { display: none !important; }
-.syncButton { border: 1px solid #f7f8f8 !important; background: #f7f8f8 !important; color: #0f1011 !important; }
-.rangeButtonActive { background: #23252a !important; color: #f7f8f8 !important; box-shadow: none !important; }
+.syncButton { border: 1px solid #ededed !important; background: #ededed !important; color: #0a0a0a !important; }
+.rangeButtonActive { background: #1f1f1f !important; color: #ededed !important; box-shadow: none !important; }

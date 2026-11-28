@@ -5,11 +5,11 @@
 .page {
   --display: var(--font-landing-display), Georgia, serif;
   --mono: var(--font-landing-mono), ui-monospace, "SF Mono", Menlo, monospace;
-  --bg: #08090a;
-  --text: #f7f8f8;
-  --soft: #d0d6e0;
-  --muted: #8a8f98;
-  --faint: #62666d;
+  --bg: #000;
+  --text: #ededed;
+  --soft: #d4d4d4;
+  --muted: #8f8f8f;
+  --faint: #6b6b6b;
   --line: rgba(255, 255, 255, 0.08);
   min-height: 100vh;
   overflow-x: clip;
@@ -25,12 +25,12 @@
 .pill, .pillDark, .pillLarge, .pillLargeDark { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-weight: 510; text-decoration: none; transition: background 0.15s ease, border-color 0.15s ease; }
 .pill { height: 40px; padding: 0 18px; background: #e6e6e6; color: var(--bg); font-size: 14px; }
 .pill:hover { background: #fff; }
-.pillDark { height: 40px; padding: 0 18px; border: 1px solid var(--line); background: #141516; color: var(--text); font-size: 14px; }
-.pillDark:hover { border-color: rgba(255, 255, 255, 0.16); background: #1c1d1f; }
+.pillDark { height: 40px; padding: 0 18px; border: 1px solid var(--line); background: #111111; color: var(--text); font-size: 14px; }
+.pillDark:hover { border-color: rgba(255, 255, 255, 0.16); background: #1d1d1d; }
 .pillLarge { height: 52px; padding: 0 28px; background: #e6e6e6; color: var(--bg); font-size: 17px; }
 .pillLarge:hover { background: #fff; }
-.pillLargeDark { height: 52px; padding: 0 28px; border: 1px solid var(--line); background: #141516; color: var(--text); font-size: 17px; }
-.pillLargeDark:hover { border-color: rgba(255, 255, 255, 0.16); background: #1c1d1f; }
+.pillLargeDark { height: 52px; padding: 0 28px; border: 1px solid var(--line); background: #111111; color: var(--text); font-size: 17px; }
+.pillLargeDark:hover { border-color: rgba(255, 255, 255, 0.16); background: #1d1d1d; }
 
 /* Hero */
 .hero { padding: 120px 0 0; }
@@ -98,30 +98,15 @@
 }
 @media (prefers-reduced-motion: reduce) { .learn, .features a svg { transition: none; } }
 
-/* ===== Light (v4), as on linear.app: one faint light source at the top-left of the first product frame.
-   Frames catch it on their edge (a 1px highlight that fades from the corner); nothing else glows. ===== */
+/* ===== Frames (v4): thin borders on black. No light, no glow. ===== */
 .page { --accent: #52a9ff; --accentBg: rgba(0, 144, 255, 0.12); --accentLine: rgba(82, 169, 255, 0.28); }
-.heroShot, .shot { position: relative; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; background: #0b0c0d; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2); }
+.heroShot, .shot { position: relative; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; background: #000; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2); }
 .heroShot { z-index: 1; }
-.heroShot::after, .shot::after {
-  position: absolute; inset: 0; z-index: 3; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: inherit; content: ""; pointer-events: none;
-  -webkit-mask-image: radial-gradient(300px 300px at 7% 0%, #000 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.2) 50%, transparent 70%);
-  mask-image: radial-gradient(300px 300px at 7% 0%, #000 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.2) 50%, transparent 70%);
-}
-.heroStage::before {
-  position: absolute; top: -260px; left: calc(24px + 7% - 300px); z-index: 0; width: 600px; height: 600px; border-radius: 50%;
-  background: radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 90%); content: ""; pointer-events: none;
-}
 .statementText span { color: var(--muted); }
 .newsTag { background: var(--accentBg); color: var(--accent); font-weight: 510; }
 
 /* "Your data" card, built like a product dialog: what is connected, then four plain facts with line icons. */
-.trust { position: relative; max-width: 880px; padding: 28px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; background: #0f1011; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
-.trust::after {
-  position: absolute; inset: -1px; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: inherit; content: ""; pointer-events: none;
-  -webkit-mask-image: radial-gradient(240px 240px at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 70%);
-  mask-image: radial-gradient(240px 240px at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 70%);
-}
+.trust { position: relative; max-width: 880px; padding: 28px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; background: #0a0a0a; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
 .trustTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; color: var(--text); font-size: 22px; font-weight: 510; letter-spacing: -0.015em; }
 .trustLede { max-width: 620px; margin: 10px 0 22px; color: var(--muted); font-size: 15px; line-height: 1.55; }
 .accentPill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--accentBg); color: var(--accent); font-size: 14px; font-weight: 510; letter-spacing: 0; }
@@ -137,15 +122,10 @@
 .trustGrid p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 @media (max-width: 700px) { .trust { padding: 20px; } .trustGrid { grid-template-columns: minmax(0, 1fr); } .trustList li > span:nth-child(3) { display: none; } }
 
-/* ===== Chapters (v5), built like Linear's product pages: a lit frame with one large screen and its caption,
-   then two cards, each explaining one feature with its own chart. No tables, no grid lines. ===== */
-.frame { position: relative; margin: 0; padding: 40px 40px 0; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 42%), #0b0c0d; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
-.frame::after, .card::after {
-  position: absolute; inset: 0; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: inherit; content: ""; pointer-events: none;
-  -webkit-mask-image: radial-gradient(260px 260px at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 70%);
-  mask-image: radial-gradient(260px 260px at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 70%);
-}
-.frameShot { overflow: hidden; max-height: 600px; border: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 0; border-radius: 10px 10px 0 0; background: #08090a; -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%); mask-image: linear-gradient(180deg, #000 72%, transparent 100%); }
+/* ===== Chapters (v5), built like Linear's product pages: a frame with one large screen and its caption,
+   then two cards, each explaining one feature with its own piece of the product. No tables, no grid lines. ===== */
+.frame { position: relative; margin: 0; padding: 40px 40px 0; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 42%), #000; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.frameShot { overflow: hidden; max-height: 600px; border: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 0; border-radius: 10px 10px 0 0; background: #000; -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%); mask-image: linear-gradient(180deg, #000 72%, transparent 100%); }
 .frameShot img { display: block; width: 100%; height: auto; }
 .framePair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .frameCaption { position: relative; z-index: 1; max-width: 620px; margin-top: -24px; padding: 0 0 34px; }
@@ -153,7 +133,7 @@
 .frameCaption p, .card p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
 
 .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-.card { position: relative; padding: 0 0 30px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: #0f1011; }
+.card { position: relative; padding: 0 0 30px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: #0a0a0a; }
 .cardVisual { padding: 26px 26px 0; }
 .cardVisual img { display: block; width: 100%; height: auto; }
 .card h3 { margin: 24px 30px 8px; }
@@ -161,7 +141,7 @@
 
 /* How it works: four cards with their animation, no dividers */
 .stepCards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.stepCard { position: relative; padding: 22px 22px 26px; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: #0f1011; color: var(--soft); }
+.stepCard { position: relative; padding: 22px 22px 26px; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: #0a0a0a; color: var(--soft); }
 .stepCard > b { display: block; margin: 18px 0 8px; color: var(--text); font-size: 16px; font-weight: 510; letter-spacing: -0.012em; }
 .stepCard > small { display: block; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
 
@@ -177,3 +157,24 @@
   .cardVisual { padding: 18px 18px 0; }
 }
 @media (max-width: 560px) { .stepCards { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== Black and strict (v6), as on vercel.com and linear.app: pure black, flat frames, thin borders.
+   No light spots, no lit edges, no gradient washes. Screens stay at their own sharpness. ===== */
+.page { --bg: #000; background: #000; }
+.heroShot, .shot { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: #000; box-shadow: none; }
+.frame { padding: 28px 28px 0; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; background: #0a0a0a; box-shadow: none; }
+.frameShot { border-color: rgba(255, 255, 255, 0.1); background: #000; -webkit-mask-image: linear-gradient(180deg, #000 88%, transparent 100%); mask-image: linear-gradient(180deg, #000 88%, transparent 100%); max-height: none; }
+.frameCaption { margin-top: -12px; }
+.card, .stepCard, .trust { border: 1px solid rgba(255, 255, 255, 0.1); background: #0a0a0a; box-shadow: none; }
+.cardVisual { padding: 22px 22px 0; }
+.pillDark, .pillLargeDark { background: #0a0a0a; }
+
+/* Under the hero screen: what Customize on the Overview does. */
+.board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 28px 64px; align-items: start; padding-top: 48px; }
+.boardTitle { margin: 0; color: var(--text); font-size: 22px; font-weight: 510; line-height: 1.3; letter-spacing: -0.015em; }
+.boardText { max-width: 340px; margin: 10px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.boardGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
+.boardGrid h3 { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; color: var(--text); font-size: 15px; font-weight: 510; letter-spacing: -0.01em; }
+.boardGrid h3 svg { flex: none; color: var(--soft); }
+.boardGrid p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+@media (max-width: 900px) { .board { grid-template-columns: 1fr; padding-top: 36px; } .boardGrid { grid-template-columns: 1fr; gap: 22px; } }

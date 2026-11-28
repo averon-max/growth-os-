@@ -6,19 +6,32 @@ export type LStatus = "red" | "green" | "yellow" | "gray" | "blue";
 export interface LRow { key: string; id?: string; status: LStatus; title: string; hint?: string; pills?: { label: string; dot?: string }[]; metrics?: string[]; date?: string; onClick?: () => void; actions?: ReactNode }
 export interface LGroup { title: string; count: number; status: LStatus; rows: LRow[] }
 
-const COLOR: Record<LStatus, string> = { red: "#e5484d", green: "#d0d6e0", yellow: "#8a8f98", gray: "#62666d", blue: "#0090ff" };
+const COLOR: Record<LStatus, string> = { red: "#e5484d", green: "#30a46c", yellow: "#ffb224", gray: "#6b6b6b", blue: "#0090ff" };
 const SHAPE: Record<LStatus, string> = { red: s.half, green: s.full, yellow: s.half, gray: "", blue: s.full };
 
 /*
- * Pills are monochrome, as in Linear: one neutral outline for formats, intents and tags.
- * Red is the only colour, and only for real problems (errors, failed, spam).
+ * Pill tints, by meaning (same as the product screens on the website): article formats and status words get a soft
+ * tint, problems are red, everything else (intent, link attributes, tags) stays neutral grey. No random colours.
  */
-const RED = new Set(["critical", "spam", "pbn", "error", "failed"]);
-const NEUTRAL = { color: "#8a8f98", borderColor: "#2c2e33", background: "transparent" };
-const PROBLEM = { color: "#ff6369", borderColor: "rgba(229, 72, 77, 0.35)", background: "rgba(229, 72, 77, 0.06)" };
+type Tint = "green" | "orange" | "purple" | "blue" | "yellow" | "red" | "neutral";
+const TINT: Record<string, Tint> = {
+  guide: "green", "how-to": "orange", "step-by-step": "orange", comparison: "purple", review: "purple", listicle: "blue", list: "blue", checklist: "blue",
+  "quick win": "yellow", "quick wins": "yellow", tracked: "yellow", rising: "blue", new: "blue", published: "green", approved: "green", clean: "green",
+  "high impact": "orange", "medium impact": "blue", critical: "red", spam: "red", pbn: "red", error: "red", failed: "red", lost: "neutral",
+};
+const TINT_STYLE: Record<Tint, { color: string; borderColor: string; background: string }> = {
+  green: { color: "#4cc38a", borderColor: "rgba(48,164,108,.35)", background: "rgba(48,164,108,.06)" },
+  orange: { color: "#ff8b3e", borderColor: "rgba(247,107,21,.4)", background: "rgba(247,107,21,.06)" },
+  purple: { color: "#b381e6", borderColor: "rgba(142,78,198,.4)", background: "rgba(142,78,198,.07)" },
+  blue: { color: "#52a9ff", borderColor: "rgba(82,169,255,.35)", background: "rgba(82,169,255,.06)" },
+  yellow: { color: "#ffb224", borderColor: "rgba(255,178,36,.35)", background: "rgba(255,178,36,.06)" },
+  red: { color: "#ff6369", borderColor: "rgba(229,72,77,.35)", background: "rgba(229,72,77,.06)" },
+  neutral: { color: "#a1a1a1", borderColor: "#2e2e2e", background: "transparent" },
+};
 function pillStyle(p: { label: string; dot?: string }) {
   const k = p.label.toLowerCase().trim();
-  return RED.has(k) || p.dot === "#e5484d" ? PROBLEM : NEUTRAL;
+  const tint = TINT[k] ?? (p.dot === "#e5484d" ? "red" : "neutral");
+  return TINT_STYLE[tint];
 }
 
 export function StatusIcon({ status }: { status: LStatus }) {

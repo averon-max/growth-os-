@@ -2,19 +2,18 @@ import type { Metadata } from "next";
 import { display, mono } from "./fonts";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Ban, Check, CircleCheck, Eye, Trash2, UserCheck } from "lucide-react";
+import { ArrowRight, Ban, CircleCheck, Eye, Trash2, UserCheck } from "lucide-react";
 
-import SubscribeButton from "@/components/subscribe-button";
 import { PLANS } from "@/lib/billing/plans";
-import { planPrices, formatPrice } from "@/lib/billing/prices";
-import { highlights, usage } from "@/lib/billing/features";
-import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
+import { planPrices } from "@/lib/billing/prices";
+import { TRIAL_DAYS } from "@/lib/billing/trial";
 
 import styles from "./landing.module.css";
 import { LatestPosts } from "@/components/blog/latest-posts";
 import { SiteHeader, SiteFooter, siteStyles as s } from "@/components/site/site-shell";
 import { INTEGRATIONS } from "@/components/site/features";
 import { StepArt, type StepArtKind } from "@/components/site/step-art";
+import { PlanCards } from "@/components/site/plan-cards";
 import { pageMeta, ORGANIZATION } from "@/lib/seo";
 import { SITE_URL } from "@/lib/site";
 
@@ -51,11 +50,11 @@ const CHAPTERS: Chapter[] = [
     text: "Hyprlyx reads Search Console every day and keeps the history, so every query has its position, clicks, impressions and CTR over time. You see which pages moved, by how much, and which ones are a small push away from page one.",
     href: "/product/rankings",
     link: "Rank tracking",
-    shots: [{ src: "/landing/search-console-v19.webp", alt: "Keywords: queries, impressions, clicks and average position from Search Console, the visibility chart and the easiest wins", w: 3360, h: 2100 }],
+    shots: [{ src: "/landing/search-console-v23.webp", alt: "Keywords: queries, impressions, clicks and average position from Search Console, the visibility chart and the easiest wins", w: 3360, h: 2100 }],
     caption: ["Every query, every day", "Queries, impressions, clicks and average position from Search Console, with the daily visibility chart and the queries that are rising or closest to page one."],
     cards: [
-      { src: "/landing/real-rank-kpis.webp", alt: "Queries and impressions with the split of positions into top 3, 4–10, 11–20 and beyond", title: "Where every query stands", text: "Each query falls into the top 3, positions 4 to 10, 11 to 20 or beyond, and the bar shows how your whole site is spread. Pick a number to chart it for 7, 28 or 90 days." },
-      { src: "/landing/real-overview-search.webp", alt: "Google Search on the overview: clicks, impressions and average position with their change", title: "Search on the first screen", text: "The overview keeps clicks, impressions and average position for 7, 14 or 28 days, each with its change and a small trend, so you know how search is going before you open a report." },
+      { src: "/landing/card-rank-kpis.webp", alt: "Queries and impressions with the split of positions into top 3, 4–10, 11–20 and beyond", title: "Where every query stands", text: "Each query falls into the top 3, positions 4 to 10, 11 to 20 or beyond, and the bar shows how your whole site is spread. Pick a number to chart it for 7, 28 or 90 days." },
+      { src: "/landing/card-overview-search.webp", alt: "Google Search on the overview: clicks, impressions and average position with their change", title: "Search on the first screen", text: "The overview keeps clicks, impressions and average position for 7, 14 or 28 days, each with its change and a small trend, so you know how search is going before you open a report." },
     ],
     features: [
       { label: "Rank tracking", href: "/product/rankings" },
@@ -69,11 +68,14 @@ const CHAPTERS: Chapter[] = [
     text: "The Keyword Planner reads your sitemap, Search Console and Google's suggestions, then sorts every keyword into quick wins, gaps, clusters and pages that compete with each other. Each list ends in a clear next step: improve a page, write a new one, or merge two.",
     href: "/product/planner",
     link: "Keyword Planner",
-    shots: [{ src: "/landing/planner-v11.webp", alt: "Keyword Planner with volume, difficulty, intent, positions and the page that ranks", w: 2048, h: 1110 }],
-    caption: ["One list for every keyword", "Volume, difficulty, intent, your position and the page that ranks, side by side. Track any keyword in one click and follow it in Keywords."],
+    shots: [
+      { src: "/landing/planner-v23.webp", alt: "Keyword Planner with volume, difficulty, intent, positions and the page that ranks", w: 2048, h: 1110 },
+      { src: "/landing/keyword-detail-v23.webp", alt: "Keyword detail: monthly volume, difficulty, cost per click, ad competition and 12 months of searches", w: 2400, h: 1306 },
+    ],
+    caption: ["One list for every keyword", "Volume, difficulty, intent, your position and the page that ranks, side by side, with every number behind a keyword one click away."],
     cards: [
-      { src: "/landing/real-planner-keywords.webp", alt: "Planner keywords on the overview with volume and position", title: "Your keywords next to your traffic", text: "The keywords you plan for sit on the overview with their monthly volume and current position, so a plan and its results are on one screen." },
-      { src: "/landing/real-keyword-detail.webp", alt: "Keyword detail: monthly volume, difficulty, cost per click and ad competition", title: "Every number behind a keyword", text: "Open any keyword for its monthly volume, difficulty, cost per click and ad competition, and see in seconds whether it is worth a page." },
+      { src: "/landing/card-planner-keywords.webp", alt: "Planner keywords on the overview with volume and position", title: "Your keywords next to your traffic", text: "The keywords you plan for sit on the overview with their monthly volume and current position, so a plan and its results are on one screen." },
+      { src: "/landing/card-keyword-detail.webp", alt: "Keyword detail: monthly volume, difficulty, cost per click and ad competition", title: "Every number behind a keyword", text: "Open any keyword for its monthly volume, difficulty, cost per click and ad competition, and see in seconds whether it is worth a page." },
     ],
     features: [
       { label: "Keyword Planner", href: "/product/planner" },
@@ -87,11 +89,11 @@ const CHAPTERS: Chapter[] = [
     text: "When a gap needs a page, Hyprlyx builds a brief from the pages that rank for it today: the headings they share, the questions people ask, the facts they cite. Ask for a draft and it is written from that brief, in your site's voice.",
     href: "/product/content",
     link: "AI writer",
-    shots: [{ src: "/landing/content-v22.webp", alt: "Content library with drafts, approved and published articles, their format, intent and length", w: 3360, h: 2100 }],
+    shots: [{ src: "/landing/content-v23.webp", alt: "Content library with drafts, approved and published articles, their format, intent and length", w: 3360, h: 2100 }],
     caption: ["Every article in one place", "Drafts, approved and published articles with their format, intent and length. Nothing moves to Published until someone on your team approves it."],
     cards: [
-      { src: "/landing/real-content-pipeline.webp", alt: "Articles, drafts and approved counts with filters by status", title: "From draft to live", text: "How many articles you have, how many wait for review and how many are ready, with one filter per status. The library reads like a pipeline, not a folder." },
-      { src: "/landing/real-content-rows.webp", alt: "Article rows with format, intent, word count and Approve or Publish", title: "Format, intent and length on every row", text: "Each article shows its format, search intent and word count, with Approve and Publish right on the row, so a review takes one pass." },
+      { src: "/landing/card-content-pipeline.webp", alt: "Articles, drafts and approved counts with filters by status", title: "From draft to live", text: "How many articles you have, how many wait for review and how many are ready, with one filter per status. The library reads like a pipeline, not a folder." },
+      { src: "/landing/card-content-rows.webp", alt: "Article rows with format, intent, word count and Approve or Publish", title: "Format, intent and length on every row", text: "Each article shows its format, search intent and word count, with Approve and Publish right on the row, so a review takes one pass." },
     ],
     features: [
       { label: "Briefs", href: "/product/content" },
@@ -105,11 +107,14 @@ const CHAPTERS: Chapter[] = [
     text: "Cloudflare counts every visit at the edge, including people who block analytics scripts, and Search Console counts what Google sends. Hyprlyx puts the two side by side, day by day, with the pages and countries behind every change.",
     href: "/product/traffic",
     link: "Traffic report",
-    shots: [{ src: "/landing/traffic-v20.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 }],
-    caption: ["One report, two sources", "Switch between Cloudflare visits and Google clicks without leaving the page. The overview, the map and every report read the same numbers."],
+    shots: [
+      { src: "/landing/traffic-v23.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 },
+      { src: "/landing/bots-v23.webp", alt: "Bots and crawlers: verified crawlers by category, requests per day and most crawled pages", w: 2048, h: 1110 },
+    ],
+    caption: ["Visitors and crawlers, side by side", "Cloudflare visits and Google clicks by country and page, and every verified crawler by category, with requests per day and the pages they read most."],
     cards: [
-      { src: "/landing/real-countries.webp", alt: "Visits by country, day by day, with each country's share", title: "Visits by country, day by day", text: "Each day's visits split by country, with every country's share of the period next to it. A spike from one market shows up the day it happens." },
-      { src: "/landing/real-cloudflare.webp", alt: "Cloudflare visitors and verified bots with their change", title: "People and bots, apart", text: "Visitors from Cloudflare for 7, 14 or 28 days, and the share of requests that came from verified bots, each with its change against the period before." },
+      { src: "/landing/card-countries.webp", alt: "Visits by country, day by day, with each country's share", title: "Visits by country, day by day", text: "Each day's visits split by country, with every country's share of the period next to it. A spike from one market shows up the day it happens." },
+      { src: "/landing/card-cloudflare.webp", alt: "Cloudflare visitors and verified bots with their change", title: "People and bots, apart", text: "Visitors from Cloudflare for 7, 14 or 28 days, and the share of requests that came from verified bots, each with its change against the period before." },
     ],
     features: [
       { label: "Traffic report", href: "/product/traffic" },
@@ -124,8 +129,8 @@ const CHAPTERS: Chapter[] = [
     href: "/product/competitors",
     link: "Competitor analysis",
     shots: [
-      { src: "/landing/competitors-v22.webp", alt: "Competitors: referring domains, keywords, traffic, shared keywords and gaps for each tracked site", w: 1585, h: 930 },
-      { src: "/landing/backlinks-v20.webp", alt: "Backlinks: link quality by spam score, link types, anchors and new linking domains", w: 1586, h: 860 },
+      { src: "/landing/competitors-v23.webp", alt: "Competitors: referring domains, keywords, traffic, shared keywords and gaps for each tracked site", w: 1585, h: 930 },
+      { src: "/landing/backlinks-v23.webp", alt: "Backlinks: link quality by spam score, link types, anchors and new linking domains", w: 1586, h: 860 },
     ],
     caption: ["Their numbers next to yours", "Each competitor with referring domains, keywords, traffic, top-10 rankings and gaps, and your own links sorted into clean, watch and spam."],
     features: [
@@ -145,6 +150,13 @@ const STEPS: [StepArtKind, string, string][] = [
 
 const PAID = ["STARTER", "GROWTH", "AUTOPILOT"] as const;
 
+/* What Customize on the Overview does (see components/dashboard/board). */
+const BOARD = [
+  { title: "Drag any widget", text: "Pick it up by its title. The other widgets slide out of its way and settle when you let go.", icon: "M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" },
+  { title: "Stretch from any edge", text: "Make a chart wider or a list taller. Sizes snap to a 24-column grid, so everything stays lined up.", icon: "M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" },
+  { title: "14 widgets to choose from", text: "Google Search, Cloudflare traffic, crawlers, countries, keywords, articles and more. Add what you use, remove the rest.", icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
+];
+
 const FAQ: [string, string, string?][] = [
   ["What is Hyprlyx?", "An SEO workspace that brings keyword research, Search Console, traffic, competitors, backlinks and AI-written drafts together, so you can see where you stand and decide what to publish next.", "/product"],
   ["Who is it for?", "Founders and marketers growing one site, content teams publishing every week, and agencies running many sites from one workspace.", "/product"],
@@ -152,6 +164,7 @@ const FAQ: [string, string, string?][] = [
   ["Do I need Search Console or Google Analytics?", "No, but connecting them unlocks your real rankings and traffic. Both are free Google products, and Hyprlyx only reads from them."],
   ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. Cancel before it ends in Settings → Billing and you pay nothing.`, "/pricing"],
   ["Does the AI publish to my site?", "No. The writer prepares briefs and drafts; a person reviews and approves every page. Direct publishing to WordPress and other CMSs is coming soon.", "/product/content"],
+  ["Can I change what the Overview shows?", "Yes. Click Customize on the Overview to drag widgets by their title, stretch them from any edge, add any of the 14 widgets or remove the ones you don't use. The layout is saved to your account, and Reset brings back the default."],
   ["Can I see AI crawlers like GPTBot or ClaudeBot?", "Yes. Connect Cloudflare and Hyprlyx shows verified search and AI crawlers, how often they visit and which pages they read.", "/product/traffic"],
   ["Which countries and languages are supported?", "Any market and language DataForSEO covers. You choose the market for each website."],
   ["Can I delete my data?", "Yes. Settings → Data shows everything stored for your workspace, and each kind can be deleted with one button. You can also delete your whole account.", "/about"],
@@ -214,7 +227,28 @@ export default async function LandingPage() {
           </div>
           <div className={styles.heroStage}>
             <div className={styles.heroShot}>
-              <Image src="/landing/overview-v20.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={3360} height={2100} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+              <Image unoptimized src="/landing/overview-customize-v24.webp" alt="Hyprlyx overview in Customize mode: the Countries map is stretched from its right edge while Top pages slides down; every widget shows its corner handles" width={3360} height={2100} priority />
+            </div>
+          </div>
+          <div className={styles.container}>
+            <div className={styles.board}>
+              <div>
+                <h2 className={styles.boardTitle}>An overview you arrange yourself</h2>
+                <p className={styles.boardText}>Click Customize and build the screen you open every morning. The layout is saved to your account, not to one browser.</p>
+              </div>
+              <ul className={styles.boardGrid}>
+                {BOARD.map((b) => (
+                  <li key={b.title}>
+                    <h3>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d={b.icon} />
+                      </svg>
+                      {b.title}
+                    </h3>
+                    <p>{b.text}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>
@@ -259,7 +293,7 @@ export default async function LandingPage() {
                 <div className={ch.shots.length > 1 ? styles.framePair : undefined}>
                   {ch.shots.map((shot) => (
                     <div key={shot.src} className={styles.frameShot}>
-                      <Image src={shot.src} alt={shot.alt} width={shot.w} height={shot.h} quality={90} sizes="(max-width: 1200px) 100vw, 1120px" />
+                      <Image unoptimized src={shot.src} alt={shot.alt} width={shot.w} height={shot.h} sizes="(max-width: 1200px) 100vw, 1120px" />
                     </div>
                   ))}
                 </div>
@@ -274,7 +308,7 @@ export default async function LandingPage() {
                 {ch.cards.map((c) => (
                   <article key={c.title} className={styles.card}>
                     <div className={styles.cardVisual}>
-                      <Image src={c.src} alt={c.alt} width={1120} height={640} quality={90} sizes="(max-width: 900px) 100vw, 560px" />
+                      <Image unoptimized src={c.src} alt={c.alt} width={1120} height={640} sizes="(max-width: 900px) 100vw, 560px" />
                     </div>
                     <h3>{c.title}</h3>
                     <p>{c.text}</p>
@@ -393,33 +427,7 @@ export default async function LandingPage() {
               </div>
             </div>
 
-            <div className={s.plans}>
-              {PAID.map((id) => {
-                const plan = PLANS[id];
-                const popular = id === "GROWTH";
-                return (
-                  <div key={id} className={popular ? `${s.plan} ${s.planPopular}` : s.plan}>
-                    <div className={s.planHead}>
-                      <h3 className={s.planName}>{plan.name}</h3>
-                      {id === "STARTER" ? <span className={s.planTag}>{TRIAL_DAYS} days free</span> : popular ? <span className={s.planTag}>Most popular</span> : null}
-                    </div>
-                    <p className={s.price}>
-                      {formatPrice(prices[id])}
-                      <span className={s.per}>/ month</span>
-                    </p>
-                    <ul className={s.planList}>
-                      {highlights(id).filter((item) => !usage(id).includes(item)).map((item) => (
-                        <li key={item}>
-                          <Check size={15} strokeWidth={2.2} />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                    <SubscribeButton plan={id} label={id === TRIAL_PLAN ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`} variant={popular ? "accent" : "light"} />
-                  </div>
-                );
-              })}
-            </div>
+            <PlanCards prices={prices} />
           </div>
         </section>
 

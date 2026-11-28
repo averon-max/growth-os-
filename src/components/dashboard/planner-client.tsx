@@ -315,7 +315,7 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
           ["p11", "11–20", (n) => n !== null && n > 10 && n <= 20, "#0090ff"],
           ["p21", "21–50", (n) => n !== null && n > 20 && n <= 50, "#0090ff"],
           ["p51", "51+", (n) => n !== null && n > 50, "#0090ff"],
-          ["none", "Not ranking", (n) => n === null, "#3e3e44"],
+          ["none", "Not ranking", (n) => n === null, "#3a3a3a"],
         ];
         const intents = ["Informational", "Commercial", "Transactional", "Navigational"];
         // The overview numbers and charts belong to the keyword list; every other tab opens with its own summary,

@@ -41,7 +41,7 @@ export default function ProductPage() {
           <div className={s.heroRow}>
             <p className={s.lede}>
               Research keywords, plan pages, track rankings, audit your site, watch competitors and backlinks, and see who visits — people and AI crawlers — in
-              one workspace built on real data.
+              one workspace built on real data. The overview is yours to arrange: drag widgets, stretch them from any edge, keep only what you use.
             </p>
             <div className={s.actions}>
               <Link href="/signup" className={s.pill}>Start free</Link>
@@ -49,9 +49,9 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
-        <div className={`${s.stage} ${s.lit}`}>
+        <div className={s.stage}>
           <div className={s.shot}>
-            <Image src="/landing/overview-v20.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={3360} height={2100} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+            <Image unoptimized src="/landing/overview-customize-v24.webp" alt="Hyprlyx overview in Customize mode: widgets with corner handles, the Countries map stretched from its right edge and Top pages sliding down" width={3360} height={2100} priority />
           </div>
         </div>
       </section>

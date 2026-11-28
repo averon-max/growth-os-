@@ -96,7 +96,7 @@ export default async function AdminInbox({ searchParams }: { searchParams: Promi
                       </span>
                     </div>
                   </td>
-                  <td className={a.hideSm}><span className={a.cellSub} style={{ color: "#a0a4ab" }}>{t.email}</span></td>
+                  <td className={a.hideSm}><span className={a.cellSub} style={{ color: "#a5a5a5" }}>{t.email}</span></td>
                   <td className={a.hideSm}><span className={a.badge}>{t.kind === "feedback" ? t.category : `Support · ${t.category}`}</span></td>
                   <td><span className={a.badge} data-tone={STATUS_TONE[t.status]}>{t.status}</span>{t._count.messages ? <span className={a.muted} style={{ marginLeft: 8, fontSize: 12 }}>{t._count.messages} repl{t._count.messages === 1 ? "y" : "ies"}</span> : null}</td>
                   <td className={`${a.hideSm} ${a.muted}`}>{ago(t.createdAt)}</td>

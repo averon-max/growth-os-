@@ -1849,17 +1849,17 @@ ${article.bodyMarkdown}`
                     </thead>
                   ),
                   th: ({ children }) => (
-                    <th style={{ border: "1px solid var(--color-border, #dfe2e8)", padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>
+                    <th style={{ border: "1px solid var(--color-border, #e0e0e0)", padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>
                       {children}
                     </th>
                   ),
                   td: ({ children }) => (
-                    <td style={{ border: "1px solid var(--color-border, #dfe2e8)", padding: "8px 12px", verticalAlign: "top" }}>
+                    <td style={{ border: "1px solid var(--color-border, #e0e0e0)", padding: "8px 12px", verticalAlign: "top" }}>
                       {children}
                     </td>
                   ),
                   tr: ({ children }) => (
-                    <tr style={{ borderBottom: "1px solid var(--color-border, #dfe2e8)" }}>
+                    <tr style={{ borderBottom: "1px solid var(--color-border, #e0e0e0)" }}>
                       {children}
                     </tr>
                   ),
@@ -1868,7 +1868,7 @@ ${article.bodyMarkdown}`
                 {readerPreview.readerMarkdown}
               </ReactMarkdown>
               {readerPreview.researchLinks.length>0 ? (
-                <details style={{fontSize:12,color:"#a0a5ae",marginTop:24}}>
+                <details style={{fontSize:12,color:"#a1a1a1",marginTop:24}}>
                   <summary>Reference links (optional)</summary>
                   <ul style={{paddingLeft:18,marginTop:6}}>
                     {readerPreview.researchLinks.map(ref=>(
@@ -2347,7 +2347,7 @@ ${article.bodyMarkdown}`
                       vertical={
                         false
                       }
-                      stroke="#202327"
+                      stroke="#232323"
                     />
 
                     <XAxis
@@ -2400,9 +2400,9 @@ ${article.bodyMarkdown}`
                       }
                       contentStyle={{
                         background:
-                          "#111315",
+                          "#131313",
                         border:
-                          "1px solid #30343a",
+                          "1px solid #353535",
                         borderRadius:
                           5,
                         fontSize:
@@ -3314,7 +3314,7 @@ ${article.bodyMarkdown}`
                       vertical={
                         false
                       }
-                      stroke="#202327"
+                      stroke="#232323"
                     />
 
                     <XAxis
@@ -3364,9 +3364,9 @@ ${article.bodyMarkdown}`
                       }
                       contentStyle={{
                         background:
-                          "#111315",
+                          "#131313",
                         border:
-                          "1px solid #30343a",
+                          "1px solid #353535",
                         borderRadius:
                           5,
                         fontSize:
@@ -3400,7 +3400,7 @@ ${article.bodyMarkdown}`
                       type="monotone"
                       dataKey="unclassifiedRequests"
                       name="Unclassified"
-                      stroke="#8b8f96"
+                      stroke="#909090"
                       dot={
                         false
                       }

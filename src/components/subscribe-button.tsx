@@ -4,13 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
-type Variant = "dark" | "gold" | "light" | "accent";
+type Variant = "dark" | "gold" | "light" | "accent" | "outline";
 
-const STYLES: Record<Variant, { background: string; color: string }> = {
+const STYLES: Record<Variant, { background: string; color: string; border?: string }> = {
   dark: { background: "#0a0a0a", color: "#f2f1ed" },
   gold: { background: "#d4a030", color: "#0a0a0a" },
-  light: { background: "#f2f1ed", color: "#0a0a0a" },
+  light: { background: "#ededed", color: "#0a0a0a" },
   accent: { background: "#0090ff", color: "#ffffff" },
+  // For dark cards: a thin white line instead of a fill.
+  outline: { background: "transparent", color: "#ededed", border: "1px solid rgba(255, 255, 255, 0.18)" },
 };
 
 export default function SubscribeButton({

@@ -248,8 +248,8 @@
 }
 
 /* ===== Design lock: the last word in this file. Same values on every page (Vercel dark). ===== */
-.shell { border: 1px solid #23252a !important; border-radius: 12px !important; background: #0f1011 !important; box-shadow: none !important; }
-.header { border-bottom: 1px solid #1e1f22 !important; background: transparent !important; }
-.button { border: 1px solid #34343a !important; border-radius: 6px !important; background: #0f1011 !important; color: #f7f8f8 !important; box-shadow: none !important; }
-.button:hover:not(:disabled) { background: #1e1f22 !important; border-color: #3e3e44 !important; }
-.eyebrow { color: #8a8f98 !important; }
+.shell { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
+.header { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
+.button { border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #0a0a0a !important; color: #ededed !important; box-shadow: none !important; }
+.button:hover:not(:disabled) { background: #1a1a1a !important; border-color: #3a3a3a !important; }
+.eyebrow { color: #8f8f8f !important; }

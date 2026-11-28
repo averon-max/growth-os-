@@ -10,14 +10,14 @@
 
 .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); gap: 32px; align-items: start; }
 .plot { position: relative; padding-bottom: 28px; }
-.svg { display: block; width: 100%; height: 320px; background: #08090a; }
-.grid { stroke: #2d2e33; stroke-width: 1; stroke-dasharray: 3 4; }
-.cross { stroke: #8a8f98; stroke-width: 1; stroke-dasharray: 3 3; }
+.svg { display: block; width: 100%; height: 320px; background: #000; }
+.grid { stroke: #2a2a2a; stroke-width: 1; stroke-dasharray: 3 4; }
+.cross { stroke: #8f8f8f; stroke-width: 1; stroke-dasharray: 3 3; }
 .yAxis { position: absolute; inset: 0 auto 28px 0; pointer-events: none; }
 .yAxis span { position: absolute; left: 4px; transform: translateY(2px); color: var(--ds-gray-900); font-size: 11px; font-variant-numeric: tabular-nums; }
 .dates { position: absolute; left: 12px; right: 12px; bottom: 0; display: flex; justify-content: space-between; color: var(--ds-gray-900); font-size: var(--ds-text-13); }
 
-.tip { position: absolute; top: 12px; z-index: 5; min-width: 200px; padding: 10px 12px; border: 1px solid var(--ds-gray-400); border-radius: 8px; background: #0f1011; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6); pointer-events: none; font-size: var(--ds-text-13); }
+.tip { position: absolute; top: 12px; z-index: 5; min-width: 200px; padding: 10px 12px; border: 1px solid var(--ds-gray-400); border-radius: 8px; background: #0a0a0a; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6); pointer-events: none; font-size: var(--ds-text-13); }
 .tipDate { margin-bottom: 6px; color: var(--ds-gray-1000); font-weight: 500; }
 .tipRow, .tipTotal { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 22px; color: var(--ds-gray-900); }
 .tipRow i { width: 8px; height: 8px; border-radius: 50%; }

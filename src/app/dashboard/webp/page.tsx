@@ -29,7 +29,7 @@ export default function WebpConverterPage() {
       {err && <p style={{ color: "#b42318", marginTop: 12 }}>{err}</p>}
       <ul style={{ listStyle: "none", padding: 0, marginTop: 20 }}>
         {items.map((it) => (
-          <li key={it.url} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 0", borderBottom: "1px solid #eaecf0" }}>
+          <li key={it.url} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 0", borderBottom: "1px solid #ededed" }}>
             <img src={it.url} alt="" width={64} height={64} style={{ objectFit: "cover", borderRadius: 6 }} />
             <span style={{ flex: 1 }}>{it.name}<br /><small style={{ color: "#667085" }}>{Math.round(it.bytesIn / 1024)} KB → {Math.round(it.bytesOut / 1024)} KB · {it.width}×{it.height}</small></span>
             <a href={it.url} download style={{ fontSize: 14 }}>Download .webp</a>

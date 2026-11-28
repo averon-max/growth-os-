@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #08090a;
-  --sidebar: #0d0f10;
-  --workspace: #101214;
+  --background: #000;
+  --sidebar: #0f0f0f;
+  --workspace: #121212;
 
-  --surface: #0f1011;
-  --surface-2: #181a1d;
-  --elevated: #17181a;
+  --surface: #0a0a0a;
+  --surface-2: #1a1a1a;
+  --elevated: #181818;
 
-  --border: #2a2e33;
+  --border: #2e2e2e;
   --border-hover: rgba(255,255,255,.11);
   --border-strong: rgba(255,255,255,.15);
 
-  --primary: #f7f8f8;
-  --secondary: #9ca0a8;
-  --muted: #62666e;
-  --faint: #43464d;
+  --primary: #ededed;
+  --secondary: #a1a1a1;
+  --muted: #676767;
+  --faint: #474747;
 
   --accent: #3b82f6;
   --accent-soft: rgba(59,130,246,.11);
@@ -116,7 +116,7 @@ a {
 }
 
 /* ===== LINEAR v2 tokens ===== */
-html, body { background: #08090a !important; color: #d0d6e0; font-feature-settings: "cv01", "ss03"; }
+html, body { background: #000 !important; color: #d4d4d4; font-feature-settings: "cv01", "ss03"; }
 body::before { display: none !important; }
 
 /* Hyprlyx font */

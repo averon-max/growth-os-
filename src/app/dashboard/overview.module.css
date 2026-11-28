@@ -25,7 +25,7 @@
   white-space: nowrap;
 }
 .button:hover { border-color: var(--ds-gray-500); background: var(--ds-gray-100); }
-.buttonPrimary { border-color: var(--ds-gray-1000); background: var(--ds-gray-1000); color: #0f1011; }
+.buttonPrimary { border-color: var(--ds-gray-1000); background: var(--ds-gray-1000); color: #0a0a0a; }
 .buttonPrimary:hover { background: #fff; }
 
 .deploy { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 32px; padding: 20px; }

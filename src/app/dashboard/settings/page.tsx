@@ -175,7 +175,7 @@ export default async function SettingsPage() {
               </div>
 
               <div className={styles.issueMeta}>
-                <span style={{ color: gscConnection?.status === "CONNECTED" ? "#f7f8f8" : gscConnection?.status === "ERROR" ? "#ff6369" : "#8a8f98", fontSize: 13 }}>
+                <span style={{ color: gscConnection?.status === "CONNECTED" ? "#ededed" : gscConnection?.status === "ERROR" ? "#ff6369" : "#8f8f8f", fontSize: 13 }}>
                   {gscConnection?.status === "CONNECTED" ? "Connected" : gscConnection?.status === "ERROR" ? "Needs reconnect" : "Not connected"}
                 </span>
 

@@ -135,7 +135,7 @@ type MapMetric =
   | "edge";
 
 const MAP_COLORS = [
-  "#15171a",
+  "#171717",
   "#122333",
   "#153048",
   "#1a4266",

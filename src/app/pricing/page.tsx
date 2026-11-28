@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, Minus } from "lucide-react";
-import SubscribeButton from "@/components/subscribe-button";
-import { PLANS, type PlanId } from "@/lib/billing/plans";
+import { PLANS } from "@/lib/billing/plans";
 import { planPrices, formatPrice } from "@/lib/billing/prices";
-import { FEATURES, PAID_ORDER, hasFeature, highlights } from "@/lib/billing/features";
-import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
+import { FEATURES, PAID_ORDER, hasFeature } from "@/lib/billing/features";
+import { TRIAL_DAYS } from "@/lib/billing/trial";
 import { NAV } from "@/lib/nav";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+import { PlanCards } from "@/components/site/plan-cards";
 import { FEATURES as TOOLS } from "@/components/site/features";
 import { pageMeta, breadcrumbs, ORGANIZATION } from "@/lib/seo";
 import { SITE_URL } from "@/lib/site";
@@ -22,13 +22,6 @@ export async function generateMetadata(): Promise<Metadata> {
     "/pricing",
   );
 }
-
-const DESC: Record<PlanId, string> = {
-  FREE: "",
-  STARTER: "Everything you need to grow one website, except the AI writer.",
-  GROWTH: "Adds the AI writer and room for more websites.",
-  AUTOPILOT: "Everything, for agencies and teams running many sites.",
-};
 
 type Cell = boolean | string;
 const n = (v: number) => v.toLocaleString("en-US");
@@ -103,30 +96,7 @@ export default async function PricingPage() {
 
       <section style={{ paddingTop: 72 }}>
         <div className={s.container}>
-          <div className={s.plans}>
-            {PAID_ORDER.map((id) => {
-              const plan = PLANS[id];
-              const featured = id === "GROWTH";
-              const trial = id === TRIAL_PLAN;
-              return (
-                <div key={id} className={featured ? `${s.plan} ${s.planPopular}` : s.plan}>
-                  <div className={s.planHead}>
-                    <h2 className={s.planName}>{plan.name}</h2>
-                    {trial ? <span className={s.planTag}>{TRIAL_DAYS} days free</span> : featured ? <span className={s.planTag}>Most popular</span> : null}
-                  </div>
-                  <p className={s.price}>{formatPrice(prices[id])}<span className={s.per}>/ month</span></p>
-                  <p className={s.planDesc}>{DESC[id]}</p>
-                  <ul className={s.planList}>
-                    {highlights(id).map((h) => <li key={h}><Check size={15} strokeWidth={2.2} />{h}</li>)}
-                  </ul>
-                  <SubscribeButton plan={id as "STARTER" | "GROWTH" | "AUTOPILOT"} label={trial ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`} variant={featured ? "accent" : "light"} />
-                  <p className={s.small} style={{ margin: "12px 0 0", fontSize: 12.5, textAlign: "center" }}>
-                    {trial ? `Free for ${TRIAL_DAYS} days, then ${formatPrice(prices[id])}/month. Cancel before day ${TRIAL_DAYS} and pay nothing.` : "Billed monthly. Cancel anytime."}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+          <PlanCards prices={prices} />
           <p className={s.small} style={{ marginTop: 28, textAlign: "center" }}>
             Just looking? <Link href="/signup" style={{ color: "#ededed" }}>Create a free account</Link> with one website and the overview — no card needed.
           </p>

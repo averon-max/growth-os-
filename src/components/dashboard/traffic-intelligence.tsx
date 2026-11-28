@@ -1733,7 +1733,7 @@ export function TrafficIntelligence({
                     }}
                     contentStyle={{
                       background:
-                        "#111315",
+                        "#131313",
                       border:
                         "1px solid rgba(255,255,255,.08)",
                       borderRadius:

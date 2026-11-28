@@ -57,7 +57,7 @@
   border-radius: 5px;
 
   background: rgba(255,255,255,.016);
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 12px;
 }
@@ -80,11 +80,11 @@
   border: 1px solid var(--border);
   border-radius: 5px;
 
-  background: #0f1011;
+  background: #0a0a0a;
 }
 
 .searchIcon {
-  color: #8a8f98;
+  color: #8f8f8f;
 }
 
 .searchInput {
@@ -127,7 +127,7 @@
   border: 0;
 
   background: transparent;
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 12px;
 
@@ -135,15 +135,15 @@
 }
 
 .pageButton:hover {
-  color: #f7f8f8;
+  color: #ededed;
 }
 
 .pageButton:disabled {
-  color: #8a8f98;
+  color: #8f8f8f;
 }
 
 .pageLabel {
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-family: var(--font-mono);
 
@@ -164,7 +164,7 @@
 .workspace {
   position: relative;
 
-  border-color: #28292e;
+  border-color: #262626;
 
   background:
     var(--surface);
@@ -202,7 +202,7 @@
 }
 
 .select:hover {
-  color: #f7f8f8;
+  color: #ededed;
 }
 
 .searchBox:focus-within {

@@ -1,35 +1,35 @@
 /* Step animations: tiny pieces of the product on slow loops. Monochrome, one blue accent, no glow. */
 .art { margin: 0 0 22px; }
-.panel { position: relative; overflow: hidden; height: 150px; padding: 12px; border: 1px solid #1f2023; border-radius: 12px; background: #0b0c0d; font-family: var(--font-geist-sans), Inter, system-ui, sans-serif; font-size: 11.5px; color: #d0d6e0; }
+.panel { position: relative; overflow: hidden; height: 150px; padding: 12px; border: 1px solid #1b1b1b; border-radius: 12px; background: #000; font-family: var(--font-geist-sans), Inter, system-ui, sans-serif; font-size: 11.5px; color: #d4d4d4; }
 
 /* 1 · Connect: data flows from each source into Hyprlyx */
 .wires { position: absolute; inset: 0; width: 100%; height: 100%; }
-.wire { fill: none; stroke: #23252a; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wire { fill: none; stroke: #1f1f1f; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .pulse { fill: none; stroke: #0090ff; stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 16 100; stroke-dashoffset: 16; vector-effect: non-scaling-stroke; opacity: 0; animation: travel 6s var(--d) infinite cubic-bezier(.45, 0, .25, 1); }
 @keyframes travel { 0% { stroke-dashoffset: 16; opacity: 1; } 24% { stroke-dashoffset: -100; opacity: 1; } 25%, 100% { stroke-dashoffset: -100; opacity: 0; } }
-.chip { position: absolute; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 9px; border: 1px solid #23252a; border-radius: 7px; background: #101113; white-space: nowrap; animation: chipOn 6s var(--d) infinite; }
-.chipDot { width: 6px; height: 6px; border-radius: 50%; background: #3e3e44; animation: dotOn 6s var(--d) infinite; }
+.chip { position: absolute; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 9px; border: 1px solid #1f1f1f; border-radius: 7px; background: #0c0c0c; white-space: nowrap; animation: chipOn 6s var(--d) infinite; }
+.chipDot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; animation: dotOn 6s var(--d) infinite; }
 .chipOk { fill: none; stroke: #0090ff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0; animation: okOn 6s var(--d) infinite; }
-@keyframes chipOn { 0%, 22% { border-color: #23252a; } 26%, 90% { border-color: rgba(0, 144, 255, 0.45); } 100% { border-color: #23252a; } }
-@keyframes dotOn { 0%, 22% { background: #3e3e44; } 26%, 90% { background: #0090ff; } 100% { background: #3e3e44; } }
+@keyframes chipOn { 0%, 22% { border-color: #1f1f1f; } 26%, 90% { border-color: rgba(0, 144, 255, 0.45); } 100% { border-color: #1f1f1f; } }
+@keyframes dotOn { 0%, 22% { background: #3a3a3a; } 26%, 90% { background: #0090ff; } 100% { background: #3a3a3a; } }
 @keyframes okOn { 0%, 22% { opacity: 0; transform: scale(0.5); } 27%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-.hub { position: absolute; top: 50%; right: 10px; z-index: 1; display: grid; place-items: center; width: 38px; height: 38px; margin-top: -19px; border: 1px solid #34343a; border-radius: 10px; background: #141516; color: #f7f8f8; font-family: var(--display, Georgia), serif; font-size: 20px; line-height: 1; animation: hubOn 6s infinite; }
-@keyframes hubOn { 0%, 44% { border-color: #34343a; } 50%, 90% { border-color: #0090ff; } 100% { border-color: #34343a; } }
+.hub { position: absolute; top: 50%; right: 10px; z-index: 1; display: grid; place-items: center; width: 38px; height: 38px; margin-top: -19px; border: 1px solid #2e2e2e; border-radius: 10px; background: #111111; color: #ededed; font-family: var(--display, Georgia), serif; font-size: 20px; line-height: 1; animation: hubOn 6s infinite; }
+@keyframes hubOn { 0%, 44% { border-color: #2e2e2e; } 50%, 90% { border-color: #0090ff; } 100% { border-color: #2e2e2e; } }
 
 /* 2 · Rank: nova.example climbs from #4 to #1 while the others step down */
-.query { display: flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px; border: 1px solid #23252a; border-radius: 999px; color: #8a8f98; font-size: 11px; }
-.query svg { fill: none; stroke: #8a8f98; stroke-width: 1.5; }
+.query { display: flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px; border: 1px solid #1f1f1f; border-radius: 999px; color: #8f8f8f; font-size: 11px; }
+.query svg { fill: none; stroke: #8f8f8f; stroke-width: 1.5; }
 .results { position: relative; height: 96px; margin-top: 10px; }
 .res { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 8px; height: 22px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px; top: calc(var(--i) * 24px); animation: stepDown 7s infinite cubic-bezier(.6, 0, .2, 1); }
 .mine { top: 72px; border-color: rgba(0, 144, 255, 0.45); background: rgba(0, 144, 255, 0.06); animation: climb 7s infinite cubic-bezier(.6, 0, .2, 1); }
 @keyframes stepDown { 0%, 28% { transform: translateY(0); } 52%, 88% { transform: translateY(24px); } 100% { transform: translateY(0); } }
 @keyframes climb { 0%, 28% { transform: translateY(0); } 52%, 88% { transform: translateY(-72px); } 100% { transform: translateY(0); } }
-.fav { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 3px; background: #23252a; }
-.favMine { flex: 0 0 auto; display: grid; place-items: center; width: 12px; height: 12px; border-radius: 3px; background: #f7f8f8; color: #08090a; font-family: var(--display, Georgia), serif; font-size: 10px; line-height: 1; }
+.fav { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 3px; background: #1f1f1f; }
+.favMine { flex: 0 0 auto; display: grid; place-items: center; width: 12px; height: 12px; border-radius: 3px; background: #ededed; color: #000; font-family: var(--display, Georgia), serif; font-size: 10px; line-height: 1; }
 .resText { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; }
-.resText b { color: #8a8f98; font-weight: 400; white-space: nowrap; }
-.mine .resText b { color: #f7f8f8; font-weight: 500; }
-.resText i { flex: 1; height: 4px; border-radius: 2px; background: #1c1d20; }
+.resText b { color: #8f8f8f; font-weight: 400; white-space: nowrap; }
+.mine .resText b { color: #ededed; font-weight: 500; }
+.resText i { flex: 1; height: 4px; border-radius: 2px; background: #181818; }
 .rank { position: relative; width: 22px; height: 14px; color: #52a9ff; font-weight: 600; text-align: right; }
 .rank span { position: absolute; right: 0; }
 .rank span:first-child { animation: rankOut 7s infinite; }
@@ -38,32 +38,32 @@
 @keyframes rankIn { 0%, 44% { opacity: 0; } 50%, 92% { opacity: 1; } 100% { opacity: 0; } }
 
 /* 3 · Grow: bars rise, the trend line draws over them, a marker lands on today */
-.chartHead { display: flex; justify-content: space-between; color: #8a8f98; font-size: 11px; }
-.gain { color: #f7f8f8; font-weight: 600; opacity: 0; animation: gainIn 6.5s infinite; }
+.chartHead { display: flex; justify-content: space-between; color: #8f8f8f; font-size: 11px; }
+.gain { color: #ededed; font-weight: 600; opacity: 0; animation: gainIn 6.5s infinite; }
 @keyframes gainIn { 0%, 56% { opacity: 0; transform: translateY(3px); } 62%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 .chart { display: block; width: 100%; height: auto; margin-top: 8px; }
-.base { stroke: #23252a; stroke-width: 1; }
+.base { stroke: #1f1f1f; stroke-width: 1; }
 .bar { fill: rgba(0, 144, 255, 0.24); transform-box: fill-box; transform-origin: bottom; transform: scaleY(0); animation: grow 6.5s infinite cubic-bezier(.3, .7, .3, 1); animation-delay: calc(var(--i) * 0.07s); }
 @keyframes grow { 0% { transform: scaleY(0); opacity: 1; } 22%, 90% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
 .trend { fill: none; stroke: #0090ff; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 6.5s infinite ease-in-out; }
 @keyframes draw { 0%, 22% { stroke-dashoffset: 100; opacity: 1; } 55%, 90% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-.dot { fill: #0090ff; stroke: #0b0c0d; stroke-width: 2.5; transform-box: fill-box; transform-origin: center; opacity: 0; animation: pop 6.5s infinite; }
+.dot { fill: #0090ff; stroke: #000; stroke-width: 2.5; transform-box: fill-box; transform-origin: center; opacity: 0; animation: pop 6.5s infinite; }
 @keyframes pop { 0%, 54% { opacity: 0; transform: scale(0.3); } 60%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 
 /* 4 · Publish: the draft writes itself, then moves Draft → Review → Approved → Live */
-.doc { display: grid; gap: 7px; padding: 10px 11px; border: 1px solid #1f2023; border-radius: 8px; background: #101113; }
-.docTitle { width: 58%; height: 8px; border-radius: 4px; background: #34343a; }
-.line { width: 0; height: 5px; border-radius: 3px; background: #23252a; animation: type 7s infinite; animation-delay: calc(var(--i) * 0.35s); }
+.doc { display: grid; gap: 7px; padding: 10px 11px; border: 1px solid #1b1b1b; border-radius: 8px; background: #0c0c0c; }
+.docTitle { width: 58%; height: 8px; border-radius: 4px; background: #2e2e2e; }
+.line { width: 0; height: 5px; border-radius: 3px; background: #1f1f1f; animation: type 7s infinite; animation-delay: calc(var(--i) * 0.35s); }
 @keyframes type { 0% { width: 0; opacity: 1; } 16%, 92% { width: var(--w); opacity: 1; } 100% { width: var(--w); opacity: 0; } }
 .track { position: relative; display: flex; justify-content: space-between; margin: 16px 6px 0; }
-.track::before { position: absolute; top: 5px; right: 6px; left: 6px; height: 1px; background: #23252a; content: ""; }
+.track::before { position: absolute; top: 5px; right: 6px; left: 6px; height: 1px; background: #1f1f1f; content: ""; }
 .trackFill { position: absolute; top: 5px; left: 6px; width: 0; height: 1px; background: #0090ff; animation: fill 7s infinite cubic-bezier(.5, 0, .3, 1); }
 @keyframes fill { 0%, 30% { width: 0; opacity: 1; } 78%, 92% { width: calc(100% - 12px); opacity: 1; } 100% { width: calc(100% - 12px); opacity: 0; } }
 .step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; }
-.stepDot { width: 11px; height: 11px; box-sizing: border-box; border: 1.5px solid #34343a; border-radius: 50%; background: #0b0c0d; animation: stepOn 7s infinite; animation-delay: calc(var(--i) * 1.05s + 2.1s); }
-.stepName { color: #62666d; font-size: 10.5px; animation: nameOn 7s infinite; animation-delay: calc(var(--i) * 1.05s + 2.1s); }
-@keyframes stepOn { 0% { border-color: #34343a; background: #0b0c0d; } 4%, 70% { border-color: #0090ff; background: #0090ff; } 76%, 100% { border-color: #34343a; background: #0b0c0d; } }
-@keyframes nameOn { 0% { color: #62666d; } 4%, 70% { color: #f7f8f8; } 76%, 100% { color: #62666d; } }
+.stepDot { width: 11px; height: 11px; box-sizing: border-box; border: 1.5px solid #2e2e2e; border-radius: 50%; background: #000; animation: stepOn 7s infinite; animation-delay: calc(var(--i) * 1.05s + 2.1s); }
+.stepName { color: #6b6b6b; font-size: 10.5px; animation: nameOn 7s infinite; animation-delay: calc(var(--i) * 1.05s + 2.1s); }
+@keyframes stepOn { 0% { border-color: #2e2e2e; background: #000; } 4%, 70% { border-color: #0090ff; background: #0090ff; } 76%, 100% { border-color: #2e2e2e; background: #000; } }
+@keyframes nameOn { 0% { color: #6b6b6b; } 4%, 70% { color: #ededed; } 76%, 100% { color: #6b6b6b; } }
 
 @media (prefers-reduced-motion: reduce) {
   .pulse, .chip, .chipDot, .chipOk, .hub, .res, .mine, .rank span, .gain, .bar, .trend, .dot, .line, .trackFill, .stepDot, .stepName { animation: none; }
@@ -79,5 +79,5 @@
   .trend { stroke-dashoffset: 0; }
   .line { width: var(--w); }
   .trackFill { width: calc(100% - 12px); }
-  .stepName { color: #f7f8f8; }
+  .stepName { color: #ededed; }
 }

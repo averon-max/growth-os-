@@ -27,7 +27,7 @@
 .postTitle { max-width: 860px; margin: 22px 0 0; font-family: var(--font-landing-display), Georgia, serif; font-weight: 400; font-size: clamp(2.4rem, 5.4vw, 3.8rem); line-height: 1.04; letter-spacing: -.03em; text-wrap: balance; }
 .postLede { max-width: 680px; margin: 20px 0 0; color: #9ba0a8; font-size: 18.5px; line-height: 1.6; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 24px; color: #6b6b6b; font-size: 14px; }
-.meta b { color: #c4c8ce; font-weight: 500; }
+.meta b { color: #c9c9c9; font-weight: 500; }
 .cover { margin: 48px 0 0; overflow: hidden; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; }
 .cover img { display: block; width: 100%; height: auto; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 64px; margin-top: 56px; }
@@ -36,7 +36,7 @@
 .toc a { display: block; padding: 5px 0; color: #8f8f8f; text-decoration: none; line-height: 1.4; }
 .toc a:hover { color: #ededed; }
 
-.prose { max-width: 68ch; color: #c9ccd1; font-size: 17.5px; line-height: 1.75; }
+.prose { max-width: 68ch; color: #cdcdcd; font-size: 17.5px; line-height: 1.75; }
 .prose > :first-child { margin-top: 0; }
 .prose h2 { margin: 2.2em 0 .6em; color: #ededed; font-family: var(--font-landing-display), Georgia, serif; font-weight: 400; font-size: 1.9rem; line-height: 1.15; letter-spacing: -.02em; scroll-margin-top: 96px; }
 .prose h3 { margin: 1.8em 0 .5em; color: #ededed; font-size: 1.2rem; font-weight: 600; letter-spacing: -.01em; scroll-margin-top: 96px; }
@@ -48,10 +48,10 @@
 .prose ul, .prose ol { margin: 0 0 1.2em; padding-left: 1.3em; }
 .prose li { margin: .35em 0; }
 .prose li::marker { color: #6b6b6b; }
-.prose blockquote { margin: 1.6em 0; padding: 2px 0 2px 20px; border-left: 2px solid rgba(255,255,255,.25); color: #e3e5e8; }
+.prose blockquote { margin: 1.6em 0; padding: 2px 0 2px 20px; border-left: 2px solid rgba(255,255,255,.25); color: #e5e5e5; }
 .prose blockquote p { margin: 0; }
-.prose code { padding: 2px 6px; border-radius: 5px; background: rgba(255,255,255,.07); color: #e3e5e8; font-size: .88em; }
-.prose pre { margin: 1.5em 0; padding: 16px 18px; overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: #0d0e10; font-size: 14px; line-height: 1.6; }
+.prose code { padding: 2px 6px; border-radius: 5px; background: rgba(255,255,255,.07); color: #e5e5e5; font-size: .88em; }
+.prose pre { margin: 1.5em 0; padding: 16px 18px; overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: #0e0e0e; font-size: 14px; line-height: 1.6; }
 .prose pre code { padding: 0; background: none; }
 .prose hr { margin: 2.5em 0; border: 0; border-top: 1px solid rgba(255,255,255,.1); }
 .prose figure { margin: 2em 0; }
@@ -74,7 +74,7 @@
 .latest { padding: 104px 0 0; }
 .latestHead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
 .latestTitle { margin: 0; font-family: var(--font-landing-display), Georgia, serif; font-weight: 400; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.025em; line-height: 1.05; }
-.latestAll { display: inline-flex; align-items: center; gap: 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,.2); color: #e3e5e8; font-size: 14.5px; text-decoration: none; }
+.latestAll { display: inline-flex; align-items: center; gap: 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,.2); color: #e5e5e5; font-size: 14.5px; text-decoration: none; }
 .latestAll:hover { border-color: #ededed; color: #fff; }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid rgba(255,255,255,.1); }
 .card { display: flex; flex-direction: column; padding: 28px 28px 32px 0; color: inherit; text-decoration: none; }

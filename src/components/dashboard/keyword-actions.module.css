@@ -1,10 +1,10 @@
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid #34343a; border-radius: 6px; background: #0f1011; color: #f7f8f8; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
-.button:hover:not(:disabled) { background: #1e1f22; border-color: #3e3e44; }
+.button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid #2e2e2e; border-radius: 6px; background: #0a0a0a; color: #ededed; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.button:hover:not(:disabled) { background: #1a1a1a; border-color: #3a3a3a; }
 .button:disabled { opacity: 0.6; cursor: default; }
-.primary { background: #f7f8f8; border-color: #f7f8f8; color: #0f1011; }
+.primary { background: #ededed; border-color: #ededed; color: #0a0a0a; }
 .primary:hover:not(:disabled) { background: #fff; border-color: #fff; }
-.select { height: 32px; padding: 0 28px 0 10px; border: 1px solid #34343a; border-radius: 6px; background: #0f1011; color: #f7f8f8; font: inherit; font-size: 13px; }
+.select { height: 32px; padding: 0 28px 0 10px; border: 1px solid #2e2e2e; border-radius: 6px; background: #0a0a0a; color: #ededed; font: inherit; font-size: 13px; }
 .group { display: inline-flex; }
 .group .select { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0; }
 .group .button { border-top-left-radius: 0; border-bottom-left-radius: 0; }

@@ -74,14 +74,14 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
         {f.shot ? (
-          <div className={`${s.stage} ${s.lit}`}>
+          <div className={s.stage}>
             <div className={f.shot.extra ? s.shotPair : undefined}>
-              <div className={s.shot}>
-                <Image src={f.shot.src} alt={f.shot.alt} width={f.shot.w ?? 3200} height={f.shot.h ?? 2000} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+              <div className={s.shot} style={f.shot.extra ? undefined : { maxWidth: Math.round((f.shot.w ?? 3200) / 2), marginInline: "auto" }}>
+                <Image unoptimized src={f.shot.src} alt={f.shot.alt} width={f.shot.w ?? 3200} height={f.shot.h ?? 2000} priority />
               </div>
               {f.shot.extra ? (
                 <div className={s.shot}>
-                  <Image src={f.shot.extra.src} alt={f.shot.extra.alt} width={f.shot.extra.w} height={f.shot.extra.h} quality={90} sizes="(max-width: 1320px) 100vw, 800px" />
+                  <Image unoptimized src={f.shot.extra.src} alt={f.shot.extra.alt} width={f.shot.extra.w} height={f.shot.extra.h} />
                 </div>
               ) : null}
             </div>
@@ -98,8 +98,9 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
           <div className={s.stage} style={{ marginTop: 0 }}>
-            <div className={s.shot}>
-              <Image src={g.src} alt={g.alt} width={g.w} height={g.h} quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+            {/* Never wider than half the image's pixels, so every screen stays sharp on retina displays. */}
+            <div className={s.shot} style={{ maxWidth: Math.round(g.w / 2), marginInline: "auto" }}>
+              <Image unoptimized src={g.src} alt={g.alt} width={g.w} height={g.h} />
             </div>
           </div>
         </section>

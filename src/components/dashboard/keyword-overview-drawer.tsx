@@ -32,7 +32,7 @@ const kdTone = (kd: number | null) => (kd === null ? undefined : kd < 30 ? TONE.
 
 function Trend({ value, label }: { value: number | null | undefined; label: string }) {
   const v = value ?? null;
-  const color = v === null || v === 0 ? "#a0a5ae" : v > 0 ? TONE.good : TONE.bad;
+  const color = v === null || v === 0 ? "#a1a1a1" : v > 0 ? TONE.good : TONE.bad;
   return (
     <div className={s.trend}>
       <span className={s.trendLabel}>{label}</span>

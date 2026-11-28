@@ -39,7 +39,7 @@
   padding: 36px 32px 32px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01) 60%), #0c0d0e;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01) 60%), #0d0d0d;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 30px 80px -40px rgba(0, 0, 0, 0.9);
 }
 
@@ -77,7 +77,7 @@
 .label {
   font-size: 13px;
   font-weight: 500;
-  color: #c9ccd1;
+  color: #cdcdcd;
 }
 .inputWrap {
   position: relative;
@@ -87,7 +87,7 @@
   height: 42px;
   padding: 0 13px;
   border-radius: 9px;
-  border: 1px solid #23252a;
+  border: 1px solid #1f1f1f;
   background: #0a0a0a;
   color: #ededed;
   font: inherit;
@@ -96,14 +96,14 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .input::placeholder {
-  color: #4b4f56;
+  color: #505050;
 }
 .input:hover {
-  border-color: #2e3137;
+  border-color: #323232;
 }
 .input:focus {
   border-color: #4b84ef;
-  background: #111214;
+  background: #0d0d0d;
   box-shadow: 0 0 0 3px rgba(75, 132, 239, 0.18);
 }
 .input[aria-invalid="true"] {
@@ -126,7 +126,7 @@
 }
 .reveal:hover {
   color: #ededed;
-  background: #1a1b1e;
+  background: #161616;
 }
 
 .meter {
@@ -197,7 +197,7 @@
 }
 
 .link {
-  color: #c9ccd1;
+  color: #cdcdcd;
   text-decoration: none;
   font-size: 13px;
 }
@@ -221,8 +221,8 @@
   color: #6b6b6b;
 }
 
-.oauth { height: 42px; border-radius: 999px; border: 1px solid #2a2d33; background: #111214; color: #ededed; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
-.oauth:hover { background: #1a1a1a; border-color: #363940; }
+.oauth { height: 42px; border-radius: 999px; border: 1px solid #2e2e2e; background: #0d0d0d; color: #ededed; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.oauth:hover { background: #1a1a1a; border-color: #3a3a3a; }
 .oauth:disabled { opacity: .6; cursor: progress; }
-.divider { display: flex; align-items: center; gap: 12px; color: #4b4f56; font-size: 12px; margin: 2px 0; }
+.divider { display: flex; align-items: center; gap: 12px; color: #505050; font-size: 12px; margin: 2px 0; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #1a1a1a; }

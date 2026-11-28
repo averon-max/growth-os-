@@ -95,5 +95,3 @@
   .action span { display: none; }
 }
 
-/* v4: follows the rounded top-left corner of the workspace panel. */
-@media (min-width: 901px) { .topbar { border-top-left-radius: 11px; } }

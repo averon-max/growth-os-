@@ -20,19 +20,19 @@
 /* ---------- типографика ---------- */
 
 .page-content h1 {
-  color: #f7f8f8;
+  color: #ededed;
   font-weight: 590;
   letter-spacing: -0.022em;
 }
 
 :where(.page-content) :where(h2, h3, h4) {
-  color: #f7f8f8;
+  color: #ededed;
   font-weight: 590;
   letter-spacing: -0.012em;
 }
 
 :where(.page-content) :where(p) {
-  color: #a0a5ae;
+  color: #a1a1a1;
 }
 
 :where(.page-content) :where(a) {
@@ -41,16 +41,16 @@
 
 :where(.page-content) :where(code, kbd) {
   padding: 1px 5px;
-  border: 1px solid #28292e;
+  border: 1px solid #262626;
   border-radius: 4px;
-  background: #141516;
-  color: #f7f8f8;
+  background: #111111;
+  color: #ededed;
   font-size: 0.92em;
 }
 
 :where(.page-content) :where(hr) {
   border: 0;
-  border-top: 1px solid #23252a;
+  border-top: 1px solid #1f1f1f;
 }
 
 /* ---------- таблицы ---------- */
@@ -62,8 +62,8 @@
 
 :where(.page-content) :where(th) {
   padding: 9px 12px;
-  border-bottom: 1px solid #23252a;
-  color: #8a8f98;
+  border-bottom: 1px solid #1f1f1f;
+  color: #8f8f8f;
   font-size: 12px;
   font-weight: 510;
   text-align: left;
@@ -72,8 +72,8 @@
 
 :where(.page-content) :where(td) {
   padding: 10px 12px;
-  border-bottom: 1px solid #23252a;
-  color: #f7f8f8;
+  border-bottom: 1px solid #1f1f1f;
+  color: #ededed;
   font-size: 13px;
 }
 
@@ -82,7 +82,7 @@
 }
 
 :where(.page-content) :where(tbody tr:hover) {
-  background: #141516;
+  background: #111111;
 }
 
 /* ---------- поля ввода ---------- */
@@ -90,11 +90,11 @@
 :where(.page-content) :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea) {
   min-height: 32px;
   padding: 0 10px;
-  border: 1px solid #28292e;
+  border: 1px solid #262626;
   border-radius: 6px;
   outline: 0;
-  background: #0f1011;
-  color: #f7f8f8;
+  background: #0a0a0a;
+  color: #ededed;
   font: inherit;
   font-size: 13px;
   transition: border-color 120ms ease, background 120ms ease;
@@ -109,7 +109,7 @@
 }
 
 :where(.page-content) :where(input, textarea)::placeholder {
-  color: #8a8f98;
+  color: #8f8f8f;
 }
 
 :where(.page-content) :where(input[type="checkbox"], input[type="radio"]) {
@@ -124,56 +124,56 @@
 /* ---------- графики recharts ---------- */
 
 .page-content .recharts-cartesian-grid line {
-  stroke: #23252a;
+  stroke: #1f1f1f;
 }
 
 .page-content .recharts-cartesian-axis-line,
 .page-content .recharts-cartesian-axis-tick-line {
-  stroke: #28292e;
+  stroke: #262626;
 }
 
 .page-content .recharts-cartesian-axis-tick-value,
 .page-content .recharts-text {
-  fill: #8a8f98;
+  fill: #8f8f8f;
   font-size: 11px;
 }
 
 .page-content .recharts-legend-item-text {
-  color: #a0a5ae !important;
+  color: #a1a1a1 !important;
   font-size: 12px;
 }
 
 .page-content .recharts-default-tooltip {
   padding: 8px 10px !important;
-  border: 1px solid #28292e !important;
+  border: 1px solid #262626 !important;
   border-radius: 8px !important;
-  background: #141516 !important;
+  background: #111111 !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  color: #f7f8f8;
+  color: #ededed;
   font-size: 12px;
 }
 
 .page-content .recharts-tooltip-label {
   margin-bottom: 4px !important;
-  color: #f7f8f8 !important;
+  color: #ededed !important;
   font-weight: 510;
 }
 
 .page-content .recharts-tooltip-cursor {
   fill: rgba(255, 255, 255, 0.03);
-  stroke: #37393e;
+  stroke: #333333;
 }
 
 /* ---------- мелочи ---------- */
 
 .page-shell ::selection {
   background: rgba(0,144,255, 0.35);
-  color: #f7f8f8;
+  color: #ededed;
 }
 
 .page-shell * {
   scrollbar-width: thin;
-  scrollbar-color: #34343a transparent;
+  scrollbar-color: #2e2e2e transparent;
 }
 
 .page-shell ::-webkit-scrollbar {
@@ -184,7 +184,7 @@
 .page-shell ::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 8px;
-  background: #34343a padding-box;
+  background: #2e2e2e padding-box;
 }
 
 .page-shell ::-webkit-scrollbar-track {
@@ -198,19 +198,19 @@
  * including drawers and dialogs that render outside the page.
  */
 :root:has(.page-shell) {
-  --background: #08090a;
-  --sidebar: #08090a;
-  --workspace: #08090a;
-  --surface: #0f1011;
-  --surface-2: #141516;
-  --elevated: #141516;
-  --border: #23252a;
-  --border-hover: #34343a;
-  --border-strong: #3e3e44;
-  --primary: #f7f8f8;
-  --secondary: #a0a5ae;
-  --muted: #8a8f98;
-  --faint: #45474d;
+  --background: #000;
+  --sidebar: #000;
+  --workspace: #000;
+  --surface: #0a0a0a;
+  --surface-2: #111111;
+  --elevated: #111111;
+  --border: #1f1f1f;
+  --border-hover: #2e2e2e;
+  --border-strong: #3a3a3a;
+  --primary: #ededed;
+  --secondary: #a1a1a1;
+  --muted: #8f8f8f;
+  --faint: #454545;
   --accent: #0090ff;
   --accent-soft: rgba(0, 144, 255, 0.1);
   --cyan: #52a9ff;

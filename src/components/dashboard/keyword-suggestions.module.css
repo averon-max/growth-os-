@@ -32,7 +32,7 @@
 }
 
 .title {
-  color: #f7f8f8;
+  color: #ededed;
 
   font-size: 13px;
   font-weight: 590;
@@ -41,7 +41,7 @@
 .subtitle {
   margin-top: 3px;
 
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-size: 12px;
 }
@@ -72,11 +72,11 @@
   border: 1px solid var(--border);
   border-radius: 6px;
 
-  background: #0f1011;
+  background: #0a0a0a;
 }
 
 .searchIcon {
-  color: #8a8f98;
+  color: #8f8f8f;
 }
 
 .searchInput {
@@ -102,7 +102,7 @@
 
   padding: 0 13px;
 
-  border: 1px solid #28292e;
+  border: 1px solid #262626;
   border-radius: 6px;
 
   background: #5687d5;
@@ -159,7 +159,7 @@
 
   padding: 0 14px;
 
-  border-bottom: 1px solid #23252a;
+  border-bottom: 1px solid #1f1f1f;
 }
 
 .trendingTitle {
@@ -167,7 +167,7 @@
   align-items: center;
   gap: 7px;
 
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 12px;
   font-weight: 590;
@@ -205,9 +205,9 @@
 
   padding: 0 14px;
 
-  border-bottom: 1px solid #23252a;
+  border-bottom: 1px solid #1f1f1f;
 
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-size: 11px;
   font-weight: 590;
@@ -240,7 +240,7 @@
 }
 
 .trendRank {
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-family: var(--font-mono);
 
@@ -250,7 +250,7 @@
 .trendName {
   overflow: hidden;
 
-  color: #a0a5ae;
+  color: #a1a1a1;
 
   font-size: 12px;
 
@@ -259,7 +259,7 @@
 }
 
 .trendValue {
-  color: #8a8f98;
+  color: #8f8f8f;
 
   font-family: var(--font-mono);
 
@@ -386,7 +386,7 @@
 .container {
   position: relative;
 
-  border-color: #28292e;
+  border-color: #262626;
 
   background:
     var(--surface);
@@ -433,7 +433,7 @@
 }
 
 .trendColumnLabel {
-  color: #8a8f98;
+  color: #8f8f8f;
 
   background:
     rgba(255,255,255,.005);
@@ -460,12 +460,12 @@
 }
 
 .trendRow:first-child .trendName {
-  color: #f7f8f8;
+  color: #ededed;
   font-weight: 510;
 }
 
 .trendRow:first-child .trendRank {
-  color: #a0a5ae;
+  color: #a1a1a1;
 }
 
 .trendRow:first-child .trendValue {
@@ -495,68 +495,68 @@
   cursor: pointer;
 }
 .trendButton:not(:first-child) { background: transparent; }
-.trendButton:hover .trendName { color: #f7f8f8; text-decoration: underline; text-decoration-color: #45474d; text-underline-offset: 3px; }
+.trendButton:hover .trendName { color: #ededed; text-decoration: underline; text-decoration-color: #454545; text-underline-offset: 3px; }
 .trendButton:focus-visible, .clickableRow:focus-visible { outline: 2px solid #0090ff; outline-offset: -2px; }
 .trendColumnLabel[title] { cursor: help; }
 .clickableRow:hover td { background: rgba(255,255,255,.025); }
-.clickableRow:hover .keywordCell { color: #f7f8f8; text-decoration: underline; text-decoration-color: #45474d; text-underline-offset: 3px; }
-.rowChevron { width: 28px; color: #45474d; text-align: right; }
-.clickableRow:hover .rowChevron { color: #f7f8f8; }
+.clickableRow:hover .keywordCell { color: #ededed; text-decoration: underline; text-decoration-color: #454545; text-underline-offset: 3px; }
+.rowChevron { width: 28px; color: #454545; text-align: right; }
+.clickableRow:hover .rowChevron { color: #ededed; }
 .suggestHead th[title] { cursor: help; }
 
 /* ===== Vercel pass: black cards, crisp rows, coloured signals ===== */
-.container { background: #0f1011 !important; border: 1px solid #28292e !important; border-radius: 12px !important; box-shadow: none !important; }
-.header { border-bottom: 1px solid #23252a !important; }
-.title { color: #f7f8f8 !important; font-size: 15px !important; font-weight: 600 !important; }
-.subtitle { color: #a0a5ae !important; font-size: 13px !important; }
+.container { background: #0a0a0a !important; border: 1px solid #262626 !important; border-radius: 12px !important; box-shadow: none !important; }
+.header { border-bottom: 1px solid #1f1f1f !important; }
+.title { color: #ededed !important; font-size: 15px !important; font-weight: 600 !important; }
+.subtitle { color: #a1a1a1 !important; font-size: 13px !important; }
 .icon { color: #52a9ff !important; }
-.trendingBlock { background: #08090a !important; border-color: #23252a !important; }
-.trendingTitle { color: #f7f8f8 !important; }
+.trendingBlock { background: #000 !important; border-color: #1f1f1f !important; }
+.trendingTitle { color: #ededed !important; }
 .trendingIcon { color: #e5484d !important; }
-.trendColumnLabel { color: #a0a5ae !important; font-size: 13px !important; }
-.trendRow { border-color: #1e1f22 !important; }
-.trendRow:hover { background: #141516 !important; }
-.trendRank { color: #8a8f98 !important; }
-.trendName { color: #f7f8f8 !important; }
+.trendColumnLabel { color: #a1a1a1 !important; font-size: 13px !important; }
+.trendRow { border-color: #1a1a1a !important; }
+.trendRow:hover { background: #111111 !important; }
+.trendRank { color: #8f8f8f !important; }
+.trendName { color: #ededed !important; }
 .risingValue { color: #e5484d !important; font-weight: 600 !important; }
-.trendValue { color: #f7f8f8 !important; }
-.suggestHead th { color: #a0a5ae !important; background: #0f1011 !important; border-color: #23252a !important; }
-.clickableRow td { border-color: #1e1f22 !important; color: #f7f8f8 !important; }
-.clickableRow:hover td { background: #141516 !important; }
+.trendValue { color: #ededed !important; }
+.suggestHead th { color: #a1a1a1 !important; background: #0a0a0a !important; border-color: #1f1f1f !important; }
+.clickableRow td { border-color: #1a1a1a !important; color: #ededed !important; }
+.clickableRow:hover td { background: #111111 !important; }
 .trendUp { color: #30a46c !important; background: rgba(48,164,108, 0.12) !important; }
 .trendDown { color: #e5484d !important; background: rgba(229,72,77, 0.12) !important; }
-.trendFlat { color: #a0a5ae !important; background: #1e1f22 !important; }
-.trendButton { border-color: #34343a !important; color: #a0a5ae !important; }
-.trendButton[data-on="true"], .trendButton:hover { color: #f7f8f8 !important; background: #1e1f22 !important; }
+.trendFlat { color: #a1a1a1 !important; background: #1a1a1a !important; }
+.trendButton { border-color: #2e2e2e !important; color: #a1a1a1 !important; }
+.trendButton[data-on="true"], .trendButton:hover { color: #ededed !important; background: #1a1a1a !important; }
 
 /* Search momentum as chips instead of numbered tables. */
 .momentum { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
 .momentumGroup { display: flex; flex-direction: column; gap: 8px; }
-.momentumLabel { color: #8a8f98; font-size: 13px; }
+.momentumLabel { color: #8f8f8f; font-size: 13px; }
 .momentumChips { display: flex; flex-wrap: wrap; gap: 6px; }
-.momentumChip { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 12px; border: 1px solid #28292e; border-radius: 999px; background: #0f1011; color: #f7f8f8; font-size: 13px; cursor: pointer; transition: border-color 0.12s ease, background 0.12s ease; }
-.momentumChip:hover { border-color: #45474d; background: #141516; }
+.momentumChip { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 12px; border: 1px solid #262626; border-radius: 999px; background: #0a0a0a; color: #ededed; font-size: 13px; cursor: pointer; transition: border-color 0.12s ease, background 0.12s ease; }
+.momentumChip:hover { border-color: #454545; background: #111111; }
 .momentumChip:focus-visible { outline: 2px solid #0090ff; outline-offset: 2px; }
 .momentumName { white-space: nowrap; }
-.momentumValue { color: #8a8f98; font-size: 12px; font-variant-numeric: tabular-nums; }
+.momentumValue { color: #8f8f8f; font-size: 12px; font-variant-numeric: tabular-nums; }
 .momentumChip > button { margin-left: 0 !important; }
 
 /* Calmer table cells: colour only on the number, no filled boxes. */
 .trendBadge { background: transparent !important; padding: 0 !important; }
 .trendUp { background: transparent !important; }
 .trendDown { background: transparent !important; }
-.trendFlat { color: #8a8f98 !important; background: transparent !important; }
+.trendFlat { color: #8f8f8f !important; background: transparent !important; }
 .difficultyBadge { min-width: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; font-variant-numeric: tabular-nums; }
-.competition { color: #a0a5ae; text-transform: capitalize; }
+.competition { color: #a1a1a1; text-transform: capitalize; }
 
 /* ===== Design lock: the last word in this file. Same values on every page (Vercel dark). ===== */
-.icon, .trendingIcon { color: #8a8f98 !important; }
-.freeBadge { border: 1px solid #28292e !important; background: transparent !important; color: #8a8f98 !important; }
-.container { border: 1px solid #23252a !important; border-radius: 12px !important; background: #0f1011 !important; box-shadow: none !important; }
-.header { border-bottom: 1px solid #1e1f22 !important; background: transparent !important; }
+.icon, .trendingIcon { color: #8f8f8f !important; }
+.freeBadge { border: 1px solid #262626 !important; background: transparent !important; color: #8f8f8f !important; }
+.container { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
+.header { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
 .trendingBlock { background: transparent !important; }
-.trendingHeader { border-bottom: 1px solid #1e1f22 !important; background: transparent !important; }
-.exploreButton { height: 32px !important; padding: 0 12px !important; border: 1px solid #f7f8f8 !important; border-radius: 6px !important; background: #f7f8f8 !important; color: #0f1011 !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.trendingHeader { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
+.exploreButton { height: 32px !important; padding: 0 12px !important; border: 1px solid #ededed !important; border-radius: 6px !important; background: #ededed !important; color: #0a0a0a !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
 .exploreButton:hover:not(:disabled) { border-color: #fff !important; background: #fff !important; }
-.searchInput { border-color: #28292e !important; background: #08090a !important; }
-.searchInput:focus { border-color: #45474d !important; box-shadow: none !important; }
+.searchInput { border-color: #262626 !important; background: #000 !important; }
+.searchInput:focus { border-color: #454545 !important; box-shadow: none !important; }

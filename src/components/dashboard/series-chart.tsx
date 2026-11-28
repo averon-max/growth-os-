@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { BarChart3, LineChart } from "lucide-react";
 import s from "./series-chart.module.css";
 
-/** One blue family instead of a rainbow (no purple, no pink): neighbours in a stack alternate light and dark so they stay apart. */
-export const SERIES_COLORS = ["#0090ff", "#9ccaff", "#0b5cad", "#d6eaff", "#4d8fd6", "#6e7f96", "#a0a5ae"];
-const OTHER = "#34343a";
+/** Categorical colours in fixed order, checked for contrast and colour-blind separation on black. */
+export const SERIES_COLORS = ["#0090ff", "#e93d82", "#8e4ec6", "#f76b15", "#52a9ff", "#ff6369", "#a1a1a1"];
+const OTHER = "#2e2e2e";
 
 export type SeriesDay = { date: string; values: Record<string, number> };
 
@@ -172,7 +172,7 @@ export function SeriesChart({
           {otherTotal > 0 ? (
             <li>
               <span className={s.rank}>{keys.length + 1}</span>
-              <i style={{ background: "#8a8f98" }} />
+              <i style={{ background: "#8f8f8f" }} />
               <span className={s.name}>Other</span>
               <span className={s.share}>{(otherTotal / grand * 100).toFixed(1)}%</span>
             </li>

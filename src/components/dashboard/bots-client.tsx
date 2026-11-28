@@ -7,7 +7,7 @@ import u from "./ui.module.css";
 import p from "./planner.module.css";
 import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar } from "./insights";
 
-const GROUP_COLOR: Record<string, string> = { "Search engines": "#0090ff", "AI crawlers & assistants": "#9ccaff", "SEO tools": "#0b5cad", "Other bots": "#575b62" };
+const GROUP_COLOR: Record<string, string> = { "Search engines": "#0090ff", "AI crawlers & assistants": "#8e4ec6", "SEO tools": "#e93d82", "Other bots": "#5a5a5a" };
 const isAsset = (path: string) => /^\/_next\/|\.(js|css|png|jpe?g|webp|svg|ico|woff2?|map|txt|xml)$/i.test(path);
 
 interface BotsData {
@@ -69,7 +69,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
           <KpiStrip
             items={[
               { key: "req", label: "Requests", value: t ? fmt(t.total) : "—", sub: "people and bots", color: "#0090ff" },
-              { key: "bots", label: "Verified bots", value: t ? fmt(t.bots) : "—", sub: t ? `${t.share}% of all requests` : undefined, color: "#f7f8f8" },
+              { key: "bots", label: "Verified bots", value: t ? fmt(t.bots) : "—", sub: t ? `${t.share}% of all requests` : undefined, color: "#ededed" },
               { key: "se", label: "Search engines", value: data ? fmt(g["Search engines"] ?? 0) : "—", sub: "Google, Bing and others", color: GROUP_COLOR["Search engines"] },
               { key: "ai", label: "AI crawlers", value: data ? fmt(g["AI crawlers & assistants"] ?? 0) : "—", sub: "ChatGPT, Claude, Perplexity…", color: GROUP_COLOR["AI crawlers & assistants"] },
               { key: "seo", label: "SEO tools", value: data ? fmt(g["SEO tools"] ?? 0) : "—", sub: "Ahrefs, Semrush…", color: GROUP_COLOR["SEO tools"] },
@@ -78,7 +78,7 @@ export function BotsClient({ websiteId, domain }: { websiteId: string; domain: s
           {data && (data.categories ?? []).length > 0 ? (
             <InsightGrid>
               <InsightCard title="Who crawls you" meta={t ? `${fmt(t.bots)} bot requests` : undefined}>
-                <StackBar unit="req" parts={Object.entries(g as Record<string, number>).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ key: name, label: name, value: n, color: GROUP_COLOR[name] ?? "#3e3e44", onClick: () => setTab("categories") }))} />
+                <StackBar unit="req" parts={Object.entries(g as Record<string, number>).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ key: name, label: name, value: n, color: GROUP_COLOR[name] ?? "#3a3a3a", onClick: () => setTab("categories") }))} />
               </InsightCard>
               <InsightCard title="Bot requests per day" meta={`${days} days`}>
                 <Columns height={110} unit="bot requests" cols={(data.daily ?? []).map((d) => ({ key: d.date, label: d.date.slice(5), value: d.bots, hint: `${fmt(d.total)} requests in total`, color: "#0090ff", onClick: () => setTab("daily") }))} />
