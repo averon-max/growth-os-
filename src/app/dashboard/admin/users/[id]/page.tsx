@@ -9,6 +9,9 @@ import { AdminNav, PLAN_TONE, STATUS_TONE } from "../../admin-nav";
 import a from "../../admin.module.css";
 import { PlanForm, UserActions } from "./user-actions";
 import { SectionAccess } from "./section-access";
+import { BudgetForm } from "./budget-form";
+import { allowanceFor, budgetOverride, spentBy } from "@/lib/billing/data-budget";
+import { countStores } from "@/lib/data-stores";
 import { blockedSections } from "@/lib/billing/blocked";
 import { NAV } from "@/lib/nav";
 
@@ -52,6 +55,17 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
       take: 20,
     }),
   ]);
+
+  // Spend, allowance and stored data per workspace: shows at a glance whether the account is really used.
+  type Usage = { spent: { today: number; month: number }; allow: { perDay: number; perMonth: number; custom: boolean }; override: { perDay: number | null; perMonth: number | null }; rows: number; top: string; planDay: number; planMonth: number };
+  const usage = new Map<string, Usage>(await Promise.all(user.memberships.map(async ({ workspace: w }) => {
+    const plan = PLANS[effectivePlan(w.subscription)];
+    const [spent, allow, override, stores] = await Promise.all([spentBy(w.id), allowanceFor(w.id, plan), budgetOverride(w.id), countStores(w.id).catch(() => [])]);
+    const rows = stores.reduce((n: number, x: { rows: number }) => n + x.rows, 0);
+    const top = [...stores].filter((x: { rows: number }) => x.rows > 0).sort((x: { rows: number }, y: { rows: number }) => y.rows - x.rows).slice(0, 3).map((x: { label: string; rows: number }) => `${x.label} ${x.rows.toLocaleString("en-US")}`).join(" · ");
+    return [w.id as string, { spent, allow, override, rows, top, planDay: plan.limits.dataPerDayUsd, planMonth: plan.limits.dataPerMonthUsd }] as [string, Usage];
+  })));
+  const usd = (n: number) => `$${n.toFixed(2)}`;
 
   return (
     <>
@@ -111,6 +125,20 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                       ) : null}
                       <dt>Websites</dt>
                       <dd>{sites.length ? sites.map((s) => host(s.url)).join(", ") : "None"}</dd>
+                      {(() => {
+                        const u = usage.get(w.id);
+                        if (!u) return null;
+                        return (
+                          <>
+                            <dt>Paid data</dt>
+                            <dd>{usd(u.spent.today)} today of {usd(u.allow.perDay)} · {usd(u.spent.month)} this month of {usd(u.allow.perMonth)}{u.allow.custom ? " · custom allowance" : ""}</dd>
+                            <dt>Stored data</dt>
+                            <dd>{u.rows.toLocaleString("en-US")} rows{u.top ? ` · ${u.top}` : ""}{u.rows === 0 && sites.length === 0 ? " · not using the app yet" : ""}</dd>
+                            <dt>Allowance</dt>
+                            <dd><BudgetForm workspaceId={w.id} perDay={u.override.perDay} perMonth={u.override.perMonth} planDay={u.planDay} planMonth={u.planMonth} /></dd>
+                          </>
+                        );
+                      })()}
                       {w.members.length > 1 ? (
                         <>
                           <dt>Members</dt>

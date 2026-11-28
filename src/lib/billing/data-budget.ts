@@ -168,11 +168,39 @@ export async function recordSpend(workspaceId: string, usd: number): Promise<voi
   await Promise.all([add(dayKey(workspaceId), micro, 2), add(monthKey(workspaceId), micro, 32)]);
 }
 
+/* ---- per-workspace allowance set by an admin (AppSetting "budget:<workspaceId>"), else the plan's ---- */
+
+export type BudgetOverride = { perDay: number | null; perMonth: number | null };
+const budgetKey = (ws: string) => `budget:${ws}`;
+
+export function budgetOverride(workspaceId: string): Promise<BudgetOverride> {
+  return remember(budgetKey(workspaceId), async () => {
+    const row = await prisma.appSetting.findUnique({ where: { key: budgetKey(workspaceId) } });
+    const v = (row?.value ?? {}) as Partial<BudgetOverride>;
+    const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : null);
+    return { perDay: num(v.perDay), perMonth: num(v.perMonth) };
+  });
+}
+
+/** Saves (or clears, with nulls) an admin's allowance for one workspace. */
+export async function setBudgetOverride(workspaceId: string, o: BudgetOverride): Promise<void> {
+  if (o.perDay === null && o.perMonth === null) await prisma.appSetting.deleteMany({ where: { key: budgetKey(workspaceId) } });
+  else await prisma.appSetting.upsert({ where: { key: budgetKey(workspaceId) }, create: { key: budgetKey(workspaceId), value: o }, update: { value: o } });
+  memo.delete(budgetKey(workspaceId));
+}
+
+/** The allowance that applies: the admin's override where set, otherwise the plan's. */
+export async function allowanceFor(workspaceId: string, plan: Plan): Promise<{ perDay: number; perMonth: number; custom: boolean }> {
+  const o = await budgetOverride(workspaceId);
+  return { perDay: o.perDay ?? plan.limits.dataPerDayUsd, perMonth: o.perMonth ?? plan.limits.dataPerMonthUsd, custom: o.perDay !== null || o.perMonth !== null };
+}
+
 /** A refusal message when this workspace has used its allowance, otherwise null. */
 export async function overAllowance(w: Who): Promise<string | null> {
   if (w.admin || w.content) return null;
   const { today, month: m } = await spentBy(w.workspaceId);
-  const l = w.plan.limits;
+  const a = await allowanceFor(w.workspaceId, w.plan);
+  const l = { dataPerMonthUsd: a.perMonth, dataPerDayUsd: a.perDay };
   if (m >= l.dataPerMonthUsd) return `This month's data allowance of the ${w.plan.name} plan is used. Saved data is still shown; new data resumes next month or on a higher plan.`;
   if (today >= l.dataPerDayUsd) return `Today's data allowance of the ${w.plan.name} plan is used. Saved data is still shown; new data resumes tomorrow.`;
   return null;
