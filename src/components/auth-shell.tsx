@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Inter, Inter_Tight } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import styles from "./auth.module.css";
 
 const sans = Inter({ subsets: ["latin"], variable: "--auth-sans", display: "swap" });
-const serif = Inter_Tight({ subsets: ["latin"], weight: ["600"], variable: "--auth-serif", display: "swap" });
+const serif = Newsreader({ subsets: ["latin"], variable: "--auth-serif", display: "swap" });
 
 export function AuthShell({
   title,
