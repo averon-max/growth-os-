@@ -5,7 +5,7 @@
 .links a { color: #8f8f8f; text-decoration: none; }
 .links a:hover, .links a[aria-current="page"] { color: #ededed; }
 .doc { max-width: 760px; margin: 0 auto; padding: 40px 24px 120px; font-size: 15px; line-height: 1.7; }
-.doc h1 { font-family: var(--legal-serif), Georgia, serif; font-weight: 400; font-size: 44px; letter-spacing: -0.02em; color: #ededed; margin: 0 0 8px; }
+.doc h1 { font-family: var(--legal-serif), sans-serif; font-weight: 600; font-size: 44px; letter-spacing: -0.035em; color: #ededed; margin: 0 0 8px; }
 .meta { color: #6b6b6b; font-size: 13.5px; margin-bottom: 40px; }
 .doc h2 { color: #ededed; font-size: 18px; font-weight: 600; margin: 44px 0 12px; letter-spacing: -0.01em; }
 .doc h3 { color: #e6e8eb; font-size: 15px; font-weight: 600; margin: 24px 0 8px; }

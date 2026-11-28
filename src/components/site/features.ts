@@ -8,7 +8,7 @@ export type Feature = {
   short: string;
   title: string;
   lede: string;
-  shot?: { src: string; alt: string };
+  shot?: { src: string; alt: string; w?: number; h?: number; extra?: { src: string; alt: string; w: number; h: number } };
   stats?: { value: string; label: string }[];
   points: { title: string; text: string }[];
   steps: string[];
@@ -44,7 +44,7 @@ export const FEATURES: Feature[] = [
     short: "One plan for every keyword you care about",
     title: "Plan before you publish",
     lede: "Search Console data, live rankings, your existing pages and tracked keywords in one list — grouped into what you already rank for, quick wins, and gaps with no page yet.",
-    shot: { src: "/landing/planner-v10.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps" },
+    shot: { src: "/landing/planner-v11.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps", w: 2048, h: 1110 },
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
       { title: "Gaps", text: "Searches you have no page for yet, with volume and difficulty to prioritize them." },
@@ -117,6 +117,7 @@ export const FEATURES: Feature[] = [
     slug: "backlinks",
     name: "Backlinks",
     icon: Link2,
+    shot: { src: "/landing/backlinks-v11.webp", alt: "Backlinks: link quality, link types, anchors and new linking domains", w: 1586, h: 860 },
     short: "Referring domains, links and anchors",
     title: "Know who links to you",
     lede: "Referring domains, individual links and anchor texts — from DataForSEO or free imports from Search Console, Bing and Ahrefs exports.",
@@ -137,6 +138,7 @@ export const FEATURES: Feature[] = [
     slug: "competitors",
     name: "Competitors",
     icon: Target,
+    shot: { src: "/landing/competitors-v11.webp", alt: "Competitors: tracked domains, keyword gaps and who wins your keywords", w: 1585, h: 930 },
     short: "Track rivals and the keywords they win",
     title: "Watch the sites you compete with",
     lede: "Add competitors and see their pages, ranking keywords and the gaps where they rank and you don't.",
@@ -157,6 +159,7 @@ export const FEATURES: Feature[] = [
     slug: "traffic",
     name: "Traffic & bots",
     icon: Bot,
+    shot: { src: "/landing/traffic-v11.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110, extra: { src: "/landing/bots-v11.webp", alt: "Bots and crawlers: verified bots by category and most crawled pages", w: 2048, h: 1110 } },
     short: "Visitors, countries, pages — and AI crawlers",
     title: "See who visits — people and bots",
     lede: "Audience data from Google Analytics 4 and traffic from Cloudflare, including which search engines and AI crawlers read your site.",

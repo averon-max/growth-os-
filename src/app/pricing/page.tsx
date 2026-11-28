@@ -62,17 +62,23 @@ export default async function PricingPage() {
   const prices = await planPrices();
   return (
     <SiteShell>
-      <section className={s.hero} style={{ paddingBottom: 40 }}>
+      <section className={s.hero}>
         <div className={s.container}>
           <p className={s.eyebrow}>Pricing</p>
-          <h1 className={s.h1}>Try Starter free for {TRIAL_DAYS} days</h1>
-          <p className={s.lede}>Monthly plans with no contract. Cancel anytime in Settings and keep access until the end of the period you paid for.</p>
+          <h1 className={s.h1}>
+            Simple plans.
+            <br />
+            Starter free for {TRIAL_DAYS} days.
+          </h1>
+          <div className={s.heroRow}>
+            <p className={s.lede}>Monthly plans with no contract. Cancel anytime in Settings and keep access until the end of the period you paid for.</p>
+          </div>
         </div>
       </section>
 
-      <section style={{ paddingBottom: 96 }}>
+      <section style={{ paddingTop: 72 }}>
         <div className={s.container}>
-          <div className={s.plans} style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+          <div className={s.plans}>
             {PAID_ORDER.map((id) => {
               const plan = PLANS[id];
               const featured = id === "GROWTH";
@@ -89,14 +95,14 @@ export default async function PricingPage() {
                     {highlights(id).map((h) => <li key={h}><Check size={15} strokeWidth={2.2} />{h}</li>)}
                   </ul>
                   <SubscribeButton plan={id as "STARTER" | "GROWTH" | "AUTOPILOT"} label={trial ? `Start ${TRIAL_DAYS}-day free trial` : `Choose ${plan.name}`} variant={featured ? "accent" : "light"} />
-                  <p className={s.muted} style={{ margin: "10px 0 0", fontSize: 12.5, textAlign: "center" }}>
+                  <p className={s.small} style={{ margin: "12px 0 0", fontSize: 12.5, textAlign: "center" }}>
                     {trial ? `Free for ${TRIAL_DAYS} days, then ${formatPrice(prices[id])}/month. Cancel before day ${TRIAL_DAYS} and pay nothing.` : "Billed monthly. Cancel anytime."}
                   </p>
                 </div>
               );
             })}
           </div>
-          <p className={s.muted} style={{ marginTop: 22, fontSize: 14, textAlign: "center" }}>
+          <p className={s.small} style={{ marginTop: 28, textAlign: "center" }}>
             Just looking? <Link href="/signup" style={{ color: "#ededed" }}>Create a free account</Link> with one website and the overview — no card needed.
           </p>
         </div>
@@ -104,7 +110,7 @@ export default async function PricingPage() {
 
       <section className={s.section}>
         <div className={s.container}>
-          <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side.</p></div>
+          <div className={s.sectionHead}><h2 className={s.h2}>Compare plans</h2><p className={s.muted}>Everything in each plan, side by side. Paid data you have already looked at is saved and never charged twice.</p></div>
           <div className={s.tableWrap}>
             <table className={s.table}>
               <thead><tr><th>Feature</th>{PAID_ORDER.map((id) => <th key={id}>{PLANS[id].name}</th>)}</tr></thead>
@@ -122,13 +128,24 @@ export default async function PricingPage() {
       </section>
 
       <section className={s.section}>
-        <div className={s.narrow}>
-          <h2 className={s.h2} style={{ marginBottom: 28 }}>Billing questions</h2>
+        <div className={s.container}>
+          <div className={s.faqWrap}>
+          <h2 className={s.h2}>Billing questions</h2>
+          <div>
           <div className={s.faq}>{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
-          <p className={s.muted} style={{ marginTop: 28, fontSize: 14 }}>
+          <p className={s.small} style={{ marginTop: 28 }}>
             Still have a question? <Link href="/support" style={{ color: "#ededed" }}>Contact support</Link>. See also our{" "}
             <Link href="/terms" style={{ color: "#ededed" }}>Terms</Link>.
           </p>
+          </div>
+          </div>
+        </div>
+      </section>
+      <section className={s.cta}>
+        <h2 className={s.h2}>Start ranking today.</h2>
+        <div className={s.actions}>
+          <Link href="/signup" className={s.pill}>Get started</Link>
+          <Link href="/support" className={s.pillDark}>Contact us</Link>
         </div>
       </section>
     </SiteShell>

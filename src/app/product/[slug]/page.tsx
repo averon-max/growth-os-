@@ -16,33 +16,71 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: `${f.name} · Hyprlyx`, description: f.lede, alternates: { canonical: `/product/${f.slug}` } };
 }
 
+const COMMON_FAQ = [
+  { q: "Can I try it for free?", a: "Yes. A free account includes one website and the overview, no card needed. Starter is free for 7 days and unlocks the full toolset." },
+  { q: "Does looking at the same data twice cost anything?", a: "No. Paid data is saved after the first lookup and reused until you press Refresh, so browsing your reports never spends your allowance." },
+];
+
 export default async function FeaturePage({ params }: { params: Promise<{ slug: string }> }) {
   const f = featureBySlug((await params).slug);
   if (!f) notFound();
   const i = FEATURES.findIndex((x) => x.slug === f.slug);
   const next = FEATURES[(i + 1) % FEATURES.length];
-  const Icon = f.icon;
+  const faq = [...f.faq, ...COMMON_FAQ];
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((q) => ({ "@type": "Question", name: q.q, acceptedAnswer: { "@type": "Answer", text: q.a } })),
+  };
 
   return (
     <SiteShell>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
       <section className={s.hero}>
         <div className={s.container}>
-          <p className={s.eyebrow}><Link href="/product" style={{ color: "inherit", textDecoration: "none" }}>Product</Link> / {f.name}</p>
+          <p className={s.eyebrow}>
+            <Link href="/product">Product</Link> / {f.name}
+          </p>
           <h1 className={s.h1}>{f.title}</h1>
-          <p className={s.lede}>{f.lede}</p>
-          <div className={s.actions}>
-            <Link href="/signup" className={s.pill}>Start free</Link>
-            <Link href="/pricing" className={s.textLink}>See pricing <ArrowRight size={15} /></Link>
+          <div className={s.heroRow}>
+            <p className={s.lede}>{f.lede}</p>
+            <div className={s.actions}>
+              <Link href="/signup" className={s.pill}>Start free</Link>
+              <Link href="/pricing" className={s.pillDark}>See pricing</Link>
+            </div>
           </div>
         </div>
-        <div className={s.container} style={{ marginTop: 56 }}>
-          {f.shot ? (
-            <div className={s.shot}><Image src={f.shot.src} alt={f.shot.alt} width={3200} height={2000} priority quality={90} sizes="(max-width: 1240px) 100vw, 1200px" /></div>
-          ) : f.stats ? (
-            <div className={s.stats}>{f.stats.map((st) => <div key={st.label} className={s.stat}><b>{st.value}</b><span>{st.label}</span></div>)}</div>
-          ) : null}
-        </div>
+        {f.shot ? (
+          <div className={s.stage}>
+            <div className={f.shot.extra ? s.shotPair : undefined}>
+              <div className={s.shot}>
+                <Image src={f.shot.src} alt={f.shot.alt} width={f.shot.w ?? 3200} height={f.shot.h ?? 2000} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+              </div>
+              {f.shot.extra ? (
+                <div className={s.shot}>
+                  <Image src={f.shot.extra.src} alt={f.shot.extra.alt} width={f.shot.extra.w} height={f.shot.extra.h} quality={90} sizes="(max-width: 1320px) 100vw, 800px" />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </section>
+
+      {f.stats ? (
+        <section className={s.section}>
+          <div className={s.container}>
+            <div className={s.stats}>
+              {f.stats.map((st) => (
+                <div key={st.label} className={s.stat}>
+                  <b>{st.value}</b>
+                  <span>{st.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className={s.section}>
         <div className={s.container}>
@@ -50,11 +88,11 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
             <h2 className={s.h2}>What you get</h2>
             <p className={s.muted}>{f.short}.</p>
           </div>
-          <div className={f.points.length % 3 === 0 ? s.grid3 : s.grid2}>
+          <div className={f.points.length === 4 ? s.grid4 : f.points.length % 3 === 0 ? s.grid3 : s.grid2}>
             {f.points.map((p) => (
               <div key={p.title} className={s.cell}>
-                <span className={s.cellIcon}><Icon size={16} strokeWidth={1.8} /></span>
-                <h3>{p.title}</h3><p>{p.text}</p>
+                <h3>{p.title}</h3>
+                <p>{p.text}</p>
               </div>
             ))}
           </div>
@@ -63,28 +101,64 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
 
       <section className={s.section}>
         <div className={s.container}>
-          <div className={s.sectionHead}><h2 className={s.h2}>How it works</h2><span /></div>
-          <div className={s.steps}>{f.steps.map((st) => <div key={st} className={s.step}>{st}</div>)}</div>
+          <div className={s.sectionHead}>
+            <h2 className={s.h2}>How it works</h2>
+            <p className={s.muted}>From a new account to your first results in a few minutes.</p>
+          </div>
+          <div className={s.steps}>
+            {f.steps.map((st) => (
+              <div key={st} className={s.step}>{st}</div>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className={s.section}>
-        <div className={s.narrow}>
-          <h2 className={s.h2} style={{ marginBottom: 28 }}>Questions</h2>
-          <div className={s.faq}>
-            {f.faq.map((q) => <details key={q.q}><summary>{q.q}</summary><p>{q.a}</p></details>)}
-            <details><summary>Can I try it for free?</summary><p>Yes. The free plan includes one website — no credit card needed. Upgrade when you need more.</p></details>
+        <div className={s.container}>
+          <div className={s.faqWrap}>
+            <h2 className={s.h2}>Questions</h2>
+            <div className={s.faq}>
+              {faq.map((q) => (
+                <details key={q.q}>
+                  <summary>{q.q}</summary>
+                  <p>{q.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={s.section}>
+        <div className={s.container}>
+          <div className={s.sectionHead}>
+            <h2 className={s.h2}>More in Hyprlyx</h2>
+            <div>
+              <p className={s.muted}>Every tool reads the same data, so research, plans, pages and traffic stay in step.</p>
+              <Link href={`/product/${next.slug}`} className={s.learn}>
+                Next: {next.name} <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
+          <div className={s.grid4}>
+            {FEATURES.filter((x) => x.slug !== f.slug)
+              .slice(0, 4)
+              .map((x) => (
+                <Link key={x.slug} href={`/product/${x.slug}`} className={s.cell}>
+                  <h3>{x.name}</h3>
+                  <p>{x.short}.</p>
+                  <span className={s.cellMore}>Learn more</span>
+                </Link>
+              ))}
           </div>
         </div>
       </section>
 
       <section className={s.cta}>
-        <div className={s.container}>
-          <h2 className={s.h2} style={{ fontSize: "clamp(2.2rem,4.6vw,3.5rem)" }}>Try {f.name.toLowerCase()} on your site</h2>
-          <div className={s.actions}>
-            <Link href="/signup" className={s.pill}>Start free</Link>
-            <Link href={`/product/${next.slug}`} className={s.textLink}>Next: {next.name} <ArrowRight size={15} /></Link>
-          </div>
+        <h2 className={s.h2}>Try {f.name.toLowerCase()}.</h2>
+        <div className={s.actions}>
+          <Link href="/signup" className={s.pill}>Get started</Link>
+          <Link href="/support" className={s.pillDark}>Contact us</Link>
         </div>
       </section>
     </SiteShell>

@@ -45,10 +45,10 @@
 
 .title {
   margin: 0;
-  font-family: var(--auth-serif), Georgia, serif;
+  font-family: var(--auth-serif), sans-serif;
   font-size: 32px;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.035em;
   line-height: 1.15;
 }
 .subtitle {

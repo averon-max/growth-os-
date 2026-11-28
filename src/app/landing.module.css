@@ -37,7 +37,7 @@
 .news { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 36px; padding: 4px 12px 4px 4px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 13px; text-decoration: none; transition: color 0.15s ease, border-color 0.15s ease; }
 .news:hover { border-color: rgba(255, 255, 255, 0.16); color: var(--text); }
 .newsTag { padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--text); font-size: 12px; }
-.heroTitle { max-width: 980px; margin: 0; font-family: var(--display); font-size: clamp(44px, 7vw, 84px); font-weight: 600; line-height: 1.02; letter-spacing: -0.045em; }
+.heroTitle { max-width: 1040px; margin: 0; font-family: var(--display); font-size: clamp(46px, 7.6vw, 92px); font-weight: 600; line-height: 1; letter-spacing: -0.05em; background: linear-gradient(180deg, #fff 35%, rgba(255,255,255,.6)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .heroRow { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 28px; margin-top: 32px; }
 .heroLede { max-width: 560px; margin: 0; color: var(--muted); font-size: 19px; line-height: 1.5; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -53,7 +53,7 @@
 /* Sections */
 .block { padding: 160px 0 0; }
 .blockHead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px 64px; align-items: start; }
-.blockTitle { margin: 0; font-family: var(--display); font-size: clamp(36px, 5vw, 60px); font-weight: 600; line-height: 1.05; letter-spacing: -0.035em; }
+.blockTitle { margin: 0; font-family: var(--display); font-size: clamp(36px, 5vw, 60px); font-weight: 600; line-height: 1.04; letter-spacing: -0.04em; background: linear-gradient(180deg, #fff 40%, rgba(255,255,255,.7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .blockText { max-width: 560px; margin: 0; color: var(--soft); font-size: clamp(18px, 1.8vw, 22px); line-height: 1.45; letter-spacing: -0.01em; }
 .learn { display: inline-flex; align-items: center; gap: 8px; margin-top: 28px; color: var(--muted); font-size: 16px; text-decoration: none; transition: color 0.15s ease, gap 0.2s ease; }
 .learn:hover { gap: 11px; color: var(--text); }
@@ -73,22 +73,17 @@
 .features a svg { color: var(--faint); transition: transform 0.2s ease, color 0.15s ease; }
 .features a:hover svg { color: var(--text); transform: rotate(90deg); }
 
-/* Pricing */
-.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 64px; }
-.plan { display: flex; flex-direction: column; padding: 28px; border: 1px solid var(--line); border-radius: 16px; background: #0f1011; }
-.planPopular { border-color: rgba(255, 255, 255, 0.22); }
-.planHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.planName { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 600; }
-.planTag { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--soft); font-size: 12px; font-weight: 510; }
-.price { margin: 22px 0 26px; font-family: var(--display); font-size: 44px; font-weight: 500; line-height: 1; letter-spacing: -0.03em; }
-.per { margin-left: 6px; color: var(--faint); font-family: var(--font-body, Inter, system-ui, sans-serif); font-size: 15px; letter-spacing: 0; }
-.planList { display: flex; flex: 1; flex-direction: column; gap: 11px; margin: 0 0 28px; padding: 0; list-style: none; }
-.planList li { display: flex; align-items: flex-start; gap: 10px; color: #b4b8c0; font-size: 14px; line-height: 1.5; }
-.planList svg { flex-shrink: 0; margin-top: 3px; color: var(--faint); }
+/* Opening statement: one large paragraph, the second sentence quieter (Linear-style) */
+.statement { padding: 160px 0 0; }
+.statementText { max-width: 1000px; margin: 0 0 80px; font-family: var(--display); font-size: clamp(26px, 3.4vw, 40px); font-weight: 500; line-height: 1.22; letter-spacing: -0.03em; }
+.statementText span { color: var(--faint); }
+
+/* Latest posts sit on the same rhythm as the other sections */
+.posts { padding-top: 104px; }
 
 /* Closing call to action */
 .cta { padding: 200px 24px 220px; text-align: center; }
-.ctaTitle { margin: 0; font-family: var(--display); font-size: clamp(48px, 9vw, 112px); font-weight: 600; line-height: 1; letter-spacing: -0.05em; }
+.ctaTitle { margin: 0; font-family: var(--display); font-size: clamp(48px, 9vw, 112px); font-weight: 600; line-height: 1; letter-spacing: -0.055em; background: linear-gradient(180deg, #fff 30%, rgba(255,255,255,.55)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .ctaActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 44px; }
 
 @media (max-width: 900px) {
@@ -98,7 +93,7 @@
   .blockHead { grid-template-columns: minmax(0, 1fr); }
   .stagePair { grid-template-columns: minmax(0, 1fr); }
   .stagePair .shotBack { display: none; }
-  .plans { grid-template-columns: minmax(0, 1fr); }
+  .statement { padding-top: 104px; }
   .cta { padding: 140px 24px 160px; }
 }
 @media (prefers-reduced-motion: reduce) { .learn, .features a svg { transition: none; } }
