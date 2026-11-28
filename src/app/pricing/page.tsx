@@ -8,6 +8,7 @@ import { FEATURES, PAID_ORDER, hasFeature, highlights } from "@/lib/billing/feat
 import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
 import { NAV } from "@/lib/nav";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+import { FEATURES as TOOLS } from "@/components/site/features";
 import { pageMeta, breadcrumbs, ORGANIZATION } from "@/lib/seo";
 import { SITE_URL } from "@/lib/site";
 
@@ -165,6 +166,24 @@ export default async function PricingPage() {
           </div>
         </div>
       </section>
+      <section className={s.section}>
+        <div className={s.container}>
+          <div className={s.sectionHead}>
+            <h2 className={s.h2}>Every tool, in every plan</h2>
+            <p className={s.muted}>One workspace for keyword research, rank tracking, technical SEO, competitors, backlinks, content and traffic.</p>
+          </div>
+          <div className={s.grid4}>
+            {TOOLS.map((f) => (
+              <Link key={f.slug} href={`/product/${f.slug}`} className={s.cell}>
+                <h3>{f.name}</h3>
+                <p>{f.short}.</p>
+                <span className={s.cellMore}>{f.seoTitle.split(" | ")[0].split(":")[0]}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className={s.cta}>
         <h2 className={s.h2}>Start ranking today.</h2>
         <div className={s.actions}>

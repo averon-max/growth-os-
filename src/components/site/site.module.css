@@ -110,6 +110,12 @@ a.cell:hover h3 { color: #fff; }
 .cellMore { display: inline-block; margin-top: 16px; color: var(--muted); font-size: 14px; transition: color .15s ease; }
 a.cell:hover .cellMore { color: var(--text); }
 .cellIcon { display: none; }
+@media (min-width: 901px) {
+  .grid4 .cell:nth-child(4n+1) { padding-left: 0; border-left: 0; }
+  .grid4 .cell:nth-child(n+5) { border-top: 1px solid var(--line); }
+  .grid3 .cell:nth-child(3n+1) { padding-left: 0; border-left: 0; }
+  .grid3 .cell:nth-child(n+4) { border-top: 1px solid var(--line); }
+}
 @media (max-width: 900px) {
   .grid3, .grid4 { grid-template-columns: 1fr 1fr; }
   .grid3 .cell:nth-child(2n+1), .grid4 .cell:nth-child(2n+1) { padding-left: 0; border-left: 0; }
@@ -159,6 +165,8 @@ a.cell:hover .cellMore { color: var(--text); }
 .compareRow > :first-child { color: var(--text); font-weight: 500; }
 .compareRow > :nth-child(2) { color: var(--faint); }
 .compareRow > :nth-child(3) { color: var(--soft); }
+.compareLink { color: var(--soft); text-decoration: none; transition: color .15s ease; }
+.compareLink:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .compareHead { color: var(--muted) !important; font-size: 13px; font-weight: 400 !important; }
 @media (max-width: 700px) { .compareRow { grid-template-columns: 1fr; gap: 4px; } }
 

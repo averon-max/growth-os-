@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+import { FEATURES } from "@/components/site/features";
 import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta("About Hyprlyx: SEO Software Built on Real Data", "Why we built Hyprlyx, an SEO workspace that turns Search Console, traffic and keyword data into a short, honest list of what to do next — and how we treat your data.", "/about");
@@ -77,6 +78,24 @@ export default function AboutPage() {
                 <h3>{t}</h3>
                 <p>{d}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={s.section}>
+        <div className={s.container}>
+          <div className={s.sectionHead}>
+            <h2 className={s.h2}>Every tool, in every plan</h2>
+            <p className={s.muted}>One workspace for keyword research, rank tracking, technical SEO, competitors, backlinks, content and traffic.</p>
+          </div>
+          <div className={s.grid4}>
+            {FEATURES.map((f) => (
+              <Link key={f.slug} href={`/product/${f.slug}`} className={s.cell}>
+                <h3>{f.name}</h3>
+                <p>{f.short}.</p>
+                <span className={s.cellMore}>{f.seoTitle.split(" | ")[0].split(":")[0]}</span>
+              </Link>
             ))}
           </div>
         </div>

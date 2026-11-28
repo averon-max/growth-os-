@@ -181,18 +181,20 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
               <Link href={`/product/${next.slug}`} className={s.learn}>
                 Next: {next.name} <ArrowRight size={16} />
               </Link>
+              <p className={s.small} style={{ marginTop: 16 }}>
+                See <Link href="/pricing" style={{ color: "var(--soft)" }}>plans and pricing</Link>, the <Link href="/product" style={{ color: "var(--soft)" }}>full product overview</Link> or{" "}
+                <Link href="/blog" style={{ color: "var(--soft)" }}>SEO guides on our blog</Link>.
+              </p>
             </div>
           </div>
           <div className={s.grid4}>
-            {FEATURES.filter((x) => x.slug !== f.slug)
-              .slice(0, 4)
-              .map((x) => (
-                <Link key={x.slug} href={`/product/${x.slug}`} className={s.cell}>
-                  <h3>{x.name}</h3>
-                  <p>{x.short}.</p>
-                  <span className={s.cellMore}>Learn more</span>
-                </Link>
-              ))}
+            {FEATURES.filter((x) => x.slug !== f.slug).map((x) => (
+              <Link key={x.slug} href={`/product/${x.slug}`} className={s.cell}>
+                <h3>{x.name}</h3>
+                <p>{x.short}.</p>
+                <span className={s.cellMore}>{x.seoTitle.split(" | ")[0].split(":")[0]}</span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

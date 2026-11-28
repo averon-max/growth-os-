@@ -59,7 +59,7 @@ export const FEATURES: Feature[] = [
     seoDescription: "Plan your content from real data: Search Console, live rankings and tracked keywords grouped into quick wins, clusters and gaps with no page yet.",
     shot: { src: "/landing/planner-v11.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps", w: 2048, h: 1110 },
     gallery: [
-      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v16.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 2400, h: 1500 },
+      { title: "Your traffic, next to the plan", text: "The overview keeps Search Console clicks, impressions and positions beside traffic and countries, so you can see whether last month's pages moved anything.", src: "/landing/overview-v17.webp", alt: "Hyprlyx overview with Google Search, traffic and countries", w: 1586, h: 992 },
     ],
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
@@ -82,7 +82,7 @@ export const FEATURES: Feature[] = [
     seoDescription: "Track Google rankings, impressions and clicks for every page and query, with the keywords closest to page one surfaced first. Free to start.",
     shot: { src: "/landing/search-console-v12.webp", alt: "Search Console report: queries, impressions, clicks, average position, visibility chart and easiest wins", w: 3200, h: 1760 },
     gallery: [
-      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v16.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 2400, h: 1500 },
+      { title: "Rankings on your overview", text: "Clicks, impressions and average position from Search Console, with the trend for the period you choose, on the first screen you open.", src: "/landing/overview-v17.webp", alt: "Overview with Google Search clicks, impressions and average position", w: 1586, h: 992 },
     ],
     points: [
       { title: "Visibility over time", text: "Impressions, clicks and position on one chart for 7, 28 or 90 days." },
@@ -121,7 +121,7 @@ export const FEATURES: Feature[] = [
     slug: "audit",
     name: "Site audit",
     icon: ScanSearch,
-    shot: { src: "/landing/overview-v16.webp", alt: "Overview with the SEO score and issues by severity next to traffic and rankings", w: 2400, h: 1500 },
+    shot: { src: "/landing/overview-v17.webp", alt: "Overview with the SEO score and issues by severity next to traffic and rankings", w: 1586, h: 992 },
     short: "Technical SEO checks with clear fixes",
     title: "Find what's holding your site back",
     lede: "Hyprlyx crawls your site and checks titles, descriptions, headings, canonicals, indexability, internal links, images and speed — then ranks issues by impact.",

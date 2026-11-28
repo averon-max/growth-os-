@@ -110,30 +110,32 @@ const STEPS: [StepArtKind, string, string][] = [
   ["publish", "Publish and measure", "Brief, draft, approve and publish — then follow the new page in rankings and traffic."],
 ];
 
-const COMPARE = [
-  ["Keyword ideas", "A separate keyword tool", "Keyword research with Google Trends"],
-  ["What to write next", "A spreadsheet you keep by hand", "Keyword Planner: quick wins, gaps, clusters"],
-  ["Rankings", "Search Console in another tab", "Search Console inside each report"],
-  ["Traffic", "Analytics and Cloudflare dashboards", "One traffic report with a source switch"],
-  ["AI crawlers", "Raw server logs", "Verified bots by category and page"],
-  ["Competitors and links", "Another paid suite", "Competitors and backlinks, saved and reused"],
-  ["Drafts", "A writer tool and copy-paste", "Briefs and drafts from what ranks, with approval"],
+const COMPARE: [string, string, string, string][] = [
+  ["Keyword ideas", "A separate keyword tool", "Keyword research with Google Trends", "/product/keywords"],
+  ["What to write next", "A spreadsheet you keep by hand", "Keyword Planner: quick wins, gaps, clusters", "/product/planner"],
+  ["Rankings", "Search Console in another tab", "Rank tracking from Search Console", "/product/rankings"],
+  ["Technical SEO", "A desktop crawler", "Site audit with prioritized fixes", "/product/audit"],
+  ["Traffic", "Analytics and Cloudflare dashboards", "One traffic report with a source switch", "/product/traffic"],
+  ["AI crawlers", "Raw server logs", "Verified bots by category and page", "/product/traffic"],
+  ["Competitors", "Another paid suite", "Competitor analysis and keyword gaps", "/product/competitors"],
+  ["Backlinks", "A separate link tool", "Backlink checker with spam score", "/product/backlinks"],
+  ["Drafts", "A writer tool and copy-paste", "Briefs and AI drafts from what ranks", "/product/content"],
 ];
 
 const PAID = ["STARTER", "GROWTH", "AUTOPILOT"] as const;
 const n = (v: number) => v.toLocaleString("en-US");
 
-const FAQ: [string, string][] = [
-  ["What is Hyprlyx?", "An SEO workspace that brings keyword research, Search Console, traffic, competitors, backlinks and AI-written drafts together, so you can see where you stand and decide what to publish next."],
-  ["Who is it for?", `Founders and marketers growing one site, content teams publishing every week, and agencies running many sites — Autopilot covers up to ${n(PLANS.AUTOPILOT.limits.websites)} websites.`],
-  ["Where does the data come from?", "Google Search Console for impressions, clicks and positions; Google Analytics 4 and Cloudflare for visits, countries and crawlers; DataForSEO for keyword, SERP, competitor and backlink data; Google Trends for rising searches."],
+const FAQ: [string, string, string?][] = [
+  ["What is Hyprlyx?", "An SEO workspace that brings keyword research, Search Console, traffic, competitors, backlinks and AI-written drafts together, so you can see where you stand and decide what to publish next.", "/product"],
+  ["Who is it for?", `Founders and marketers growing one site, content teams publishing every week, and agencies running many sites — Autopilot covers up to ${n(PLANS.AUTOPILOT.limits.websites)} websites.`, "/product"],
+  ["Where does the data come from?", "Google Search Console for impressions, clicks and positions; Google Analytics 4 and Cloudflare for visits, countries and crawlers; DataForSEO for keyword, SERP, competitor and backlink data; Google Trends for rising searches.", "/product/rankings"],
   ["Do I need Search Console or Google Analytics?", "No, but connecting them unlocks your real rankings and traffic. Both are free Google products, and Hyprlyx only reads from them."],
-  ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. Cancel before it ends in Settings → Billing and you pay nothing.`],
-  ["How many websites and keywords can I track?", `Starter: ${n(PLANS.STARTER.limits.websites)} website and ${n(PLANS.STARTER.limits.trackedKeywords)} tracked keywords. Growth: ${n(PLANS.GROWTH.limits.websites)} websites and ${n(PLANS.GROWTH.limits.trackedKeywords)}. Autopilot: ${n(PLANS.AUTOPILOT.limits.websites)} websites and ${n(PLANS.AUTOPILOT.limits.trackedKeywords)}.`],
-  ["Does the AI publish to my site?", "No. The writer prepares briefs and drafts; a person reviews and approves every page. Direct publishing to WordPress and other CMSs is coming soon."],
-  ["Can I see AI crawlers like GPTBot or ClaudeBot?", "Yes. Connect Cloudflare and Hyprlyx shows verified search and AI crawlers, how often they visit and which pages they read."],
+  ["How does the free trial work?", `Starter is free for ${TRIAL_DAYS} days. You add a card at checkout and nothing is charged during the trial. Cancel before it ends in Settings → Billing and you pay nothing.`, "/pricing"],
+  ["How many websites and keywords can I track?", `Starter: ${n(PLANS.STARTER.limits.websites)} website and ${n(PLANS.STARTER.limits.trackedKeywords)} tracked keywords. Growth: ${n(PLANS.GROWTH.limits.websites)} websites and ${n(PLANS.GROWTH.limits.trackedKeywords)}. Autopilot: ${n(PLANS.AUTOPILOT.limits.websites)} websites and ${n(PLANS.AUTOPILOT.limits.trackedKeywords)}.`, "/pricing"],
+  ["Does the AI publish to my site?", "No. The writer prepares briefs and drafts; a person reviews and approves every page. Direct publishing to WordPress and other CMSs is coming soon.", "/product/content"],
+  ["Can I see AI crawlers like GPTBot or ClaudeBot?", "Yes. Connect Cloudflare and Hyprlyx shows verified search and AI crawlers, how often they visit and which pages they read.", "/product/traffic"],
   ["Which countries and languages are supported?", "Any market and language DataForSEO covers. You choose the market for each website."],
-  ["Can I delete my data?", "Yes. Settings → Data shows everything stored for your workspace, and each kind can be deleted with one button. You can also delete your whole account."],
+  ["Can I delete my data?", "Yes. Settings → Data shows everything stored for your workspace, and each kind can be deleted with one button. You can also delete your whole account.", "/about"],
   ["Can I cancel anytime?", "Yes. Cancel in Settings → Billing and keep access until the end of the period you paid for. No contracts."],
 ];
 
@@ -193,7 +195,7 @@ export default async function LandingPage() {
           </div>
           <div className={styles.heroStage}>
             <div className={styles.heroShot}>
-              <Image src="/landing/overview-v16.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={2400} height={1500} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
+              <Image src="/landing/overview-v17.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={1586} height={992} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
             </div>
           </div>
         </section>
@@ -304,11 +306,11 @@ export default async function LandingPage() {
                 <span className={s.compareHead}>Usually</span>
                 <span className={s.compareHead}>In Hyprlyx</span>
               </div>
-              {COMPARE.map(([job, before, after]) => (
+              {COMPARE.map(([job, before, after, href]) => (
                 <div key={job} className={s.compareRow}>
                   <span>{job}</span>
                   <span>{before}</span>
-                  <span>{after}</span>
+                  <Link href={href} className={s.compareLink}>{after}</Link>
                 </div>
               ))}
             </div>
@@ -407,10 +409,18 @@ export default async function LandingPage() {
                 </p>
               </div>
               <div className={s.faq}>
-                {FAQ.map(([q, a]) => (
+                {FAQ.map(([q, a, href]) => (
                   <details key={q}>
                     <summary>{q}</summary>
-                    <p>{a}</p>
+                    <p>
+                      {a}
+                      {href ? (
+                        <>
+                          {" "}
+                          <Link href={href}>Learn more</Link>
+                        </>
+                      ) : null}
+                    </p>
                   </details>
                 ))}
               </div>
