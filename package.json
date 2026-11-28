@@ -9,6 +9,11 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "post:new": "node scripts/post.mjs new",
+    "post:paste": "node scripts/post.mjs paste",
+    "post:check": "node scripts/post.mjs check",
+    "post:publish": "node scripts/post.mjs publish",
+    "post:list": "node scripts/post.mjs list",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -17,10 +17,11 @@ export function StepArt({ kind }: { kind: StepArtKind }) {
 
 /* Three sources on the left; a pulse travels along each line into Hyprlyx, then the source shows a check. */
 function Connect() {
+  // Line icons (lucide shapes): search for Search Console, columns for Analytics, a cloud for Cloudflare.
   const rows = [
-    { name: "Search Console", y: 30 },
-    { name: "Analytics 4", y: 75 },
-    { name: "Cloudflare", y: 120 },
+    { name: "Search Console", y: 30, icon: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></> },
+    { name: "Analytics 4", y: 75, icon: <><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></> },
+    { name: "Cloudflare", y: 120, icon: <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /> },
   ];
   return (
     <div className={a.panel}>
@@ -34,14 +35,17 @@ function Connect() {
       </svg>
       {rows.map((r, i) => (
         <div key={r.name} className={a.chip} style={{ top: r.y - 13, ["--d" as string]: `${i * 0.7}s` }}>
-          <span className={a.chipDot} />
+          <svg className={a.chipIcon} viewBox="0 0 24 24" width="12" height="12">{r.icon}</svg>
           {r.name}
           <svg className={a.chipOk} viewBox="0 0 16 16" width="13" height="13">
             <path d="M4 8.4 6.8 11 12 5.4" />
           </svg>
         </div>
       ))}
-      <div className={a.hub}>h</div>
+      <div className={a.hub}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/mark-v2.webp" alt="" width={26} height={26} />
+      </div>
     </div>
   );
 }
@@ -58,12 +62,13 @@ function Serp() {
       <div className={a.results}>
         {others.map((o, i) => (
           <div key={o} className={a.res} style={{ ["--i" as string]: i }}>
-            <span className={a.fav} />
+            <svg className={a.fav} viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="9" /><path d="M12 3a13 13 0 0 0 0 18 13 13 0 0 0 0-18" /><path d="M3 12h18" /></svg>
             <span className={a.resText}><b>{o}</b><i /></span>
           </div>
         ))}
         <div className={`${a.res} ${a.mine}`}>
-          <span className={a.favMine}>h</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={a.favMine} src="/brand/mark-v2.webp" alt="" width={12} height={12} />
           <span className={a.resText}><b>nova.example</b><i /></span>
           <span className={a.rank}><span>#4</span><span>#1</span></span>
         </div>
@@ -80,12 +85,15 @@ function Chart() {
     <div className={a.panel}>
       <div className={a.chartHead}>
         <span>Clicks · 28 days</span>
-        <span className={a.gain}>↑ 38%</span>
+        <span className={a.gain}>
+          <svg viewBox="0 0 24 24" width="12" height="12"><path d="m22 7-8.5 8.5-5-5L2 17" /><path d="M16 7h6v6" /></svg>
+          38%
+        </span>
       </div>
       <svg className={a.chart} viewBox="0 0 300 140" preserveAspectRatio="none">
         <line x1="0" x2="300" y1="128.5" y2="128.5" className={a.base} />
         {bars.map((v, i) => (
-          <rect key={i} className={a.bar} x={6 + i * 24} y={128 - v * 1.1} width="16" height={v * 1.1} rx="3" style={{ ["--i" as string]: i }} />
+          <rect key={i} className={i === bars.length - 1 ? `${a.bar} ${a.barNow}` : a.bar} x={6 + i * 24} y={128 - v * 1.1} width="16" height={v * 1.1} rx="3" style={{ ["--i" as string]: i }} />
         ))}
         <polyline className={a.trend} points={pts} pathLength={100} />
         <circle className={a.dot} cx={14 + 11 * 24} cy={128 - 84 * 1.1} r="4.5" />

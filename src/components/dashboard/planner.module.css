@@ -144,3 +144,8 @@
 .introText { max-width: 760px; margin: 0 0 16px; color: #8f8f8f; font-size: 13.5px; line-height: 1.6; }
 @keyframes introIn { from { opacity: 0.4; } }
 @media (prefers-reduced-motion: reduce) { .intro { animation: none; } }
+
+/* Research: Google Trends around the site's biggest topics */
+.trends { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.trendsHead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #8f8f8f; font-size: 13px; }
+.trendsHead > span { margin-right: 4px; }

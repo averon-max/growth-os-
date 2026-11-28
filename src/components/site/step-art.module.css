@@ -81,3 +81,29 @@
   .trackFill { width: calc(100% - 12px); }
   .stepName { color: #ededed; }
 }
+
+/* ===== v2: the same look as the product cards on the page — a grid backdrop, a crisp panel floating on it,
+   line icons instead of dots, the real Hyprlyx mark, neutral bars with one accent. ===== */
+.art {
+  margin: 0 0 20px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #050505;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+.panel { border-color: #262626; background: #0a0a0a; box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.8); }
+.chip { background: #111111; border-color: #262626; color: #ededed; }
+.chipIcon { flex: none; fill: none; stroke: #8f8f8f; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: iconOn 6s var(--d) infinite; }
+@keyframes iconOn { 0%, 22% { stroke: #8f8f8f; } 26%, 90% { stroke: #52a9ff; } 100% { stroke: #8f8f8f; } }
+.hub { width: 40px; height: 40px; margin-top: -20px; padding: 0; overflow: hidden; border-color: #2e2e2e; background: #000; }
+.hub img { display: block; width: 26px; height: 26px; border-radius: 6px; }
+.fav { width: 12px; height: 12px; border-radius: 0; background: none; fill: none; stroke: #6b6b6b; stroke-width: 1.8; }
+.favMine { display: block; width: 12px; height: 12px; border-radius: 3px; background: none; }
+.gain { display: inline-flex; align-items: center; gap: 4px; color: #ededed; }
+.gain svg { fill: none; stroke: #30a46c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.bar { fill: #262626; }
+.barNow { fill: #0090ff; }
+.doc { border-color: #262626; background: #111111; }
+@media (prefers-reduced-motion: reduce) { .chipIcon { animation: none; stroke: #52a9ff; } }

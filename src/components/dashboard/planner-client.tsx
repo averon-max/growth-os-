@@ -1,13 +1,14 @@
 "use client";
 import { useUrlTab } from "@/lib/url-tab";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { readCache, writeCache } from "@/lib/client-cache";
 import { Loader2, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
 import type { PlannerKeyword, PlannerReport } from "@/lib/planner/analyze";
 import { WriterButton } from "./writer-button";
 import { DetailDrawer, type DrawerData } from "./detail-drawer";
 import { KeywordCard } from "./keyword-card";
-import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar, PALETTE } from "./insights";
+import { TrendingQueries, type TrendingData } from "./keyword-suggestions";
+import { BarList, Columns, InsightCard, InsightGrid, KpiStrip, StackBar, PALETTE, TONE } from "./insights";
 import u from "./ui.module.css";
 import p from "./planner.module.css";
 
@@ -207,6 +208,10 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
     return () => { off = true; };
   }, [sel?.serpFor, websiteId]);
   const [card, setCard] = useState<string | null>(null);
+  // Research tab: Google Trends for one of the site's biggest topics (free, cached a week on the server).
+  const [trendSeed, setTrendSeed] = useState<string | null>(null);
+  const [trends, setTrends] = useState<TrendingData | null>(null);
+  const [trendsBusy, setTrendsBusy] = useState(false);
   const openKw = (k: PlannerKeyword) => setCard(k.keyword);
   const openKwDetails = (k: PlannerKeyword) => setSel({
     title: k.keyword, serpFor: { keyword: k.keyword, volume: k.volume ?? 0 }, subtitle: `${k.intent} · cluster “${k.cluster}”`,
@@ -264,6 +269,25 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
     const active = CHIPS.filter((c) => chips.includes(c.id));
     return report.keywords.filter((k) => (ql === "" || k.keyword.includes(ql) || k.cluster === ql) && active.every((c) => c.test(k)));
   }, [report, chips, q]);
+
+  const trendSeeds = useMemo(() => {
+    if (!report) return [] as string[];
+    const fromClusters = [...report.clusters].sort((a, b) => b.volume - a.volume).map((c) => c.name);
+    const fromKeywords = [...report.keywords].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0)).map((k) => k.keyword);
+    return [...new Set([...fromClusters, ...fromKeywords].filter((x) => x && x.length <= 60))].slice(0, 5);
+  }, [report]);
+  const seed = trendSeed ?? trendSeeds[0] ?? null;
+  useEffect(() => {
+    if (tab !== "research" || !seed) return;
+    let off = false;
+    setTrendsBusy(true);
+    fetch(`/api/trends/related?q=${encodeURIComponent(seed)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: TrendingData | null) => { if (!off) setTrends(d ? { topQueries: d.topQueries ?? [], risingQueries: d.risingQueries ?? [] } : null); })
+      .catch(() => { if (!off) setTrends(null); })
+      .finally(() => { if (!off) setTrendsBusy(false); });
+    return () => { off = true; };
+  }, [tab, seed]);
 
   const t = report?.totals;
   const wins = report ? report.keywords.filter((k) => (k.position === null ? false : k.position >= 4 && k.position <= 20) && (k.volume ?? 0) > 0) : [];
@@ -380,16 +404,129 @@ export function PlannerClient({ websiteId, workspaceId, domain }: { websiteId: s
             },
             research: {
               title: "Research",
-              text: "Start from any seed keyword, or from what your competitors rank for and you don't. Track the ideas worth a page and they join your plan.",
+              text: "What people search around your biggest topics right now, from Google Trends, then research any seed keyword below. Click a search to see its numbers and track it.",
               tiles: [],
             },
           };
           const it = INTRO[tab];
+          // Each tab has its own charts, built from the same analysis (no extra requests).
+          const count = <T,>(xs: T[], key: (x: T) => string | null) => {
+            const m = new Map<string, number>();
+            for (const x of xs) { const k = key(x); if (k) m.set(k, (m.get(k) ?? 0) + 1); }
+            return [...m.entries()].sort((a, b) => b[1] - a[1]);
+          };
+          const posCols = (xs: (number | null)[]) => [
+            { key: "a", label: "1–3", value: xs.filter((n) => n !== null && n < 4).length, color: PALETTE[0] },
+            { key: "b", label: "4–10", value: xs.filter((n) => n !== null && n >= 4 && n < 11).length, color: PALETTE[0] },
+            { key: "c", label: "11–20", value: xs.filter((n) => n !== null && n >= 11 && n <= 20).length, color: PALETTE[0] },
+            { key: "d", label: "21+", value: xs.filter((n) => n !== null && n > 20).length, color: PALETTE[0] },
+            { key: "e", label: "Not ranking", value: xs.filter((n) => n === null).length, color: "#3a3a3a" },
+          ];
+          const kdCols = (xs: (number | null)[]) => [
+            { key: "easy", label: "Easy 0–29", value: xs.filter((n) => n !== null && n < 30).length, color: TONE.good },
+            { key: "mid", label: "Medium 30–59", value: xs.filter((n) => n !== null && n >= 30 && n < 60).length, color: TONE.warn },
+            { key: "hard", label: "Hard 60+", value: xs.filter((n) => n !== null && n >= 60).length, color: TONE.bad },
+            { key: "none", label: "No data", value: xs.filter((n) => n === null).length, color: "#3a3a3a" },
+          ];
+          const byVolume = (xs: PlannerKeyword[]) => [...xs].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0)).slice(0, 6)
+            .map((k) => ({ key: k.keyword, label: k.keyword, value: k.volume ?? 0, onClick: () => openKw(k) }));
+          const intentParts = (xs: PlannerKeyword[]) => intents.map((name, i) => ({ key: name, label: name, value: xs.filter((k) => k.intent === name).length, color: PALETTE[i] }));
+          const CHARTS: Partial<Record<Exclude<Tab, "keywords">, ReactNode>> = report ? {
+            wins: (
+              <InsightGrid>
+                <InsightCard title="Distance to the top 3" meta="current position">
+                  <Columns unit="keywords" cols={[
+                    { key: "a", label: "4–6", value: wins.filter((k) => (k.position ?? 0) < 7).length, color: PALETTE[0] },
+                    { key: "b", label: "7–10", value: wins.filter((k) => (k.position ?? 0) >= 7 && (k.position ?? 0) < 11).length, color: PALETTE[0] },
+                    { key: "c", label: "11–15", value: wins.filter((k) => (k.position ?? 0) >= 11 && (k.position ?? 0) < 16).length, color: PALETTE[4] },
+                    { key: "d", label: "16–20", value: wins.filter((k) => (k.position ?? 0) >= 16).length, color: PALETTE[4] },
+                  ]} />
+                </InsightCard>
+                <InsightCard title="Biggest by search volume" meta="per month">
+                  <BarList empty="No quick wins yet." rows={byVolume(wins)} />
+                </InsightCard>
+                <InsightCard title="Pages holding them">
+                  <BarList empty="No pages yet." unit="kw" rows={count<PlannerKeyword>(wins, (k) => (k.page ? short(k.page) : null)).slice(0, 6).map(([path, n]) => ({ key: path, label: path, value: n }))} />
+                </InsightCard>
+              </InsightGrid>
+            ),
+            pages: (
+              <InsightGrid>
+                <InsightCard title="Clicks by page" meta="last 28 days">
+                  <BarList empty="No clicks yet." rows={[...(report.pages)].filter((pg) => pg.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 6).map((pg) => ({ key: pg.url, label: pg.path, value: pg.clicks, hint: pg.url }))} />
+                </InsightCard>
+                <InsightCard title="Keywords per page">
+                  <Columns unit="pages" cols={[
+                    { key: "0", label: "0", value: report.pages.filter((pg) => pg.keywords === 0).length, color: "#3a3a3a" },
+                    { key: "1", label: "1–2", value: report.pages.filter((pg) => pg.keywords >= 1 && pg.keywords <= 2).length, color: PALETTE[0] },
+                    { key: "3", label: "3–5", value: report.pages.filter((pg) => pg.keywords >= 3 && pg.keywords <= 5).length, color: PALETTE[0] },
+                    { key: "6", label: "6–10", value: report.pages.filter((pg) => pg.keywords >= 6 && pg.keywords <= 10).length, color: PALETTE[0] },
+                    { key: "11", label: "11+", value: report.pages.filter((pg) => pg.keywords > 10).length, color: PALETTE[0] },
+                  ]} />
+                </InsightCard>
+                <InsightCard title="Best position of each page">
+                  <StackBar unit="pages" parts={posCols(report.pages.map((pg) => pg.bestPosition)).map((c, i) => ({ key: c.key, label: c.label, value: c.value, color: c.key === "e" ? "#3a3a3a" : PALETTE[[0, 4, 2, 3][i]] }))} />
+                </InsightCard>
+              </InsightGrid>
+            ),
+            gaps: (
+              <InsightGrid>
+                <InsightCard title="Biggest gaps" meta="per month">
+                  <BarList empty="No gaps: every search has a page." rows={byVolume(gaps)} />
+                </InsightCard>
+                <InsightCard title="How hard they are" meta="keyword difficulty">
+                  <Columns unit="keywords" cols={kdCols(gaps.map((k) => k.kd))} />
+                </InsightCard>
+                <InsightCard title="What searchers want" meta={`${gaps.length} gaps`}>
+                  <StackBar unit="kw" parts={intentParts(gaps)} />
+                </InsightCard>
+              </InsightGrid>
+            ),
+            cannibal: (
+              <InsightGrid>
+                <InsightCard title="Most split searches" meta="pages competing">
+                  <BarList empty="Nothing is split." unit="pages" rows={[...cannibal].sort((a, b) => b.pageCount - a.pageCount || b.clicks - a.clicks).slice(0, 6).map((k) => ({ key: k.keyword, label: k.keyword, value: k.pageCount, onClick: () => openKw(k) }))} />
+                </InsightCard>
+                <InsightCard title="Pages that compete most">
+                  <BarList empty="Nothing is split." unit="searches" rows={count<string>(cannibal.flatMap((k: PlannerKeyword) => k.pages), (u2) => short(u2)).slice(0, 6).map(([path, n]) => ({ key: path, label: path, value: n }))} />
+                </InsightCard>
+                <InsightCard title="Where split searches rank">
+                  <Columns unit="searches" cols={posCols(cannibal.map((k) => k.position))} />
+                </InsightCard>
+              </InsightGrid>
+            ),
+            clusters: (
+              <InsightGrid>
+                <InsightCard title="Largest topics" meta="search volume per month">
+                  <BarList empty="No clusters yet." rows={[...clusters].sort((a, b) => b.volume - a.volume).slice(0, 6).map((c) => ({ key: c.name, label: c.name, value: c.volume, onClick: () => { setQ(c.name); setChips([]); setTab("keywords"); } }))} />
+                </InsightCard>
+                <InsightCard title="How hard each topic is" meta="average difficulty">
+                  <Columns unit="topics" cols={kdCols(clusters.map((c) => c.avgKd))} />
+                </InsightCard>
+                <InsightCard title="Where topics rank" meta="average position">
+                  <Columns unit="topics" cols={posCols(clusters.map((c) => c.avgPosition))} />
+                </InsightCard>
+              </InsightGrid>
+            ),
+          } : {};
           return (
             <div className={p.intro}>
               <h2 className={p.introTitle}>{it.title}</h2>
               <p className={p.introText}>{it.text}</p>
               {report && it.tiles.length ? <KpiStrip items={it.tiles} /> : null}
+              {tab !== "research" ? CHARTS[tab] ?? null : report && seed ? (
+                <div className={p.trends}>
+                  <div className={p.trendsHead}>
+                    <span>Google Trends for</span>
+                    {trendSeeds.map((x) => (
+                      <button key={x} type="button" className={p.chip} data-on={x === seed ? "true" : "false"} onClick={() => setTrendSeed(x)}>{x}</button>
+                    ))}
+                  </div>
+                  {trendsBusy && !trends ? <div className={p.empty}>Loading Google Trends…</div>
+                    : trends && (trends.risingQueries.length || trends.topQueries.length) ? <TrendingQueries trending={trends} onPick={(q2) => setCard(q2)} />
+                    : <div className={p.empty}>Google Trends has nothing for “{seed}” yet. Pick another topic.</div>}
+                </div>
+              ) : null}
             </div>
           );
         }

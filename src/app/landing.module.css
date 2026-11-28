@@ -212,3 +212,8 @@
 }
 .heroShot img { border: 1px solid rgba(255, 255, 255, 0.1); border-bottom: 0; border-radius: 10px 10px 0 0; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.9); }
 @media (max-width: 700px) { .heroShot { padding: 16px 16px 0; } }
+
+/* Steps: the animation sits on the same grid backdrop as the cards, edge to edge at the top of the card. */
+.stepCard { padding: 0 0 26px; overflow: hidden; }
+.stepCard > b, .stepCard > small { margin-left: 22px; margin-right: 22px; }
+.stepCard > b { margin-top: 0; }
