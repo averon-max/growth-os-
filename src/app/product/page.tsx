@@ -4,16 +4,32 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
 import { FEATURES, INTEGRATIONS } from "@/components/site/features";
+import { pageMeta, breadcrumbs } from "@/lib/seo";
+import { SITE_URL } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Product · Hyprlyx",
-  description: "Keyword research, Keyword Planner, rankings, content, site audit, backlinks, competitors and traffic in one SEO workspace.",
-  alternates: { canonical: "/product" },
-};
+export const metadata: Metadata = pageMeta(
+  "SEO Tools: Keyword Research, Audit & Backlinks | Hyprlyx",
+  "All the SEO tools a team needs in one workspace: keyword research, keyword planner, rank tracking, AI writer, site audit, backlinks, competitors and AI crawler traffic.",
+  "/product",
+);
 
 export default function ProductPage() {
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "ItemList",
+              name: "Hyprlyx SEO tools",
+              itemListElement: FEATURES.map((f, i) => ({ "@type": "ListItem", position: i + 1, name: f.name, url: `${SITE_URL}/product/${f.slug}` })),
+            },
+            breadcrumbs([{ name: "Home", path: "/" }, { name: "Product", path: "/product" }]),
+          ]),
+        }}
+      />
       <section className={s.hero}>
         <div className={s.container}>
           <p className={s.eyebrow}>Product</p>

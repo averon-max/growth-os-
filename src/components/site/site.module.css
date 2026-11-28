@@ -200,7 +200,8 @@ a.cell:hover .cellMore { color: var(--text); }
 /* footer — Linear-style: logo on the left, five quiet columns, legal links at the bottom */
 .footer { border-top: 1px solid rgba(255,255,255,.08); }
 .footerGrid { display: grid; grid-template-columns: 1.4fr repeat(5, minmax(0,1fr)); gap: 40px 24px; padding: 64px 0 80px; }
-.footerLogo { align-self: start; color: #f7f8f8; font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
+.footerAvatar { display: block; width: 28px; height: 28px; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.1); }
+.footerLogo { display: inline-flex; align-items: center; gap: 10px; align-self: start; color: #f7f8f8; font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
 .footerCol h3 { margin: 0 0 20px; color: #f7f8f8; font-size: 13px; font-weight: 510; }
 .footerCol ul { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
 .footerCol a { color: #8a8f98; font-size: 13px; text-decoration: none; transition: color .12s ease; }

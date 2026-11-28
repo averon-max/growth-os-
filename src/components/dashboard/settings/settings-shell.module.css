@@ -14,3 +14,13 @@
 /* The sidebar now shows the Settings sections (Vercel style), so the page has no second menu. */
 .nav { display: none !important; }
 .frame { display: block !important; max-width: 960px; }
+
+/* General uses the shared list rows; these lock them to the same card look as Account, Billing and Data (settings-ui.ts). */
+.card { overflow: hidden !important; margin: 0 !important; border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.card:hover { border-color: #1f1f1f !important; }
+.cardHead { padding: 16px 20px !important; border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
+.cardHead > span:first-child { color: #ededed !important; font-size: 14px !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.cardRow { padding: 14px 20px !important; border-bottom: 1px solid #141414 !important; }
+.cardRow:last-child { border-bottom: 0 !important; }
+.cardRow:hover { background: transparent !important; }
+.title { font-size: 24px; font-weight: 600; }

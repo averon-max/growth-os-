@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { card, row, select, btn, rowTitle, rowHelp } from "@/components/dashboard/settings/settings-ui";
 
 type Tier = { key: string; label: string; help: string; def: number; min: number; max: number; allowForever: boolean; toggle?: boolean };
 const PRESETS = [7, 14, 30, 60, 90, 180, 365];
@@ -25,9 +26,6 @@ export default function RetentionForm({ tiers }: { tiers: Tier[] }) {
 
   if (!values) return <p style={{ marginTop: 24, color: "var(--muted)", fontSize: 14 }}>{error || "Loading…"}</p>;
 
-  const card: React.CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, marginTop: 24, overflow: "hidden" };
-  const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 20, padding: "16px 18px", borderTop: "1px solid var(--border)" };
-  const select: React.CSSProperties = { height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--primary)", fontSize: 13.5, minWidth: 140 };
 
   return (
     <>
@@ -35,8 +33,8 @@ export default function RetentionForm({ tiers }: { tiers: Tier[] }) {
         {tiers.map((t, i) => (
           <div key={t.key} style={{ ...row, borderTop: i ? row.borderTop : "none" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{t.label}</div>
-              <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>{t.help}</div>
+              <div style={rowTitle}>{t.label}</div>
+              <div style={rowHelp}>{t.help}</div>
             </div>
             {t.toggle ? (
               <select style={select} value={values[t.key]} onChange={(e) => setValues({ ...values, [t.key]: Number(e.target.value) })}>
@@ -55,7 +53,7 @@ export default function RetentionForm({ tiers }: { tiers: Tier[] }) {
         ))}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 18 }}>
-        <button onClick={save} disabled={state === "saving"} style={{ height: 36, padding: "0 18px", borderRadius: 999, border: 0, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}>
+        <button onClick={save} disabled={state === "saving"} style={btn}>
           {state === "saving" ? "Saving…" : "Save"}
         </button>
         {state === "saved" ? <span style={{ fontSize: 13, color: "var(--success)" }}>Saved</span> : null}

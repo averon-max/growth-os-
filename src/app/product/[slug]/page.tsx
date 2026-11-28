@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
 import { FEATURES, featureBySlug } from "@/components/site/features";
+import { pageMeta, breadcrumbs, ORGANIZATION } from "@/lib/seo";
+import { SITE_URL } from "@/lib/site";
 
 export function generateStaticParams() {
   return FEATURES.map((f) => ({ slug: f.slug }));
@@ -13,7 +15,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const f = featureBySlug((await params).slug);
   if (!f) return {};
-  return { title: `${f.name} · Hyprlyx`, description: f.lede, alternates: { canonical: `/product/${f.slug}` } };
+  return pageMeta(f.seoTitle, f.seoDescription, `/product/${f.slug}`);
 }
 
 const COMMON_FAQ = [
@@ -27,11 +29,28 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
   const i = FEATURES.findIndex((x) => x.slug === f.slug);
   const next = FEATURES[(i + 1) % FEATURES.length];
   const faq = [...f.faq, ...COMMON_FAQ];
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faq.map((q) => ({ "@type": "Question", name: q.q, acceptedAnswer: { "@type": "Answer", text: q.a } })),
-  };
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/product/${f.slug}`,
+      name: f.seoTitle,
+      description: f.seoDescription,
+      url: `${SITE_URL}/product/${f.slug}`,
+      isPartOf: { "@type": "WebSite", name: "Hyprlyx", url: SITE_URL },
+      about: { "@type": "SoftwareApplication", name: `Hyprlyx ${f.name}`, applicationCategory: "BusinessApplication", operatingSystem: "Web", publisher: ORGANIZATION },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faq.map((q) => ({ "@type": "Question", name: q.q, acceptedAnswer: { "@type": "Answer", text: q.a } })),
+    },
+    breadcrumbs([
+      { name: "Home", path: "/" },
+      { name: "Product", path: "/product" },
+      { name: f.name, path: `/product/${f.slug}` },
+    ]),
+  ];
 
   return (
     <SiteShell>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { card as baseCard, head, ghost, danger, note } from "@/components/dashboard/settings/settings-ui";
 
 type Billing = {
   owner: boolean;
@@ -17,18 +18,16 @@ type Billing = {
   switches?: { plan: string; name: string; dueNow: number | null; currency: string }[];
 };
 
-const card: React.CSSProperties = { border: "1px solid #1f1f1f", borderRadius: 10, overflow: "hidden", marginBottom: 16 };
-const head: React.CSSProperties = { padding: "12px 16px", borderBottom: "1px solid #1f1f1f", fontSize: 13, fontWeight: 590, color: "#ededed" };
-const body: React.CSSProperties = { padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" };
-const btn: React.CSSProperties = { height: 32, padding: "0 12px", border: "1px solid #2e2e2e", borderRadius: 6, background: "#0a0a0a", color: "#ededed", fontSize: 13, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" };
-const danger: React.CSSProperties = { ...btn, color: "#ff6369", borderColor: "rgba(229,72,77,.3)", background: "rgba(229,72,77,.06)" };
-const muted: React.CSSProperties = { color: "#8f8f8f", fontSize: 13, lineHeight: 1.55, margin: 0 };
+const card = { ...baseCard, marginTop: 0, marginBottom: 16 };
+const body: React.CSSProperties = { padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" };
+const btn = ghost;
+const muted = note;
 type Usage = { plan: string; rows: { label: string; used: number; limit: number }[]; data: { today: number; month: number } };
 
 function Bar({ label, value, note }: { label: string; value: number; note: string }) {
   const tone = value >= 100 ? "#e5484d" : value >= 80 ? "#ffb224" : "#ededed";
   return (
-    <div style={{ padding: "12px 16px", borderBottom: "1px solid #1a1a1a" }}>
+    <div style={{ padding: "12px 20px", borderBottom: "1px solid #141414" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
         <span style={{ color: "#ededed" }}>{label}</span>
         <span style={{ color: "#8f8f8f", fontVariantNumeric: "tabular-nums" }}>{note}</span>
@@ -55,7 +54,7 @@ function UsageCard() {
       ))}
       <Bar label="New data today" value={u.data.today} note={`${u.data.today}%`} />
       <Bar label="New data this month" value={u.data.month} note={`${u.data.month}%`} />
-      <div style={{ padding: "10px 16px" }}>
+      <div style={{ padding: "10px 20px" }}>
         <p style={muted}>New data means fresh numbers from Google and link databases. Saved data is always shown, even when the allowance is used up; it refills daily and monthly.</p>
       </div>
     </section>

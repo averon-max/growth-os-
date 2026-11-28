@@ -8,14 +8,19 @@ import { FEATURES, PAID_ORDER, hasFeature, highlights } from "@/lib/billing/feat
 import { TRIAL_DAYS, TRIAL_PLAN } from "@/lib/billing/trial";
 import { NAV } from "@/lib/nav";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+import { pageMeta, breadcrumbs, ORGANIZATION } from "@/lib/seo";
+import { SITE_URL } from "@/lib/site";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "Pricing · Hyprlyx",
-  description: `Try Hyprlyx Starter free for ${TRIAL_DAYS} days. Simple monthly plans, cancel anytime.`,
-  alternates: { canonical: "/pricing" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const prices = await planPrices();
+  return pageMeta(
+    `Pricing: SEO Tool Plans from ${formatPrice(prices.STARTER)}/month | Hyprlyx`,
+    `Hyprlyx pricing: Starter, Growth and Autopilot SEO plans with keyword research, rank tracking, audits and an AI writer. Starter is free for ${TRIAL_DAYS} days. Cancel anytime.`,
+    "/pricing",
+  );
+}
 
 const DESC: Record<PlanId, string> = {
   FREE: "",
@@ -60,8 +65,27 @@ const cell = (v: Cell) =>
 
 export default async function PricingPage() {
   const prices = await planPrices();
+  const ld = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Hyprlyx",
+      url: SITE_URL,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      publisher: ORGANIZATION,
+      offers: PAID_ORDER.map((id) => ({ "@type": "Offer", name: PLANS[id].name, price: prices[id], priceCurrency: "USD", url: `${SITE_URL}/pricing` })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+    },
+    breadcrumbs([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
+  ];
   return (
     <SiteShell>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       <section className={s.hero}>
         <div className={s.container}>
           <p className={s.eyebrow}>Pricing</p>

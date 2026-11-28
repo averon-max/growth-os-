@@ -3,18 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { card as baseCard, head, label, input, btn, ghost, danger, note } from "@/components/dashboard/settings/settings-ui";
+
+const card = { ...baseCard, marginTop: 0, marginBottom: 16 };
 
 type Props = { email: string; name: string; since: string; plan: string; planStatus: string; planSource: string; renews: string | null };
 
-const card: React.CSSProperties = { border: "1px solid #262626", background: "#0a0a0a", borderRadius: 12, overflow: "hidden", marginBottom: 16 };
-const head: React.CSSProperties = { padding: "14px 18px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--primary)" };
-const body: React.CSSProperties = { padding: "16px 18px", display: "grid", gap: 12 };
-const label: React.CSSProperties = { fontSize: 12.5, color: "var(--secondary)", marginBottom: 6, display: "block" };
-const input: React.CSSProperties = { width: "100%", maxWidth: 380, height: 38, padding: "0 12px", borderRadius: 8, border: "1px solid var(--border)", background: "#000", color: "#ededed", fontSize: 14, outline: "none" };
-const btn: React.CSSProperties = { height: 34, padding: "0 16px", borderRadius: 6, border: 0, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: 13, cursor: "pointer" };
-const ghost: React.CSSProperties = { ...btn, background: "transparent", color: "var(--primary)", border: "1px solid var(--border)" };
-const danger: React.CSSProperties = { ...btn, background: "var(--danger)", color: "#fff" };
-const note: React.CSSProperties = { fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 };
+const body: React.CSSProperties = { padding: "18px 20px", display: "grid", gap: 14 };
 
 async function call(url: string, method: string, data?: unknown) {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: data ? JSON.stringify(data) : undefined });
@@ -116,7 +111,7 @@ export default function AccountForms(p: Props) {
           </div>
           <p style={note}>
             Signed up with Google or don&apos;t remember your password?{" "}
-            <button type="button" onClick={sendLink} disabled={busy === "link"} style={{ background: "none", border: 0, padding: 0, color: "var(--primary)", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
+            <button type="button" onClick={sendLink} disabled={busy === "link"} style={{ background: "none", border: 0, padding: 0, color: "#ededed", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
               Email me a link to set one
             </button>{" "}
             <Status msg={linkMsg} />
@@ -131,7 +126,7 @@ export default function AccountForms(p: Props) {
             <div style={{ fontSize: 14, fontWeight: 500 }}>{p.plan}{p.planSource === "manual" ? " · granted" : ""}</div>
             <p style={note}>{p.plan === "FREE" ? "Free plan" : p.renews ? `${p.planStatus} · until ${p.renews}` : p.planStatus}</p>
           </div>
-          <Link href={p.plan === "FREE" ? "/pricing" : "/dashboard/settings/billing"} style={{ ...ghost, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{p.plan === "FREE" ? "Upgrade" : "Manage billing"}</Link>
+          <Link href={p.plan === "FREE" ? "/pricing" : "/dashboard/settings/billing"} style={ghost}>{p.plan === "FREE" ? "Upgrade" : "Manage billing"}</Link>
         </div>
       </section>
 
@@ -144,8 +139,8 @@ export default function AccountForms(p: Props) {
         </div>
       </section>
 
-      <section style={{ ...card, borderColor: "rgba(229,72,77,.35)" }}>
-        <div style={{ ...head, color: "var(--danger)" }}>Delete account</div>
+      <section style={{ ...card, borderColor: "rgba(229,72,77,.3)" }}>
+        <div style={{ ...head, color: "#ff6369" }}>Delete account</div>
         <div style={body}>
           <p style={note}>
             Permanently deletes your account and every workspace where you are the only member: websites, keywords, articles and history.

@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "About · Hyprlyx", description: "Why we built Hyprlyx and how we treat your data.", alternates: { canonical: "/about" } };
+export const metadata: Metadata = pageMeta("About Hyprlyx: SEO Software Built on Real Data", "Why we built Hyprlyx, an SEO workspace that turns Search Console, traffic and keyword data into a short, honest list of what to do next — and how we treat your data.", "/about");
 
 const VALUES = [
   ["Evidence over guesses", "Every recommendation shows the data behind it. When there isn't enough evidence, we say so instead of inventing advice."],

@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  Building2,
-  Cable,
-  Globe,
-} from "lucide-react";
+import { Building2 } from "lucide-react";
 
 import {
   requireUser,
@@ -18,33 +14,18 @@ import {
 } from "@/lib/keywords/repository";
 
 import { SettingsShell } from "@/components/dashboard/settings/settings-shell";
+import { ghost } from "@/components/dashboard/settings/settings-ui";
 import shell from "@/components/dashboard/settings/settings-shell.module.css";
 import {
   Topbar,
 } from "@/components/dashboard/topbar";
 
 import {
-  Badge,
   EmptyState,
 } from "@/components/dashboard/ui";
 
 import styles from "@/components/dashboard/ui.module.css";
 import { CloudflareSettings } from "@/components/dashboard/cloudflare-settings";
-
-const CMS_STATUS_TONE:
-  Record<
-    string,
-    "success" |
-    "danger" |
-    "muted"
-  > = {
-    CONNECTED:
-      "success",
-    ERROR:
-      "danger",
-    DISCONNECTED:
-      "muted",
-  };
 
 export default async function SettingsPage() {
   const user =
@@ -149,19 +130,15 @@ export default async function SettingsPage() {
       description={`${workspace.name} · workspace, connections and websites.`}
     >
         <div className={shell.stack}>
-          <div className={styles.group}>
-            <div className={styles.groupHeader}>
+          <div className={`${styles.group} ${shell.card}`}>
+            <div className={`${styles.groupHeader} ${shell.cardHead}`}>
               <span className={styles.groupLabel}>
                 Workspace
               </span>
             </div>
 
-            <div className={styles.issueRow}>
+            <div className={`${styles.issueRow} ${shell.cardRow}`}>
               <div className={styles.issueMain}>
-                <Building2
-                  size={14}
-                  className={styles.rowIcon}
-                />
 
                 <div>
                   <div className={styles.issueTitle}>
@@ -176,19 +153,15 @@ export default async function SettingsPage() {
             </div>
           </div>
 
-          <div className={styles.group}>
-            <div className={styles.groupHeader}>
+          <div className={`${styles.group} ${shell.card}`}>
+            <div className={`${styles.groupHeader} ${shell.cardHead}`}>
               <span className={styles.groupLabel}>
                 Integrations
               </span>
             </div>
 
-            <div className={styles.issueRow}>
+            <div className={`${styles.issueRow} ${shell.cardRow}`}>
               <div className={styles.issueMain}>
-                <Cable
-                  size={14}
-                  className={styles.rowIcon}
-                />
 
                 <div>
                   <div className={styles.issueTitle}>
@@ -202,23 +175,15 @@ export default async function SettingsPage() {
               </div>
 
               <div className={styles.issueMeta}>
-                <Badge
-                  tone={
-                    CMS_STATUS_TONE[
-                      gscConnection?.status ??
-                        "DISCONNECTED"
-                    ]
-                  }
-                >
-                  {gscConnection?.status ??
-                    "DISCONNECTED"}
-                </Badge>
+                <span style={{ color: gscConnection?.status === "CONNECTED" ? "#ededed" : gscConnection?.status === "ERROR" ? "#ff6369" : "#8f8f8f", fontSize: 13 }}>
+                  {gscConnection?.status === "CONNECTED" ? "Connected" : gscConnection?.status === "ERROR" ? "Needs reconnect" : "Not connected"}
+                </span>
 
                 <Link
                   href={gscConnectHref}
-                  className={styles.link}
+                  style={ghost}
                 >
-                  {gscActionLabel} →
+                  {gscActionLabel}
                 </Link>
               </div>
             </div>
@@ -226,8 +191,8 @@ export default async function SettingsPage() {
             <CloudflareSettings websites={websites.map((w) => ({ id: w.id, name: w.business.name, url: w.url }))} />
           </div>
 
-          <div className={`${styles.group} ${styles.settingsWide}`}>
-            <div className={styles.groupHeader}>
+          <div className={`${styles.group} ${styles.settingsWide} ${shell.card}`}>
+            <div className={`${styles.groupHeader} ${shell.cardHead}`}>
               <span className={styles.groupLabel}>
                 Websites
               </span>
@@ -238,16 +203,16 @@ export default async function SettingsPage() {
             </div>
 
             {!websites.length ? (
-              <div className={styles.issueRow}>
+              <div className={`${styles.issueRow} ${shell.cardRow}`}>
                 <div className={styles.issueDesc}>
                   No websites
                 </div>
 
                 <Link
                   href="/dashboard/add-website"
-                  className={styles.link}
+                  style={ghost}
                 >
-                  Add website →
+                  Add website
                 </Link>
               </div>
             ) : (
@@ -257,13 +222,9 @@ export default async function SettingsPage() {
                   return (
                     <div
                       key={website.id}
-                      className={styles.issueRow}
+                      className={`${styles.issueRow} ${shell.cardRow}`}
                     >
                       <div className={styles.issueMain}>
-                        <Globe
-                          size={14}
-                          className={styles.rowIcon}
-                        />
 
                         <div>
                           <div className={styles.issueTitle}>
@@ -279,9 +240,9 @@ export default async function SettingsPage() {
                       <div className={styles.issueMeta}>
                         <Link
                           href={`/dashboard/seo?websiteId=${website.id}`}
-                          className={styles.link}
+                          style={ghost}
                         >
-                          SEO audit →
+                          SEO audit
                         </Link>
                       </div>
                     </div>

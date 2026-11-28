@@ -8,6 +8,9 @@ export type Feature = {
   short: string;
   title: string;
   lede: string;
+  /** Search result title (≤60 chars) and description (~150 chars), written around the main search term. */
+  seoTitle: string;
+  seoDescription: string;
   shot?: { src: string; alt: string; w?: number; h?: number; extra?: { src: string; alt: string; w: number; h: number } };
   stats?: { value: string; label: string }[];
   points: { title: string; text: string }[];
@@ -24,6 +27,8 @@ export const FEATURES: Feature[] = [
     short: "Volume, difficulty, CPC and trends for every keyword",
     title: "Know exactly what people search for",
     lede: "Find the keywords worth your time: real search volume, difficulty, cost per click and direction of travel — plus rising searches from Google Trends before your competitors notice them.",
+    seoTitle: "Keyword Research Tool: Volume, Difficulty & Trends | Hyprlyx",
+    seoDescription: "Find keywords worth ranking for: search volume, keyword difficulty, CPC and rising searches from Google Trends, for any market. Try Hyprlyx free.",
     shot: { src: "/landing/keywords-v10.webp", alt: "Keyword research with rising searches, volume, difficulty and CPC" },
     points: [
       { title: "Industry keywords", text: "Start from your niche, not a blank box. Hyprlyx surfaces the searches your market actually makes." },
@@ -44,6 +49,8 @@ export const FEATURES: Feature[] = [
     short: "One plan for every keyword you care about",
     title: "Plan before you publish",
     lede: "Search Console data, live rankings, your existing pages and tracked keywords in one list — grouped into what you already rank for, quick wins, and gaps with no page yet.",
+    seoTitle: "Keyword Planner for SEO: Quick Wins & Content Gaps | Hyprlyx",
+    seoDescription: "Plan your content from real data: Search Console, live rankings and tracked keywords grouped into quick wins, clusters and gaps with no page yet.",
     shot: { src: "/landing/planner-v11.webp", alt: "Keyword Planner grouping tracked keywords, quick wins and gaps", w: 2048, h: 1110 },
     points: [
       { title: "Quick wins", text: "Keywords sitting just off page one, where a small improvement moves real traffic." },
@@ -63,6 +70,8 @@ export const FEATURES: Feature[] = [
     short: "Impressions, clicks and positions from Search Console",
     title: "See where you stand, every day",
     lede: "Your real Google performance — impressions, clicks, CTR and average position — with the queries closest to page one pulled to the top.",
+    seoTitle: "Rank Tracker with Google Search Console Data | Hyprlyx",
+    seoDescription: "Track Google rankings, impressions and clicks for every page and query, with the keywords closest to page one surfaced first. Free to start.",
     shot: { src: "/landing/search-console-v10.webp", alt: "Search Console view with visibility chart and easiest wins" },
     points: [
       { title: "Visibility over time", text: "Impressions, clicks and position on one chart for 7, 28 or 90 days." },
@@ -83,6 +92,8 @@ export const FEATURES: Feature[] = [
     short: "Briefs and drafts based on what already ranks",
     title: "Turn findings into pages",
     lede: "When a gap or quick win needs a page, Hyprlyx prepares a brief from the live search results and can draft it for you to review. Nothing is published without approval.",
+    seoTitle: "AI SEO Writer: Briefs and Drafts from What Ranks | Hyprlyx",
+    seoDescription: "Turn keyword gaps into pages: SEO content briefs and AI drafts built from what already ranks on Google. You review and approve every page.",
     shot: { src: "/landing/content-v10.webp", alt: "Content library with drafts, approved and published pages" },
     points: [
       { title: "Briefs from real results", text: "Structure, questions and topics taken from the pages that already rank." },
@@ -99,6 +110,8 @@ export const FEATURES: Feature[] = [
     short: "Technical SEO checks with clear fixes",
     title: "Find what's holding your site back",
     lede: "Hyprlyx crawls your site and checks titles, descriptions, headings, canonicals, indexability, internal links, images and speed — then ranks issues by impact.",
+    seoTitle: "Technical SEO Audit Tool with Prioritized Fixes | Hyprlyx",
+    seoDescription: "Crawl your site and check titles, meta descriptions, headings, canonicals, indexability, links and speed — issues ranked by impact, with fixes.",
     stats: [
       { value: "40+", label: "checks per page" },
       { value: "4", label: "scores: technical, content, structure, indexability" },
@@ -121,6 +134,8 @@ export const FEATURES: Feature[] = [
     short: "Referring domains, links and anchors",
     title: "Know who links to you",
     lede: "Referring domains, individual links and anchor texts — from DataForSEO or free imports from Search Console, Bing and Ahrefs exports.",
+    seoTitle: "Backlink Checker: Referring Domains & Anchors | Hyprlyx",
+    seoDescription: "See who links to your site: referring domains, backlinks, anchor text, link types and spam score, plus new and lost links over time.",
     stats: [
       { value: "Free", label: "imports from GSC, Bing and Ahrefs CSV" },
       { value: "Per page", label: "links tracked for each published article" },
@@ -142,6 +157,8 @@ export const FEATURES: Feature[] = [
     short: "Track rivals and the keywords they win",
     title: "Watch the sites you compete with",
     lede: "Add competitors and see their pages, ranking keywords and the gaps where they rank and you don't.",
+    seoTitle: "SEO Competitor Analysis & Keyword Gap Tool | Hyprlyx",
+    seoDescription: "Track competitors' ranking keywords, traffic and backlinks, and find the keyword gaps where they rank and you don't. Paid data saved and reused.",
     stats: [
       { value: "Gaps", label: "keywords they rank for and you don't" },
       { value: "Top keywords", label: "for every competitor" },
@@ -163,6 +180,8 @@ export const FEATURES: Feature[] = [
     short: "Visitors, countries, pages — and AI crawlers",
     title: "See who visits — people and bots",
     lede: "Audience data from Google Analytics 4 and traffic from Cloudflare, including which search engines and AI crawlers read your site.",
+    seoTitle: "AI Crawler Tracking: GPTBot, ClaudeBot & Traffic | Hyprlyx",
+    seoDescription: "See which search engines and AI crawlers like GPTBot, ClaudeBot and PerplexityBot visit your site, plus visitors by country and page.",
     stats: [
       { value: "GA4", label: "visitors, countries, devices, pages" },
       { value: "Cloudflare", label: "requests, threats and bandwidth" },

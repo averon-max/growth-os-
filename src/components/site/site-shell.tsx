@@ -69,7 +69,11 @@ export function SiteFooter() {
     <footer className={s.footer}>
       <div className={s.container}>
         <div className={s.footerGrid}>
-          <Link href="/" className={s.footerLogo} aria-label="Hyprlyx home">Hyprlyx</Link>
+          <Link href="/" className={s.footerLogo} aria-label="Hyprlyx home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.png?v=3" alt="" width={28} height={28} className={s.footerAvatar} />
+            Hyprlyx
+          </Link>
           {FOOTER.map((col) => (
             <nav key={col.title} className={s.footerCol} aria-label={col.title}>
               <h3>{col.title}</h3>

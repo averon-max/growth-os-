@@ -4,8 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { AuthShell } from "@/components/auth-shell";
 import SupportForm from "./support-form";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Support · Hyprlyx", description: "Contact Hyprlyx support.", alternates: { canonical: "/support" } };
+export const metadata: Metadata = pageMeta("Contact Support | Hyprlyx", "Questions about Hyprlyx, billing or your SEO data? Send us a message — we usually reply within one business day.", "/support");
 
 export default async function SupportPage() {
   const session = await getServerSession(authOptions);

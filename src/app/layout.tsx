@@ -10,8 +10,13 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Hyprlyx — SEO intelligence for teams that ship fast.",
-  description: "Hyprlyx crawls your website, detects what is holding back organic growth, and surfaces the highest-impact opportunities — with evidence, not guesses.",
+  applicationName: "Hyprlyx",
+  title: "Hyprlyx: SEO Software for Keyword Research & Rank Tracking",
+  description:
+    "All-in-one SEO software: keyword research, rank tracking with Search Console, site audits, backlinks, competitor analysis, AI crawler tracking and an AI writer.",
+  openGraph: { type: "website", siteName: "Hyprlyx", locale: "en_US" },
+  twitter: { card: "summary_large_image" },
+  formatDetection: { telephone: false, email: false, address: false },
   icons: {
     icon: [{ url: "/favicon.ico?v=3", sizes: "any" }, { url: "/icon.png?v=3", type: "image/png" }],
     shortcut: "/favicon.ico?v=3",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { card, row, select, btn, rowTitle, rowHelp, sectionTitle } from "@/components/dashboard/settings/settings-ui";
 
 type Cat = {
   key: string; label: string; help: string; usedIn: string; def: number; days: number;
@@ -51,15 +52,12 @@ export default function CachePanel() {
 
   const days = Object.fromEntries(data.categories.map((c) => [c.key, c.days]));
   const setDays = (key: string, v: number) => setData({ ...data, categories: data.categories.map((c) => (c.key === key ? { ...c, days: v } : c)) });
-  const card: React.CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, marginTop: 20, overflow: "hidden" };
-  const row: React.CSSProperties = { display: "flex", alignItems: "flex-start", gap: 20, padding: "16px 18px", borderTop: "1px solid var(--border)" };
-  const select: React.CSSProperties = { height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--primary)", fontSize: 13.5, minWidth: 130 };
   const small: React.CSSProperties = { fontSize: 12.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 };
   const link: React.CSSProperties = { border: 0, background: "none", padding: 0, color: "var(--secondary)", fontSize: 12.5, textDecoration: "underline", cursor: "pointer" };
 
   return (
     <section style={{ marginTop: 48 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", margin: 0 }}>Saved data and AI answers</h2>
+      <h2 style={sectionTitle}>Saved data and AI answers</h2>
       <p style={{ color: "var(--secondary)", fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>
         Keyword numbers, Google results and backlinks come from DataForSEO, and drafts and research decisions come from the AI
         model; both charge for every request. Hyprlyx saves each answer and keeps it for the time you set below, so the same
@@ -76,8 +74,8 @@ export default function CachePanel() {
       <div style={card}>
         <div style={{ ...row, borderTop: "none", alignItems: "center" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Paid data requests {data.paused ? <span style={{ color: "#e5484d" }}>· paused</span> : <span style={{ color: "#30a46c" }}>· on</span>}</div>
-            <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
+            <div style={rowTitle}>Paid data requests {data.paused ? <span style={{ color: "#e5484d" }}>· paused</span> : <span style={{ color: "#30a46c" }}>· on</span>}</div>
+            <div style={rowHelp}>
               Pause stops every new paid DataForSEO request at once (within a minute). Saved data keeps showing everywhere; buttons that need new data say it is paused.
             </div>
           </div>
@@ -92,8 +90,8 @@ export default function CachePanel() {
         </div>
         <div style={{ ...row, alignItems: "center" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Service-wide safety cap · spent today {money(data.spentToday)}</div>
-            <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>
+            <div style={rowTitle}>Service-wide safety cap · spent today {money(data.spentToday)}</div>
+            <div style={rowHelp}>
               Each customer has their own daily and monthly data allowance from their plan. This cap is only an emergency stop for everyone together: once reached, new paid requests wait until tomorrow (UTC). AI costs are counted separately.
             </div>
           </div>
@@ -102,7 +100,7 @@ export default function CachePanel() {
           </select>
         </div>
         <div style={{ ...row, flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>What cost money today</div>
+          <div style={rowTitle}>What cost money today</div>
           {data.todayByEndpoint.length === 0 ? (
             <div style={small}>Nothing paid today.</div>
           ) : (
@@ -141,8 +139,8 @@ export default function CachePanel() {
         {data.categories.map((c, i) => (
           <div key={c.key} style={{ ...row, borderTop: i ? row.borderTop : "none" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{c.label}</div>
-              <div style={{ fontSize: 13, color: "var(--secondary)", marginTop: 4, lineHeight: 1.5 }}>{c.help}</div>
+              <div style={rowTitle}>{c.label}</div>
+              <div style={rowHelp}>{c.help}</div>
               <div style={small}>Used in: {c.usedIn}</div>
               <div style={small}>
                 {c.rows.toLocaleString()} saved answers · {c.mb} MB · last saved {when(c.last)} · spent in 30 days {money(c.spent30)} · saved by reuse {money(c.saved)}
@@ -171,7 +169,7 @@ export default function CachePanel() {
         <button
           onClick={() => void send("PUT", { days })}
           disabled={state === "saving"}
-          style={{ height: 36, padding: "0 18px", borderRadius: 999, border: 0, background: "var(--primary)", color: "var(--background)", fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
+          style={btn}
         >
           {state === "saving" ? "Saving…" : "Save"}
         </button>

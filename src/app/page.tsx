@@ -14,13 +14,15 @@ import styles from "./landing.module.css";
 import { LatestPosts } from "@/components/blog/latest-posts";
 import { SiteHeader, SiteFooter, siteStyles as s } from "@/components/site/site-shell";
 import { INTEGRATIONS } from "@/components/site/features";
+import { pageMeta, ORGANIZATION } from "@/lib/seo";
+import { SITE_URL } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Hyprlyx — the SEO workspace for teams that publish",
-  description:
-    "Keyword research, Search Console, traffic, competitors, backlinks and AI-written drafts in one workspace, so your team knows what to publish next and why.",
-  alternates: { canonical: "/" },
-};
+const HOME_DESCRIPTION =
+  "All-in-one SEO software: keyword research, rank tracking with Search Console, site audits, backlinks, competitor analysis, AI crawler tracking and an AI writer. Free 7-day trial.";
+
+export const metadata: Metadata = pageMeta("Hyprlyx: SEO Software for Keyword Research & Rank Tracking", HOME_DESCRIPTION, "/", {
+  title: { absolute: "Hyprlyx: SEO Software for Keyword Research & Rank Tracking" },
+});
 
 type Shot = { src: string; alt: string; w: number; h: number };
 type Block = { id: string; title: [string, string]; text: string; href: string; shots: Shot[]; features: { label: string; href: string }[] };
@@ -142,13 +144,18 @@ export default async function LandingPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
+      ORGANIZATION,
+      { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Hyprlyx", url: SITE_URL, publisher: { "@id": `${SITE_URL}/#org` } },
       {
         "@type": "SoftwareApplication",
         name: "Hyprlyx",
-        url: "https://hyprlyx.com",
+        url: SITE_URL,
         applicationCategory: "BusinessApplication",
+        applicationSubCategory: "SEO software",
         operatingSystem: "Web",
-        description: metadata.description,
+        description: HOME_DESCRIPTION,
+        publisher: { "@id": `${SITE_URL}/#org` },
+        offers: PAID.map((id) => ({ "@type": "Offer", name: PLANS[id].name, price: prices[id], priceCurrency: "USD", url: `${SITE_URL}/pricing` })),
       },
       {
         "@type": "FAQPage",

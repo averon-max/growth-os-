@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { SiteShell, siteStyles as s } from "@/components/site/site-shell";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Changelog · Hyprlyx", description: "New features and improvements in Hyprlyx.", alternates: { canonical: "/changelog" } };
+export const metadata: Metadata = pageMeta("Changelog: New SEO Features and Updates | Hyprlyx", "What's new in Hyprlyx: new SEO features, dashboard improvements, data and billing updates, and fixes, newest first.", "/changelog");
 
 // Newest first. Add an entry for every release.
 const ENTRIES = [
