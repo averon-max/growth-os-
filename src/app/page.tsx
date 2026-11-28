@@ -32,7 +32,7 @@ const SECTIONS: Block[] = [
   {
     id: "traffic",
     title: ["Traffic you", "can trust"],
-    text: "Cloudflare visits and Google clicks side by side, day by day, with the countries and pages behind every change. One source of numbers on every screen.",
+    text: "Cloudflare visits and Google clicks side by side, with the pages and countries behind every change.",
     href: "/product/traffic",
     shots: [{ src: "/landing/traffic-v19.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 }],
     features: [
@@ -45,7 +45,7 @@ const SECTIONS: Block[] = [
   {
     id: "planner",
     title: ["Plan what", "to write next"],
-    text: "Every keyword you rank for or want to, with volume, difficulty, CPC and the page that should win it. Quick wins, gaps and clusters surface on their own.",
+    text: "Every keyword you rank for or could, with volume, difficulty and the page that should win it. Quick wins, gaps and clusters come sorted.",
     href: "/product/planner",
     shots: [{ src: "/landing/planner-v11.webp", alt: "Keyword Planner with positions, intent and pages", w: 2048, h: 1110 }],
     features: [
@@ -58,7 +58,7 @@ const SECTIONS: Block[] = [
   {
     id: "content",
     title: ["Write when the", "data says so"],
-    text: "When a gap needs a page, get a brief built from what already ranks, and a draft to review if you want one. Nothing goes live without your approval.",
+    text: "A brief built from the pages that rank now, and a draft if you want one. You approve every article.",
     href: "/product/content",
     shots: [{ src: "/landing/content-v19.webp", alt: "Content library with AI-written drafts, formats and approval status", w: 3360, h: 2100 }],
     features: [
@@ -71,7 +71,7 @@ const SECTIONS: Block[] = [
   {
     id: "competitors",
     title: ["Know who", "you're up against"],
-    text: "Track competitors' keywords, traffic and referring domains, and see every link pointing at you — with spam score, link type and anchor text.",
+    text: "Competitors' keywords, traffic and referring domains, and every link pointing at you with its spam score and anchor.",
     href: "/product/competitors",
     shots: [
       { src: "/landing/competitors-v19.webp", alt: "Competitors: tracked domains, gaps and who wins your keywords", w: 1585, h: 930 },
@@ -86,7 +86,7 @@ const SECTIONS: Block[] = [
   {
     id: "bots",
     title: ["See every", "crawler"],
-    text: "Google, Bing, ChatGPT, Claude and Perplexity — which bots visit, how often and which pages they read, verified by Cloudflare.",
+    text: "Google, Bing, ChatGPT, Claude and Perplexity: which crawlers visit, how often, and which pages they read.",
     href: "/product/traffic",
     shots: [{ src: "/landing/bots-v19.webp", alt: "Bots and crawlers: verified bots by category and most crawled pages", w: 2048, h: 1110 }],
     features: [
@@ -98,16 +98,16 @@ const SECTIONS: Block[] = [
 ];
 
 const PRINCIPLES = [
-  ["Real data, not guesses", "Impressions, clicks, visits and rankings come straight from Google, Cloudflare and DataForSEO. If the evidence is thin, Hyprlyx says so."],
-  ["One source of numbers", "The overview, the map and every report read the same traffic data, so the figures agree wherever you look."],
-  ["You stay in control", "Read-only connections to Google and Cloudflare, and a person approves every page before it goes anywhere."],
+  ["Real data, not guesses", "Clicks and positions from Search Console, visits from Cloudflare, keywords from DataForSEO. Thin evidence is labeled as thin."],
+  ["One set of numbers", "Every screen reads the same data, so totals match wherever you look."],
+  ["Any market", "Pick the country and language for each site; keyword and Google results follow it."],
 ];
 
 const STEPS: [StepArtKind, string, string][] = [
-  ["connect", "Connect your data", "Search Console, Google Analytics 4 and Cloudflare in a couple of clicks, with read-only access."],
-  ["serp", "See where you rank", "Positions, impressions and clicks for every query, with the ones closest to page one pulled to the top."],
-  ["chart", "Grow the pages that can move", "Quick wins, keyword gaps and audit issues, ordered by how much traffic each one can bring."],
-  ["publish", "Publish and measure", "Brief, draft, approve and publish — then follow the new page in rankings and traffic."],
+  ["connect", "Connect your data", "Search Console, Analytics 4 and Cloudflare, read-only."],
+  ["serp", "See where you rank", "Every query with its position and clicks; page-one candidates first."],
+  ["chart", "Grow the pages that can move", "Quick wins, gaps and audit fixes, sorted by the traffic they can bring."],
+  ["publish", "Publish and measure", "Brief, draft, approve, then follow the page in rankings and traffic."],
 ];
 
 const COMPARE: [string, string, string, string][] = [
@@ -326,7 +326,7 @@ export default async function LandingPage() {
                 your data
               </h2>
               <div>
-                <p className={styles.blockText}>Hyprlyx reads what you connect and never changes your site on its own. Everything it stores can be seen and deleted in Settings.</p>
+                <p className={styles.blockText}>What Hyprlyx can see, what it keeps, and how to remove it.</p>
                 <Link href="/about" className={styles.learn}>
                   How we handle data <ArrowRight size={16} />
                 </Link>
@@ -336,7 +336,7 @@ export default async function LandingPage() {
               <h3 className={styles.trustTitle}>
                 Connect your data in a minute <span className={styles.accentPill}>Free</span>
               </h3>
-              <p className={styles.trustLede}>Three read-only connections give Hyprlyx real numbers. Nothing on your site changes, and you can disconnect any of them in Settings.</p>
+              <p className={styles.trustLede}>Three read-only connections. Disconnect any of them in Settings.</p>
               <ul className={styles.trustList}>
                 {[
                   ["Google Search Console", "clicks, impressions, positions"],
@@ -355,19 +355,19 @@ export default async function LandingPage() {
               <div className={styles.trustGrid}>
                 <div>
                   <h3><Eye size={16} strokeWidth={1.6} aria-hidden /> Reads, never writes</h3>
-                  <p>Hyprlyx can read Search Console, Analytics and Cloudflare. It can't change your site or your Google settings.</p>
+                  <p>It can't change your site or your Google settings.</p>
                 </div>
                 <div>
                   <h3><UserCheck size={16} strokeWidth={1.6} aria-hidden /> A person approves every page</h3>
-                  <p>Drafts wait in Content until someone on your team approves them. Nothing is published on its own.</p>
+                  <p>Drafts wait in Content for your approval.</p>
                 </div>
                 <div>
                   <h3><Trash2 size={16} strokeWidth={1.6} aria-hidden /> Delete anything, any time</h3>
-                  <p>Each kind of stored data has its own Delete button in Settings. Deleting your account also revokes Google access.</p>
+                  <p>Each kind of data has its own Delete button. Deleting your account revokes Google access.</p>
                 </div>
                 <div>
                   <h3><Ban size={16} strokeWidth={1.6} aria-hidden /> Never sold, never trained on</h3>
-                  <p>Your data isn't sold and isn't used to train AI models.</p>
+                  <p>Your data isn't sold or used to train AI.</p>
                 </div>
               </div>
             </div>
