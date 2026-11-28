@@ -134,15 +134,16 @@ a.cell:hover { background: #101113; }
 /* cta */
 .cta { padding: 120px 0; border-top: 1px solid rgba(255,255,255,.06); }
 
-/* footer */
+/* footer — Linear-style: logo on the left, five quiet columns, legal links at the bottom */
 .footer { border-top: 1px solid rgba(255,255,255,.08); }
-.footerGrid { display: grid; grid-template-columns: 1.6fr repeat(4, minmax(0,1fr)); gap: 40px 28px; padding: 64px 0 52px; }
-.footerBrand p { max-width: 260px; margin: 14px 0 12px; color: #62666d; font-size: 14px; line-height: 1.6; }
-.footerMail { color: #8a8f98; font-size: 13.5px; text-decoration: none; }
-.footerMail:hover { color: #f7f8f8; }
-.footerCol h3 { margin: 0 0 18px; color: #f7f8f8; font-size: 13.5px; font-weight: 510; }
-.footerCol ul { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.footerCol a { color: #8a8f98; font-size: 13.5px; text-decoration: none; transition: color .12s ease; }
+.footerGrid { display: grid; grid-template-columns: 1.4fr repeat(5, minmax(0,1fr)); gap: 40px 24px; padding: 64px 0 80px; }
+.footerLogo { align-self: start; color: #f7f8f8; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
+.footerCol h3 { margin: 0 0 20px; color: #f7f8f8; font-size: 13px; font-weight: 510; }
+.footerCol ul { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.footerCol a { color: #8a8f98; font-size: 13px; text-decoration: none; transition: color .12s ease; }
 .footerCol a:hover { color: #f7f8f8; }
-.footerBottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 22px 0 36px; border-top: 1px solid rgba(255,255,255,.06); color: #62666d; font-family: var(--mono); font-size: 12px; }
-@media (max-width: 900px) { .footerGrid { grid-template-columns: repeat(2, minmax(0,1fr)); } .footerBrand { grid-column: 1 / -1; } }
+.footerBottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 0 0 40px; color: #62666d; font-size: 13px; }
+.footerBottom nav { display: flex; gap: 24px; }
+.footerBottom a { color: #62666d; text-decoration: none; }
+.footerBottom a:hover { color: #f7f8f8; }
+@media (max-width: 900px) { .footerGrid { grid-template-columns: repeat(2, minmax(0,1fr)); } .footerLogo { grid-column: 1 / -1; } }

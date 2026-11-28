@@ -7,10 +7,11 @@ import s from "./site.module.css";
 
 
 const FOOTER = [
-  { title: "Product", links: [{ label: "Overview", href: "/product" }, ...FEATURES.map((f) => ({ label: f.name, href: `/product/${f.slug}` })), { label: "Pricing", href: "/pricing" }, { label: "Changelog", href: "/changelog" }] },
-  { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Contact", href: "/support" }] },
-  { title: "Resources", links: [{ label: "Blog", href: "/blog" }, { label: "Support", href: "/support" }, { label: "Log in", href: "/login" }, { label: "Sign up", href: "/signup" }] },
-  { title: "Legal", links: [{ label: "Terms of Service", href: "/terms" }, { label: "Privacy Policy", href: "/privacy" }, { label: "Cookie Policy", href: "/cookies" }] },
+  { title: "Product", links: [{ label: "Overview", href: "/product" }, { label: "Pricing", href: "/pricing" }, { label: "Changelog", href: "/changelog" }, { label: "Log in", href: "/login" }, { label: "Sign up", href: "/signup" }] },
+  { title: "Features", links: FEATURES.map((f) => ({ label: f.name, href: `/product/${f.slug}` })) },
+  { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Blog", href: "/blog" }, { label: "Contact", href: "/support" }] },
+  { title: "Resources", links: [{ label: "Support", href: "/support" }, { label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Cookies", href: "/cookies" }] },
+  { title: "Connect", links: [{ label: "Email us", href: "mailto:support@hyprlyx.com" }] },
 ];
 
 export function SiteHeader() {
@@ -68,11 +69,7 @@ export function SiteFooter() {
     <footer className={s.footer}>
       <div className={s.container}>
         <div className={s.footerGrid}>
-          <div className={s.footerBrand}>
-            <Link href="/" className={s.brand}>Hyprlyx</Link>
-            <p>The SEO workspace for teams that publish.</p>
-            <a href="mailto:support@hyprlyx.com" className={s.footerMail}>support@hyprlyx.com</a>
-          </div>
+          <Link href="/" className={s.footerLogo} aria-label="Hyprlyx home">Hyprlyx</Link>
           {FOOTER.map((col) => (
             <nav key={col.title} className={s.footerCol} aria-label={col.title}>
               <h3>{col.title}</h3>
@@ -81,8 +78,11 @@ export function SiteFooter() {
           ))}
         </div>
         <div className={s.footerBottom}>
-          <span>© {new Date().getFullYear()} Hyprlyx. All rights reserved.</span>
-          <span>hyprlyx.com</span>
+          <span>© {new Date().getFullYear()} Hyprlyx</span>
+          <nav aria-label="Legal">
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+          </nav>
         </div>
       </div>
     </footer>
