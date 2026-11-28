@@ -68,11 +68,8 @@ const CHAPTERS: Chapter[] = [
     text: "The Keyword Planner reads your sitemap, Search Console and Google's suggestions, then sorts every keyword into quick wins, gaps, clusters and pages that compete with each other. Each list ends in a clear next step: improve a page, write a new one, or merge two.",
     href: "/product/planner",
     link: "Keyword Planner",
-    shots: [
-      { src: "/landing/planner-v23.webp", alt: "Keyword Planner with volume, difficulty, intent, positions and the page that ranks", w: 2048, h: 1110 },
-      { src: "/landing/keyword-detail-v23.webp", alt: "Keyword detail: monthly volume, difficulty, cost per click, ad competition and 12 months of searches", w: 2400, h: 1306 },
-    ],
-    caption: ["One list for every keyword", "Volume, difficulty, intent, your position and the page that ranks, side by side, with every number behind a keyword one click away."],
+    shots: [{ src: "/landing/planner-v23.webp", alt: "Keyword Planner with volume, difficulty, intent, positions and the page that ranks", w: 2048, h: 1110 }],
+    caption: ["One list for every keyword", "Volume, difficulty, intent, your position and the page that ranks, side by side. Track any keyword in one click and follow it in Keywords."],
     cards: [
       { src: "/landing/card-planner-keywords.webp", alt: "Planner keywords on the overview with volume and position", title: "Your keywords next to your traffic", text: "The keywords you plan for sit on the overview with their monthly volume and current position, so a plan and its results are on one screen." },
       { src: "/landing/card-keyword-detail.webp", alt: "Keyword detail: monthly volume, difficulty, cost per click and ad competition", title: "Every number behind a keyword", text: "Open any keyword for its monthly volume, difficulty, cost per click and ad competition, and see in seconds whether it is worth a page." },
@@ -81,6 +78,42 @@ const CHAPTERS: Chapter[] = [
       { label: "Keyword Planner", href: "/product/planner" },
       { label: "Keyword research", href: "/product/keywords" },
       { label: "Google Trends", href: "/product/keywords" },
+    ],
+  },
+  {
+    id: "backlinks",
+    title: ["Know who", "links to you"],
+    text: "Every site that links to you, with its rank, its anchor and a spam score that sorts it into clean, watch or spam. Add the sites you compete with and Hyprlyx puts their referring domains, keywords and traffic next to yours.",
+    href: "/product/backlinks",
+    link: "Backlinks",
+    shots: [{ src: "/landing/backlinks-v24.webp", alt: "Backlinks: link profile and domain rank, link quality by spam score, link types, top anchors, rank of linking sites, new linking domains and the referring domains table", w: 3360, h: 2100 }],
+    caption: ["Every link, scored", "Referring domains and backlinks with the domain rank, link quality by spam score, link types, top anchors, the rank of the sites that link to you and new linking domains month by month."],
+    cards: [
+      { src: "/landing/card-link-quality.webp", alt: "Link quality by spam score and link types with their shares", title: "Clean, watch or spam", text: "Each linking domain is sorted by its spam score: under 30 is clean, 30 to 49 is worth a look, 50 and up is spam. Pick a group to see only those domains." },
+      { src: "/landing/card-new-domains.webp", alt: "Rank of linking sites and new linking domains for the last 12 months", title: "Where your links come from", text: "The rank of every site that links to you, and how many new domains linked each month, so a link-building push shows up as a taller bar." },
+    ],
+    features: [
+      { label: "Backlinks", href: "/product/backlinks" },
+      { label: "Competitors", href: "/product/competitors" },
+      { label: "Keyword gaps", href: "/product/competitors" },
+    ],
+  },
+  {
+    id: "traffic",
+    title: ["Traffic you", "can trust"],
+    text: "Cloudflare counts every visit at the edge, including people who block analytics scripts, and Search Console counts what Google sends. Hyprlyx puts the two side by side, day by day, with the pages and countries behind every change.",
+    href: "/product/traffic",
+    link: "Traffic report",
+    shots: [{ src: "/landing/traffic-v23.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 }],
+    caption: ["One report, two sources", "Switch between Cloudflare visits and Google clicks without leaving the page. The overview, the map and every report read the same numbers."],
+    cards: [
+      { src: "/landing/card-countries.webp", alt: "Visits by country, day by day, with each country's share", title: "Visits by country, day by day", text: "Each day's visits split by country, with every country's share of the period next to it. A spike from one market shows up the day it happens." },
+      { src: "/landing/card-cloudflare.webp", alt: "Cloudflare visitors and verified bots with their change", title: "People and bots, apart", text: "Visitors from Cloudflare for 7, 14 or 28 days, and the share of requests that came from verified bots, each with its change against the period before." },
+    ],
+    features: [
+      { label: "Traffic report", href: "/product/traffic" },
+      { label: "Countries map", href: "/product/traffic" },
+      { label: "AI crawlers", href: "/product/traffic" },
     ],
   },
   {
@@ -99,44 +132,6 @@ const CHAPTERS: Chapter[] = [
       { label: "Briefs", href: "/product/content" },
       { label: "AI drafts", href: "/product/content" },
       { label: "Approval", href: "/product/content" },
-    ],
-  },
-  {
-    id: "traffic",
-    title: ["Traffic you", "can trust"],
-    text: "Cloudflare counts every visit at the edge, including people who block analytics scripts, and Search Console counts what Google sends. Hyprlyx puts the two side by side, day by day, with the pages and countries behind every change.",
-    href: "/product/traffic",
-    link: "Traffic report",
-    shots: [
-      { src: "/landing/traffic-v23.webp", alt: "Traffic report: visits by country and top pages, day by day", w: 2048, h: 1110 },
-      { src: "/landing/bots-v23.webp", alt: "Bots and crawlers: verified crawlers by category, requests per day and most crawled pages", w: 2048, h: 1110 },
-    ],
-    caption: ["Visitors and crawlers, side by side", "Cloudflare visits and Google clicks by country and page, and every verified crawler by category, with requests per day and the pages they read most."],
-    cards: [
-      { src: "/landing/card-countries.webp", alt: "Visits by country, day by day, with each country's share", title: "Visits by country, day by day", text: "Each day's visits split by country, with every country's share of the period next to it. A spike from one market shows up the day it happens." },
-      { src: "/landing/card-cloudflare.webp", alt: "Cloudflare visitors and verified bots with their change", title: "People and bots, apart", text: "Visitors from Cloudflare for 7, 14 or 28 days, and the share of requests that came from verified bots, each with its change against the period before." },
-    ],
-    features: [
-      { label: "Traffic report", href: "/product/traffic" },
-      { label: "Countries map", href: "/product/traffic" },
-      { label: "AI crawlers", href: "/product/traffic" },
-    ],
-  },
-  {
-    id: "competitors",
-    title: ["Know who", "you're up against"],
-    text: "Add the sites you compete with and Hyprlyx compares them with yours: their referring domains, keywords and traffic, the keywords you share, the gaps they hold over you, and every link that points at your own site, scored for spam.",
-    href: "/product/competitors",
-    link: "Competitor analysis",
-    shots: [
-      { src: "/landing/competitors-v23.webp", alt: "Competitors: referring domains, keywords, traffic, shared keywords and gaps for each tracked site", w: 1585, h: 930 },
-      { src: "/landing/backlinks-v23.webp", alt: "Backlinks: link quality by spam score, link types, anchors and new linking domains", w: 1586, h: 860 },
-    ],
-    caption: ["Their numbers next to yours", "Each competitor with referring domains, keywords, traffic, top-10 rankings and gaps, and your own links sorted into clean, watch and spam."],
-    features: [
-      { label: "Competitors", href: "/product/competitors" },
-      { label: "Backlinks", href: "/product/backlinks" },
-      { label: "Keyword gaps", href: "/product/competitors" },
     ],
   },
 ];
@@ -292,8 +287,8 @@ export default async function LandingPage() {
               <figure className={styles.frame}>
                 <div className={ch.shots.length > 1 ? styles.framePair : undefined}>
                   {ch.shots.map((shot) => (
-                    <div key={shot.src} className={styles.frameShot}>
-                      <Image unoptimized src={shot.src} alt={shot.alt} width={shot.w} height={shot.h} sizes="(max-width: 1200px) 100vw, 1120px" />
+                    <div key={shot.src} className={styles.frameShot} style={{ maxWidth: Math.round(shot.w / 2), marginInline: "auto" }}>
+                      <Image unoptimized src={shot.src} alt={shot.alt} width={shot.w} height={shot.h} />
                     </div>
                   ))}
                 </div>
@@ -308,7 +303,7 @@ export default async function LandingPage() {
                 {ch.cards.map((c) => (
                   <article key={c.title} className={styles.card}>
                     <div className={styles.cardVisual}>
-                      <Image unoptimized src={c.src} alt={c.alt} width={1120} height={640} sizes="(max-width: 900px) 100vw, 560px" />
+                      <Image unoptimized src={c.src} alt={c.alt} width={1120} height={640} />
                     </div>
                     <h3>{c.title}</h3>
                     <p>{c.text}</p>

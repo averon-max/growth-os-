@@ -178,3 +178,37 @@
 .boardGrid h3 svg { flex: none; color: var(--soft); }
 .boardGrid p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 @media (max-width: 900px) { .board { grid-template-columns: 1fr; padding-top: 36px; } .boardGrid { grid-template-columns: 1fr; gap: 22px; } }
+
+/* ===== v7: screens on a quiet technical grid (as on vercel.com). Still black, still no light. ===== */
+.frame {
+  padding: 40px 40px 0;
+  background-color: #050505;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: -1px -1px;
+}
+.frameShot { box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.9); }
+.cardVisual {
+  padding: 26px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #050505;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+.cardVisual img { filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.75)); }
+@media (max-width: 700px) { .frame { padding: 20px 20px 0; } .cardVisual { padding: 18px 14px; } }
+/* Caption under the screen (not over its faded edge). */
+.frameCaption { margin-top: 0; padding: 22px 0 34px; }
+/* The hero screen sits in the same grid frame. */
+.heroShot {
+  padding: 40px 40px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background-color: #050505;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: -1px -1px;
+}
+.heroShot img { border: 1px solid rgba(255, 255, 255, 0.1); border-bottom: 0; border-radius: 10px 10px 0 0; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.9); }
+@media (max-width: 700px) { .heroShot { padding: 16px 16px 0; } }
