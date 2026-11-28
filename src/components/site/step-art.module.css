@@ -128,3 +128,13 @@
 .step:last-child .stepDot { animation-name: liveOn; }
 @keyframes liveOn { 0% { border-color: #2e2e2e; background: #000; transform: none; } 4% { transform: scale(1.35); } 8%, 70% { border-color: #30a46c; background: #30a46c; transform: none; } 76%, 100% { border-color: #2e2e2e; background: #000; } }
 @media (prefers-reduced-motion: reduce) { .ripple, .up, .area, .dotRing, .caret { animation: none; } .up, .area { opacity: 1; } .caret { display: none; } }
+
+/* ===== Connect v4: icon tiles on top, Hyprlyx mark below ===== */
+.tile { position: absolute; top: 14px; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; margin-left: -20px; border: 1px solid #262626; border-radius: 11px; background: #111; animation: tileOn 6s var(--d) infinite; }
+.tile > svg { fill: none; stroke: #a1a1a1; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; animation: iconOn 6s var(--d) infinite; }
+@keyframes tileOn { 0%, 22% { border-color: #262626; transform: none; } 25% { transform: translateY(-2px); } 28%, 90% { border-color: rgba(0, 144, 255, .55); transform: none; } 100% { border-color: #262626; } }
+.tick { position: absolute; right: -5px; top: -5px; display: grid; place-items: center; width: 15px; height: 15px; border: 2px solid #0a0a0a; border-radius: 50%; background: #30a46c; opacity: 0; transform: scale(.4); animation: tickOn 6s var(--d) infinite; }
+.tick svg { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes tickOn { 0%, 24% { opacity: 0; transform: scale(.4); } 29% { opacity: 1; transform: scale(1.15); } 32%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.hub { top: auto; bottom: 12px; right: auto; left: 50%; margin: 0 0 0 -20px; }
+@media (prefers-reduced-motion: reduce) { .tile, .tile > svg, .tick { animation: none; } .tick { opacity: 1; transform: none; } .tile > svg { stroke: #52a9ff; } }

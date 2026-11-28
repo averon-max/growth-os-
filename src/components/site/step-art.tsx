@@ -15,31 +15,27 @@ export function StepArt({ kind }: { kind: StepArtKind }) {
   );
 }
 
-/* Three sources on the left; a pulse travels along each line into Hyprlyx, then the source shows a check. */
+/* Three sources on top, Hyprlyx below: a dot runs down each line, the source gets a check, the mark answers. */
 function Connect() {
-  // Line icons (lucide shapes): search for Search Console, columns for Analytics, a cloud for Cloudflare.
-  const rows = [
-    { name: "Search Console", y: 30, icon: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></> },
-    { name: "Analytics 4", y: 75, icon: <><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></> },
-    { name: "Cloudflare", y: 120, icon: <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /> },
+  const src = [
+    { name: "Search Console", x: 18, icon: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></> },
+    { name: "Analytics 4", x: 50, icon: <><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></> },
+    { name: "Cloudflare", x: 82, icon: <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /> },
   ];
   return (
     <div className={a.panel}>
-      <svg className={a.wires} viewBox="0 0 300 150" preserveAspectRatio="none">
-        {rows.map((r, i) => (
+      <svg className={a.wires} viewBox="0 0 100 100" preserveAspectRatio="none">
+        {src.map((r, i) => (
           <g key={r.name} style={{ ["--d" as string]: `${i * 0.7}s` }}>
-            <path className={a.wire} d={`M132 ${r.y} C 190 ${r.y}, 200 75, 246 75`} />
-            <path className={a.pulse} d={`M132 ${r.y} C 190 ${r.y}, 200 75, 246 75`} pathLength={100} />
+            <path className={a.wire} d={`M${r.x} 34 C ${r.x} 55, 50 50, 50 70`} />
+            <path className={a.pulse} d={`M${r.x} 34 C ${r.x} 55, 50 50, 50 70`} pathLength={100} />
           </g>
         ))}
       </svg>
-      {rows.map((r, i) => (
-        <div key={r.name} className={a.chip} style={{ top: r.y - 13, ["--d" as string]: `${i * 0.7}s` }}>
-          <svg className={a.chipIcon} viewBox="0 0 24 24" width="12" height="12">{r.icon}</svg>
-          {r.name}
-          <svg className={a.chipOk} viewBox="0 0 16 16" width="13" height="13">
-            <path d="M4 8.4 6.8 11 12 5.4" />
-          </svg>
+      {src.map((r, i) => (
+        <div key={r.name} className={a.tile} style={{ left: `${r.x}%`, ["--d" as string]: `${i * 0.7}s` }} title={r.name}>
+          <svg viewBox="0 0 24 24" width="17" height="17">{r.icon}</svg>
+          <span className={a.tick}><svg viewBox="0 0 16 16" width="9" height="9"><path d="M4 8.4 6.8 11 12 5.4" /></svg></span>
         </div>
       ))}
       <div className={a.hub}>
