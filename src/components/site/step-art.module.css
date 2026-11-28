@@ -8,8 +8,8 @@
 .srcName { color: #d0d6e0; }
 .state { position: relative; display: inline-flex; align-items: center; justify-content: flex-end; width: 96px; height: 20px; }
 .spin { position: absolute; right: 4px; width: 13px; height: 13px; border: 1.5px solid #2a2c30; border-top-color: #8a8f98; border-radius: 50%; animation: spin .9s linear infinite, hideSpin 6s var(--d) infinite; }
-.ok { position: absolute; right: 0; display: inline-flex; align-items: center; gap: 6px; color: #4cc38a; opacity: 0; animation: showOk 6s var(--d) infinite; }
-.ok svg { fill: none; stroke: #4cc38a; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ok { position: absolute; right: 0; display: inline-flex; align-items: center; gap: 6px; color: #52a9ff; opacity: 0; animation: showOk 6s var(--d) infinite; }
+.ok svg { fill: none; stroke: #52a9ff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes hideSpin { 0%, 14% { opacity: 1; } 18%, 92% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes showOk { 0%, 15% { opacity: 0; transform: translateY(3px); } 20%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
@@ -34,7 +34,7 @@
 
 /* 3 · Growth chart */
 .chartHead { display: flex; align-items: baseline; justify-content: space-between; color: #8a8f98; }
-.gain { color: #4cc38a; font-weight: 600; opacity: 0; animation: gain 5.5s infinite; }
+.gain { color: #f7f8f8; font-weight: 600; opacity: 0; animation: gain 5.5s infinite; }
 .chart { display: block; width: 100%; height: 100px; margin-top: 6px; overflow: visible; }
 .grid { stroke: #16171a; stroke-width: 1; }
 .line { fill: none; stroke: #0090ff; stroke-width: 2; stroke-linecap: round; }
@@ -48,8 +48,8 @@
 .docTitle { overflow: hidden; color: #f7f8f8; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .status { position: relative; flex: 0 0 78px; height: 20px; }
 .s1, .s2, .s3 { position: absolute; right: 0; top: 0; padding: 2px 8px; border: 1px solid; border-radius: 999px; font-size: 11.5px; line-height: 14px; opacity: 0; }
-.s1 { border-color: rgba(255, 178, 36, .4); color: #ffb224; animation: st1 7s infinite; }
-.s2 { border-color: rgba(48, 164, 108, .45); color: #4cc38a; animation: st2 7s infinite; }
+.s1 { border-color: #34343a; color: #8a8f98; animation: st1 7s infinite; }
+.s2 { border-color: #3e3e44; color: #d0d6e0; animation: st2 7s infinite; }
 .s3 { border-color: rgba(82, 169, 255, .45); color: #52a9ff; animation: st3 7s infinite; }
 @keyframes st1 { 0%, 40% { opacity: 1; } 45%, 100% { opacity: 0; } }
 @keyframes st2 { 0%, 42% { opacity: 0; } 47%, 64% { opacity: 1; } 69%, 100% { opacity: 0; } }

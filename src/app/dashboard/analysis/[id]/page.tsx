@@ -66,7 +66,7 @@ function verdict(score: number | null) {
   if (score >= 50) return { text: "Needs work", tone: "#d4a94e" };
   return { text: "Poor", tone: "#e5484d" };
 }
-const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#ffb224" } : score >= 60 ? { text: "Medium impact", tone: "#0090ff" } : { text: "Low impact", tone: "#8f8f8f" });
+const impact = (score: number) => (score >= 80 ? { text: "High impact", tone: "#ffb224" } : score >= 60 ? { text: "Medium impact", tone: "#0090ff" } : { text: "Low impact", tone: "#8a8f98" });
 const path = (u: string) => { try { const x = new URL(u); return x.pathname + x.search || "/"; } catch { return u; } };
 const pl = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const tone = (c: string) => ({ "--tone": c }) as React.CSSProperties;

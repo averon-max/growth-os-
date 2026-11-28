@@ -23,3 +23,28 @@
 @media (max-width: 900px) {
   .shell { display: block; }
 }
+
+/* ===== Light (v4), as in Linear's app: the workspace is one panel beside the sidebar, and its top-left corner
+   catches a single faint light (a 1px edge highlight that fades out, and a 4% white spot). Nothing else glows. ===== */
+@media (min-width: 901px) {
+  .main {
+    position: relative;
+    min-height: calc(100dvh - 8px);
+    margin-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    border-top-left-radius: 12px;
+  }
+  .main::before {
+    position: absolute; top: -1px; left: -1px; z-index: 41; width: 360px; height: 360px;
+    border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3); border-top-left-radius: 12px;
+    content: ""; pointer-events: none;
+    -webkit-mask-image: radial-gradient(300px 300px at 0 0, #000 0%, rgba(0, 0, 0, 0.55) 30%, rgba(0, 0, 0, 0.18) 50%, transparent 70%);
+    mask-image: radial-gradient(300px 300px at 0 0, #000 0%, rgba(0, 0, 0, 0.55) 30%, rgba(0, 0, 0, 0.18) 50%, transparent 70%);
+  }
+  .main::after {
+    position: absolute; top: -190px; left: -190px; z-index: 41; width: 380px; height: 380px; border-radius: 50%;
+    background: radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 90%);
+    content: ""; pointer-events: none;
+  }
+}

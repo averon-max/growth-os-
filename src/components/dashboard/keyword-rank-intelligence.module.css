@@ -20,7 +20,7 @@
 
 .title {
   margin: 0;
-  color: #ededed;
+  color: #f7f8f8;
   font-size: 16px;
   font-weight: 590;
   letter-spacing: -0.012em;
@@ -28,7 +28,7 @@
 
 .subtitle {
   margin: 4px 0 0;
-  color: #a1a1a1;
+  color: #a0a5ae;
   font-size: 13px;
 }
 
@@ -41,9 +41,9 @@
 .segment {
   display: inline-flex;
   padding: 2px;
-  border: 1px solid #262626;
+  border: 1px solid #28292e;
   border-radius: 8px;
-  background: #0a0a0a;
+  background: #0f1011;
 }
 
 .segmentBtn {
@@ -52,7 +52,7 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #a1a1a1;
+  color: #a0a5ae;
   font: inherit;
   font-size: 12.5px;
   font-weight: 510;
@@ -61,13 +61,13 @@
 }
 
 .segmentBtn:hover {
-  color: #ededed;
+  color: #f7f8f8;
 }
 
 .segmentBtn[data-on="true"] {
-  background: #1a1a1a;
-  color: #ededed;
-  box-shadow: inset 0 0 0 1px #2e2e2e;
+  background: #1e1f22;
+  color: #f7f8f8;
+  box-shadow: inset 0 0 0 1px #34343a;
 }
 
 .iconBtn {
@@ -75,16 +75,16 @@
   height: 30px;
   display: grid;
   place-items: center;
-  border: 1px solid #262626;
+  border: 1px solid #28292e;
   border-radius: 7px;
-  background: #111111;
-  color: #a1a1a1;
+  background: #141516;
+  color: #a0a5ae;
   cursor: pointer;
 }
 
 .iconBtn:hover {
-  border-color: #333333;
-  color: #ededed;
+  border-color: #37393e;
+  color: #f7f8f8;
 }
 
 .spin {
@@ -101,9 +101,9 @@
 .metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  border: 1px solid #262626;
+  border: 1px solid #28292e;
   border-radius: 10px;
-  background: #111111;
+  background: #141516;
   overflow: hidden;
 }
 
@@ -112,7 +112,7 @@
   padding: 14px 16px;
   display: grid;
   gap: 4px;
-  border-right: 1px solid #1f1f1f;
+  border-right: 1px solid #23252a;
 }
 
 .metric:last-child {
@@ -120,7 +120,7 @@
 }
 
 .metricLabel {
-  color: #a1a1a1;
+  color: #a0a5ae;
   font-size: 12.5px;
   font-weight: 510;
 }
@@ -129,7 +129,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #ededed;
+  color: #f7f8f8;
   font-size: 22px;
   font-weight: 590;
   letter-spacing: -0.02em;
@@ -139,7 +139,7 @@
 
 .metricSub {
   overflow: hidden;
-  color: #8f8f8f;
+  color: #8a8f98;
   font-size: 12px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -166,9 +166,9 @@
   display: grid;
   gap: 8px;
   padding: 12px 16px;
-  border: 1px solid #262626;
+  border: 1px solid #28292e;
   border-radius: 10px;
-  background: #111111;
+  background: #141516;
 }
 
 .distBar {
@@ -177,7 +177,7 @@
   gap: 2px;
   overflow: hidden;
   border-radius: 999px;
-  background: #1a1a1a;
+  background: #1e1f22;
 }
 
 .distBar span {
@@ -195,7 +195,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #a1a1a1;
+  color: #a0a5ae;
   font-size: 12.5px;
 }
 
@@ -206,7 +206,7 @@
 }
 
 .distItem strong {
-  color: #ededed;
+  color: #f7f8f8;
   font-weight: 590;
   font-variant-numeric: tabular-nums;
 }
@@ -214,9 +214,9 @@
 /* график */
 .panel,
 .list {
-  border: 1px solid #262626;
+  border: 1px solid #28292e;
   border-radius: 10px;
-  background: #111111;
+  background: #141516;
   overflow: hidden;
 }
 
@@ -228,18 +228,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #262626;
-  background: #1a1a1a;
+  border-bottom: 1px solid #28292e;
+  background: #1e1f22;
 }
 
 .panelTitle {
-  color: #ededed;
+  color: #f7f8f8;
   font-size: 13px;
   font-weight: 510;
 }
 
 .listHint {
-  color: #8f8f8f;
+  color: #8a8f98;
   font-size: 12.5px;
 }
 
@@ -254,14 +254,14 @@
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: #a1a1a1;
+  color: #a0a5ae;
   font: inherit;
   font-size: 12.5px;
   cursor: pointer;
 }
 
 .chip:hover {
-  color: #ededed;
+  color: #f7f8f8;
 }
 
 .chip[data-on="true"] {
@@ -279,9 +279,9 @@
 .empty,
 .error {
   padding: 28px 16px;
-  border: 1px dashed #262626;
+  border: 1px dashed #28292e;
   border-radius: 10px;
-  color: #a1a1a1;
+  color: #a0a5ae;
   font-size: 13px;
   text-align: center;
 }
@@ -296,7 +296,7 @@
 
 .notice {
   margin: 0;
-  color: #8f8f8f;
+  color: #8a8f98;
   font-size: 12px;
 }
 
@@ -310,7 +310,7 @@
   }
 
   .metric:nth-child(-n + 3) {
-    border-bottom: 1px solid #1f1f1f;
+    border-bottom: 1px solid #23252a;
   }
 }
 
@@ -327,55 +327,55 @@
 
 /* Clickable metric cells pick the chart series; each carries its series colour. */
 button.metric { border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-button.metric:hover { background: #111111; }
-.metric[data-on] { background: #111111; box-shadow: inset 0 -2px 0 #ededed; }
+button.metric:hover { background: #141516; }
+.metric[data-on] { background: #141516; box-shadow: inset 0 -2px 0 #f7f8f8; }
 .metricDot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; vertical-align: 0; }
 
 /* ===== Design lock: the last word in this file. Same values on every page (Vercel dark). ===== */
-.segment { display: inline-flex !important; gap: 2px !important; padding: 3px !important; border: 1px solid #1f1f1f !important; border-radius: 8px !important; background: #0a0a0a !important; box-shadow: none !important; }
-.segmentBtn { height: 30px !important; padding: 0 12px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
-.segmentBtn:hover { background: #141414 !important; color: #ededed !important; }
-.segmentBtn[data-on="true"] { background: #1f1f1f !important; color: #ededed !important; box-shadow: none !important; }
-.chips { display: inline-flex !important; gap: 2px !important; padding: 3px !important; border: 1px solid #1f1f1f !important; border-radius: 8px !important; background: #0a0a0a !important; box-shadow: none !important; }
-.chip { height: 30px !important; padding: 0 12px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #a1a1a1 !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
-.chip:hover { background: #141414 !important; color: #ededed !important; }
-.chip[data-on="true"] { background: #1f1f1f !important; color: #ededed !important; box-shadow: none !important; }
-.panel { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
-.panelHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
-.list { border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; box-shadow: none !important; }
-.listHead { border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
+.segment { display: inline-flex !important; gap: 2px !important; padding: 3px !important; border: 1px solid #23252a !important; border-radius: 8px !important; background: #0f1011 !important; box-shadow: none !important; }
+.segmentBtn { height: 30px !important; padding: 0 12px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #a0a5ae !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.segmentBtn:hover { background: #18191b !important; color: #f7f8f8 !important; }
+.segmentBtn[data-on="true"] { background: #23252a !important; color: #f7f8f8 !important; box-shadow: none !important; }
+.chips { display: inline-flex !important; gap: 2px !important; padding: 3px !important; border: 1px solid #23252a !important; border-radius: 8px !important; background: #0f1011 !important; box-shadow: none !important; }
+.chip { height: 30px !important; padding: 0 12px !important; border: 0 !important; border-radius: 6px !important; background: transparent !important; color: #a0a5ae !important; font-size: 13px !important; font-weight: 500 !important; box-shadow: none !important; }
+.chip:hover { background: #18191b !important; color: #f7f8f8 !important; }
+.chip[data-on="true"] { background: #23252a !important; color: #f7f8f8 !important; box-shadow: none !important; }
+.panel { border: 1px solid #23252a !important; border-radius: 12px !important; background: #0f1011 !important; box-shadow: none !important; }
+.panelHead { border-bottom: 1px solid #1e1f22 !important; background: transparent !important; }
+.list { border: 1px solid #23252a !important; border-radius: 12px !important; background: #0f1011 !important; box-shadow: none !important; }
+.listHead { border-bottom: 1px solid #1e1f22 !important; background: transparent !important; }
 .metricDot { display: none !important; }
 
 
 /* Numbers, Vercel style: one clean row, no boxes, no icons. */
-.metrics { display: grid !important; gap: 0 !important; overflow: visible !important; margin-bottom: 24px !important; padding: 0 !important; border: 0 !important; border-bottom: 1px solid #1f1f1f !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.metrics { display: grid !important; gap: 0 !important; overflow: visible !important; margin-bottom: 24px !important; padding: 0 !important; border: 0 !important; border-bottom: 1px solid #23252a !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
 .metric { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; min-width: 0 !important; padding: 4px 24px 18px 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; text-align: left !important; transform: none !important; }
-.metricLabel { color: #a1a1a1 !important; font-size: 14px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 0 !important; }
-.metricValue { color: #ededed !important; font-size: 32px !important; font-weight: 600 !important; letter-spacing: -0.03em !important; line-height: 1.15 !important; }
-.metric[data-on] { box-shadow: inset 0 -2px 0 #ededed !important; }
+.metricLabel { color: #a0a5ae !important; font-size: 14px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 0 !important; }
+.metricValue { color: #f7f8f8 !important; font-size: 32px !important; font-weight: 600 !important; letter-spacing: -0.03em !important; line-height: 1.15 !important; }
+.metric[data-on] { box-shadow: inset 0 -2px 0 #f7f8f8 !important; }
 button.metric:hover .metricValue { color: #fff !important; }
-.metricSub { color: #8f8f8f !important; }
+.metricSub { color: #8a8f98 !important; }
 .distribution { display: none !important; }
 
 /* ===== v3 — as on the product screens (website): the final word in this file. ===== */
-.metrics { gap: 0 !important; overflow: hidden !important; margin: 0 0 14px !important; padding: 0 !important; border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
-.metric { gap: 0 !important; padding: 16px 18px !important; border: 0 !important; border-right: 1px solid #1c1c1c !important; border-radius: 0 !important; background: transparent !important; }
+.metrics { gap: 0 !important; overflow: hidden !important; margin: 0 0 14px !important; padding: 0 !important; border: 1px solid #25272c !important; border-radius: 12px !important; background: #0f1011 !important; }
+.metric { gap: 0 !important; padding: 16px 18px !important; border: 0 !important; border-right: 1px solid #202124 !important; border-radius: 0 !important; background: transparent !important; }
 .metric:last-child { border-right: 0 !important; }
-button.metric:hover { background: #0f0f0f !important; }
-.metric[data-on] { background: transparent !important; box-shadow: inset 0 -2px 0 #ededed !important; }
-.metricLabel { display: flex !important; align-items: center !important; gap: 8px !important; color: #a1a1a1 !important; font-size: 13px !important; }
+button.metric:hover { background: #121315 !important; }
+.metric[data-on] { background: transparent !important; box-shadow: inset 0 -2px 0 #f7f8f8 !important; }
+.metricLabel { display: flex !important; align-items: center !important; gap: 8px !important; color: #a0a5ae !important; font-size: 13px !important; }
 .metricDot { display: inline-block !important; width: 9px !important; height: 9px !important; margin: 0 !important; border-radius: 2px !important; }
 .metricValue { margin-top: 8px; font-size: 24px !important; letter-spacing: -0.01em !important; line-height: 1.2 !important; }
-.metricSub { margin-top: 6px; color: #8f8f8f !important; font-size: 12.5px !important; }
-.distribution { display: grid !important; gap: 12px !important; margin: 0 0 14px !important; padding: 16px 18px !important; border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
+.metricSub { margin-top: 6px; color: #8a8f98 !important; font-size: 12.5px !important; }
+.distribution { display: grid !important; gap: 12px !important; margin: 0 0 14px !important; padding: 16px 18px !important; border: 1px solid #25272c !important; border-radius: 12px !important; background: #0f1011 !important; }
 .distBar { gap: 4px !important; height: 6px !important; }
 .distBar span { border-radius: 3px !important; }
-.distLegend { gap: 6px 22px !important; color: #a1a1a1 !important; font-size: 13px !important; }
+.distLegend { gap: 6px 22px !important; color: #a0a5ae !important; font-size: 13px !important; }
 .distItem i { width: 12px !important; height: 2px !important; border-radius: 1px !important; }
-.distItem strong { color: #ededed !important; font-weight: 500 !important; }
-.panel, .list { border: 1px solid #232323 !important; border-radius: 12px !important; background: #0a0a0a !important; }
-.panelHead, .listHead { min-height: 46px !important; padding: 0 18px !important; border-bottom: 1px solid #1a1a1a !important; }
-.segment, .chips { padding: 3px !important; border: 1px solid #232323 !important; border-radius: 8px !important; background: #0a0a0a !important; }
-.segmentBtn, .chip { height: 28px !important; padding: 0 11px !important; border-radius: 6px !important; color: #8f8f8f !important; font-size: 13px !important; font-weight: 400 !important; }
-.segmentBtn[data-on="true"], .chip[data-on="true"] { background: #1f1f1f !important; color: #ededed !important; }
-@media (max-width: 1100px) { .metric:nth-child(3n) { border-right: 0 !important; } .metric:nth-child(n + 4) { border-top: 1px solid #1c1c1c !important; } }
+.distItem strong { color: #f7f8f8 !important; font-weight: 500 !important; }
+.panel, .list { border: 1px solid #25272c !important; border-radius: 12px !important; background: #0f1011 !important; }
+.panelHead, .listHead { min-height: 46px !important; padding: 0 18px !important; border-bottom: 1px solid #1e1f22 !important; }
+.segment, .chips { padding: 3px !important; border: 1px solid #25272c !important; border-radius: 8px !important; background: #0f1011 !important; }
+.segmentBtn, .chip { height: 28px !important; padding: 0 11px !important; border-radius: 6px !important; color: #8a8f98 !important; font-size: 13px !important; font-weight: 400 !important; }
+.segmentBtn[data-on="true"], .chip[data-on="true"] { background: #23252a !important; color: #f7f8f8 !important; }
+@media (max-width: 1100px) { .metric:nth-child(3n) { border-right: 0 !important; } .metric:nth-child(n + 4) { border-top: 1px solid #202124 !important; } }

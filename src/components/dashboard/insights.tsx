@@ -162,7 +162,7 @@ export function Columns({ cols, height = 120, unit }: { cols: Column[]; height?:
           <>
             <span className={s.colValue}>{c.value ? fmtNum(c.value) : ""}</span>
             <span className={s.colTrack} style={{ height }}>
-              <span className={s.colFill} style={{ height: h, background: c.value ? (c.color ?? "#0090ff") : "#262626" }} />
+              <span className={s.colFill} style={{ height: h, background: c.value ? (c.color ?? "#0090ff") : "#28292e" }} />
             </span>
             <span className={s.colLabel}>{c.label}</span>
           </>

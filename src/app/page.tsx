@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { display, mono } from "./fonts";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Ban, Check, CircleCheck, Eye, Trash2, UserCheck } from "lucide-react";
 
 import SubscribeButton from "@/components/subscribe-button";
 import { PLANS } from "@/lib/billing/plans";
@@ -332,22 +332,43 @@ export default async function LandingPage() {
                 </Link>
               </div>
             </div>
-            <div className={`${s.stats} ${s.stats4}`}>
-              <div className={s.stat}>
-                <b>Read-only</b>
-                <span>connections to Search Console, Analytics and Cloudflare</span>
-              </div>
-              <div className={s.stat}>
-                <b>100%</b>
-                <span>of pages approved by a person before they go anywhere</span>
-              </div>
-              <div className={s.stat}>
-                <b>1 click</b>
-                <span>to delete any stored data in Settings</span>
-              </div>
-              <div className={s.stat}>
-                <b>0</b>
-                <span>data sold or used to train AI models</span>
+            <div className={styles.trust}>
+              <h3 className={styles.trustTitle}>
+                Connect your data in a minute <span className={styles.accentPill}>Free</span>
+              </h3>
+              <p className={styles.trustLede}>Three read-only connections give Hyprlyx real numbers. Nothing on your site changes, and you can disconnect any of them in Settings.</p>
+              <ul className={styles.trustList}>
+                {[
+                  ["Google Search Console", "clicks, impressions, positions"],
+                  ["Google Analytics 4", "visitors, countries, pages"],
+                  ["Cloudflare", "every visit and verified crawler"],
+                ].map(([name, scope]) => (
+                  <li key={name}>
+                    <CircleCheck size={16} strokeWidth={1.7} className={styles.trustCheck} aria-hidden />
+                    <span>
+                      {name} <span className={styles.trustScope}>· {scope}</span>
+                    </span>
+                    <span>Read-only</span>
+                  </li>
+                ))}
+              </ul>
+              <div className={styles.trustGrid}>
+                <div>
+                  <h3><Eye size={16} strokeWidth={1.6} aria-hidden /> Reads, never writes</h3>
+                  <p>Hyprlyx can read Search Console, Analytics and Cloudflare. It can't change your site or your Google settings.</p>
+                </div>
+                <div>
+                  <h3><UserCheck size={16} strokeWidth={1.6} aria-hidden /> A person approves every page</h3>
+                  <p>Drafts wait in Content until someone on your team approves them. Nothing is published on its own.</p>
+                </div>
+                <div>
+                  <h3><Trash2 size={16} strokeWidth={1.6} aria-hidden /> Delete anything, any time</h3>
+                  <p>Each kind of stored data has its own Delete button in Settings. Deleting your account also revokes Google access.</p>
+                </div>
+                <div>
+                  <h3><Ban size={16} strokeWidth={1.6} aria-hidden /> Never sold, never trained on</h3>
+                  <p>Your data isn't sold and isn't used to train AI models.</p>
+                </div>
               </div>
             </div>
           </div>

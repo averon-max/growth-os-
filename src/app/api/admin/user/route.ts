@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { googleTokens, handOver, purgeLooseRows, revokeGoogleTokens } from "@/lib/account-purge";
 import { requireAdmin, authErrorResponse } from "@/lib/auth-helpers";
 import { checkRequest } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
@@ -77,18 +78,21 @@ export async function POST(request: Request) {
         } catch (e) {
           return NextResponse.json({ error: `Stripe refused, nothing was deleted: ${(e as Error).message}` }, { status: 502 });
         }
-        let removedWorkspaces = 0;
+        const solo: string[] = [];
+        const shared: string[] = [];
+        for (const workspaceId of owned) {
+          const others = await prisma.workspaceMember.count({ where: { workspaceId, userId: { not: user.id } } });
+          (others === 0 ? solo : shared).push(workspaceId);
+        }
+        const tokens = await googleTokens(solo);
         await prisma.$transaction(async (tx) => {
-          for (const workspaceId of owned) {
-            const others = await tx.workspaceMember.count({ where: { workspaceId, userId: { not: user.id } } });
-            if (others === 0) {
-              await tx.workspace.delete({ where: { id: workspaceId } });
-              removedWorkspaces++;
-            }
-          }
+          await handOver(tx, shared, user.id);
+          await purgeLooseRows(tx, solo);
+          for (const workspaceId of solo) await tx.workspace.delete({ where: { id: workspaceId } });
           await tx.user.delete({ where: { id: user.id } });
         });
-        await audit(admin, "user.delete", target, { removedWorkspaces, ...billing });
+        const googleRevoked = await revokeGoogleTokens(tokens);
+        await audit(admin, "user.delete", target, { removedWorkspaces: solo.length, handedOver: shared.length, googleRevoked, ...billing });
         return NextResponse.json({ ok: true });
       }
       default:

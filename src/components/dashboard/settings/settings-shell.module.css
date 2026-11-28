@@ -2,13 +2,13 @@
 @media (max-width: 860px) { .frame { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
 .nav { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 2px; }
 @media (max-width: 860px) { .nav { position: static; flex-direction: row; flex-wrap: wrap; } }
-.link { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 6px; color: #a1a1a1; font-size: 14px; text-decoration: none; }
-.link:hover { background: #111; color: #ededed; }
-.link[data-active] { background: #1a1a1a; color: #ededed; font-weight: 500; }
+.link { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 6px; color: #a0a5ae; font-size: 14px; text-decoration: none; }
+.link:hover { background: #141516; color: #f7f8f8; }
+.link[data-active] { background: #1e1f22; color: #f7f8f8; font-weight: 500; }
 .content { min-width: 0; max-width: 1000px; }
 .head { margin-bottom: 24px; }
-.title { margin: 0; color: #ededed; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
-.desc { max-width: 720px; margin: 6px 0 0; color: #a1a1a1; font-size: 14px; line-height: 1.55; }
+.title { margin: 0; color: #f7f8f8; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.desc { max-width: 720px; margin: 6px 0 0; color: #a0a5ae; font-size: 14px; line-height: 1.55; }
 .stack { display: flex; flex-direction: column; gap: 16px; }
 
 /* The sidebar now shows the Settings sections (Vercel style), so the page has no second menu. */
@@ -16,11 +16,11 @@
 .frame { display: block !important; max-width: 960px; }
 
 /* General uses the shared list rows; these lock them to the same card look as Account, Billing and Data (settings-ui.ts). */
-.card { overflow: hidden !important; margin: 0 !important; border: 1px solid #1f1f1f !important; border-radius: 12px !important; background: #0a0a0a !important; }
-.card:hover { border-color: #1f1f1f !important; }
-.cardHead { padding: 16px 20px !important; border-bottom: 1px solid #1a1a1a !important; background: transparent !important; }
-.cardHead > span:first-child { color: #ededed !important; font-size: 14px !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
-.cardRow { padding: 14px 20px !important; border-bottom: 1px solid #141414 !important; }
+.card { overflow: hidden !important; margin: 0 !important; border: 1px solid #23252a !important; border-radius: 12px !important; background: #0f1011 !important; }
+.card:hover { border-color: #23252a !important; }
+.cardHead { padding: 16px 20px !important; border-bottom: 1px solid #1e1f22 !important; background: transparent !important; }
+.cardHead > span:first-child { color: #f7f8f8 !important; font-size: 14px !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
+.cardRow { padding: 14px 20px !important; border-bottom: 1px solid #18191b !important; }
 .cardRow:last-child { border-bottom: 0 !important; }
 .cardRow:hover { background: transparent !important; }
 .title { font-size: 24px; font-weight: 600; }

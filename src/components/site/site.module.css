@@ -233,3 +233,20 @@ a.cell:hover .cellMore { color: var(--text); }
 .footerBottom a { color: #62666d; text-decoration: none; }
 .footerBottom a:hover { color: #f7f8f8; }
 @media (max-width: 900px) { .footerGrid { grid-template-columns: repeat(2, minmax(0,1fr)); } .footerLogo { grid-column: 1 / -1; } }
+
+/* ===== Light (v4), as on linear.app: product frames catch one light source on their top-left edge; nothing glows. ===== */
+.page { --accent: #52a9ff; --accentBg: rgba(0, 144, 255, 0.12); }
+.shot { border-color: rgba(255, 255, 255, 0.06); border-radius: 12px; background: #0b0c0d; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2); }
+.shot::after {
+  position: absolute; inset: 0; z-index: 3; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: inherit; content: ""; pointer-events: none;
+  -webkit-mask-image: radial-gradient(300px 300px at 7% 0%, #000 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.2) 50%, transparent 70%);
+  mask-image: radial-gradient(300px 300px at 7% 0%, #000 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.2) 50%, transparent 70%);
+}
+/* The first frame of a page sits under the light itself: a faint white spot at its top-left corner. */
+.lit::before {
+  position: absolute; top: -260px; left: calc(24px + 7% - 300px); z-index: 0; width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 90%); content: ""; pointer-events: none;
+}
+.lit .shot { z-index: 1; }
+/* One accent, used rarely: a plan or a "new" next to the thing it describes. */
+.accentPill { display: inline-flex; align-items: center; height: 22px; margin-left: 8px; padding: 0 9px; border-radius: 999px; background: var(--accentBg); color: var(--accent); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 12.5px; font-weight: 510; letter-spacing: 0; vertical-align: 2px; }

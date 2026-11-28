@@ -74,7 +74,7 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
         {f.shot ? (
-          <div className={s.stage}>
+          <div className={`${s.stage} ${s.lit}`}>
             <div className={f.shot.extra ? s.shotPair : undefined}>
               <div className={s.shot}>
                 <Image src={f.shot.src} alt={f.shot.alt} width={f.shot.w ?? 3200} height={f.shot.h ?? 2000} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />

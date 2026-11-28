@@ -169,13 +169,16 @@ export default async function PricingPage() {
       <section className={s.section}>
         <div className={s.container}>
           <div className={s.sectionHead}>
-            <h2 className={s.h2}>Every tool, in every plan</h2>
-            <p className={s.muted}>One workspace for keyword research, rank tracking, technical SEO, competitors, backlinks, content and traffic.</p>
+            <h2 className={s.h2}>Every tool in one workspace</h2>
+            <p className={s.muted}>Starter opens keyword research, rank tracking, technical SEO, competitors, backlinks and traffic. The AI writer comes with Growth.</p>
           </div>
           <div className={s.grid4}>
             {TOOLS.map((f) => (
               <Link key={f.slug} href={`/product/${f.slug}`} className={s.cell}>
-                <h3>{f.name}</h3>
+                <h3>
+                  {f.name}
+                  {f.slug === "content" ? <span className={s.accentPill}>Growth</span> : null}
+                </h3>
                 <p>{f.short}.</p>
                 <span className={s.cellMore}>{f.seoTitle.split(" | ")[0].split(":")[0]}</span>
               </Link>

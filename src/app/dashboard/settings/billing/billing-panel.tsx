@@ -25,14 +25,14 @@ const muted = note;
 type Usage = { plan: string; rows: { label: string; used: number; limit: number }[]; data: { today: number; month: number } };
 
 function Bar({ label, value, note }: { label: string; value: number; note: string }) {
-  const tone = value >= 100 ? "#e5484d" : value >= 80 ? "#ffb224" : "#ededed";
+  const tone = value >= 100 ? "#e5484d" : value >= 80 ? "#ffb224" : "#f7f8f8";
   return (
-    <div style={{ padding: "12px 20px", borderBottom: "1px solid #141414" }}>
+    <div style={{ padding: "12px 20px", borderBottom: "1px solid #18191b" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
-        <span style={{ color: "#ededed" }}>{label}</span>
-        <span style={{ color: "#8f8f8f", fontVariantNumeric: "tabular-nums" }}>{note}</span>
+        <span style={{ color: "#f7f8f8" }}>{label}</span>
+        <span style={{ color: "#8a8f98", fontVariantNumeric: "tabular-nums" }}>{note}</span>
       </div>
-      <div style={{ height: 4, borderRadius: 2, background: "#1f1f1f", marginTop: 8, overflow: "hidden" }}>
+      <div style={{ height: 4, borderRadius: 2, background: "#23252a", marginTop: 8, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, value)}%`, height: "100%", background: tone, borderRadius: 2, transition: "width .4s ease" }} />
       </div>
     </div>
@@ -120,7 +120,7 @@ export default function BillingPanel() {
         <div style={head}>Plan</div>
         <div style={{ ...body, justifyContent: "space-between" }}>
           <div>
-            <div style={{ color: "#ededed", fontSize: 15, fontWeight: 590 }}>
+            <div style={{ color: "#f7f8f8", fontSize: 15, fontWeight: 590 }}>
               {b.plan}{trial ? " · free trial" : ""}{b.source === "manual" && b.planId !== "FREE" ? " · granted" : ""}
             </div>
             <p style={muted}>
@@ -137,7 +137,7 @@ export default function BillingPanel() {
           <Link href="/pricing" style={btn}>{b.planId === "FREE" ? "See plans" : "Change plan"}</Link>
         </div>
         {live ? (
-          <div style={{ ...body, borderTop: "1px solid #1f1f1f" }}>
+          <div style={{ ...body, borderTop: "1px solid #23252a" }}>
             {b.cancelAtPeriodEnd ? (
               <button style={btn} disabled={!!busy} onClick={() => void act("resume", "Resume your subscription? It will renew and charge your card as usual.")}>Resume subscription</button>
             ) : (
@@ -155,9 +155,9 @@ export default function BillingPanel() {
         <section style={card}>
           <div style={head}>Change plan</div>
           {b.switches.map((s) => (
-            <div key={s.plan} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #1a1a1a" }}>
+            <div key={s.plan} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #1e1f22" }}>
               <div>
-                <div style={{ color: "#ededed", fontSize: 14, fontWeight: 590 }}>{s.name}</div>
+                <div style={{ color: "#f7f8f8", fontSize: 14, fontWeight: 590 }}>{s.name}</div>
                 <p style={muted}>
                   {s.dueNow === null
                     ? "You pay only the difference for the rest of this month."
@@ -178,7 +178,7 @@ export default function BillingPanel() {
         <div style={head}>Payment method</div>
         <div style={{ ...body, justifyContent: "space-between" }}>
           <p style={muted}>
-            {b.card ? <><span style={{ color: "#ededed", textTransform: "capitalize" }}>{b.card.brand}</span> ending in {b.card.last4} · expires {b.card.exp}</> : "No card saved."}
+            {b.card ? <><span style={{ color: "#f7f8f8", textTransform: "capitalize" }}>{b.card.brand}</span> ending in {b.card.last4} · expires {b.card.exp}</> : "No card saved."}
             <br />Cards are stored by Stripe. Hyprlyx never sees the full number.
           </p>
           <span style={{ display: "inline-flex", gap: 8 }}>
@@ -196,9 +196,9 @@ export default function BillingPanel() {
         <section style={card}>
           <div style={head}>Invoices</div>
           {b.invoices.map((i) => (
-            <div key={i.id} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #1a1a1a", padding: "10px 16px" }}>
-              <span style={{ color: "#ededed", fontSize: 13 }}>{day(i.date)}</span>
-              <span style={{ color: "#8f8f8f", fontSize: 13 }}>{i.amount} · {i.status}</span>
+            <div key={i.id} style={{ ...body, justifyContent: "space-between", borderBottom: "1px solid #1e1f22", padding: "10px 16px" }}>
+              <span style={{ color: "#f7f8f8", fontSize: 13 }}>{day(i.date)}</span>
+              <span style={{ color: "#8a8f98", fontSize: 13 }}>{i.amount} · {i.status}</span>
               {i.url ? <a href={i.url} target="_blank" rel="noreferrer" style={{ ...btn, height: 26 }}>View</a> : <span />}
             </div>
           ))}

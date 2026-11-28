@@ -270,7 +270,7 @@ export function BacklinksClient({ websiteId, domain }: { websiteId: string; doma
         <InsightCard title="Rank of linking sites">
           <Columns
             unit="domains"
-            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: i === 0 ? "#3a3a3a" : "#0090ff" }))}
+            cols={rankBuckets.map(([label, lo, hi], i) => ({ key: label, label, value: allDomains.filter((d) => (d.rank ?? 0) >= lo && (d.rank ?? 0) <= hi).length, color: i === 0 ? "#3e3e44" : "#0090ff" }))}
           />
         </InsightCard>
 

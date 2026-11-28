@@ -26,9 +26,9 @@ export const STORES: Store[] = [
   {
     key: "oldAudits",
     label: "Older site audits",
-    help: "Every audit except the latest one of each site, with their pages and issues.",
+    help: "Every finished audit except the latest one of each site, with their pages and issues. An audit that is still running is never touched.",
     table: "Analysis",
-    where: `"websiteId" IN (${SITES}) AND id NOT IN (SELECT DISTINCT ON ("websiteId") id FROM "Analysis" WHERE "websiteId" IN (${SITES}) ORDER BY "websiteId", "completedAt" DESC NULLS LAST, "createdAt" DESC)`,
+    where: `"websiteId" IN (${SITES}) AND status NOT IN ('QUEUED', 'RUNNING') AND id NOT IN (SELECT DISTINCT ON ("websiteId") id FROM "Analysis" WHERE "websiteId" IN (${SITES}) ORDER BY "websiteId", "completedAt" DESC NULLS LAST, "createdAt" DESC)`,
   },
   {
     key: "competitorScans",
@@ -40,9 +40,17 @@ export const STORES: Store[] = [
   {
     key: "backlinkScans",
     label: "Backlink scans",
-    help: "Saved backlink snapshots and imported link files.",
+    help: "Saved backlink snapshots.",
     table: "BacklinkSnapshot",
     where: `"targetId" IN (SELECT id FROM "BacklinkTarget" WHERE "websiteId" IN (${SITES}))`,
+  },
+  {
+    key: "importedBacklinks",
+    label: "Imported backlinks",
+    help: "Links imported from CSV files (Search Console, Ahrefs, Bing) and from Bing Webmaster.",
+    table: "SiteBacklink",
+    where: `"websiteId" IN (${SITES})`,
+    warn: "Imported links will be gone until you import the files again.",
   },
   {
     key: "serpReplays",

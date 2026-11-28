@@ -7,18 +7,18 @@
   color-scheme: dark;
 
   /* surfaces */
-  --ds-background-100: #0a0a0a;   /* panels, cards */
-  --ds-background-200: #000000;   /* page */
-  --ds-gray-100: #1a1a1a;         /* component background */
-  --ds-gray-200: #1f1f1f;         /* hover */
-  --ds-gray-300: #292929;         /* active / selected */
-  --ds-gray-400: #2e2e2e;         /* border */
-  --ds-gray-500: #454545;         /* border hover */
-  --ds-gray-600: #878787;         /* border active, faint icons */
-  --ds-gray-900: #a1a1a1;         /* secondary text */
-  --ds-gray-1000: #ededed;        /* primary text */
+  --ds-background-100: #0f1011;   /* panels, cards */
+  --ds-background-200: #08090a;   /* page */
+  --ds-gray-100: #1e1f22;         /* component background */
+  --ds-gray-200: #23252a;         /* hover */
+  --ds-gray-300: #2c2d32;         /* active / selected */
+  --ds-gray-400: #34343a;         /* border */
+  --ds-gray-500: #45474d;         /* border hover */
+  --ds-gray-600: #858a93;         /* border active, faint icons */
+  --ds-gray-900: #a0a5ae;         /* secondary text */
+  --ds-gray-1000: #f7f8f8;        /* primary text */
   --ds-gray-alpha-400: rgba(255, 255, 255, 0.14);
-  --ds-border: #242424;           /* hairline between panels (as in the dashboard screenshots) */
+  --ds-border: #26282d;           /* hairline between panels (as in the dashboard screenshots) */
 
   /* meaning, never decoration */
   --ds-blue-700: #0a72ef;

@@ -9,11 +9,11 @@ type Status = { connected: boolean; zoneId?: string; updatedAt?: string } | null
 const CREATE_TOKEN_URL =
   "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22analytics%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22zone%22%2C%22type%22%3A%22read%22%7D%5D&accountId=%2A&zoneId=all&name=Hyprlyx";
 
-const row: React.CSSProperties = { padding: "12px 16px", borderTop: "1px solid #1a1a1a" };
-const btn: React.CSSProperties = { height: 30, padding: "0 12px", border: "1px solid #2a2c31", borderRadius: 6, background: "#141516", color: "#ededed", fontSize: 12.5, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" };
+const row: React.CSSProperties = { padding: "12px 16px", borderTop: "1px solid #1e1f22" };
+const btn: React.CSSProperties = { height: 30, padding: "0 12px", border: "1px solid #2a2c31", borderRadius: 6, background: "#141516", color: "#f7f8f8", fontSize: 12.5, fontWeight: 510, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" };
 const primary: React.CSSProperties = { ...btn, border: 0, background: "#0090ff", color: "#fff" };
-const input: React.CSSProperties = { height: 32, padding: "0 10px", border: "1px solid #26282d", borderRadius: 6, background: "#101112", color: "#ededed", fontSize: 13, outline: "none", minWidth: 0 };
-const muted: React.CSSProperties = { margin: 0, color: "#8f8f8f", fontSize: 12.5, lineHeight: 1.55 };
+const input: React.CSSProperties = { height: 32, padding: "0 10px", border: "1px solid #26282d", borderRadius: 6, background: "#101112", color: "#f7f8f8", fontSize: 13, outline: "none", minWidth: 0 };
+const muted: React.CSSProperties = { margin: 0, color: "#8a8f98", fontSize: 12.5, lineHeight: 1.55 };
 
 function SiteRow({ site }: { site: Site }) {
   const [status, setStatus] = useState<Status>(null);
@@ -86,12 +86,12 @@ function SiteRow({ site }: { site: Site }) {
       </div>
 
       {open ? (
-        <form onSubmit={connect} style={{ marginTop: 12, display: "grid", gap: 10, padding: 12, border: "1px solid #1f1f1f", borderRadius: 8, background: "#0d0e0f" }}>
+        <form onSubmit={connect} style={{ marginTop: 12, display: "grid", gap: 10, padding: 12, border: "1px solid #23252a", borderRadius: 8, background: "#0d0e0f" }}>
           <p style={muted}>
-            <b style={{ color: "#ededed" }}>1.</b> Create a read-only token in Cloudflare — the permissions are already filled in, just press <b style={{ color: "#ededed" }}>Continue to summary</b> and <b style={{ color: "#ededed" }}>Create Token</b>.
+            <b style={{ color: "#f7f8f8" }}>1.</b> Create a read-only token in Cloudflare — the permissions are already filled in, just press <b style={{ color: "#f7f8f8" }}>Continue to summary</b> and <b style={{ color: "#f7f8f8" }}>Create Token</b>.
           </p>
           <div><a href={CREATE_TOKEN_URL} target="_blank" rel="noopener noreferrer" style={btn}>Create token in Cloudflare ↗</a></div>
-          <p style={muted}><b style={{ color: "#ededed" }}>2.</b> Copy the token and paste it here. We find the right site automatically and store the token encrypted.</p>
+          <p style={muted}><b style={{ color: "#f7f8f8" }}>2.</b> Copy the token and paste it here. We find the right site automatically and store the token encrypted.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input style={{ ...input, flex: "1 1 280px" }} type="password" autoComplete="off" spellCheck={false} placeholder="Cloudflare API token" value={token} onChange={(e) => setToken(e.target.value)} />
             {needZone ? <input style={{ ...input, flex: "1 1 220px" }} placeholder="Zone ID (from the site's Overview page)" value={zoneId} onChange={(e) => setZoneId(e.target.value.trim())} /> : null}

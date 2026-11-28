@@ -268,7 +268,7 @@ export function ArticleStructureStats({
       </div>
 
 
-      <p style={{fontSize:12,color:"#a1a1a1",marginTop:9,marginBottom:10}}>
+      <p style={{fontSize:12,color:"#a0a5ae",marginTop:9,marginBottom:10}}>
         These numbers count exact matches for the saved primary and
         secondary brief phrases only. 100% here is NOT total SEO
         coverage, supporting-query coverage, heading sufficiency, or

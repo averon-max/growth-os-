@@ -1849,17 +1849,17 @@ ${article.bodyMarkdown}`
                     </thead>
                   ),
                   th: ({ children }) => (
-                    <th style={{ border: "1px solid var(--color-border, #e0e0e0)", padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>
+                    <th style={{ border: "1px solid var(--color-border, #dfe2e8)", padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>
                       {children}
                     </th>
                   ),
                   td: ({ children }) => (
-                    <td style={{ border: "1px solid var(--color-border, #e0e0e0)", padding: "8px 12px", verticalAlign: "top" }}>
+                    <td style={{ border: "1px solid var(--color-border, #dfe2e8)", padding: "8px 12px", verticalAlign: "top" }}>
                       {children}
                     </td>
                   ),
                   tr: ({ children }) => (
-                    <tr style={{ borderBottom: "1px solid var(--color-border, #e0e0e0)" }}>
+                    <tr style={{ borderBottom: "1px solid var(--color-border, #dfe2e8)" }}>
                       {children}
                     </tr>
                   ),
@@ -1868,7 +1868,7 @@ ${article.bodyMarkdown}`
                 {readerPreview.readerMarkdown}
               </ReactMarkdown>
               {readerPreview.researchLinks.length>0 ? (
-                <details style={{fontSize:12,color:"#a1a1a1",marginTop:24}}>
+                <details style={{fontSize:12,color:"#a0a5ae",marginTop:24}}>
                   <summary>Reference links (optional)</summary>
                   <ul style={{paddingLeft:18,marginTop:6}}>
                     {readerPreview.researchLinks.map(ref=>(

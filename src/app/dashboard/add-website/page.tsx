@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/dashboard/topbar";
 import f from "./add-website.module.css";
 
-type Created = { websiteId: string; analysisId: string; domain: string };
+type Created = { websiteId: string; analysisId: string | null; domain: string; note: string | null };
 
 /** Turns "https://www.acme-hardware.com/shop" into "Acme Hardware" for the name field. */
 function nameFromUrl(url: string): string {
@@ -74,12 +74,15 @@ export default function AddWebsitePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ websiteId: data.website.id }),
       });
-      const analysisData = await analysisRes.json();
-      if (!analysisRes.ok) {
-        setError(analysisData.error || "Failed to start analysis.");
-        return;
-      }
-      setCreated({ websiteId: data.website.id, analysisId: analysisData.analysisId, domain: domainOf(form.websiteUrl) });
+      const analysisData = await analysisRes.json().catch(() => ({}));
+      // The website already exists at this point, so the flow always moves on to step 2.
+      // On Free the audit is refused (402): the site is still added and the data can be connected.
+      const note = analysisRes.ok
+        ? null
+        : analysisRes.status === 402
+          ? "The site audit is part of Starter. Your site is added and you can connect its data now."
+          : analysisData.error || "The site audit didn't start. You can run it later from SEO audit.";
+      setCreated({ websiteId: data.website.id, analysisId: analysisRes.ok ? analysisData.analysisId ?? null : null, domain: domainOf(form.websiteUrl), note });
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -212,10 +215,16 @@ export default function AddWebsitePage() {
                 </Link>
               </div>
               <div className={f.foot}>
-                <span className={f.footNote}>You can connect these later in Settings.</span>
-                <Link className={f.primary} href={`/dashboard/analysis/${created.analysisId}`}>
-                  Open analysis
-                </Link>
+                <span className={f.footNote}>{created.note ?? "You can connect these later in Settings."}</span>
+                {created.analysisId ? (
+                  <Link className={f.primary} href={`/dashboard/analysis/${created.analysisId}`}>
+                    Open analysis
+                  </Link>
+                ) : (
+                  <Link className={f.primary} href="/dashboard">
+                    Go to Overview
+                  </Link>
+                )}
               </div>
             </div>
           </>

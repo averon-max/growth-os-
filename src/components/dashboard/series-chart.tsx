@@ -5,8 +5,8 @@ import { BarChart3, LineChart } from "lucide-react";
 import s from "./series-chart.module.css";
 
 /** Categorical colours in fixed order, checked for contrast and colour-blind separation on black. */
-export const SERIES_COLORS = ["#0090ff", "#e93d82", "#8e4ec6", "#f76b15", "#52a9ff", "#ff6369", "#a1a1a1"];
-const OTHER = "#2e2e2e";
+export const SERIES_COLORS = ["#0090ff", "#e93d82", "#8e4ec6", "#f76b15", "#52a9ff", "#ff6369", "#a0a5ae"];
+const OTHER = "#34343a";
 
 export type SeriesDay = { date: string; values: Record<string, number> };
 
@@ -172,7 +172,7 @@ export function SeriesChart({
           {otherTotal > 0 ? (
             <li>
               <span className={s.rank}>{keys.length + 1}</span>
-              <i style={{ background: "#8f8f8f" }} />
+              <i style={{ background: "#8a8f98" }} />
               <span className={s.name}>Other</span>
               <span className={s.share}>{(otherTotal / grand * 100).toFixed(1)}%</span>
             </li>

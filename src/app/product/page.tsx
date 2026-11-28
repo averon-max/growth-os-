@@ -49,7 +49,7 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
-        <div className={s.stage}>
+        <div className={`${s.stage} ${s.lit}`}>
           <div className={s.shot}>
             <Image src="/landing/overview-v18.webp" alt="Hyprlyx overview: website, Google Search clicks and positions, SEO score, Cloudflare traffic, tracked keywords, visits by country and top pages" width={3360} height={2100} priority quality={90} sizes="(max-width: 1320px) 100vw, 1320px" />
           </div>

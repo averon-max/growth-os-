@@ -1,51 +1,51 @@
 /* linear-v14 */
-.gh{display:flex;align-items:center;gap:9px;height:36px;padding:0 16px;background:#1a1a1a;border-bottom:1px solid #262626;color:#ededed;font-size:13px;font-weight:510}
-.gh .n{color:#8f8f8f;font-weight:400}
-.r{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-bottom:1px solid #1f1f1f;color:#a1a1a1;font-size:13px;cursor:pointer;text-decoration:none}
+.gh{display:flex;align-items:center;gap:9px;height:36px;padding:0 16px;background:#1e1f22;border-bottom:1px solid #28292e;color:#f7f8f8;font-size:13px;font-weight:510}
+.gh .n{color:#8a8f98;font-weight:400}
+.r{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-bottom:1px solid #23252a;color:#a0a5ae;font-size:13px;cursor:pointer;text-decoration:none}
 .r:hover{background:rgba(255,255,255,.035)}
-.id{width:58px;flex:0 0 auto;color:#8f8f8f;font:12px "JetBrains Mono",ui-monospace,Menlo,monospace}
-.tt{flex:1;min-width:0;overflow:hidden;color:#ededed;font-weight:510;text-overflow:ellipsis;white-space:nowrap}
-.tt span{margin-left:8px;color:#8f8f8f;font-weight:400}
-.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border:1px solid #262626;border-radius:999px;color:#a1a1a1;font-size:12px;white-space:nowrap}
+.id{width:58px;flex:0 0 auto;color:#8a8f98;font:12px "JetBrains Mono",ui-monospace,Menlo,monospace}
+.tt{flex:1;min-width:0;overflow:hidden;color:#f7f8f8;font-weight:510;text-overflow:ellipsis;white-space:nowrap}
+.tt span{margin-left:8px;color:#8a8f98;font-weight:400}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border:1px solid #28292e;border-radius:999px;color:#a0a5ae;font-size:12px;white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:50%}
-.m{min-width:56px;flex:0 0 auto;color:#a1a1a1;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
-.d{width:52px;flex:0 0 auto;color:#8f8f8f;font-size:12px;text-align:right;white-space:nowrap}
+.m{min-width:56px;flex:0 0 auto;color:#a0a5ae;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.d{width:52px;flex:0 0 auto;color:#8a8f98;font-size:12px;text-align:right;white-space:nowrap}
 .st{width:14px;height:14px;flex:0 0 auto;border-radius:50%;border:1.5px solid currentColor}
 .half{background:conic-gradient(currentColor 0 50%,transparent 50% 100%)}
 .full{background:currentColor}
-.empty{padding:36px 16px;color:#8f8f8f;text-align:center}
+.empty{padding:36px 16px;color:#8a8f98;text-align:center}
 .r:hover .tt{color:#9ccaff}
 .dot{display:none}
 .a{display:flex;gap:6px;flex:0 0 auto}
-.btn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid #262626;border-radius:7px;background:#1a1a1a;color:#ededed;font-size:12px;font-weight:510;cursor:pointer;text-decoration:none}
+.btn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid #28292e;border-radius:7px;background:#1e1f22;color:#f7f8f8;font-size:12px;font-weight:510;cursor:pointer;text-decoration:none}
 .btn:hover{border-color:rgba(0,144,255,.4)}
 .btn:disabled{opacity:.5;cursor:default}
-.blue{border-color:transparent;background:#0090ff;color:#ededed}
+.blue{border-color:transparent;background:#0090ff;color:#f7f8f8}
 .blue:hover{background:#52a9ff}
 
 /* ===== Design lock: the last word in this file. Same values on every page (Vercel dark). ===== */
-.gh { height: 40px !important; border-top: 1px solid #1a1a1a !important; border-bottom: 1px solid #1a1a1a !important; background: #0a0a0a !important; color: #a1a1a1 !important; font-size: 13px !important; font-weight: 500 !important; }
-.r { border-bottom: 1px solid #141414 !important; background: transparent !important; }
-.r:hover { background: #111 !important; }
-.n { color: #6b6b6b !important; }
-.btn { border: 1px solid #2e2e2e !important; border-radius: 6px !important; background: #0a0a0a !important; color: #ededed !important; box-shadow: none !important; }
-.btn:hover:not(:disabled) { background: #1a1a1a !important; border-color: #3a3a3a !important; }
+.gh { height: 40px !important; border-top: 1px solid #1e1f22 !important; border-bottom: 1px solid #1e1f22 !important; background: #0f1011 !important; color: #a0a5ae !important; font-size: 13px !important; font-weight: 500 !important; }
+.r { border-bottom: 1px solid #18191b !important; background: transparent !important; }
+.r:hover { background: #141516 !important; }
+.n { color: #62666d !important; }
+.btn { border: 1px solid #34343a !important; border-radius: 6px !important; background: #0f1011 !important; color: #f7f8f8 !important; box-shadow: none !important; }
+.btn:hover:not(:disabled) { background: #1e1f22 !important; border-color: #3e3e44 !important; }
 
 /* ===== v3 — as on the product screens (website): the final word in this file. ===== */
-.gh { display: flex !important; align-items: center !important; gap: 10px !important; height: 40px !important; padding: 0 18px !important; border-top: 0 !important; border-bottom: 1px solid #161616 !important; background: #0d0d0d !important; color: #ededed !important; font-size: 13.5px !important; font-weight: 500 !important; }
+.gh { display: flex !important; align-items: center !important; gap: 10px !important; height: 40px !important; padding: 0 18px !important; border-top: 0 !important; border-bottom: 1px solid #1a1b1e !important; background: #111214 !important; color: #f7f8f8 !important; font-size: 13.5px !important; font-weight: 500 !important; }
 .gh + .r, .r + .gh { border-top: 0 !important; }
-.r + .gh, div + div > .gh { border-top: 1px solid #161616 !important; }
-.gh .n, .n { margin-left: 2px; color: #6b6b6b !important; font-weight: 400 !important; }
-.r { gap: 14px !important; height: 44px !important; padding: 0 18px !important; border-bottom: 1px solid #141414 !important; color: #a1a1a1 !important; font-size: 13.5px !important; }
-.r:hover { background: #0f0f0f !important; }
+.r + .gh, div + div > .gh { border-top: 1px solid #1a1b1e !important; }
+.gh .n, .n { margin-left: 2px; color: #62666d !important; font-weight: 400 !important; }
+.r { gap: 14px !important; height: 44px !important; padding: 0 18px !important; border-bottom: 1px solid #18191b !important; color: #a0a5ae !important; font-size: 13.5px !important; }
+.r:hover { background: #121315 !important; }
 .r:hover .tt { color: #fff !important; }
-.id { width: 62px !important; color: #5c5c5c !important; font: 12px ui-monospace, "SF Mono", Menlo, monospace !important; }
+.id { width: 62px !important; color: #595d64 !important; font: 12px ui-monospace, "SF Mono", Menlo, monospace !important; }
 .st { width: 14px !important; height: 14px !important; border-width: 1.5px !important; }
-.tt { color: #ededed !important; font-weight: 500 !important; }
-.tt span { margin-left: 8px !important; color: #6b6b6b !important; font-weight: 400 !important; }
+.tt { color: #f7f8f8 !important; font-weight: 500 !important; }
+.tt span { margin-left: 8px !important; color: #62666d !important; font-weight: 400 !important; }
 .pill { height: 22px !important; padding: 0 9px !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 400 !important; }
-.m { min-width: 64px !important; color: #a1a1a1 !important; font-size: 13px !important; }
-.d { width: 56px !important; color: #8f8f8f !important; font-size: 13px !important; }
-.btn { height: 28px !important; padding: 0 11px !important; border: 1px solid #2e2e2e !important; border-radius: 8px !important; background: #0a0a0a !important; color: #ededed !important; font-size: 12.5px !important; font-weight: 400 !important; }
-.btn:hover:not(:disabled) { border-color: #3a3a3a !important; background: #141414 !important; }
-.empty { padding: 40px 18px !important; color: #8f8f8f !important; font-size: 13.5px !important; }
+.m { min-width: 64px !important; color: #a0a5ae !important; font-size: 13px !important; }
+.d { width: 56px !important; color: #8a8f98 !important; font-size: 13px !important; }
+.btn { height: 28px !important; padding: 0 11px !important; border: 1px solid #34343a !important; border-radius: 8px !important; background: #0f1011 !important; color: #f7f8f8 !important; font-size: 12.5px !important; font-weight: 400 !important; }
+.btn:hover:not(:disabled) { border-color: #3e3e44 !important; background: #18191b !important; }
+.empty { padding: 40px 18px !important; color: #8a8f98 !important; font-size: 13.5px !important; }

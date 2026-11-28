@@ -1,4 +1,4 @@
 .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
-.title { margin: 0; color: #ededed; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
-.meta { margin: 6px 0 0; color: #a1a1a1; font-size: 14px; }
+.title { margin: 0; color: #f7f8f8; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.meta { margin: 6px 0 0; color: #a0a5ae; font-size: 14px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

@@ -111,7 +111,7 @@ export default function AccountForms(p: Props) {
           </div>
           <p style={note}>
             Signed up with Google or don&apos;t remember your password?{" "}
-            <button type="button" onClick={sendLink} disabled={busy === "link"} style={{ background: "none", border: 0, padding: 0, color: "#ededed", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
+            <button type="button" onClick={sendLink} disabled={busy === "link"} style={{ background: "none", border: 0, padding: 0, color: "#f7f8f8", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
               Email me a link to set one
             </button>{" "}
             <Status msg={linkMsg} />
@@ -143,7 +143,7 @@ export default function AccountForms(p: Props) {
         <div style={{ ...head, color: "#ff6369" }}>Delete account</div>
         <div style={body}>
           <p style={note}>
-            Permanently deletes your account and every workspace where you are the only member: websites, keywords, articles and history.
+            Permanently deletes your account and every workspace where you are the only member: websites, keywords, articles, imported links and history. Your subscription is cancelled and Google access is revoked.
             This can&apos;t be undone. Any paid subscription is cancelled right away and your saved card is removed, so you won&apos;t be charged again.
           </p>
           <div>

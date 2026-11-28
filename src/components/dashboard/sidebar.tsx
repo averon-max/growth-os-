@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronsUpDown, LogOut, MoreHorizontal, PanelLeft, Search, X } from "lucide-react";
+import { ChevronLeft, LogOut, MoreHorizontal, PanelLeft, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
@@ -225,11 +225,11 @@ export function Sidebar({ isAdmin = false, hidden = [], planLabel = "Free", emai
 
       <aside className={styles.sidebar} data-mobile-open={mobileOpen || undefined}>
         <div className={styles.top}>
-          <Link href="/dashboard/settings" className={styles.workspace} title="Workspace settings">
+          {/* The logo is home (Overview). Settings live in one place: the Settings item below and your name at the bottom. */}
+          <Link href="/dashboard" className={styles.workspace} title="Overview">
             <Mark />
             <span className={styles.workspaceName}>Hyprlyx</span>
             <span className={styles.plan}>{planLabel}</span>
-            <ChevronsUpDown size={14} strokeWidth={1.6} className={styles.chevrons} aria-hidden />
           </Link>
           <button type="button" className={styles.mobileClose} onClick={() => setMobileOpen(false)} aria-label="Close menu">
             <X size={18} strokeWidth={1.6} />

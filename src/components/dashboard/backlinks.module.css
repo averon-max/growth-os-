@@ -93,12 +93,12 @@ td.num[data-tone="bad"] { color: var(--ds-red-900); }
 .quality[data-q="clean"] i { background: #30a46c; }
 
 .profile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
-.profileNum { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #1f1f1f; border-radius: 8px; background: #000; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.profileNum:hover, .profileNum[data-active] { border-color: #333; background: #111; }
-.profileNum span { color: #a1a1a1; font-size: 13px; }
-.profileNum strong { color: #ededed; font-size: 28px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid #333; border-radius: 999px; background: #111; color: #ededed; font: inherit; font-size: 13px; cursor: pointer; }
-.chip:hover { background: #1a1a1a; }
+.profileNum { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #23252a; border-radius: 8px; background: #08090a; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.profileNum:hover, .profileNum[data-active] { border-color: #37393e; background: #141516; }
+.profileNum span { color: #a0a5ae; font-size: 13px; }
+.profileNum strong { color: #f7f8f8; font-size: 28px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid #37393e; border-radius: 999px; background: #141516; color: #f7f8f8; font: inherit; font-size: 13px; cursor: pointer; }
+.chip:hover { background: #1e1f22; }
 
 .shareHead { width: 220px; }
 .shareCell { display: flex; align-items: center; gap: 10px; }

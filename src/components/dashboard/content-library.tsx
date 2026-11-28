@@ -22,8 +22,8 @@ function articleType(a: LibraryArticle): { label: string; dot?: string } {
   if (/step[- ]by[- ]step/.test(t)) return { label: "Step-by-step", dot: "#f76b15" };
   if (/complete|ultimate|guide/.test(t)) return { label: "Guide", dot: "#30a46c" };
   if (/^how (to|do)/.test(t)) return { label: "How-to", dot: "#ffb224" };
-  if (/^\d+ |best |top /.test(t)) return { label: "List", dot: "#ededed" };
-  return { label: "Article", dot: "#8f8f8f" };
+  if (/^\d+ |best |top /.test(t)) return { label: "List", dot: "#f7f8f8" };
+  return { label: "Article", dot: "#8a8f98" };
 }
 function cleanError(e: string): string {
   const code = e.match(/^(.*?API error \d{3})/i)?.[1];
@@ -36,8 +36,8 @@ function oppTag(title: string): { label: string; dot: string } {
   if (/canonical|redirect|index|crawl|speed/.test(t)) return { label: "Technical", dot: "#f76b15" };
   if (/structured|schema|rich/.test(t)) return { label: "Schema", dot: "#30a46c" };
   if (/thin|expand|content|word/.test(t)) return { label: "Content", dot: "#ffb224" };
-  if (/link/.test(t)) return { label: "Links", dot: "#ededed" };
-  return { label: "SEO", dot: "#8f8f8f" };
+  if (/link/.test(t)) return { label: "Links", dot: "#f7f8f8" };
+  return { label: "SEO", dot: "#8a8f98" };
 }
 
 
